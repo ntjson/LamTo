@@ -5,3 +5,9 @@
 .impeccable/
 .superpowers/
 .worktrees/
+.venv/
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
