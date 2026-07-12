@@ -38,9 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'lamto.accounts',
     'lamto.audit',
     'lamto.documents',
+    'lamto.maintenance',
 ]
 
 MIDDLEWARE = [
@@ -136,6 +138,9 @@ DOCUMENT_SPOOL_MAX_BYTES = int(os.getenv("DOCUMENT_SPOOL_MAX_BYTES", 1024 * 1024
 DOCUMENT_QUARANTINE_RETENTION_DAYS = int(os.getenv("DOCUMENT_QUARANTINE_RETENTION_DAYS", 30))
 CLAMAV_HOST = os.environ["CLAMAV_HOST"]
 CLAMAV_PORT = os.environ["CLAMAV_PORT"]
+AI_TRIAGE_URL = os.environ["AI_TRIAGE_URL"]
+AI_TRIAGE_TOKEN = os.environ["AI_TRIAGE_TOKEN"]
+AI_TRIAGE_TIMEOUT_SECONDS = float(os.getenv("AI_TRIAGE_TIMEOUT_SECONDS", "5"))
 
 STORAGES = {
     "staticfiles": {

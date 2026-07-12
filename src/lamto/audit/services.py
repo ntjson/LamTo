@@ -8,15 +8,18 @@ from .models import AuditEvent
 def record_audit(actor, membership, action, target_type, target_id, result, metadata=None) -> AuditEvent:
     if membership is None:
         occupancy_id = (metadata or {}).get("occupancy_id")
+        resident_report = action == "report.submit" and target_type == "IssueReport"
         if (
-            action != "document.download"
-            or target_type != "DocumentVersion"
+            (action, target_type) not in {("document.download", "DocumentVersion"), ("report.submit", "IssueReport")}
             or OrganizationMembership.objects.filter(user_id=getattr(actor, "pk", None), active=True).exists()
             or (
-                occupancy_id is not None
-                and not ResidentOccupancy.objects.filter(
-                    pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
-                ).exists()
+                (resident_report and occupancy_id is None)
+                or (
+                    occupancy_id is not None
+                    and not ResidentOccupancy.objects.filter(
+                        pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
+                    ).exists()
+                )
             )
         ):
             raise PermissionDenied("Audit membership attribution is invalid.")
