@@ -3,7 +3,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 
-from lamto.accounts.models import Building, Organization, OrganizationMembership
+from lamto.accounts.models import Building, Organization, OrganizationMembership, ResidentOccupancy, Unit
 from lamto.audit.models import AuditEvent
 from lamto.audit.services import record_audit
 
@@ -93,3 +93,39 @@ class AuditImmutabilityTests(TestCase):
                 result="allowed",
             )
         self.assertEqual(AuditEvent.objects.count(), 0)
+
+    def test_staff_cannot_record_document_download_without_membership(self):
+        membership = self.make_board_membership()
+
+        with self.assertRaises(PermissionDenied):
+            record_audit(
+                actor=membership.user,
+                membership=None,
+                action="document.download",
+                target_type="DocumentVersion",
+                target_id="42",
+                result="allowed",
+                metadata={"occupancy_id": 1},
+            )
+        self.assertEqual(AuditEvent.objects.count(), 0)
+
+    def test_unaffiliated_resident_can_record_document_download_with_active_occupancy(self):
+        resident = get_user_model().objects.create_user(
+            email="resident@example.test", password="secret", display_name="Resident"
+        )
+        building = Building.objects.create(name="Resident Building")
+        occupancy = ResidentOccupancy.objects.create(
+            user=resident, unit=Unit.objects.create(building=building, label="A-1")
+        )
+
+        event = record_audit(
+            actor=resident,
+            membership=None,
+            action="document.download",
+            target_type="DocumentVersion",
+            target_id="42",
+            result="denied",
+            metadata={"occupancy_id": occupancy.id},
+        )
+
+        self.assertIsNone(event.membership_id)

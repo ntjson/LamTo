@@ -1,5 +1,7 @@
 import hashlib
+import io
 import tempfile
+from unittest.mock import MagicMock
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -9,7 +11,12 @@ from django.utils import timezone
 
 from lamto.accounts.models import Building, Organization, OrganizationMembership
 from lamto.documents.models import Document, DocumentVersion, QuarantinedUpload
-from lamto.documents.services import add_redacted_copy, create_document_version
+from lamto.documents.services import (
+    DocumentStorageError,
+    _store,
+    add_redacted_copy,
+    create_document_version,
+)
 
 
 @override_settings(
@@ -59,9 +66,32 @@ class DocumentVersionTests(TestCase):
         self.assertNotEqual(original.sha256, redacted.sha256)
         self.assertEqual(redacted.redacts_id, original.id)
         self.assertNotEqual(original.storage_key, redacted.storage_key)
+        self.assertEqual(original.provider_version_id, original.storage_key)
         original.sha256 = "0" * 64
         with self.assertRaises(ValueError):
             original.save()
+
+    def test_redacted_copy_rejects_identical_bytes_before_persistence(self):
+        uploader, building = self.make_operator_and_building()
+        document = Document.objects.create(building=building, kind=Document.Kind.QUOTATION)
+        payload = b"%PDF-1.7\\nprivate-original"
+        original = create_document_version(
+            document,
+            SimpleUploadedFile("quote.pdf", payload, content_type="application/pdf"),
+            DocumentVersion.Variant.ORIGINAL,
+            uploader,
+            scanner=lambda _: True,
+        )
+
+        with self.assertRaisesRegex(ValueError, "must differ"):
+            add_redacted_copy(
+                original,
+                SimpleUploadedFile("quote-redacted.pdf", payload, content_type="application/pdf"),
+                uploader,
+                scanner=lambda _: True,
+            )
+
+        self.assertEqual(DocumentVersion.objects.count(), 1)
 
     def test_database_trigger_rejects_version_update_and_delete(self):
         uploader, building = self.make_operator_and_building()
@@ -96,3 +126,12 @@ class DocumentVersionTests(TestCase):
 
         with self.assertRaises(IntegrityError), transaction.atomic():
             QuarantinedUpload.objects.filter(pk=quarantined.pk).update(reason="changed")
+
+
+class StorageVersionTests(TestCase):
+    def test_s3_write_without_version_id_fails_closed(self):
+        storage = MagicMock(bucket_name="private")
+        storage.connection.meta.client.put_object.return_value = {}
+
+        with self.assertRaisesRegex(DocumentStorageError, "VersionId"):
+            _store(storage, "documents/immutable-key", io.BytesIO(b"payload"), "application/pdf")

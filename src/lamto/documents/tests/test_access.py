@@ -1,7 +1,6 @@
 import hashlib
 import io
 import tempfile
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
@@ -53,7 +52,7 @@ class DocumentAccessTests(TestCase):
         )
         return user, OrganizationMembership.objects.create(user=user, organization=organization, role=role)
 
-    def test_operator_can_read_same_building_bytes_and_audit(self):
+    def test_operator_without_persisted_workflow_is_denied_and_audited(self):
         operator, membership = self.make_membership(OrganizationMembership.Role.OPERATOR)
         payload = b"%PDF-1.7\\nprivate"
         version = create_document_version(
@@ -64,12 +63,16 @@ class DocumentAccessTests(TestCase):
             scanner=lambda _: True,
         )
 
-        self.assertEqual(authorize_download(operator, membership.id, version), payload)
-        self.assertEqual(AuditEvent.objects.last().result, "allowed")
+        with self.assertRaises(PermissionDenied):
+            authorize_download(operator, membership.id, version)
+        self.assertEqual(AuditEvent.objects.last().result, "denied")
 
     def test_cross_building_denial_and_hash_mismatch_are_audited(self):
-        operator, membership = self.make_membership(OrganizationMembership.Role.OPERATOR)
-        other_user, other_membership = self.make_membership(OrganizationMembership.Role.OPERATOR)
+        auditor, membership = self.make_membership(OrganizationMembership.Role.AUDITOR)
+        operator, operator_membership = self.make_membership(
+            OrganizationMembership.Role.OPERATOR, membership.organization.building
+        )
+        other_user, other_membership = self.make_membership(OrganizationMembership.Role.AUDITOR)
         version = create_document_version(
             Document.objects.create(building=membership.organization.building, kind=Document.Kind.QUOTATION),
             SimpleUploadedFile("quote.pdf", b"%PDF-1.7\\nprivate", content_type="application/pdf"),
@@ -83,14 +86,14 @@ class DocumentAccessTests(TestCase):
         with storages["private"].open(version.storage_key, "wb") as file_obj:
             file_obj.write(b"tampered")
         with self.assertRaises(DocumentIntegrityError):
-            authorize_download(operator, membership.id, version)
+            authorize_download(auditor, membership.id, version)
 
         self.assertEqual(AuditEvent.objects.filter(action="document.download").count(), 2)
         self.assertEqual(AuditEvent.objects.last().result, "integrity_mismatch")
 
     @patch("lamto.documents.access.storages")
     def test_download_reads_the_exact_provider_version(self, private_storages):
-        operator, membership = self.make_membership(OrganizationMembership.Role.OPERATOR)
+        operator, membership = self.make_membership(OrganizationMembership.Role.AUDITOR)
         payload = b"%PDF-1.7\\nprivate"
         version = DocumentVersion.objects.create(
             document=Document.objects.create(
@@ -115,7 +118,32 @@ class DocumentAccessTests(TestCase):
             Bucket="private", Key=version.storage_key, VersionId="provider-version-42"
         )
 
-    def test_representative_can_read_original_attached_to_reviewed_proposal(self):
+    @patch("lamto.documents.access.storages")
+    def test_s3_read_without_provider_version_id_fails_closed(self, private_storages):
+        auditor, membership = self.make_membership(OrganizationMembership.Role.AUDITOR)
+        payload = b"%PDF-1.7\\nprivate"
+        version = DocumentVersion.objects.create(
+            document=Document.objects.create(
+                building=membership.organization.building, kind=Document.Kind.QUOTATION
+            ),
+            version=1,
+            variant=DocumentVersion.Variant.ORIGINAL,
+            storage_key="documents/missing-version-id",
+            provider_version_id="",
+            filename="quote.pdf",
+            content_type="application/pdf",
+            byte_size=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),
+            uploader=auditor,
+        )
+        storage = MagicMock(bucket_name="private")
+        private_storages.__getitem__.return_value = storage
+
+        with self.assertRaises(DocumentIntegrityError):
+            authorize_download(auditor, membership.id, version)
+        storage.connection.meta.client.get_object.assert_not_called()
+
+    def test_representative_without_persisted_review_is_denied(self):
         operator, operator_membership = self.make_membership(OrganizationMembership.Role.OPERATOR)
         representative, membership = self.make_membership(
             OrganizationMembership.Role.RESIDENT_REP,
@@ -131,11 +159,10 @@ class DocumentAccessTests(TestCase):
             operator,
             scanner=lambda _: True,
         )
-        version.proposal = SimpleNamespace(reviewer_membership_id=membership.id)
+        with self.assertRaises(PermissionDenied):
+            authorize_download(representative, membership.id, version)
 
-        self.assertEqual(authorize_download(representative, membership.id, version), b"%PDF-1.7\\nprivate")
-
-    def test_maintenance_can_read_only_assigned_report_photos(self):
+    def test_maintenance_without_persisted_assignment_is_denied(self):
         operator, operator_membership = self.make_membership(OrganizationMembership.Role.OPERATOR)
         maintenance, membership = self.make_membership(
             OrganizationMembership.Role.MAINTENANCE,
@@ -153,24 +180,10 @@ class DocumentAccessTests(TestCase):
             operator,
             scanner=lambda _: True,
         )
-        version.work_order = SimpleNamespace(assignee_id=maintenance.id)
-        self.assertEqual(authorize_download(maintenance, membership.id, version), jpeg_bytes())
-
-        invoice = Document.objects.create(
-            building=membership.organization.building, kind=Document.Kind.INVOICE
-        )
-        invoice_version = create_document_version(
-            invoice,
-            SimpleUploadedFile("invoice.pdf", b"%PDF-1.7\\nprivate", content_type="application/pdf"),
-            DocumentVersion.Variant.ORIGINAL,
-            operator,
-            scanner=lambda _: True,
-        )
-        invoice_version.work_order = SimpleNamespace(assignee_id=maintenance.id)
         with self.assertRaises(PermissionDenied):
-            authorize_download(maintenance, membership.id, invoice_version)
+            authorize_download(maintenance, membership.id, version)
 
-    def test_resident_can_read_published_redacted_copy(self):
+    def test_resident_without_persisted_publication_is_denied_with_occupancy_audit(self):
         building = Building.objects.create(name="Resident Building")
         operator, _ = self.make_membership(OrganizationMembership.Role.OPERATOR, building)
         resident = get_user_model().objects.create_user(
@@ -192,10 +205,9 @@ class DocumentAccessTests(TestCase):
             operator,
             scanner=lambda _: True,
         )
-        redacted.published = True
-
-        self.assertEqual(authorize_download(resident, None, redacted), b"%PDF-1.7\\npublic")
+        with self.assertRaises(PermissionDenied):
+            authorize_download(resident, None, redacted)
         audit = AuditEvent.objects.last()
-        self.assertEqual(audit.result, "allowed")
+        self.assertEqual(audit.result, "denied")
         self.assertIsNone(audit.membership_id)
         self.assertEqual(audit.metadata["occupancy_id"], ResidentOccupancy.objects.get(user=resident).id)

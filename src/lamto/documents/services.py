@@ -28,6 +28,10 @@ class DocumentUploadQuarantined(ValueError):
     pass
 
 
+class DocumentStorageError(ValueError):
+    pass
+
+
 MIME_SIGNATURES = {
     "application/pdf": b"%PDF-",
     "image/jpeg": b"\xff\xd8\xff",
@@ -104,7 +108,9 @@ def _store(storage, storage_key, file_obj, content_type):
             Body=file_obj,
             ContentType=content_type,
         )
-        return response.get("VersionId") or storage_key
+        if not (version_id := response.get("VersionId")):
+            raise DocumentStorageError("S3 did not return an immutable VersionId.")
+        return version_id
     saved_key = storage.save(storage_key, File(file_obj, name=storage_key))
     return saved_key
 
@@ -238,6 +244,12 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
 def add_redacted_copy(original, uploaded_file, uploader, scanner) -> DocumentVersion:
     if original.variant != DocumentVersion.Variant.ORIGINAL:
         raise ValueError("Only an original version can be redacted.")
+    digest = hashlib.sha256()
+    for chunk in uploaded_file.chunks():
+        digest.update(chunk)
+    if digest.hexdigest() == original.sha256:
+        raise ValueError("Redacted bytes must differ from the original.")
+    uploaded_file.seek(0)
     redacted = create_document_version(
         original.document,
         uploaded_file,
