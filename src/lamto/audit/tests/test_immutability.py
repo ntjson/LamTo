@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 
@@ -53,3 +54,42 @@ class AuditImmutabilityTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM audit_auditevent WHERE id = %s", [event.pk])
+
+    def test_database_trigger_rejects_raw_truncate(self):
+        with self.assertRaises(IntegrityError) as context, transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("TRUNCATE TABLE audit_auditevent")
+        self.assertIn("audit events are append-only", str(context.exception))
+
+    def test_record_audit_rejects_inactive_membership(self):
+        membership = self.make_board_membership()
+        membership.active = False
+        membership.save(update_fields=["active"])
+
+        with self.assertRaises(PermissionDenied):
+            record_audit(
+                actor=membership.user,
+                membership=membership,
+                action="proposal.approve",
+                target_type="ProposalVersion",
+                target_id="42",
+                result="allowed",
+            )
+        self.assertEqual(AuditEvent.objects.count(), 0)
+
+    def test_record_audit_rejects_membership_owned_by_another_actor(self):
+        membership = self.make_board_membership()
+        other_actor = get_user_model().objects.create_user(
+            email="other@example.test", password="secret", display_name="Other Actor"
+        )
+
+        with self.assertRaises(PermissionDenied):
+            record_audit(
+                actor=other_actor,
+                membership=membership,
+                action="proposal.approve",
+                target_type="ProposalVersion",
+                target_id="42",
+                result="allowed",
+            )
+        self.assertEqual(AuditEvent.objects.count(), 0)
