@@ -3,7 +3,7 @@ from django.db import transaction
 
 from lamto.accounts.models import ResidentOccupancy
 from lamto.audit.services import record_audit
-from lamto.documents.models import Document
+from lamto.documents.models import Document, DocumentVersion
 
 from .models import IssueReport, ReportPhoto, TriageJob
 
@@ -29,14 +29,20 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
     photo_ids = [version.pk for version in photo_versions]
     if len(photo_ids) != len(set(photo_ids)):
         raise ValidationError("A photo version can only be attached once.")
-    valid_photo_ids = set(
-        version.pk
-        for version in photo_versions
-        if version.document.building_id == unit.building_id
-        and version.document.kind == Document.Kind.REPORT_PHOTO
+    photo_versions = list(
+        DocumentVersion.objects.select_for_update()
+        .select_related("document")
+        .filter(
+            pk__in=photo_ids,
+            uploader_id=resident.pk,
+            document__building_id=unit.building_id,
+            document__kind=Document.Kind.REPORT_PHOTO,
+            variant=DocumentVersion.Variant.ORIGINAL,
+            scan_status=DocumentVersion.ScanStatus.CLEAN,
+        )
     )
-    if set(photo_ids) != valid_photo_ids:
-        raise ValidationError("Report photos must belong to the unit building.")
+    if len(photo_versions) != len(photo_ids):
+        raise ValidationError("Report photos must be owned, clean original photos in the unit building.")
 
     report = IssueReport.objects.create(
         reporter=resident,

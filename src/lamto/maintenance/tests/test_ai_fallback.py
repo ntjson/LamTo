@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
 from lamto.accounts.models import Building, ResidentOccupancy, Unit
-from lamto.maintenance.ai import process_triage_job
+from lamto.maintenance.ai import TriageValidationError, _endpoint_url, process_triage_job
 from lamto.maintenance.candidates import find_duplicate_candidates
 from lamto.maintenance.models import BuildingLocation, IssueReport, TriageJob, TriageSuggestion
 from lamto.maintenance.reporting import submit_report
@@ -28,6 +28,17 @@ class FakeResponse:
 
 @override_settings(AI_TRIAGE_URL="https://triage.example.test/v1/triage", AI_TRIAGE_TOKEN="token")
 class TriageTests(TestCase):
+    @override_settings(AI_TRIAGE_URL="http://triage.example.test/v1/triage")
+    def test_http_endpoint_is_rejected_without_explicit_opt_in(self):
+        with self.assertRaisesRegex(TriageValidationError, "HTTPS"):
+            _endpoint_url()
+
+    @override_settings(
+        AI_TRIAGE_URL="http://triage.example.test/v1/triage", AI_TRIAGE_ALLOW_HTTP=True
+    )
+    def test_http_endpoint_is_permitted_with_explicit_opt_in(self):
+        self.assertEqual(_endpoint_url(), "http://triage.example.test/v1/triage")
+
     def submit(self, text):
         building = getattr(self, "building", None) or Building.objects.create(name="Building B")
         self.building = building

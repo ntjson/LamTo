@@ -9,7 +9,6 @@ never included): ``report_id``, ``text``, ``location_path_snapshot``, and
 """
 
 import json
-import sys
 import time
 from urllib.error import URLError
 from urllib.parse import urlsplit
@@ -63,7 +62,9 @@ def _endpoint_url():
     parsed = urlsplit(url)
     if not parsed.scheme or not parsed.netloc:
         raise TriageValidationError("AI_TRIAGE_URL must be an absolute URL")
-    if parsed.scheme != "https" and not (settings.DEBUG or "test" in sys.argv):
+    if parsed.scheme != "https" and not (
+        parsed.scheme == "http" and settings.AI_TRIAGE_ALLOW_HTTP
+    ):
         raise TriageValidationError("AI_TRIAGE_URL must use HTTPS outside local/test mode")
     if not settings.AI_TRIAGE_TOKEN:
         raise TriageValidationError("AI_TRIAGE_TOKEN is required")

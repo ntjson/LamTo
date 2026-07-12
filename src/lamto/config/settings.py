@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ["SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "").lower() in {"1", "true", "yes"}
 
 ALLOWED_HOSTS = []
 
@@ -141,6 +141,7 @@ CLAMAV_PORT = os.environ["CLAMAV_PORT"]
 AI_TRIAGE_URL = os.environ["AI_TRIAGE_URL"]
 AI_TRIAGE_TOKEN = os.environ["AI_TRIAGE_TOKEN"]
 AI_TRIAGE_TIMEOUT_SECONDS = float(os.getenv("AI_TRIAGE_TIMEOUT_SECONDS", "5"))
+AI_TRIAGE_ALLOW_HTTP = os.getenv("AI_TRIAGE_ALLOW_HTTP", "").lower() in {"1", "true", "yes"}
 
 STORAGES = {
     "staticfiles": {

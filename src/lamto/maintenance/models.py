@@ -30,10 +30,16 @@ class BuildingLocation(models.Model):
     def path_label(self):
         names = []
         location = self
-        while location is not None:
+        seen_locations = set()
+        for _ in range(100):
+            if location is None:
+                return " / ".join([self.building.name, *reversed(names)])
+            if location.pk in seen_locations:
+                raise ValidationError("Location hierarchy contains a cycle.")
+            seen_locations.add(location.pk)
             names.append(location.name)
             location = location.parent
-        return " / ".join([self.building.name, *reversed(names)])
+        raise ValidationError("Location hierarchy exceeds the maximum depth.")
 
 
 class IssueReport(models.Model):

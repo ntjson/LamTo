@@ -9,18 +9,15 @@ def record_audit(actor, membership, action, target_type, target_id, result, meta
     if membership is None:
         occupancy_id = (metadata or {}).get("occupancy_id")
         resident_report = action == "report.submit" and target_type == "IssueReport"
-        if (
-            (action, target_type) not in {("document.download", "DocumentVersion"), ("report.submit", "IssueReport")}
+        valid_occupancy = occupancy_id is not None and ResidentOccupancy.objects.filter(
+            pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
+        ).exists()
+        if resident_report and valid_occupancy:
+            pass
+        elif (
+            (action, target_type) != ("document.download", "DocumentVersion")
             or OrganizationMembership.objects.filter(user_id=getattr(actor, "pk", None), active=True).exists()
-            or (
-                (resident_report and occupancy_id is None)
-                or (
-                    occupancy_id is not None
-                    and not ResidentOccupancy.objects.filter(
-                        pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
-                    ).exists()
-                )
-            )
+            or (occupancy_id is not None and not valid_occupancy)
         ):
             raise PermissionDenied("Audit membership attribution is invalid.")
     elif not OrganizationMembership.objects.filter(
