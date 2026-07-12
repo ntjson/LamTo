@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'lamto.accounts',
     'lamto.audit',
+    'lamto.documents',
 ]
 
 MIDDLEWARE = [
@@ -129,3 +130,28 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = "accounts.User"
+
+DOCUMENT_MAX_UPLOAD_BYTES = int(os.getenv("DOCUMENT_MAX_UPLOAD_BYTES", 20 * 1024 * 1024))
+DOCUMENT_SPOOL_MAX_BYTES = int(os.getenv("DOCUMENT_SPOOL_MAX_BYTES", 1024 * 1024))
+DOCUMENT_QUARANTINE_RETENTION_DAYS = int(os.getenv("DOCUMENT_QUARANTINE_RETENTION_DAYS", 30))
+CLAMAV_HOST = os.environ["CLAMAV_HOST"]
+CLAMAV_PORT = os.environ["CLAMAV_PORT"]
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+    "private": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.environ["PRIVATE_STORAGE_BUCKET"],
+            "endpoint_url": os.environ["PRIVATE_STORAGE_ENDPOINT_URL"],
+            "access_key": os.environ["PRIVATE_STORAGE_ACCESS_KEY"],
+            "secret_key": os.environ["PRIVATE_STORAGE_SECRET_KEY"],
+            "region_name": os.getenv("PRIVATE_STORAGE_REGION", "us-east-1"),
+            "file_overwrite": False,
+            "default_acl": None,
+            "querystring_auth": True,
+        },
+    }
+}

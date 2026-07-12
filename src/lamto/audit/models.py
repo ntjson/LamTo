@@ -6,7 +6,7 @@ from lamto.accounts.models import OrganizationMembership
 
 class AuditEvent(models.Model):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    membership = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
+    membership = models.ForeignKey(OrganizationMembership, null=True, blank=True, on_delete=models.PROTECT)
     action = models.CharField(max_length=128)
     target_type = models.CharField(max_length=128)
     target_id = models.CharField(max_length=255)

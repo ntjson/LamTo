@@ -1,0 +1,259 @@
+import hashlib
+import os
+import tempfile
+import uuid
+from datetime import timedelta
+
+from django.conf import settings
+from django.core.exceptions import PermissionDenied
+from django.core.files import File
+from django.core.files.storage import storages
+from django.db import transaction
+from django.db.models import Max
+from django.utils import timezone
+from PIL import Image, UnidentifiedImageError
+
+from lamto.accounts.models import OrganizationMembership
+from lamto.audit.services import record_audit
+
+from .models import Document, DocumentVersion, QuarantinedUpload
+from .scanner import DocumentScanUnavailable
+
+
+class DocumentUploadRejected(ValueError):
+    pass
+
+
+class DocumentUploadQuarantined(ValueError):
+    pass
+
+
+MIME_SIGNATURES = {
+    "application/pdf": b"%PDF-",
+    "image/jpeg": b"\xff\xd8\xff",
+    "image/png": b"\x89PNG\r\n\x1a\n",
+}
+PHOTO_KINDS = {
+    Document.Kind.REPORT_PHOTO,
+    Document.Kind.BEFORE_PHOTO,
+    Document.Kind.AFTER_PHOTO,
+}
+
+
+def _membership_for(uploader, building):
+    membership = (
+        OrganizationMembership.objects.select_related("organization")
+        .filter(user=uploader, active=True, organization__building=building)
+        .first()
+    )
+    if membership is None:
+        raise PermissionDenied("Document uploader does not belong to this building.")
+    return membership
+
+
+def _audit(uploader, membership, action, target_id, result, metadata=None):
+    record_audit(
+        actor=uploader,
+        membership=membership,
+        action=action,
+        target_type="DocumentUpload",
+        target_id=str(target_id),
+        result=result,
+        metadata=metadata,
+    )
+
+
+def _allowed_content_types(document):
+    if document.kind in PHOTO_KINDS:
+        return {"image/jpeg", "image/png"}
+    return {"application/pdf"}
+
+
+def _metadata(uploaded_file):
+    return {
+        "filename": os.path.basename(getattr(uploaded_file, "name", "upload"))[:255],
+        "content_type": getattr(uploaded_file, "content_type", "") or "",
+        "byte_size": getattr(uploaded_file, "size", 0) or 0,
+    }
+
+
+def _retention_expires_at():
+    return timezone.now() + timedelta(days=settings.DOCUMENT_QUARANTINE_RETENTION_DAYS)
+
+
+def _create_rejection(uploader, membership, metadata, reason):
+    rejected = QuarantinedUpload.objects.create(
+        uploader=uploader,
+        reason=reason,
+        storage_key=None,
+        provider_version_id="",
+        sha256="",
+        retention_expires_at=_retention_expires_at(),
+        **metadata,
+    )
+    _audit(uploader, membership, "document.upload_rejected", rejected.pk, "rejected", {"reason": reason})
+    raise DocumentUploadRejected(reason)
+
+
+def _store(storage, storage_key, file_obj, content_type):
+    file_obj.seek(0)
+    if hasattr(storage, "bucket_name") and hasattr(storage, "connection"):
+        response = storage.connection.meta.client.put_object(
+            Bucket=storage.bucket_name,
+            Key=storage_key,
+            Body=file_obj,
+            ContentType=content_type,
+        )
+        return response.get("VersionId") or storage_key
+    saved_key = storage.save(storage_key, File(file_obj, name=storage_key))
+    return saved_key
+
+
+def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
+    membership = (
+        OrganizationMembership.objects.select_related("organization")
+        .filter(user=uploader, active=True)
+        .first()
+    )
+    if membership is None:
+        raise PermissionDenied("Quarantine upload cannot be audited.")
+    metadata = _metadata(uploaded_file)
+    digest = hashlib.sha256()
+    with tempfile.SpooledTemporaryFile(max_size=settings.DOCUMENT_SPOOL_MAX_BYTES) as temporary:
+        for chunk in uploaded_file.chunks():
+            digest.update(chunk)
+            temporary.write(chunk)
+        metadata["byte_size"] = temporary.tell()
+        storage_key = f"quarantine/{uuid.uuid4().hex}"
+        provider_version_id = _store(storages["private"], storage_key, temporary, metadata["content_type"])
+    quarantined = QuarantinedUpload.objects.create(
+        uploader=uploader,
+        reason=reason,
+        storage_key=storage_key,
+        provider_version_id=provider_version_id,
+        sha256=digest.hexdigest(),
+        retention_expires_at=_retention_expires_at(),
+        **metadata,
+    )
+    _audit(
+        uploader,
+        membership,
+        "document.upload_quarantined",
+        quarantined.pk,
+        "quarantined",
+        {"reason": reason},
+    )
+    return quarantined
+
+
+def create_document_version(document, uploaded_file, variant, uploader, scanner, *, _redacts=None) -> DocumentVersion:
+    membership = _membership_for(uploader, document.building)
+    metadata = _metadata(uploaded_file)
+    max_bytes = settings.DOCUMENT_MAX_UPLOAD_BYTES
+    if metadata["content_type"] not in _allowed_content_types(document):
+        _create_rejection(uploader, membership, metadata, "unsupported content type")
+    if metadata["byte_size"] > max_bytes:
+        _create_rejection(uploader, membership, metadata, "upload exceeds size limit")
+
+    digest = hashlib.sha256()
+    with tempfile.SpooledTemporaryFile(max_size=settings.DOCUMENT_SPOOL_MAX_BYTES) as temporary:
+        for chunk in uploaded_file.chunks():
+            digest.update(chunk)
+            temporary.write(chunk)
+            if temporary.tell() > max_bytes:
+                metadata["byte_size"] = temporary.tell()
+                _create_rejection(uploader, membership, metadata, "upload exceeds size limit")
+        metadata["byte_size"] = temporary.tell()
+        temporary.seek(0)
+        signature = temporary.read(8)
+        expected_signature = MIME_SIGNATURES[metadata["content_type"]]
+        if not signature.startswith(expected_signature):
+            _create_rejection(uploader, membership, metadata, "file signature does not match content type")
+        if metadata["content_type"].startswith("image/"):
+            try:
+                temporary.seek(0)
+                with Image.open(temporary) as image:
+                    image.verify()
+            except (UnidentifiedImageError, OSError, ValueError):
+                _create_rejection(uploader, membership, metadata, "image verification failed")
+        temporary.seek(0)
+        try:
+            clean = scanner(temporary)
+        except Exception as error:
+            clean = False
+            reason = "scanner unavailable"
+        else:
+            reason = "malware detected"
+        if not clean:
+            storage_key = f"quarantine/{uuid.uuid4().hex}"
+            provider_version_id = _store(
+                storages["private"], storage_key, temporary, metadata["content_type"]
+            )
+            quarantined = QuarantinedUpload.objects.create(
+                uploader=uploader,
+                reason=reason,
+                storage_key=storage_key,
+                provider_version_id=provider_version_id,
+                sha256=digest.hexdigest(),
+                retention_expires_at=_retention_expires_at(),
+                **metadata,
+            )
+            _audit(
+                uploader,
+                membership,
+                "document.upload_quarantined",
+                quarantined.pk,
+                "quarantined",
+                {"reason": reason},
+            )
+            raise DocumentUploadQuarantined(reason)
+
+        with transaction.atomic():
+            locked_document = Document.objects.select_for_update().get(pk=document.pk)
+            next_version = (
+                DocumentVersion.objects.filter(document=locked_document).aggregate(Max("version"))["version__max"]
+                or 0
+            ) + 1
+            storage_key = f"documents/{locked_document.pk}/{uuid.uuid4().hex}"
+            provider_version_id = _store(
+                storages["private"], storage_key, temporary, metadata["content_type"]
+            )
+            version = DocumentVersion.objects.create(
+                document=locked_document,
+                version=next_version,
+                variant=variant,
+                storage_key=storage_key,
+                provider_version_id=provider_version_id,
+                filename=metadata["filename"],
+                content_type=metadata["content_type"],
+                byte_size=metadata["byte_size"],
+                sha256=digest.hexdigest(),
+                uploader=uploader,
+                redacts=_redacts,
+            )
+    _audit(uploader, membership, "document.upload", version.pk, "allowed")
+    return version
+
+
+def add_redacted_copy(original, uploaded_file, uploader, scanner) -> DocumentVersion:
+    if original.variant != DocumentVersion.Variant.ORIGINAL:
+        raise ValueError("Only an original version can be redacted.")
+    redacted = create_document_version(
+        original.document,
+        uploaded_file,
+        DocumentVersion.Variant.REDACTED,
+        uploader,
+        scanner,
+        _redacts=original,
+    )
+    return redacted
+
+
+def purge_expired_quarantine(now=None):
+    storage = storages["private"]
+    expired = QuarantinedUpload.objects.filter(
+        storage_key__isnull=False, retention_expires_at__lte=now or timezone.now()
+    ).exclude(storage_key="")
+    for upload in expired:
+        storage.delete(upload.storage_key)
+    return expired.count()
