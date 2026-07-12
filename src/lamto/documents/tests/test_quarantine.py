@@ -1,6 +1,7 @@
 import tempfile
 from datetime import timedelta
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -136,6 +137,32 @@ class QuarantineTests(TestCase):
         self.assertEqual(purge_expired_quarantine(timezone.now() + timedelta(seconds=1)), 1)
         self.assertFalse(storages["private"].exists(quarantined.storage_key))
         self.assertTrue(QuarantinedUpload.objects.filter(pk=quarantined.pk).exists())
+
+    @patch("lamto.documents.services.storages")
+    def test_expired_s3_quarantine_deletes_the_recorded_provider_version(self, private_storages):
+        client = MagicMock()
+        storage = SimpleNamespace(
+            bucket_name="private",
+            connection=SimpleNamespace(meta=SimpleNamespace(client=client)),
+            delete=MagicMock(),
+        )
+        private_storages.__getitem__.return_value = storage
+        upload = QuarantinedUpload.objects.create(
+            uploader=self.uploader,
+            filename="rejected.pdf",
+            content_type="application/pdf",
+            byte_size=1,
+            sha256="",
+            reason="malware detected",
+            storage_key="quarantine/object-key",
+            provider_version_id="provider-version-42",
+            retention_expires_at=timezone.now(),
+        )
+
+        self.assertEqual(purge_expired_quarantine(timezone.now() + timedelta(seconds=1)), 1)
+        client.delete_object.assert_called_once_with(
+            Bucket="private", Key=upload.storage_key, VersionId=upload.provider_version_id
+        )
 
     @patch("lamto.documents.scanner.socket.create_connection")
     def test_clamav_instream_accepts_only_ok(self, create_connection):

@@ -85,4 +85,28 @@ All commands used explicit `SECRET_KEY`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGR
 
 ### Commit
 
-- Pending final fix commit SHA after report update.
+- `84e29d9f77ec4f450a4448a7d787e71b26a0bfec` (`fix: complete task 3 denial auditing`).
+
+## Remaining review findings on `84e29d9`
+
+### Fix
+
+- S3 writes now verify `get_bucket_versioning(...)["Status"] == "Enabled"` before writing, reject missing/non-string/empty/`"null"` VersionIds, and S3 reads fail closed for the same invalid identifiers; FileSystemStorage keeps its explicit local storage-key identifier.
+- Quarantine purge now calls versioned S3 `delete_object` with the exact recorded provider VersionId and retains key-only deletion for local storage.
+- Nullable audit attribution remains limited to `document.download` on `DocumentVersion` for actors without an active membership; occupancy metadata is still validated when present, while unaffiliated actors without membership or occupancy are audited with `membership=None`. Active staff membership attribution remains actor-owned and active.
+- No `RESIDENT` role or workflow-grant model was added; workflow access remains fail-closed until later named Tasks persist the required relations.
+
+### Tests
+
+- `SECRET_KEY=task3-local POSTGRES_DB=lamto POSTGRES_USER=lamto POSTGRES_PASSWORD=lamto POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 CLAMAV_HOST=127.0.0.1 CLAMAV_PORT=3310 PRIVATE_STORAGE_ENDPOINT_URL=http://127.0.0.1:9000 PRIVATE_STORAGE_BUCKET=lamto-documents PRIVATE_STORAGE_ACCESS_KEY=lamto-local PRIVATE_STORAGE_SECRET_KEY=lamto-local-secret .venv/bin/python manage.py test --keepdb lamto.audit.tests.test_immutability lamto.documents.tests.test_access lamto.documents.tests.test_versions lamto.documents.tests.test_quarantine -v 1` — 31 passed.
+- Same environment with `.venv/bin/python manage.py test --keepdb lamto.documents -v 1` — 24 passed.
+- Same environment with `.venv/bin/python manage.py test --keepdb lamto.accounts lamto.audit -v 1` — 17 passed.
+- Same environment with `.venv/bin/python manage.py test --keepdb lamto -v 1` — 41 passed.
+- Same environment with `.venv/bin/python manage.py check` — no issues.
+- Same environment with `.venv/bin/python manage.py makemigrations --check --dry-run` — no changes detected.
+- `.venv/bin/python -m compileall -q src` — passed.
+- `git diff --check` — passed.
+
+### Commit
+
+- `git commit -m "fix: harden task 3 storage and denial auditing"` — final SHA returned in the handoff.

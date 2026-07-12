@@ -1,6 +1,7 @@
 import hashlib
 import io
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from django.contrib.auth import get_user_model
@@ -131,7 +132,42 @@ class DocumentVersionTests(TestCase):
 class StorageVersionTests(TestCase):
     def test_s3_write_without_version_id_fails_closed(self):
         storage = MagicMock(bucket_name="private")
+        storage.connection.meta.client.get_bucket_versioning.return_value = {"Status": "Enabled"}
         storage.connection.meta.client.put_object.return_value = {}
 
         with self.assertRaisesRegex(DocumentStorageError, "VersionId"):
             _store(storage, "documents/immutable-key", io.BytesIO(b"payload"), "application/pdf")
+
+    def test_s3_write_requires_enabled_versioning_and_non_null_version_id(self):
+        class FakeS3Client:
+            def __init__(self, status, version_id):
+                self.status = status
+                self.version_id = version_id
+                self.put_calls = 0
+
+            def get_bucket_versioning(self, **kwargs):
+                return {"Status": self.status} if self.status else {}
+
+            def put_object(self, **kwargs):
+                self.put_calls += 1
+                return {"VersionId": self.version_id}
+
+        for status, version_id in (
+            ("Suspended", "provider-version-42"),
+            ("Enabled", ""),
+            ("Enabled", "null"),
+        ):
+            with self.subTest(status=status, version_id=version_id):
+                client = FakeS3Client(status, version_id)
+                storage = SimpleNamespace(
+                    bucket_name="private",
+                    connection=SimpleNamespace(
+                        meta=SimpleNamespace(client=client)
+                    ),
+                )
+
+                with self.assertRaises(DocumentStorageError):
+                    _store(storage, "documents/immutable-key", io.BytesIO(b"payload"), "application/pdf")
+
+                if status != "Enabled":
+                    self.assertEqual(client.put_calls, 0)

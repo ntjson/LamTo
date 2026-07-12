@@ -102,13 +102,20 @@ def _create_rejection(uploader, membership, metadata, reason):
 def _store(storage, storage_key, file_obj, content_type):
     file_obj.seek(0)
     if hasattr(storage, "bucket_name") and hasattr(storage, "connection"):
-        response = storage.connection.meta.client.put_object(
+        client = storage.connection.meta.client
+        try:
+            versioning = client.get_bucket_versioning(Bucket=storage.bucket_name)
+        except Exception as error:
+            raise DocumentStorageError("Could not verify S3 bucket versioning.") from error
+        if versioning.get("Status") != "Enabled":
+            raise DocumentStorageError("S3 bucket versioning is not enabled.")
+        response = client.put_object(
             Bucket=storage.bucket_name,
             Key=storage_key,
             Body=file_obj,
             ContentType=content_type,
         )
-        if not (version_id := response.get("VersionId")):
+        if not isinstance(version_id := response.get("VersionId"), str) or not version_id or version_id.lower() == "null":
             raise DocumentStorageError("S3 did not return an immutable VersionId.")
         return version_id
     saved_key = storage.save(storage_key, File(file_obj, name=storage_key))
@@ -267,5 +274,15 @@ def purge_expired_quarantine(now=None):
         storage_key__isnull=False, retention_expires_at__lte=now or timezone.now()
     ).exclude(storage_key="")
     for upload in expired:
-        storage.delete(upload.storage_key)
+        if hasattr(storage, "bucket_name") and hasattr(storage, "connection"):
+            version_id = upload.provider_version_id
+            if not isinstance(version_id, str) or not version_id or version_id.lower() == "null":
+                raise DocumentStorageError("S3 quarantine object has no immutable VersionId.")
+            storage.connection.meta.client.delete_object(
+                Bucket=storage.bucket_name,
+                Key=upload.storage_key,
+                VersionId=version_id,
+            )
+        else:
+            storage.delete(upload.storage_key)
     return expired.count()

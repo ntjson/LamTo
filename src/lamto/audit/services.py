@@ -11,11 +11,13 @@ def record_audit(actor, membership, action, target_type, target_id, result, meta
         if (
             action != "document.download"
             or target_type != "DocumentVersion"
-            or not occupancy_id
             or OrganizationMembership.objects.filter(user_id=getattr(actor, "pk", None), active=True).exists()
-            or not ResidentOccupancy.objects.filter(
-                pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
-            ).exists()
+            or (
+                occupancy_id is not None
+                and not ResidentOccupancy.objects.filter(
+                    pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
+                ).exists()
+            )
         ):
             raise PermissionDenied("Audit membership attribution is invalid.")
     elif not OrganizationMembership.objects.filter(

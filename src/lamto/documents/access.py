@@ -42,7 +42,11 @@ def _allowed(user, membership, version, occupancy):
 def _read_stored_version(version):
     storage = storages["private"]
     if hasattr(storage, "bucket_name") and hasattr(storage, "connection"):
-        if not version.provider_version_id:
+        if (
+            not isinstance(version.provider_version_id, str)
+            or not version.provider_version_id
+            or version.provider_version_id.lower() == "null"
+        ):
             raise ValueError("S3 document version ID is missing.")
         response = storage.connection.meta.client.get_object(
             Bucket=storage.bucket_name,
