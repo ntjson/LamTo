@@ -91,6 +91,18 @@ class OrganizationMembership(models.Model):
             raise ValidationError({"role": "Role does not match the organization kind."})
 
 
+class CapabilityGrant(models.Model):
+    membership = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
+    code = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["membership", "code"], name="capability_grant_once"
+            )
+        ]
+
+
 class ResidentOccupancy(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT)
