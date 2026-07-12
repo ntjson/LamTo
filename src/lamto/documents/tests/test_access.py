@@ -67,6 +67,55 @@ class DocumentAccessTests(TestCase):
             authorize_download(operator, membership.id, version)
         self.assertEqual(AuditEvent.objects.last().result, "denied")
 
+    def test_invalid_staff_membership_denial_uses_own_membership_for_audit(self):
+        operator, membership = self.make_membership(OrganizationMembership.Role.OPERATOR)
+        _, other_membership = self.make_membership(
+            OrganizationMembership.Role.AUDITOR, membership.organization.building
+        )
+        version = create_document_version(
+            Document.objects.create(
+                building=membership.organization.building, kind=Document.Kind.QUOTATION
+            ),
+            SimpleUploadedFile("quote.pdf", b"%PDF-1.7\\nprivate", content_type="application/pdf"),
+            DocumentVersion.Variant.ORIGINAL,
+            operator,
+            scanner=lambda _: True,
+        )
+
+        with self.assertRaises(PermissionDenied):
+            authorize_download(operator, other_membership.id, version)
+
+        audit = AuditEvent.objects.filter(action="document.download").last()
+        self.assertEqual(audit.result, "denied")
+        self.assertEqual(audit.membership_id, membership.id)
+
+    def test_unaffiliated_denial_with_occupancy_in_another_building_is_audited(self):
+        document_building = Building.objects.create(name="Document Building")
+        occupancy_building = Building.objects.create(name="Occupancy Building")
+        operator, _ = self.make_membership(OrganizationMembership.Role.OPERATOR, document_building)
+        resident = get_user_model().objects.create_user(
+            email="unaffiliated@example.test", password="secret", display_name="Resident"
+        )
+        occupancy = ResidentOccupancy.objects.create(
+            user=resident,
+            unit=Unit.objects.create(building=occupancy_building, label="A-1"),
+        )
+        version = create_document_version(
+            Document.objects.create(building=document_building, kind=Document.Kind.QUOTATION),
+            SimpleUploadedFile("quote.pdf", b"%PDF-1.7\\nprivate", content_type="application/pdf"),
+            DocumentVersion.Variant.ORIGINAL,
+            operator,
+            scanner=lambda _: True,
+        )
+
+        with self.assertRaises(PermissionDenied):
+            authorize_download(resident, None, version)
+
+        audit = AuditEvent.objects.filter(action="document.download").last()
+        self.assertEqual(audit.result, "denied")
+        self.assertIsNone(audit.membership_id)
+        self.assertEqual(audit.metadata["occupancy_id"], occupancy.id)
+
     def test_cross_building_denial_and_hash_mismatch_are_audited(self):
         auditor, membership = self.make_membership(OrganizationMembership.Role.AUDITOR)
         operator, operator_membership = self.make_membership(

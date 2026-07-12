@@ -60,17 +60,22 @@ def authorize_download(user, membership_id, version) -> bytes:
         .filter(pk=membership_id, user=user, active=True)
         .first()
     )
-    occupancy = _resident_occupancy(user, version) if membership is None else None
+    audit_membership = membership or OrganizationMembership.objects.filter(
+        user=user, active=True
+    ).first()
+    occupancy = _resident_occupancy(user, version) if audit_membership is None else None
+    if audit_membership is None and occupancy is None:
+        occupancy = ResidentOccupancy.objects.filter(user=user, active=True).first()
     audit_metadata = {"occupancy_id": occupancy.id} if occupancy else None
     if not _allowed(user, membership, version, occupancy):
-        _audit(user, membership, version, "denied", audit_metadata)
+        _audit(user, audit_membership, version, "denied", audit_metadata)
         raise PermissionDenied("Document access denied.")
     try:
         data = b"".join(_read_stored_version(version))
     except Exception as error:
         _audit(
             user,
-            membership,
+            audit_membership,
             version,
             "unavailable",
             {"action_item": "document_integrity_check", **(audit_metadata or {})},
@@ -79,11 +84,11 @@ def authorize_download(user, membership_id, version) -> bytes:
     if hashlib.sha256(data).hexdigest() != version.sha256:
         _audit(
             user,
-            membership,
+            audit_membership,
             version,
             "integrity_mismatch",
             {"action_item": "document_integrity_check", **(audit_metadata or {})},
         )
         raise DocumentIntegrityError("Document integrity check failed.")
-    _audit(user, membership, version, "allowed", audit_metadata)
+    _audit(user, audit_membership, version, "allowed", audit_metadata)
     return data
