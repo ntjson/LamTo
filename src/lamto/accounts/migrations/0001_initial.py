@@ -118,8 +118,37 @@ class Migration(migrations.Migration):
             BEFORE INSERT OR UPDATE OF organization_id, role
             ON accounts_organizationmembership
             FOR EACH ROW EXECUTE FUNCTION accounts_validate_membership_role();
+
+            CREATE FUNCTION accounts_validate_organization_kind()
+            RETURNS trigger AS $$
+            BEGIN
+                IF NEW.kind IS DISTINCT FROM OLD.kind AND EXISTS (
+                    SELECT 1
+                    FROM accounts_organizationmembership membership
+                    WHERE membership.organization_id = OLD.id
+                    AND NOT (
+                        (membership.role = 'BOARD' AND NEW.kind = 'BOARD') OR
+                        (membership.role = 'RESIDENT_REP' AND NEW.kind = 'RESIDENT_REP') OR
+                        (membership.role = 'AUDITOR' AND NEW.kind = 'AUDITOR') OR
+                        (membership.role = 'TECH_ADMIN' AND NEW.kind = 'PLATFORM') OR
+                        (membership.role IN ('OPERATOR', 'MAINTENANCE') AND NEW.kind = 'OPERATOR')
+                    )
+                ) THEN
+                    RAISE EXCEPTION 'organization kind does not match its memberships'
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER accounts_organization_kind_match
+            BEFORE UPDATE OF kind
+            ON accounts_organization
+            FOR EACH ROW EXECUTE FUNCTION accounts_validate_organization_kind();
             """,
             """
+            DROP TRIGGER accounts_organization_kind_match ON accounts_organization;
+            DROP FUNCTION accounts_validate_organization_kind();
             DROP TRIGGER accounts_membership_role_match ON accounts_organizationmembership;
             DROP FUNCTION accounts_validate_membership_role();
             """,

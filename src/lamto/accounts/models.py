@@ -41,6 +41,19 @@ class Organization(models.Model):
     name = models.CharField(max_length=200)
     kind = models.CharField(max_length=24, choices=Kind.choices)
 
+    def clean(self):
+        super().clean()
+        if self.pk:
+            current_kind = type(self).objects.filter(pk=self.pk).values_list("kind", flat=True).first()
+            if current_kind is not None and current_kind != self.kind:
+                valid_roles = [
+                    role
+                    for role, kind in OrganizationMembership.ROLE_TO_ORGANIZATION_KIND.items()
+                    if kind == self.kind
+                ]
+                if self.organizationmembership_set.exclude(role__in=valid_roles).exists():
+                    raise ValidationError({"kind": "Organization kind does not match its memberships."})
+
 
 class OrganizationMembership(models.Model):
     class Role(models.TextChoices):
@@ -50,6 +63,15 @@ class OrganizationMembership(models.Model):
         RESIDENT_REP = "RESIDENT_REP", "Resident representative"
         AUDITOR = "AUDITOR", "Auditor"
         TECH_ADMIN = "TECH_ADMIN", "Technical administrator"
+
+    ROLE_TO_ORGANIZATION_KIND = {
+        Role.BOARD: Organization.Kind.BOARD,
+        Role.RESIDENT_REP: Organization.Kind.RESIDENT_REP,
+        Role.AUDITOR: Organization.Kind.AUDITOR,
+        Role.TECH_ADMIN: Organization.Kind.PLATFORM,
+        Role.OPERATOR: Organization.Kind.OPERATOR,
+        Role.MAINTENANCE: Organization.Kind.OPERATOR,
+    }
 
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
@@ -64,15 +86,7 @@ class OrganizationMembership(models.Model):
         ]
 
     def clean(self):
-        expected_kinds = {
-            self.Role.BOARD: Organization.Kind.BOARD,
-            self.Role.RESIDENT_REP: Organization.Kind.RESIDENT_REP,
-            self.Role.AUDITOR: Organization.Kind.AUDITOR,
-            self.Role.TECH_ADMIN: Organization.Kind.PLATFORM,
-            self.Role.OPERATOR: Organization.Kind.OPERATOR,
-            self.Role.MAINTENANCE: Organization.Kind.OPERATOR,
-        }
-        expected_kind = expected_kinds.get(self.role)
+        expected_kind = self.ROLE_TO_ORGANIZATION_KIND.get(self.role)
         if expected_kind and self.organization.kind != expected_kind:
             raise ValidationError({"role": "Role does not match the organization kind."})
 
