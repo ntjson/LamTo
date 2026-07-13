@@ -1,7 +1,7 @@
 from django.urls import path
 
 from lamto.web.views import auditor, board, maintenance, operator, representative, resident
-from lamto.web.views import staff_common
+from lamto.web.views import exports, health, security, staff_common
 
 app_name = "web"
 
@@ -19,6 +19,17 @@ urlpatterns = [
     path("offline/", resident.offline, name="offline"),
     path("manifest.webmanifest", resident.manifest, name="manifest"),
     path("service-worker.js", resident.service_worker, name="service-worker"),
+    # Security / MFA
+    path("s/security/mfa/setup/", security.mfa_setup, name="mfa-setup"),
+    path("s/security/mfa/verify/", security.mfa_verify, name="mfa-verify"),
+    path("s/security/mfa/revoke/<int:device_id>/", security.mfa_revoke_device, name="mfa-revoke"),
+    path("s/security/reauth/", security.reauth, name="reauth"),
+    path("s/security/break-glass/", security.break_glass_start_view, name="break-glass-start"),
+    path(
+        "s/security/break-glass/<int:session_id>/revoke/",
+        security.break_glass_revoke_view,
+        name="break-glass-revoke",
+    ),
     # Staff shell
     path("s/", staff_common.staff_home, name="staff-home"),
     path("s/inbox/", staff_common.action_inbox, name="action-inbox"),
@@ -40,7 +51,12 @@ urlpatterns = [
     ),
     # Board payments
     path("s/payments/", board.payment_list, name="payment-list"),
+    path("s/payments/record/", board.payment_record, name="payment-record"),
     path("s/payments/<int:pk>/", board.payment_detail, name="payment-detail"),
     # Auditor
     path("s/audit/", auditor.audit_search, name="audit-search"),
+    path("s/audit/export/", exports.audit_export, name="audit-export"),
+    # Ops health / pilot metrics (tech admin)
+    path("s/ops/health/", health.ops_health, name="ops-health"),
+    path("s/ops/metrics/", health.pilot_metrics, name="pilot-metrics"),
 ]

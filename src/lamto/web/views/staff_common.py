@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from lamto.accounts.security import require_staff_mfa
 from lamto.web.action_inbox import action_items_for
 from lamto.web.staff import (
     SESSION_MEMBERSHIP_KEY,
@@ -19,6 +20,7 @@ from lamto.web.staff import (
 def action_inbox(request):
     if not user_memberships(request.user).exists():
         raise PermissionDenied("An active staff membership is required.")
+    require_staff_mfa(request)
     membership, memberships = resolve_active_membership(request)
     items = action_items_for(membership)
     return render(

@@ -1,0 +1,29 @@
+{% extends "web/base.html" %}
+{% block title %}Authenticator setup · LamTo{% endblock %}
+{% block content %}
+<section class="panel" aria-labelledby="mfa-heading">
+  <h1 id="mfa-heading">{% if verify_only %}Verify authenticator{% else %}Set up authenticator (TOTP){% endif %}</h1>
+  {% if not verify_only and config_url %}
+  <p class="lede">Scan this configuration with your authenticator app, then enter a 6-digit code.</p>
+  <p class="mono" style="word-break:break-all"><code>{{ config_url }}</code></p>
+  {% else %}
+  <p class="lede">Enter the current code from your authenticator app.</p>
+  {% endif %}
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <div class="field">
+      <label for="token">Authentication code</label>
+      <input id="token" name="token" inputmode="numeric" autocomplete="one-time-code" class="input" required>
+    </div>
+    <button type="submit" class="button button-primary">{% if verify_only %}Verify{% else %}Confirm enrollment{% endif %}</button>
+  </form>
+  {% if not verify_only %}
+  <form method="post" class="stack-form" style="margin-top:1rem">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="restart">
+    <button type="submit" class="button">Generate new secret</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

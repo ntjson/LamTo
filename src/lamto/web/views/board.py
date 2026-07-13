@@ -12,6 +12,7 @@ from lamto.accounts.capabilities import (
     PAYMENT_VERIFY,
     WORK_ACCEPT,
 )
+from lamto.accounts.security import require_recent_auth, require_staff_mfa
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.finance.models import AcceptanceRecord, PaymentEvidence
@@ -22,6 +23,38 @@ from lamto.web.forms.staff import (
     VerifyPaymentForm,
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+
+
+@login_required
+@require_http_methods(["POST"])
+def payment_record(request):
+    """Privileged signed financial action: requires MFA + recent re-auth."""
+    require_staff_mfa(request)
+    require_recent_auth(request)
+    membership, memberships = require_staff_capability(request, PAYMENT_RECORD)
+    form = RecordPaymentForm(request.POST)
+    if not form.is_valid():
+        from django.http import JsonResponse
+
+        return JsonResponse({"errors": form.errors}, status=400)
+    acceptance_id = form.cleaned_data.get("acceptance_id") or request.POST.get("acceptance_id")
+    acceptance = get_object_or_404(
+        AcceptanceRecord,
+        pk=acceptance_id,
+        work_order__case__building_id=membership.organization.building_id,
+    )
+    if hasattr(acceptance, "payment") and acceptance.payment is not None:
+        raise PermissionDenied("Payment already recorded.")
+    proof_o = DocumentVersion.objects.filter(pk=form.cleaned_data["proof_original_id"]).first()
+    proof_r = DocumentVersion.objects.filter(pk=form.cleaned_data["proof_redacted_id"]).first()
+    try:
+        payment = form.save(acceptance, membership, proof_o, proof_r)
+    except ValidationError as error:
+        from django.http import JsonResponse
+
+        return JsonResponse({"errors": error.message_dict if hasattr(error, "message_dict") else str(error)}, status=400)
+    messages.success(request, "Payment recorded.")
+    return redirect("web:payment-detail", pk=payment.pk)
 
 
 @login_required
@@ -96,6 +129,7 @@ def payment_detail(request, pk):
         action = request.POST.get("action")
         if action == "record" and record_form is not None and PAYMENT_RECORD in caps:
             require_staff_capability(request, PAYMENT_RECORD)
+            require_recent_auth(request)
             if record_form.is_valid():
                 proof_o = DocumentVersion.objects.filter(
                     pk=record_form.cleaned_data["proof_original_id"]
@@ -115,6 +149,7 @@ def payment_detail(request, pk):
                     return redirect("web:payment-detail", pk=payment.pk)
         elif action == "verify" and verify_form is not None and PAYMENT_VERIFY in caps:
             require_staff_capability(request, PAYMENT_VERIFY)
+            require_recent_auth(request)
             if verify_form.is_valid():
                 try:
                     verify_form.save(payment, membership)

@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
     'lamto.accounts',
     'lamto.audit',
     'lamto.documents',
@@ -55,6 +57,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -208,3 +211,33 @@ EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND", "django.core.mail.backends.locmem.EmailBackend"
 )
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@lamto.local")
+
+
+# --- Security: password hashing, sessions, MFA-related defaults ---
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = False  # must be readable by browser forms
+CSRF_COOKIE_SAMESITE = "Lax"
+# Secure cookies when not in DEBUG (production / deploy-check).
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+# MFA / re-auth
+LAMTO_REAUTH_MAX_AGE_SECONDS = int(os.getenv("LAMTO_REAUTH_MAX_AGE_SECONDS", "300"))
+LAMTO_AUTH_THROTTLE_MAX_FAILURES = int(os.getenv("LAMTO_AUTH_THROTTLE_MAX_FAILURES", "5"))
+LAMTO_AUTH_THROTTLE_WINDOW_SECONDS = int(
+    os.getenv("LAMTO_AUTH_THROTTLE_WINDOW_SECONDS", str(15 * 60))
+)
+LAMTO_BREAK_GLASS_MAX_MINUTES = int(os.getenv("LAMTO_BREAK_GLASS_MAX_MINUTES", "60"))
+
+# Backup / ops markers (private operations bucket may share private storage)
+BACKUP_OPS_PREFIX = os.getenv("BACKUP_OPS_PREFIX", "ops/backups")
+WALG_S3_PREFIX = os.getenv("WALG_S3_PREFIX", "")

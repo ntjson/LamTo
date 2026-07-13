@@ -9,6 +9,9 @@ from django.db import transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django_otp import DEVICE_ID_SESSION_KEY
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.util import random_hex
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
@@ -45,7 +48,9 @@ from lamto.maintenance.models import (
     WorkOrder,
 )
 from lamto.web.action_inbox import action_items_for
+from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.web.staff import SESSION_MEMBERSHIP_KEY, capabilities_for
+import time
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-staff-")
 
@@ -67,6 +72,17 @@ _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-staff-")
     },
 )
 class RoleWorkspaceTests(TestCase):
+    def enroll_mfa(self, user):
+        """Task 17: staff workspaces require confirmed TOTP + verified session."""
+        device = TOTPDevice.objects.create(
+            user=user, name="test", confirmed=True, key=random_hex()
+        )
+        session = self.client.session
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session[RECENT_REAUTH_KEY] = time.time()
+        session.save()
+        return device
+
     def _unique(self, base):
         n = getattr(self, "_fixture_seq", 0) + 1
         self._fixture_seq = n
@@ -286,9 +302,11 @@ class RoleWorkspaceTests(TestCase):
     def test_maintenance_cannot_open_finance_and_board_sees_only_granted_actions(self):
         maintenance, board = self.make_workspace_users()
         self.client.force_login(maintenance)
+        self.enroll_mfa(maintenance)
         self.assertEqual(self.client.get(reverse("web:proposal-list")).status_code, 403)
 
         self.client.force_login(board.user)
+        self.enroll_mfa(board.user)
         response = self.client.get(
             reverse("web:action-inbox"), {"membership": board.id}
         )
@@ -318,6 +336,7 @@ class RoleWorkspaceTests(TestCase):
         grant_capability(op_m, PROPOSAL_CREATE)
 
         self.client.force_login(user)
+        self.enroll_mfa(user)
         session = self.client.session
         session[SESSION_MEMBERSHIP_KEY] = board_m.pk
         session.save()
@@ -325,6 +344,10 @@ class RoleWorkspaceTests(TestCase):
 
         session = self.client.session
         session[SESSION_MEMBERSHIP_KEY] = op_m.pk
+        # re-bind MFA device after session mutation
+        device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session[RECENT_REAUTH_KEY] = time.time()
         session.save()
         self.assertEqual(self.client.get(reverse("web:proposal-list")).status_code, 200)
 
@@ -343,6 +366,7 @@ class RoleWorkspaceTests(TestCase):
             capabilities=(PROPOSAL_APPROVE,),
         )
         self.client.force_login(board.user)
+        self.enroll_mfa(board.user)
         response = self.client.get(reverse("web:proposal-list"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "wallet-signing.js")

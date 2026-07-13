@@ -9,6 +9,10 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 
 from lamto.accounts.models import CapabilityGrant, OrganizationMembership
+from lamto.accounts.security import (
+    deny_tech_admin_business_access,
+    require_staff_mfa,
+)
 from lamto.accounts.services import require_capability
 from lamto.audit.services import record_audit
 
@@ -84,9 +88,13 @@ def resolve_active_membership(request, *, membership_id=None):
 
 
 def require_staff_capability(request, code: str, *, membership_id=None):
+    require_staff_mfa(request)
     membership, memberships = resolve_active_membership(
         request, membership_id=membership_id
     )
+    # Technical admins never receive finance/document business capabilities.
+    if code != "tech.admin":
+        deny_tech_admin_business_access(membership)
     try:
         actor = require_capability(request.user, membership.pk, code)
     except PermissionDenied:
@@ -131,6 +139,31 @@ def nav_items_for(membership) -> list[dict]:
             {
                 "label": "Audit search",
                 "url_name": "web:audit-search",
+                "capability": "audit.export",
+            }
+        )
+    if membership.role == OrganizationMembership.Role.TECH_ADMIN:
+        if "web:ops-health" not in seen_urls:
+            items.append(
+                {
+                    "label": "Ops health",
+                    "url_name": "web:ops-health",
+                    "capability": "tech.admin",
+                }
+            )
+        if "web:pilot-metrics" not in seen_urls:
+            items.append(
+                {
+                    "label": "Pilot metrics",
+                    "url_name": "web:pilot-metrics",
+                    "capability": "tech.admin",
+                }
+            )
+    if membership.role == OrganizationMembership.Role.AUDITOR and "web:audit-export" not in seen_urls:
+        items.append(
+            {
+                "label": "Audit export",
+                "url_name": "web:audit-export",
                 "capability": "audit.export",
             }
         )
