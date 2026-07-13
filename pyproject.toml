@@ -34,3 +34,6 @@ where = ["src"]
 DJANGO_SETTINGS_MODULE = "lamto.config.settings"
 pythonpath = ["src"]
 testpaths = ["tests"]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]

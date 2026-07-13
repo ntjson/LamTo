@@ -257,3 +257,10 @@ LAMTO_BREAK_GLASS_MAX_MINUTES = int(os.getenv("LAMTO_BREAK_GLASS_MAX_MINUTES", "
 # Backup / ops markers (private operations bucket may share private storage)
 BACKUP_OPS_PREFIX = os.getenv("BACKUP_OPS_PREFIX", "ops/backups")
 WALG_S3_PREFIX = os.getenv("WALG_S3_PREFIX", "")
+
+# Pilot seed fixtures (non-production only). seed_pilot --fixture refuses when false.
+PILOT_ALLOW_FIXTURES = os.getenv("PILOT_ALLOW_FIXTURES", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
