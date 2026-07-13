@@ -1,23 +1,32 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 
-from lamto.accounts.models import ResidentOccupancy
+from lamto.accounts.models import ResidentOccupancy, Unit
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
 
-from .models import IssueReport, ReportPhoto, TriageJob
+from .models import BuildingLocation, IssueReport, ReportPhoto, TriageJob
 
 
 @transaction.atomic
 def submit_report(resident, unit, text, location, photo_versions) -> IssueReport:
+    unit = Unit.objects.select_for_update().select_related("building").filter(
+        pk=getattr(unit, "pk", None)
+    ).first()
+    if unit is None:
+        raise ValidationError("Report unit is required.")
     occupancy = ResidentOccupancy.objects.filter(user=resident, unit=unit, active=True).first()
     if occupancy is None:
         raise PermissionDenied("Active occupancy is required to submit a report.")
     if not isinstance(text, str) or not (text := text.strip()):
         raise ValidationError("Report text is required.")
-    if not location.active or location.building_id != unit.building_id:
-        raise ValidationError("Report location must be active and belong to the unit building.")
+    location = BuildingLocation.objects.select_for_update().select_related("building").filter(
+        pk=getattr(location, "pk", None)
+    ).first()
+    if location is None:
+        raise ValidationError("Report location is required.")
     path_location = location
+    path_names = []
     seen_locations = set()
     while path_location is not None:
         if (
@@ -27,7 +36,15 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
         ):
             raise ValidationError("Report location hierarchy must be active and belong to the unit building.")
         seen_locations.add(path_location.pk)
-        path_location = path_location.parent
+        path_names.append(path_location.name)
+        if path_location.parent_id is None:
+            break
+        path_location = BuildingLocation.objects.select_for_update().filter(
+            pk=path_location.parent_id
+        ).first()
+        if path_location is None:
+            raise ValidationError("Report location hierarchy is invalid.")
+    location_path_snapshot = " / ".join([location.building.name, *reversed(path_names)])
 
     photo_versions = list(photo_versions)
     photo_ids = [version.pk for version in photo_versions]
@@ -53,7 +70,7 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
         unit=unit,
         text=text,
         selected_location=location,
-        location_path_snapshot=location.path_label,
+        location_path_snapshot=location_path_snapshot,
     )
     ReportPhoto.objects.bulk_create(
         [ReportPhoto(report=report, version=version) for version in photo_versions]
