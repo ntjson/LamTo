@@ -26,6 +26,11 @@ urlpatterns = [
     path("s/security/reauth/", security.reauth, name="reauth"),
     path("s/security/break-glass/", security.break_glass_start_view, name="break-glass-start"),
     path(
+        "s/security/break-glass/consent/",
+        security.break_glass_consent_view,
+        name="break-glass-consent",
+    ),
+    path(
         "s/security/break-glass/<int:session_id>/revoke/",
         security.break_glass_revoke_view,
         name="break-glass-revoke",

@@ -229,6 +229,8 @@ def accept_work(request, pk):
         case__building_id=membership.organization.building_id,
     )
     form = AcceptWorkForm(request.POST or None)
+    if request.method == "POST":
+        require_recent_auth(request)
     if request.method == "POST" and form.is_valid():
         docs = {
             "invoice_original": DocumentVersion.objects.filter(
@@ -281,6 +283,8 @@ def emergency_authorize(request, pk):
         case__building_id=membership.organization.building_id,
     )
     form = EmergencyAuthorizeForm(request.POST or None)
+    if request.method == "POST":
+        require_recent_auth(request)
     if request.method == "POST" and form.is_valid():
         try:
             form.save(work_order, membership)

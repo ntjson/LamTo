@@ -37,6 +37,7 @@ from lamto.accounts.security import (
     THROTTLE_MAX_FAILURES,
     THROTTLE_WINDOW_SECONDS,
     assert_not_throttled,
+    issue_break_glass_consent,
     mark_recent_reauth,
     record_auth_failure,
     require_recent_auth,
@@ -45,6 +46,7 @@ from lamto.accounts.security import (
     start_break_glass,
     throttle_digest,
 )
+from lamto.audit.models import AuditEvent
 from lamto.accounts.services import grant_capability
 
 
@@ -129,6 +131,12 @@ class SecurityTests(TestCase):
         session[RECENT_REAUTH_KEY] = time.time()
         session.save()
         return device
+
+    def consent_for(self, authorizer, tech) -> str:
+        return issue_break_glass_consent(
+            authorizing_membership=authorizer,
+            tech_membership=tech,
+        )
 
     def test_privileged_action_requires_verified_otp_and_recent_reauth(self):
         board = self.make_board_user_with_payment_capability()
@@ -258,6 +266,7 @@ class SecurityTests(TestCase):
             tech_membership=tech,
             authorizing_membership=board,
             reason="Investigate stuck worker",
+            consent_token=self.consent_for(board, tech),
             duration_minutes=60,
         )
         self.assertGreater(session.expires_at, timezone.now())
@@ -273,6 +282,7 @@ class SecurityTests(TestCase):
             tech_membership=tech,
             authorizing_membership=board,
             reason="Second window",
+            consent_token=self.consent_for(board, tech),
             duration_minutes=1,
         )
         BreakGlassSession.objects.filter(pk=expired.pk).update(
@@ -302,6 +312,7 @@ class SecurityTests(TestCase):
             tech_membership=tech,
             authorizing_membership=board,
             reason="Support only",
+            consent_token=self.consent_for(board, tech),
             duration_minutes=30,
         )
         self.client.force_login(tech.user)
@@ -361,3 +372,116 @@ class SecurityTests(TestCase):
         token2 = _current_totp_token(confirmed)
         verify_totp_for_session(user, token2, request=request)
         self.assertTrue(request.session.get(DEVICE_ID_SESSION_KEY))
+
+    def test_staff_mfa_required_on_payment_list_audit_search_work_order_list(self):
+        """Password-only session denied on key staff workspaces (Finding 1)."""
+        board = self.make_board_user_with_payment_capability()
+        auditor = self.make_membership(
+            OrganizationMembership.Role.AUDITOR,
+            "aud-mfa",
+            capabilities=(AUDIT_EXPORT,),
+        )
+        maint = self.make_membership(
+            OrganizationMembership.Role.MAINTENANCE,
+            "maint-mfa",
+            capabilities=(),
+        )
+
+        for membership, url_name in (
+            (board, "web:payment-list"),
+            (auditor, "web:audit-search"),
+            (maint, "web:work-order-list"),
+        ):
+            with self.subTest(url=url_name):
+                client = Client()
+                client.force_login(membership.user)
+                response = client.get(reverse(url_name))
+                self.assertEqual(
+                    response.status_code,
+                    403,
+                    msg=f"password-only session must be denied on {url_name}",
+                )
+
+    def test_signed_financial_post_requires_recent_reauth(self):
+        """Accept / emergency / payment POSTs redirect to reauth when stale (Finding 2)."""
+        board = self.make_board_user_with_payment_capability()
+        self.client.force_login(board.user)
+        self.enroll_and_bind(self.client, board.user)
+        # Stale reauth window.
+        session = self.client.session
+        session[RECENT_REAUTH_KEY] = time.time() - 400
+        session.save()
+
+        response = self.client.post(
+            reverse("web:payment-record"), self.valid_payment_payload()
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/s/security/reauth/", response["Location"])
+        self.assertIn("next=", response["Location"])
+
+    def test_break_glass_requires_authorizer_consent_token(self):
+        """Bare authorizing_membership_id without consent is rejected (Finding 4)."""
+        tech = self.make_membership(
+            OrganizationMembership.Role.TECH_ADMIN,
+            "tech-consent",
+            capabilities=(TECH_ADMIN,),
+        )
+        board = self.make_membership(
+            OrganizationMembership.Role.BOARD,
+            "authz-consent",
+            capabilities=(PAYMENT_RECORD,),
+        )
+        with self.assertRaises(ValidationError):
+            start_break_glass(
+                tech_membership=tech,
+                authorizing_membership=board,
+                reason="No proof",
+                consent_token="",
+                duration_minutes=15,
+            )
+        with self.assertRaises(ValidationError):
+            start_break_glass(
+                tech_membership=tech,
+                authorizing_membership=board,
+                reason="Forged proof",
+                consent_token="not-a-valid-token",
+                duration_minutes=15,
+            )
+        # Valid dual-control consent works.
+        token = self.consent_for(board, tech)
+        session = start_break_glass(
+            tech_membership=tech,
+            authorizing_membership=board,
+            reason="Authorized support",
+            consent_token=token,
+            duration_minutes=15,
+        )
+        self.assertIsNotNone(session.pk)
+
+    def test_break_glass_request_path_is_audited(self):
+        """Every /s/ request under break-glass is audited via middleware (Finding 4)."""
+        tech = self.make_membership(
+            OrganizationMembership.Role.TECH_ADMIN,
+            "tech-audit",
+            capabilities=(TECH_ADMIN,),
+        )
+        board = self.make_membership(
+            OrganizationMembership.Role.BOARD,
+            "authz-audit",
+            capabilities=(PAYMENT_RECORD,),
+        )
+        start_break_glass(
+            tech_membership=tech,
+            authorizing_membership=board,
+            reason="Audit path coverage",
+            consent_token=self.consent_for(board, tech),
+            duration_minutes=30,
+        )
+        self.client.force_login(tech.user)
+        self.enroll_and_bind(self.client, tech.user)
+        before = AuditEvent.objects.filter(action="security.break_glass.request").count()
+        response = self.client.get(reverse("web:ops-health") + "?format=json")
+        self.assertEqual(response.status_code, 200)
+        after = AuditEvent.objects.filter(action="security.break_glass.request").count()
+        self.assertGreater(after, before)
+

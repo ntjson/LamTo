@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
+    'lamto.accounts.middleware.StaffSecurityMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -95,6 +96,21 @@ DATABASES = {
         "PORT": os.environ["POSTGRES_PORT"],
     }
 }
+
+# Optional isolated alias for restore drills (ops/backup/restore-drill.sh).
+# When DJANGO_RESTORE_DB_NAME is set, verify_integrity --database restored
+# targets the restored database rather than the live default alias.
+if os.environ.get("DJANGO_RESTORE_DB_NAME"):
+    DATABASES["restored"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["DJANGO_RESTORE_DB_NAME"],
+        "USER": os.environ.get("DJANGO_RESTORE_DB_USER", os.environ["POSTGRES_USER"]),
+        "PASSWORD": os.environ.get(
+            "DJANGO_RESTORE_DB_PASSWORD", os.environ["POSTGRES_PASSWORD"]
+        ),
+        "HOST": os.environ.get("DJANGO_RESTORE_DB_HOST", os.environ["POSTGRES_HOST"]),
+        "PORT": os.environ.get("DJANGO_RESTORE_DB_PORT", os.environ["POSTGRES_PORT"]),
+    }
 
 
 # Password validation

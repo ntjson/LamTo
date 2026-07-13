@@ -6,6 +6,7 @@ import hashlib
 import time
 from datetime import timedelta
 
+from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -24,6 +25,14 @@ DEFAULT_REAUTH_MAX_AGE = 300
 THROTTLE_MAX_FAILURES = 5
 THROTTLE_WINDOW_SECONDS = 15 * 60
 BREAK_GLASS_MAX_MINUTES = 60
+BREAK_GLASS_CONSENT_MAX_AGE = 600  # seconds; authorizer dual-control token
+BREAK_GLASS_CONSENT_SALT = "lamto.break_glass.consent"
+
+
+class RecentAuthRequired(PermissionDenied):
+    """Recent re-authentication required; StaffSecurityMiddleware redirects to reauth."""
+
+
 
 # Capabilities / route families blocked under break-glass and for pure tech admins.
 BUSINESS_ROUTE_PREFIXES = (
@@ -177,7 +186,7 @@ def require_recent_auth(request, max_age_seconds: int = DEFAULT_REAUTH_MAX_AGE) 
     age = recent_reauth_age_seconds(request)
     if age is None or age > max_age_seconds:
         _deny_sensitive(request, "reauth_required", {"max_age_seconds": max_age_seconds})
-        raise PermissionDenied("Recent re-authentication is required.")
+        raise RecentAuthRequired("Recent re-authentication is required.")
 
 
 def _deny_sensitive(request, reason: str, extra: dict | None = None) -> None:
@@ -284,11 +293,83 @@ def assert_break_glass_allows_path(request, path: str | None = None) -> None:
             )
 
 
+def issue_break_glass_consent(
+    *,
+    authorizing_membership: OrganizationMembership,
+    tech_membership: OrganizationMembership,
+) -> str:
+    """Issue a short-lived signed consent token after the authorizer re-auths.
+
+    Tech admins cannot self-nominate an arbitrary membership id: start_break_glass
+    requires a token that proves the named authorizer approved this elevation.
+    """
+    if not authorizing_membership.active:
+        raise ValidationError("Authorizing membership must be active.")
+    if authorizing_membership.role == OrganizationMembership.Role.TECH_ADMIN:
+        raise ValidationError("Authorizer must be an organization stakeholder, not tech admin.")
+    if tech_membership.role != OrganizationMembership.Role.TECH_ADMIN:
+        raise ValidationError("Consent target must be a technical administrator membership.")
+    if not tech_membership.active:
+        raise ValidationError("Technical administrator membership must be active.")
+    payload = {
+        "authorizer_id": authorizing_membership.pk,
+        "authorizer_user_id": authorizing_membership.user_id,
+        "tech_id": tech_membership.pk,
+    }
+    token = signing.dumps(payload, salt=BREAK_GLASS_CONSENT_SALT, compress=True)
+    try:
+        record_audit(
+            authorizing_membership.user,
+            authorizing_membership,
+            "security.break_glass.consent",
+            "OrganizationMembership",
+            str(tech_membership.pk),
+            "accepted",
+            {"tech_membership_id": tech_membership.pk},
+        )
+    except Exception:
+        pass
+    return token
+
+
+def validate_break_glass_consent(
+    token: str,
+    *,
+    tech_membership: OrganizationMembership,
+    authorizing_membership: OrganizationMembership,
+) -> dict:
+    """Validate authorizer dual-control consent; fail closed on missing/forged/expired tokens."""
+    if not (token or "").strip():
+        raise ValidationError(
+            "Authorizer consent token is required; cannot accept bare authorizing_membership_id."
+        )
+    try:
+        data = signing.loads(
+            token.strip(),
+            salt=BREAK_GLASS_CONSENT_SALT,
+            max_age=BREAK_GLASS_CONSENT_MAX_AGE,
+        )
+    except signing.SignatureExpired as exc:
+        raise ValidationError("Authorizer consent token has expired.") from exc
+    except signing.BadSignature as exc:
+        raise ValidationError("Invalid authorizer consent token.") from exc
+    if not isinstance(data, dict):
+        raise ValidationError("Invalid authorizer consent token.")
+    if int(data.get("authorizer_id", -1)) != authorizing_membership.pk:
+        raise ValidationError("Consent token does not match authorizing membership.")
+    if int(data.get("authorizer_user_id", -1)) != authorizing_membership.user_id:
+        raise ValidationError("Consent token does not match authorizer user.")
+    if int(data.get("tech_id", -1)) != tech_membership.pk:
+        raise ValidationError("Consent token does not match technical administrator membership.")
+    return data
+
+
 def start_break_glass(
     *,
     tech_membership: OrganizationMembership,
     authorizing_membership: OrganizationMembership,
     reason: str,
+    consent_token: str,
     duration_minutes: int = BREAK_GLASS_MAX_MINUTES,
 ) -> BreakGlassSession:
     if tech_membership.role != OrganizationMembership.Role.TECH_ADMIN:
@@ -299,6 +380,12 @@ def start_break_glass(
         raise ValidationError("Authorizer must be an organization stakeholder, not tech admin.")
     if not (reason or "").strip():
         raise ValidationError("A mandatory reason is required.")
+    # Dual-control: refuse free-typed authorizer ids without proof of consent.
+    validate_break_glass_consent(
+        consent_token,
+        tech_membership=tech_membership,
+        authorizing_membership=authorizing_membership,
+    )
     minutes = min(max(int(duration_minutes), 1), BREAK_GLASS_MAX_MINUTES)
     now = _now()
     session = BreakGlassSession.objects.create(
@@ -319,6 +406,7 @@ def start_break_glass(
             "authorizer_membership_id": authorizing_membership.pk,
             "expires_at": session.expires_at.isoformat(),
             "duration_minutes": minutes,
+            "consent_validated": True,
         },
     )
     return session

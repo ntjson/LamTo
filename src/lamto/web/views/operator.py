@@ -27,6 +27,7 @@ from lamto.web.forms.staff import (
     PreparePublicationForm,
     ProposalDecisionForm,
 )
+from lamto.accounts.security import require_recent_auth
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
 
 
@@ -256,6 +257,9 @@ def proposal_detail(request, pk):
 
     if request.method == "POST":
         action = request.POST.get("action") or "decide"
+        # Signed financial / accountability actions require recent re-auth.
+        if action in ("publish", "decide"):
+            require_recent_auth(request)
         if action == "publish" and can_publish:
             require_staff_capability(request, LEDGER_PUBLISH)
             if publish_form.is_valid():

@@ -45,7 +45,18 @@ export MANIFEST_PATH=/tmp/lamto-backup-manifests/objects-….json
 bash ops/backup/restore-drill.sh
 ```
 
-Schedule restore drills on a fixed cadence (see `ops/deployment-checklist.md`).
+### Dry-run (CI / no live WAL-G)
+
+Exercises the isolated verification loop structure with stubs. Does **not** claim live S3/WAL-G success. Live mode still **fail-closed** without `WALG_*`.
+
+```bash
+bash ops/backup/restore-drill.sh --dry-run
+# or: RESTORE_DRILL_DRY_RUN=1 bash ops/backup/restore-drill.sh
+```
+
+Steps asserted: isolated DB name, WAL-G fetch (stubbed), `migrate --check` against Django `restored` alias (`DJANGO_RESTORE_DB_NAME`), object restore (stubbed), `verify_integrity --database restored`, manifest hash/count/balance comparison, outbox deferral note, report export, destroy.
+
+Schedule live restore drills on a fixed cadence (see `ops/deployment-checklist.md`).
 
 ## Django commands
 

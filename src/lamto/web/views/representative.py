@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods
 from lamto.accounts.capabilities import PROPOSAL_APPROVE
 from lamto.finance.models import EmergencyAuthorization
 from lamto.web.forms.staff import EmergencyDecideForm
+from lamto.accounts.security import require_recent_auth
 from lamto.web.staff import require_staff_capability, staff_context
 
 
@@ -22,6 +23,8 @@ def emergency_decide(request, pk):
         work_order__case__building_id=membership.organization.building_id,
     )
     form = EmergencyDecideForm(request.POST or None)
+    if request.method == "POST":
+        require_recent_auth(request)
     if request.method == "POST" and form.is_valid():
         try:
             form.save(authorization, membership)
