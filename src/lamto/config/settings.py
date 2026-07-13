@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'lamto.accounts',
     'lamto.audit',
     'lamto.documents',
+    'lamto.finance',
     'lamto.evidence',
     'lamto.maintenance',
 ]
