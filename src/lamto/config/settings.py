@@ -151,6 +151,25 @@ EVIDENCE_CONTRACT_ADDRESS = (
     or "0x" + "00" * 20
 )
 WALLET_REGISTRATION_TTL_SECONDS = int(os.getenv("WALLET_REGISTRATION_TTL_SECONDS", "600"))
+BLOCKCHAIN_RPC_URL = os.getenv(
+    "BLOCKCHAIN_RPC_URL", os.getenv("CHAIN_RPC_URL", "http://127.0.0.1:8545")
+)
+BLOCKCHAIN_RELAYER_PRIVATE_KEY = os.getenv(
+    "BLOCKCHAIN_RELAYER_PRIVATE_KEY", os.getenv("CHAIN_SIGNER_PRIVATE_KEY", "")
+)
+BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY = os.getenv("BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY", "")
+# settings.BASE_DIR is src/lamto; project root is two parents up.
+_PROJECT_ROOT = BASE_DIR.parent.parent
+EVIDENCE_REGISTRY_ABI_PATH = os.getenv(
+    "EVIDENCE_REGISTRY_ABI_PATH",
+    str(
+        _PROJECT_ROOT
+        / "chain"
+        / "out"
+        / "EvidenceRegistry.sol"
+        / "EvidenceRegistry.json"
+    ),
+)
 EVIDENCE_WRITE_SECRET = os.getenv("EVIDENCE_WRITE_SECRET") or SECRET_KEY
 
 STORAGES = {
