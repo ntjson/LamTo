@@ -1,0 +1,71 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2f3a8f">
+  <meta name="description" content="LamTo — maintenance accountability for residents">
+  <title>{% block title %}LamTo{% endblock %}</title>
+  <link rel="manifest" href="{% url 'web:manifest' %}">
+  <link rel="stylesheet" href="{% static 'web/app.css' %}">
+  <link rel="icon" href="{% static 'web/icons/icon-192.png' %}" sizes="192x192">
+  <link rel="apple-touch-icon" href="{% static 'web/icons/icon-192.png' %}">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" role="banner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">◆</span>
+      <span class="brand-name">LamTo</span>
+    </div>
+    {% if occupancy %}
+    <p class="building-label">{{ occupancy.unit.building.name }} · Unit {{ occupancy.unit.label }}</p>
+    {% endif %}
+  </header>
+
+  {% if messages %}
+  <ul class="messages" role="status">
+    {% for message in messages %}
+    <li class="message message-{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <main id="main" class="site-main" role="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <nav class="bottom-nav" role="navigation" aria-label="Resident">
+    <a class="nav-item{% if nav_active == 'home' %} is-active{% endif %}" href="{% url 'web:resident-home' %}">
+      <span class="nav-icon" aria-hidden="true">⌂</span>
+      <span class="nav-label">Home</span>
+    </a>
+    <a class="nav-item{% if nav_active == 'report' %} is-active{% endif %}" href="{% url 'web:report-create' %}">
+      <span class="nav-icon" aria-hidden="true">＋</span>
+      <span class="nav-label">Report</span>
+    </a>
+    <a class="nav-item{% if nav_active == 'issues' %} is-active{% endif %}" href="{% url 'web:report-list' %}">
+      <span class="nav-icon" aria-hidden="true">☰</span>
+      <span class="nav-label">My issues</span>
+    </a>
+    <a class="nav-item{% if nav_active == 'ledger' %} is-active{% endif %}" href="{% url 'web:ledger-list' %}">
+      <span class="nav-icon" aria-hidden="true">◎</span>
+      <span class="nav-label">Ledger</span>
+    </a>
+    <a class="nav-item{% if nav_active == 'account' %} is-active{% endif %}" href="{% url 'web:account' %}">
+      <span class="nav-icon" aria-hidden="true">☺</span>
+      <span class="nav-label">Account</span>
+    </a>
+  </nav>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("{% url 'web:service-worker' %}", { scope: "/" }).catch(function () {});
+      });
+    }
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

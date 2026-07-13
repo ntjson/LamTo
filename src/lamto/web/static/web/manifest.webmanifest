@@ -1,0 +1,25 @@
+{
+  "name": "LamTo Resident",
+  "short_name": "LamTo",
+  "description": "Mobile-first maintenance accountability for apartment residents.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#2f3a8f",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/static/web/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/web/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

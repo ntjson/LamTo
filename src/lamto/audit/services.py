@@ -9,10 +9,12 @@ def record_audit(actor, membership, action, target_type, target_id, result, meta
     if membership is None:
         occupancy_id = (metadata or {}).get("occupancy_id")
         resident_report = action == "report.submit" and target_type == "IssueReport"
+        resident_rating = action == "work.rate" and target_type == "CompletionRating"
+        resident_document = action == "document.upload" and target_type == "DocumentVersion"
         valid_occupancy = occupancy_id is not None and ResidentOccupancy.objects.filter(
             pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
         ).exists()
-        if resident_report and valid_occupancy:
+        if (resident_report or resident_rating or resident_document) and valid_occupancy:
             pass
         elif (
             (action, target_type) != ("document.download", "DocumentVersion")

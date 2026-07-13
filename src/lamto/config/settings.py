@@ -26,7 +26,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "").lower() in {"1", "true", "yes"}
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if h]
 
 
 # Application definition
@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'lamto.finance',
     'lamto.evidence',
     'lamto.maintenance',
+    'lamto.web',
 ]
 
 MIDDLEWARE = [
@@ -190,3 +191,12 @@ STORAGES = {
         },
     }
 }
+
+
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+# Local deploy-check defaults; production sets these via environment.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

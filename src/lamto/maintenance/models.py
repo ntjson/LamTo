@@ -268,3 +268,31 @@ class WorkUpdateEvidence(AppendOnlyModel):
         constraints = [
             models.UniqueConstraint(fields=["update", "version"], name="work_update_evidence_once")
         ]
+
+
+class CompletionRating(models.Model):
+    resident = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="completion_ratings",
+    )
+    work_order = models.ForeignKey(
+        WorkOrder,
+        on_delete=models.PROTECT,
+        related_name="completion_ratings",
+    )
+    score = models.PositiveSmallIntegerField()
+    comment = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["resident", "work_order"],
+                name="completion_rating_once_per_resident_work_order",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(score__gte=1, score__lte=5),
+                name="completion_rating_score_range",
+            ),
+        ]

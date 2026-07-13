@@ -13,7 +13,7 @@ from django.db.models import Max
 from django.utils import timezone
 from PIL import Image, UnidentifiedImageError
 
-from lamto.accounts.models import OrganizationMembership
+from lamto.accounts.models import OrganizationMembership, ResidentOccupancy
 from lamto.audit.services import record_audit
 
 from .models import Document, DocumentVersion, QuarantinedUpload
@@ -67,6 +67,27 @@ def _audit(uploader, membership, action, target_id, result, metadata=None):
     )
 
 
+def _occupancy_for(uploader, building):
+    return (
+        ResidentOccupancy.objects.select_related("unit")
+        .filter(user=uploader, active=True, unit__building_id=getattr(building, "pk", building))
+        .first()
+    )
+
+
+def create_resident_report_photo(resident, building, uploaded_file, scanner) -> DocumentVersion:
+    """Create a clean original REPORT_PHOTO version for an active resident."""
+    document = Document.objects.create(building=building, kind=Document.Kind.REPORT_PHOTO)
+    return create_document_version(
+        document,
+        uploaded_file,
+        DocumentVersion.Variant.ORIGINAL,
+        resident,
+        scanner,
+        allow_resident_occupancy=True,
+    )
+
+
 def _allowed_content_types(document):
     if document.kind in PHOTO_KINDS:
         return {"image/jpeg", "image/png"}
@@ -85,7 +106,7 @@ def _retention_expires_at():
     return timezone.now() + timedelta(days=settings.DOCUMENT_QUARANTINE_RETENTION_DAYS)
 
 
-def _create_rejection(uploader, membership, metadata, reason):
+def _create_rejection(uploader, membership, metadata, reason, occupancy=None):
     rejected = QuarantinedUpload.objects.create(
         uploader=uploader,
         reason=reason,
@@ -95,7 +116,21 @@ def _create_rejection(uploader, membership, metadata, reason):
         retention_expires_at=_retention_expires_at(),
         **metadata,
     )
-    _audit(uploader, membership, "document.upload_rejected", rejected.pk, "rejected", {"reason": reason})
+    audit_meta = {"reason": reason}
+    if membership is None and occupancy is not None:
+        audit_meta["occupancy_id"] = occupancy.pk
+        # Occupancy-based rejections use document.upload audit allowance.
+        record_audit(
+            actor=uploader,
+            membership=None,
+            action="document.upload",
+            target_type="DocumentVersion",
+            target_id=str(rejected.pk),
+            result="rejected",
+            metadata=audit_meta,
+        )
+    else:
+        _audit(uploader, membership, "document.upload_rejected", rejected.pk, "rejected", {"reason": reason})
     raise DocumentUploadRejected(reason)
 
 
@@ -159,14 +194,29 @@ def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
     return quarantined
 
 
-def create_document_version(document, uploaded_file, variant, uploader, scanner, *, _redacts=None) -> DocumentVersion:
-    membership = _membership_for(uploader, document.building)
+def create_document_version(document, uploaded_file, variant, uploader, scanner, *, _redacts=None, allow_resident_occupancy=False) -> DocumentVersion:
+    membership = (
+        OrganizationMembership.objects.select_related("organization")
+        .filter(user=uploader, active=True, organization__building=document.building)
+        .first()
+    )
+    occupancy = None
+    if membership is None:
+        if not (
+            allow_resident_occupancy
+            and document.kind == Document.Kind.REPORT_PHOTO
+            and variant == DocumentVersion.Variant.ORIGINAL
+        ):
+            raise PermissionDenied("Document uploader does not belong to this building.")
+        occupancy = _occupancy_for(uploader, document.building)
+        if occupancy is None:
+            raise PermissionDenied("Active occupancy is required to upload report photos.")
     metadata = _metadata(uploaded_file)
     max_bytes = settings.DOCUMENT_MAX_UPLOAD_BYTES
     if metadata["content_type"] not in _allowed_content_types(document):
-        _create_rejection(uploader, membership, metadata, "unsupported content type")
+        _create_rejection(uploader, membership, metadata, "unsupported content type", occupancy=occupancy)
     if metadata["byte_size"] > max_bytes:
-        _create_rejection(uploader, membership, metadata, "upload exceeds size limit")
+        _create_rejection(uploader, membership, metadata, "upload exceeds size limit", occupancy=occupancy)
 
     digest = hashlib.sha256()
     with tempfile.SpooledTemporaryFile(max_size=settings.DOCUMENT_SPOOL_MAX_BYTES) as temporary:
@@ -175,20 +225,20 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
             temporary.write(chunk)
             if temporary.tell() > max_bytes:
                 metadata["byte_size"] = temporary.tell()
-                _create_rejection(uploader, membership, metadata, "upload exceeds size limit")
+                _create_rejection(uploader, membership, metadata, "upload exceeds size limit", occupancy=occupancy)
         metadata["byte_size"] = temporary.tell()
         temporary.seek(0)
         signature = temporary.read(8)
         expected_signature = MIME_SIGNATURES[metadata["content_type"]]
         if not signature.startswith(expected_signature):
-            _create_rejection(uploader, membership, metadata, "file signature does not match content type")
+            _create_rejection(uploader, membership, metadata, "file signature does not match content type", occupancy=occupancy)
         if metadata["content_type"].startswith("image/"):
             try:
                 temporary.seek(0)
                 with Image.open(temporary) as image:
                     image.verify()
             except (UnidentifiedImageError, OSError, ValueError):
-                _create_rejection(uploader, membership, metadata, "image verification failed")
+                _create_rejection(uploader, membership, metadata, "image verification failed", occupancy=occupancy)
         temporary.seek(0)
         try:
             clean = scanner(temporary)
@@ -211,14 +261,25 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
                 retention_expires_at=_retention_expires_at(),
                 **metadata,
             )
-            _audit(
-                uploader,
-                membership,
-                "document.upload_quarantined",
-                quarantined.pk,
-                "quarantined",
-                {"reason": reason},
-            )
+            if membership is None and occupancy is not None:
+                record_audit(
+                    actor=uploader,
+                    membership=None,
+                    action="document.upload",
+                    target_type="DocumentVersion",
+                    target_id=str(quarantined.pk),
+                    result="quarantined",
+                    metadata={"occupancy_id": occupancy.pk, "reason": reason},
+                )
+            else:
+                _audit(
+                    uploader,
+                    membership,
+                    "document.upload_quarantined",
+                    quarantined.pk,
+                    "quarantined",
+                    {"reason": reason},
+                )
             raise DocumentUploadQuarantined(reason)
 
         with transaction.atomic():
@@ -244,7 +305,18 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
                 uploader=uploader,
                 redacts=_redacts,
             )
-    _audit(uploader, membership, "document.upload", version.pk, "allowed")
+    if membership is None and occupancy is not None:
+        record_audit(
+            actor=uploader,
+            membership=None,
+            action="document.upload",
+            target_type="DocumentVersion",
+            target_id=str(version.pk),
+            result="allowed",
+            metadata={"occupancy_id": occupancy.pk},
+        )
+    else:
+        _audit(uploader, membership, "document.upload", version.pk, "allowed")
     return version
 
 

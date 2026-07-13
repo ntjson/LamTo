@@ -1,0 +1,29 @@
+{% extends "web/base.html" %}
+{% block title %}Account · LamTo{% endblock %}
+{% block content %}
+<section class="panel" aria-labelledby="account-heading">
+  <h1 id="account-heading">Account</h1>
+  <dl class="detail-list">
+    <div>
+      <dt>Name</dt>
+      <dd>{{ user_obj.display_name }}</dd>
+    </div>
+    <div>
+      <dt>Email</dt>
+      <dd>{{ user_obj.email }}</dd>
+    </div>
+    <div>
+      <dt>Unit</dt>
+      <dd>{{ occupancy.unit.building.name }} · {{ occupancy.unit.label }}</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="panel" aria-labelledby="security-heading">
+  <h2 id="security-heading">Session and security</h2>
+  <ul class="plain-list">
+    <li><a class="text-link" href="{% url 'logout' %}">Sign out</a></li>
+  </ul>
+  <p class="hint">Notification preferences and unread notices will appear here in a later release.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "web/base.html" %}
+{% block title %}Report an issue · LamTo{% endblock %}
+{% block content %}
+<section class="panel" aria-labelledby="report-heading">
+  <h1 id="report-heading">Report an issue</h1>
+  <p class="lede">Describe what you see. Photos are optional and only sent when you are online.</p>
+  <form method="post" enctype="multipart/form-data" class="stack-form" id="report-form" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="form-errors" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="field">
+      <label for="{{ form.text.id_for_label }}">{{ form.text.label }}</label>
+      {{ form.text }}
+      {% if form.text.errors %}<p class="field-error">{{ form.text.errors|striptags }}</p>{% endif %}
+    </div>
+    <div class="field">
+      <label for="{{ form.location.id_for_label }}">{{ form.location.label }}</label>
+      {{ form.location }}
+      {% if form.location.errors %}<p class="field-error">{{ form.location.errors|striptags }}</p>{% endif %}
+    </div>
+    <div class="field">
+      <label for="{{ form.photos.id_for_label }}">{{ form.photos.label }}</label>
+      {{ form.photos }}
+      {% if form.photos.errors %}<p class="field-error">{{ form.photos.errors|striptags }}</p>{% endif %}
+      <p class="hint">JPEG or PNG. Draft text is saved on this device until you submit online.</p>
+    </div>
+    <button type="submit" class="button button-primary">Submit report</button>
+  </form>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById("report-form");
+  if (!form || !window.sessionStorage) return;
+  var KEY = "lamto.reportDraft";
+  try {
+    var saved = JSON.parse(sessionStorage.getItem(KEY) || "{}");
+    form.querySelectorAll("[data-draft-field]").forEach(function (el) {
+      var name = el.getAttribute("data-draft-field");
+      if (saved[name] != null) el.value = saved[name];
+      el.addEventListener("input", function () {
+        var draft = {};
+        form.querySelectorAll("[data-draft-field]").forEach(function (field) {
+          draft[field.getAttribute("data-draft-field")] = field.value;
+        });
+        sessionStorage.setItem(KEY, JSON.stringify(draft));
+      });
+    });
+  } catch (e) {}
+  form.addEventListener("submit", function (event) {
+    if (!navigator.onLine) {
+      event.preventDefault();
+      alert("You appear offline. Your draft is saved on this device; submit when you are back online.");
+      return;
+    }
+    try { sessionStorage.removeItem(KEY); } catch (e) {}
+  });
+})();
+</script>
+{% endblock %}
