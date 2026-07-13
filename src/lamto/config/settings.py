@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'lamto.accounts',
     'lamto.audit',
     'lamto.documents',
+    'lamto.evidence',
     'lamto.maintenance',
 ]
 
@@ -142,6 +143,13 @@ AI_TRIAGE_URL = os.environ["AI_TRIAGE_URL"]
 AI_TRIAGE_TOKEN = os.environ["AI_TRIAGE_TOKEN"]
 AI_TRIAGE_TIMEOUT_SECONDS = float(os.getenv("AI_TRIAGE_TIMEOUT_SECONDS", "5"))
 AI_TRIAGE_ALLOW_HTTP = os.getenv("AI_TRIAGE_ALLOW_HTTP", "").lower() in {"1", "true", "yes"}
+BLOCKCHAIN_CHAIN_ID = int(os.getenv("BLOCKCHAIN_CHAIN_ID", os.getenv("CHAIN_ID", "1337")))
+EVIDENCE_CONTRACT_ADDRESS = (
+    os.getenv("EVIDENCE_CONTRACT_ADDRESS")
+    or os.getenv("CHAIN_CONTRACT_ADDRESS")
+    or "0x" + "00" * 20
+)
+WALLET_REGISTRATION_TTL_SECONDS = int(os.getenv("WALLET_REGISTRATION_TTL_SECONDS", "600"))
 
 STORAGES = {
     "staticfiles": {
