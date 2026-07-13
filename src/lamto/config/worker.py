@@ -154,6 +154,55 @@ def process_integrity_batch(*, limit: int = 20) -> ProcessorResult:
         return ProcessorResult(name=name, ok=False, detail=str(exc))
 
 
+def process_deadline_risk_batch(*, limit: int = 50) -> ProcessorResult:
+    """Queue deadline-risk notifications for near-due work orders.
+
+    Scans active work orders within a 24h horizon and calls
+    ``notify_deadline_risk`` (idempotent event_key per work order + day).
+    """
+    name = "deadline_risk"
+    try:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from lamto.maintenance.models import WorkOrder
+        from lamto.notifications.hooks import notify_deadline_risk
+
+        now = timezone.now()
+        horizon = now + timedelta(hours=24)
+        # Include slightly overdue items still open (missed deadline awareness).
+        floor = now - timedelta(hours=24)
+        qs = (
+            WorkOrder.objects.filter(
+                deadline_at__lte=horizon,
+                deadline_at__gte=floor,
+                status__in=[
+                    WorkOrder.Status.ASSIGNED,
+                    WorkOrder.Status.IN_PROGRESS,
+                    WorkOrder.Status.AWAITING_ACCEPTANCE,
+                ],
+            )
+            .select_related("case", "assignee")
+            .order_by("deadline_at", "pk")[:limit]
+        )
+        count = 0
+        for work_order in qs:
+            try:
+                notify_deadline_risk(work_order)
+                count += 1
+            except Exception:
+                logger.exception(
+                    "notify_deadline_risk failed for work order %s", work_order.pk
+                )
+        return ProcessorResult(
+            name=name, ok=True, count=count, detail=f"queued={count}"
+        )
+    except Exception as exc:
+        logger.exception("worker processor %s failed", name)
+        return ProcessorResult(name=name, ok=False, detail=str(exc))
+
+
 def process_notifications_batch(*, limit: int = 50) -> ProcessorResult:
     name = "notifications"
     try:
@@ -174,6 +223,7 @@ PROCESSORS = (
     process_blockchain_outbox_batch,
     process_publication_finalization_batch,
     process_integrity_batch,
+    process_deadline_risk_batch,
     process_notifications_batch,
 )
 

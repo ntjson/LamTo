@@ -34,8 +34,9 @@ urlpatterns = [
     path("s/", staff_common.staff_home, name="staff-home"),
     path("s/inbox/", staff_common.action_inbox, name="action-inbox"),
     path("s/membership/", staff_common.switch_membership, name="switch-membership"),
-    # Operator / shared case & proposal
+    # Operator / shared case & proposal — distinct routes for report vs case PKs
     path("s/cases/", operator.case_list, name="case-list"),
+    path("s/reports/<int:pk>/", operator.report_detail, name="staff-report-detail"),
     path("s/cases/<int:pk>/", operator.case_detail, name="case-detail"),
     path("s/proposals/", operator.proposal_list, name="proposal-list"),
     path("s/proposals/<int:pk>/", operator.proposal_detail, name="proposal-detail"),
@@ -49,10 +50,19 @@ urlpatterns = [
         representative.emergency_decide,
         name="emergency-decide",
     ),
-    # Board payments
+    # Board payments — distinct routes for acceptance record vs payment verify
     path("s/payments/", board.payment_list, name="payment-list"),
     path("s/payments/record/", board.payment_record, name="payment-record"),
-    path("s/payments/<int:pk>/", board.payment_detail, name="payment-detail"),
+    path(
+        "s/payments/record/<int:pk>/",
+        board.payment_record_detail,
+        name="payment-record-detail",
+    ),
+    path(
+        "s/payments/verify/<int:pk>/",
+        board.payment_verify_detail,
+        name="payment-verify-detail",
+    ),
     # Auditor
     path("s/audit/", auditor.audit_search, name="audit-search"),
     path("s/audit/export/", exports.audit_export, name="audit-export"),

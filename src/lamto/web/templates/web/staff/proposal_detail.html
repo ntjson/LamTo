@@ -3,7 +3,7 @@
 {% block content %}
 {% if list_mode %}
 <section class="panel">
-  <h1>Proposals</h1>
+  <h1>{% if publish_only %}Pending publication{% else %}Proposals{% endif %}</h1>
   <ul class="card-list">
     {% for proposal in proposals %}
     <li>
@@ -40,8 +40,24 @@
     <pre id="snapshot-json">{{ version.snapshot }}</pre>
     <form method="post" class="stack-form" data-signed-form>
       {% csrf_token %}
+      <input type="hidden" name="action" value="decide">
       {{ form.as_p }}
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
       <button type="submit" class="button">Submit decision</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if can_publish and publish_form %}
+  <div class="signed-box">
+    <h2>Prepare publication (signed)</h2>
+    <p class="hint">Publish verified spending to the resident ledger. Requires ledger.publish.</p>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="publish">
+      {{ publish_form.as_p }}
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+      <button type="submit" class="button">Prepare publication</button>
     </form>
   </div>
   {% endif %}

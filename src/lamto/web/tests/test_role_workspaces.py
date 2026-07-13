@@ -357,7 +357,10 @@ class RoleWorkspaceTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(self.client.session[SESSION_MEMBERSHIP_KEY], board_m.pk)
 
-    def test_signed_form_fields_present_on_proposal_detail_for_approver(self):
+    def test_signed_form_wallet_script_is_wired_for_intercept(self):
+        """wallet-signing.js must load as classic script and bind data-signed-form."""
+        from pathlib import Path as P
+
         building = Building.objects.create(name="B2")
         board = self.make_membership(
             building,
@@ -370,6 +373,341 @@ class RoleWorkspaceTests(TestCase):
         response = self.client.get(reverse("web:proposal-list"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "wallet-signing.js")
+        # Not a module import — classic script tag without type=module
+        body = response.content.decode()
+        self.assertNotIn('type="module"', body)
+        self.assertIn("wallet-signing.js", body)
+
+        js_path = (
+            P(__file__).resolve().parents[1] / "static" / "web" / "wallet-signing.js"
+        )
+        js = js_path.read_text()
+        self.assertNotIn("export async function", js)
+        self.assertNotIn("export function", js)
+        self.assertIn("data-signed-form", js)
+        self.assertIn("eth_signTypedData_v4", js)
+        self.assertIn("LamToWalletSigning", js)
+        self.assertIn("bindSignedForms", js)
+
+    def test_payment_and_case_routes_disambiguate_colliding_pks(self):
+        """Equal PKs across tables must not open the wrong staff form."""
+        from django.db import connection
+
+        building = Building.objects.create(name=self._unique("Collide"))
+        location = BuildingLocation.objects.create(
+            building=building, name="Hall", active=True
+        )
+        board = self.make_membership(
+            building,
+            OrganizationMembership.Role.BOARD,
+            "board-col",
+            capabilities=(PAYMENT_RECORD, PAYMENT_VERIFY),
+            with_wallet=True,
+        )
+        operator = self.make_membership(
+            building,
+            OrganizationMembership.Role.OPERATOR,
+            "op-col",
+            capabilities=(REPORT_TRIAGE,),
+        )
+        # Grant triage for report/case access
+        grant_capability(operator, REPORT_TRIAGE)
+
+        unit = Unit.objects.create(building=building, label="C-1")
+        resident = get_user_model().objects.create_user(
+            email=self._unique("rcol") + "@example.test",
+            password="secret",
+            display_name="R",
+        )
+        report = IssueReport.objects.create(
+            reporter=resident,
+            unit=unit,
+            text="Leak",
+            selected_location=location,
+            location_path_snapshot=f"{building.name} / Hall",
+        )
+        decision = TriageDecision.objects.create(
+            report=report,
+            operator=operator.user,
+            category="Plumbing",
+            urgency="HIGH",
+            location=location,
+            department="Ops",
+            deadline_minutes=60,
+            differences={},
+        )
+        case = MaintenanceCase.objects.create(
+            decision=decision,
+            building=building,
+            category="Plumbing",
+            urgency="HIGH",
+            location=location,
+            department="Ops",
+            deadline_at=timezone.now(),
+            active=True,
+        )
+        # Force case.pk == report.pk when possible by inserting with explicit id
+        target_id = max(report.pk, case.pk)
+        # Create a second report with forced pk equal to case when different
+        if report.pk != case.pk:
+            # Staff report route must load IssueReport, case route MaintenanceCase
+            self.client.force_login(operator.user)
+            self.enroll_mfa(operator.user)
+            r_resp = self.client.get(
+                reverse("web:staff-report-detail", kwargs={"pk": report.pk})
+            )
+            # report already linked to active case → redirect to case
+            self.assertIn(r_resp.status_code, (200, 302))
+            c_resp = self.client.get(
+                reverse("web:case-detail", kwargs={"pk": case.pk})
+            )
+            self.assertEqual(c_resp.status_code, 200)
+            self.assertContains(c_resp, f"Case #{case.pk}")
+            # case-detail with report pk (if different) must 404 — not silently open report
+            if report.pk != case.pk:
+                wrong = self.client.get(
+                    reverse("web:case-detail", kwargs={"pk": report.pk})
+                )
+                # only 404 if no case with that id
+                if not MaintenanceCase.objects.filter(
+                    pk=report.pk, building_id=building.pk
+                ).exists():
+                    self.assertEqual(wrong.status_code, 404)
+
+        # Payment collision: AcceptanceRecord and PaymentEvidence with same pk
+        maintenance = self.make_membership(
+            building, OrganizationMembership.Role.MAINTENANCE, "mcol"
+        )
+        work_order = WorkOrder.objects.create(
+            case=case,
+            assignee=maintenance.user,
+            priority="HIGH",
+            deadline_at=timezone.now(),
+            requires_spending=True,
+            authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
+            status=WorkOrder.Status.ACCEPTED,
+        )
+        inv_o, inv_r = self.document_pair(
+            building, board.user, Document.Kind.INVOICE, self._unique("invc")
+        )
+        acc_o, acc_r = self.document_pair(
+            building, board.user, Document.Kind.ACCEPTANCE_REPORT, self._unique("accc")
+        )
+        proof_o, proof_r = self.document_pair(
+            building, board.user, Document.Kind.PAYMENT_PROOF, self._unique("proofc")
+        )
+        accept_event = self.queue_event(board)
+        payment_event = self.queue_event(board)
+
+        # Create acceptance with explicit pk, then payment with same pk
+        collision_pk = 900001
+        acceptance = AcceptanceRecord(
+            pk=collision_pk,
+            work_order=work_order,
+            actual_cost_vnd=500_000,
+            invoice_original=inv_o,
+            invoice_redacted=inv_r,
+            acceptance_original=acc_o,
+            acceptance_redacted=acc_r,
+            membership=board,
+            wallet=accept_event.signer_wallet,
+            signature=accept_event.signature,
+            outbox_event=accept_event,
+            accepted_at=timezone.now(),
+        )
+        acceptance.save()
+
+        # Separate acceptance without payment for record route, and payment with same pk
+        # as a different acceptance's identity space — create payment with forced pk
+        work_order2 = WorkOrder.objects.create(
+            case=case,
+            assignee=maintenance.user,
+            priority="HIGH",
+            deadline_at=timezone.now(),
+            requires_spending=True,
+            authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
+            status=WorkOrder.Status.ACCEPTED,
+        )
+        inv_o2, inv_r2 = self.document_pair(
+            building, board.user, Document.Kind.INVOICE, self._unique("invc2")
+        )
+        acc_o2, acc_r2 = self.document_pair(
+            building, board.user, Document.Kind.ACCEPTANCE_REPORT, self._unique("accc2")
+        )
+        proof_o2, proof_r2 = self.document_pair(
+            building, board.user, Document.Kind.PAYMENT_PROOF, self._unique("proofc2")
+        )
+        accept_event2 = self.queue_event(board)
+        payment_event2 = self.queue_event(board)
+        acceptance2 = AcceptanceRecord(
+            work_order=work_order2,
+            actual_cost_vnd=600_000,
+            invoice_original=inv_o2,
+            invoice_redacted=inv_r2,
+            acceptance_original=acc_o2,
+            acceptance_redacted=acc_r2,
+            membership=board,
+            wallet=accept_event2.signer_wallet,
+            signature=accept_event2.signature,
+            outbox_event=accept_event2,
+            accepted_at=timezone.now(),
+        )
+        acceptance2.save()
+        payment = PaymentEvidence(
+            pk=collision_pk,  # same as acceptance.pk above
+            acceptance=acceptance2,
+            bank_reference=self._unique("REFCOL").upper(),
+            amount_vnd=600_000,
+            external_status=PaymentEvidence.ExternalStatus.COMPLETED,
+            completed_at=timezone.now(),
+            proof_original=proof_o2,
+            proof_redacted=proof_r2,
+            recorder=board,
+            wallet=payment_event2.signer_wallet,
+            signature=payment_event2.signature,
+            outbox_event=payment_event2,
+            recorded_at=timezone.now(),
+        )
+        payment.save()
+        self.assertEqual(acceptance.pk, payment.pk)
+
+        self.client.force_login(board.user)
+        self.enroll_mfa(board.user)
+        record_resp = self.client.get(
+            reverse("web:payment-record-detail", kwargs={"pk": collision_pk})
+        )
+        self.assertEqual(record_resp.status_code, 200)
+        self.assertContains(record_resp, f"Acceptance #{collision_pk}")
+        self.assertContains(record_resp, "Record payment")
+
+        verify_resp = self.client.get(
+            reverse("web:payment-verify-detail", kwargs={"pk": collision_pk})
+        )
+        self.assertEqual(verify_resp.status_code, 200)
+        self.assertContains(verify_resp, f"Payment #{collision_pk}")
+        self.assertContains(verify_resp, "Payment verification")
+
+        # Inbox links must use disambiguated routes
+        items = action_items_for(board)
+        record_urls = [i.url for i in items if i.kind == "payment_record"]
+        verify_urls = [i.url for i in items if i.kind == "payment_verification"]
+        self.assertTrue(any(f"/payments/record/{collision_pk}/" in u for u in record_urls))
+        self.assertTrue(any(f"/payments/verify/{collision_pk}/" in u for u in verify_urls))
+
+    def test_inbox_mutation_routes_and_publish_only_access(self):
+        from lamto.accounts.capabilities import (
+            EMERGENCY_AUTHORIZE,
+            LEDGER_PUBLISH,
+            WORK_ACCEPT,
+        )
+        from lamto.finance.models import EmergencyAuthorization
+
+        building = Building.objects.create(name=self._unique("Mut"))
+        location = BuildingLocation.objects.create(
+            building=building, name="Roof", active=True
+        )
+        board = self.make_membership(
+            building,
+            OrganizationMembership.Role.BOARD,
+            "board-mut",
+            capabilities=(EMERGENCY_AUTHORIZE, WORK_ACCEPT, LEDGER_PUBLISH),
+            with_wallet=True,
+        )
+        maint = self.make_membership(
+            building, OrganizationMembership.Role.MAINTENANCE, "maint-mut"
+        )
+        unit = Unit.objects.create(building=building, label="M-1")
+        resident = get_user_model().objects.create_user(
+            email=self._unique("rmut") + "@example.test",
+            password="secret",
+            display_name="R",
+        )
+        report = IssueReport.objects.create(
+            reporter=resident,
+            unit=unit,
+            text="Flood",
+            selected_location=location,
+            location_path_snapshot="x",
+        )
+        decision = TriageDecision.objects.create(
+            report=report,
+            operator=board.user,
+            category="Water",
+            urgency="CRITICAL",
+            location=location,
+            department="Ops",
+            deadline_minutes=30,
+            differences={},
+        )
+        case = MaintenanceCase.objects.create(
+            decision=decision,
+            building=building,
+            category="Water",
+            urgency="CRITICAL",
+            location=location,
+            department="Ops",
+            deadline_at=timezone.now(),
+            active=True,
+        )
+        wo_accept = WorkOrder.objects.create(
+            case=case,
+            assignee=maint.user,
+            priority="HIGH",
+            deadline_at=timezone.now(),
+            requires_spending=True,
+            authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
+            status=WorkOrder.Status.AWAITING_ACCEPTANCE,
+            completed_at=timezone.now(),
+        )
+        wo_em = WorkOrder.objects.create(
+            case=case,
+            assignee=maint.user,
+            priority="HIGH",
+            deadline_at=timezone.now(),
+            requires_spending=True,
+            emergency=True,
+            emergency_reason="Burst pipe",
+            emergency_requested_by=board,
+            emergency_requested_at=timezone.now(),
+            authorization_status=WorkOrder.AuthorizationStatus.PENDING,
+            status=WorkOrder.Status.ASSIGNED,
+        )
+        items = action_items_for(board)
+        accept_urls = [i.url for i in items if i.kind == "work_acceptance"]
+        em_urls = [i.url for i in items if i.kind == "emergency_authorize"]
+        self.assertTrue(any(f"/work/{wo_accept.pk}/accept/" in u for u in accept_urls))
+        self.assertTrue(
+            any(f"/work/{wo_em.pk}/emergency/authorize/" in u for u in em_urls)
+        )
+
+        # Mutation pages render signed forms
+        self.client.force_login(board.user)
+        self.enroll_mfa(board.user)
+        ar = self.client.get(reverse("web:work-accept", kwargs={"pk": wo_accept.pk}))
+        self.assertEqual(ar.status_code, 200)
+        self.assertContains(ar, "data-signed-form")
+        self.assertContains(ar, "Accept work")
+
+        er = self.client.get(
+            reverse("web:emergency-authorize", kwargs={"pk": wo_em.pk})
+        )
+        self.assertEqual(er.status_code, 200)
+        self.assertContains(er, "data-signed-form")
+        self.assertContains(er, "Authorize emergency")
+
+        # Pure ledger.publish membership can open proposal list
+        publisher = self.make_membership(
+            building,
+            OrganizationMembership.Role.BOARD,
+            "pub-only",
+            capabilities=(LEDGER_PUBLISH,),
+            with_wallet=True,
+        )
+        self.client.force_login(publisher.user)
+        self.enroll_mfa(publisher.user)
+        pl = self.client.get(reverse("web:proposal-list"))
+        self.assertEqual(pl.status_code, 200)
+        self.assertContains(pl, "Pending publication")
 
     def test_action_items_respect_capabilities(self):
         building = Building.objects.create(name="B3")

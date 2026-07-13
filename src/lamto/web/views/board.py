@@ -13,7 +13,6 @@ from lamto.accounts.capabilities import (
     WORK_ACCEPT,
 )
 from lamto.accounts.security import require_recent_auth, require_staff_mfa
-from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.finance.models import AcceptanceRecord, PaymentEvidence
 from lamto.web.forms.staff import (
@@ -52,9 +51,16 @@ def payment_record(request):
     except ValidationError as error:
         from django.http import JsonResponse
 
-        return JsonResponse({"errors": error.message_dict if hasattr(error, "message_dict") else str(error)}, status=400)
+        return JsonResponse(
+            {
+                "errors": error.message_dict
+                if hasattr(error, "message_dict")
+                else str(error)
+            },
+            status=400,
+        )
     messages.success(request, "Payment recorded.")
-    return redirect("web:payment-detail", pk=payment.pk)
+    return redirect("web:payment-verify-detail", pk=payment.pk)
 
 
 @login_required
@@ -100,67 +106,38 @@ def payment_list(request):
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def payment_detail(request, pk):
-    """pk is AcceptanceRecord id (record) or PaymentEvidence id (verify)."""
-    membership, memberships = resolve_active_membership(request)
-    caps = set(membership.capabilitygrant_set.values_list("code", flat=True))
+def payment_record_detail(request, pk):
+    """Record payment against AcceptanceRecord pk (never PaymentEvidence pk)."""
+    membership, memberships = require_staff_capability(request, PAYMENT_RECORD)
     building_id = membership.organization.building_id
+    acceptance = get_object_or_404(
+        AcceptanceRecord.objects.select_related("work_order", "payment"),
+        pk=pk,
+        work_order__case__building_id=building_id,
+    )
+    payment = getattr(acceptance, "payment", None)
+    if payment is not None:
+        return redirect("web:payment-verify-detail", pk=payment.pk)
 
-    acceptance = AcceptanceRecord.objects.filter(
-        pk=pk, work_order__case__building_id=building_id
-    ).select_related("work_order", "payment").first()
-    payment = None
-    if acceptance is None:
-        payment = get_object_or_404(
-            PaymentEvidence.objects.select_related(
-                "acceptance__work_order", "recorder", "verification"
-            ),
-            pk=pk,
-            acceptance__work_order__case__building_id=building_id,
-        )
-        acceptance = payment.acceptance
-    else:
-        payment = getattr(acceptance, "payment", None)
-
-    record_form = RecordPaymentForm(request.POST or None) if payment is None else None
-    verify_form = VerifyPaymentForm(request.POST or None) if payment is not None else None
-
-    if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "record" and record_form is not None and PAYMENT_RECORD in caps:
-            require_staff_capability(request, PAYMENT_RECORD)
-            require_recent_auth(request)
-            if record_form.is_valid():
-                proof_o = DocumentVersion.objects.filter(
-                    pk=record_form.cleaned_data["proof_original_id"]
-                ).first()
-                proof_r = DocumentVersion.objects.filter(
-                    pk=record_form.cleaned_data["proof_redacted_id"]
-                ).first()
-                try:
-                    payment = record_form.save(acceptance, membership, proof_o, proof_r)
-                except (ValidationError, PermissionDenied) as error:
-                    if isinstance(error, ValidationError):
-                        record_form.add_error(None, error)
-                    else:
-                        raise
-                else:
-                    messages.success(request, "Payment recorded.")
-                    return redirect("web:payment-detail", pk=payment.pk)
-        elif action == "verify" and verify_form is not None and PAYMENT_VERIFY in caps:
-            require_staff_capability(request, PAYMENT_VERIFY)
-            require_recent_auth(request)
-            if verify_form.is_valid():
-                try:
-                    verify_form.save(payment, membership)
-                except (ValidationError, PermissionDenied) as error:
-                    if isinstance(error, ValidationError):
-                        verify_form.add_error(None, error)
-                    else:
-                        raise
-                else:
-                    messages.success(request, "Payment verification recorded.")
-                    return redirect("web:payment-detail", pk=payment.pk)
+    record_form = RecordPaymentForm(request.POST or None)
+    if request.method == "POST" and record_form.is_valid():
+        require_recent_auth(request)
+        proof_o = DocumentVersion.objects.filter(
+            pk=record_form.cleaned_data["proof_original_id"]
+        ).first()
+        proof_r = DocumentVersion.objects.filter(
+            pk=record_form.cleaned_data["proof_redacted_id"]
+        ).first()
+        try:
+            payment = record_form.save(acceptance, membership, proof_o, proof_r)
+        except (ValidationError, PermissionDenied) as error:
+            if isinstance(error, ValidationError):
+                record_form.add_error(None, error)
+            else:
+                raise
+        else:
+            messages.success(request, "Payment recorded.")
+            return redirect("web:payment-verify-detail", pk=payment.pk)
 
     return render(
         request,
@@ -171,14 +148,71 @@ def payment_detail(request, pk):
             memberships,
             nav_active="payments",
             list_mode=False,
+            mode="record",
+            acceptance=acceptance,
+            payment=None,
+            record_form=record_form,
+            verify_form=None,
+            can_record=True,
+            can_verify=False,
+        ),
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def payment_verify_detail(request, pk):
+    """Verify PaymentEvidence pk (never AcceptanceRecord pk)."""
+    membership, memberships = resolve_active_membership(request)
+    caps = set(membership.capabilitygrant_set.values_list("code", flat=True))
+    if PAYMENT_VERIFY not in caps and PAYMENT_RECORD not in caps:
+        raise PermissionDenied("payment access")
+    building_id = membership.organization.building_id
+    payment = get_object_or_404(
+        PaymentEvidence.objects.select_related(
+            "acceptance__work_order", "recorder", "verification"
+        ),
+        pk=pk,
+        acceptance__work_order__case__building_id=building_id,
+    )
+    acceptance = payment.acceptance
+    verify_form = (
+        VerifyPaymentForm(request.POST or None)
+        if PAYMENT_VERIFY in caps and not hasattr(payment, "verification")
+        else None
+    )
+
+    if request.method == "POST" and verify_form is not None and PAYMENT_VERIFY in caps:
+        require_staff_capability(request, PAYMENT_VERIFY)
+        require_recent_auth(request)
+        if verify_form.is_valid():
+            try:
+                verify_form.save(payment, membership)
+            except (ValidationError, PermissionDenied) as error:
+                if isinstance(error, ValidationError):
+                    verify_form.add_error(None, error)
+                else:
+                    raise
+            else:
+                messages.success(request, "Payment verification recorded.")
+                return redirect("web:payment-verify-detail", pk=payment.pk)
+
+    return render(
+        request,
+        "web/staff/payment_detail.html",
+        staff_context(
+            request,
+            membership,
+            memberships,
+            nav_active="payments",
+            list_mode=False,
+            mode="verify",
             acceptance=acceptance,
             payment=payment,
-            record_form=record_form if PAYMENT_RECORD in caps else None,
-            verify_form=verify_form if PAYMENT_VERIFY in caps else None,
-            can_record=PAYMENT_RECORD in caps and payment is None,
-            can_verify=PAYMENT_VERIFY in caps
-            and payment is not None
-            and not hasattr(payment, "verification"),
+            record_form=None,
+            verify_form=verify_form,
+            can_record=False,
+            can_verify=PAYMENT_VERIFY in caps and not hasattr(payment, "verification"),
         ),
     )
 

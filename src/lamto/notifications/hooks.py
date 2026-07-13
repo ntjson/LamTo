@@ -89,9 +89,12 @@ def notify_deadline_risk(work_order):
     recipients = [work_order.assignee] + _users_with_capability(
         work_order.case.building_id, "work.assign"
     )
+    # Idempotent per work order + calendar day so re-queue is safe within a day
+    # but can re-alert on later days if still at risk.
+    day = work_order.deadline_at.date().isoformat() if work_order.deadline_at else "unknown"
     notify_users(
         recipients,
-        event_key=f"{EVENT_DEADLINE_RISK}:work:{work_order.pk}",
+        event_key=f"{EVENT_DEADLINE_RISK}:work:{work_order.pk}:day:{day}",
         subject="Deadline risk",
         body=f"Work order #{work_order.pk} approaches deadline {work_order.deadline_at}.",
         event_code=EVENT_DEADLINE_RISK,

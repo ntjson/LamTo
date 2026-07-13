@@ -59,6 +59,7 @@
     <form method="post" class="stack-form" data-signed-form>
       {% csrf_token %}
       {{ accept_form.as_p }}
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
       <button type="submit" class="button">Submit acceptance</button>
     </form>
   </div>
@@ -70,6 +71,7 @@
     <form method="post" class="stack-form" data-signed-form>
       {% csrf_token %}
       {{ emergency_form.as_p }}
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
       <button type="submit" class="button">Authorize</button>
     </form>
   </div>
@@ -81,6 +83,7 @@
     <form method="post" class="stack-form" data-signed-form>
       {% csrf_token %}
       {{ emergency_decide_form.as_p }}
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
       <button type="submit" class="button">Submit outcome</button>
     </form>
   </div>

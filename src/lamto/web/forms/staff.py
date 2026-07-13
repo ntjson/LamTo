@@ -289,3 +289,23 @@ class NotificationPreferenceForm(forms.Form):
                 event_code=code,
                 defaults={"email_enabled": enabled},
             )
+
+
+class PreparePublicationForm(SignedDecisionForm):
+    """Board ledger publication (signed)."""
+
+    publication_id = forms.IntegerField(
+        required=False, min_value=1, widget=forms.NumberInput(attrs={"class": "input"})
+    )
+
+    def save(self, proposal, membership):
+        from lamto.finance.publication import prepare_publication
+
+        return prepare_publication(
+            proposal,
+            membership,
+            self.cleaned_data["signature"],
+            self.cleaned_data["event_id"],
+            publication_id=self.cleaned_data.get("publication_id") or None,
+        )
+

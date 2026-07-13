@@ -162,3 +162,116 @@ class FailingEmailBackend:
 
     def send_messages(self, email_messages):
         raise RuntimeError("SMTP unavailable")
+
+
+class DeadlineRiskNotificationTests(TestCase):
+    def test_worker_queues_deadline_risk_for_near_due_work_order(self):
+        from datetime import timedelta
+
+        from django.contrib.auth import get_user_model
+
+        from lamto.accounts.models import Building, Organization, OrganizationMembership
+        from lamto.accounts.services import grant_capability
+        from lamto.config.worker import process_deadline_risk_batch
+        from lamto.maintenance.models import (
+            BuildingLocation,
+            IssueReport,
+            MaintenanceCase,
+            TriageDecision,
+            WorkOrder,
+        )
+        from lamto.notifications.models import NotificationDelivery
+        from lamto.notifications.services import EVENT_DEADLINE_RISK
+
+        building = Building.objects.create(name="Deadline Building")
+        location = BuildingLocation.objects.create(
+            building=building, name="Basement", active=True
+        )
+        assignee_user = get_user_model().objects.create_user(
+            email="assignee-dl@example.test",
+            password="secret",
+            display_name="Assignee",
+        )
+        op_user = get_user_model().objects.create_user(
+            email="op-dl@example.test",
+            password="secret",
+            display_name="Operator",
+        )
+        op_org = Organization.objects.create(
+            building=building, name="Ops", kind=Organization.Kind.OPERATOR
+        )
+        maint_org = Organization.objects.create(
+            building=building, name="Maint", kind=Organization.Kind.OPERATOR
+        )
+        op_m = OrganizationMembership.objects.create(
+            user=op_user,
+            organization=op_org,
+            role=OrganizationMembership.Role.OPERATOR,
+        )
+        grant_capability(op_m, "work.assign")
+        OrganizationMembership.objects.create(
+            user=assignee_user,
+            organization=maint_org,
+            role=OrganizationMembership.Role.MAINTENANCE,
+        )
+        unit = __import__("lamto.accounts.models", fromlist=["Unit"]).Unit.objects.create(
+            building=building, label="D-1"
+        )
+        report = IssueReport.objects.create(
+            reporter=assignee_user,
+            unit=unit,
+            text="Near deadline",
+            selected_location=location,
+            location_path_snapshot="path",
+        )
+        decision = TriageDecision.objects.create(
+            report=report,
+            operator=op_user,
+            category="General",
+            urgency="HIGH",
+            location=location,
+            department="Ops",
+            deadline_minutes=60,
+            differences={},
+        )
+        case = MaintenanceCase.objects.create(
+            decision=decision,
+            building=building,
+            category="General",
+            urgency="HIGH",
+            location=location,
+            department="Ops",
+            deadline_at=timezone.now() + timedelta(hours=12),
+            active=True,
+        )
+        work_order = WorkOrder.objects.create(
+            case=case,
+            assignee=assignee_user,
+            priority="HIGH",
+            deadline_at=timezone.now() + timedelta(hours=6),
+            requires_spending=False,
+            authorization_status=WorkOrder.AuthorizationStatus.NOT_REQUIRED,
+            status=WorkOrder.Status.ASSIGNED,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            result = process_deadline_risk_batch(limit=20)
+        self.assertTrue(result.ok)
+        self.assertGreaterEqual(result.count, 1)
+
+        day = work_order.deadline_at.date().isoformat()
+        event_key = f"{EVENT_DEADLINE_RISK}:work:{work_order.pk}:day:{day}"
+        deliveries = NotificationDelivery.objects.filter(event_key=event_key)
+        self.assertTrue(deliveries.exists())
+        recipients = set(deliveries.values_list("recipient_id", flat=True))
+        self.assertIn(assignee_user.pk, recipients)
+        self.assertIn(op_user.pk, recipients)
+
+        # Idempotent: second run does not create additional rows for same day
+        before = deliveries.count()
+        with self.captureOnCommitCallbacks(execute=True):
+            process_deadline_risk_batch(limit=20)
+        self.assertEqual(
+            NotificationDelivery.objects.filter(event_key=event_key).count(),
+            before,
+        )

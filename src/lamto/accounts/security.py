@@ -28,6 +28,7 @@ BREAK_GLASS_MAX_MINUTES = 60
 # Capabilities / route families blocked under break-glass and for pure tech admins.
 BUSINESS_ROUTE_PREFIXES = (
     "/s/cases/",
+    "/s/reports/",
     "/s/proposals/",
     "/s/work/",
     "/s/payments/",
@@ -38,6 +39,7 @@ FINANCE_DOCUMENT_URL_NAMES = frozenset(
     {
         "web:case-list",
         "web:case-detail",
+        "web:staff-report-detail",
         "web:proposal-list",
         "web:proposal-detail",
         "web:work-order-list",
@@ -46,7 +48,8 @@ FINANCE_DOCUMENT_URL_NAMES = frozenset(
         "web:emergency-authorize",
         "web:emergency-decide",
         "web:payment-list",
-        "web:payment-detail",
+        "web:payment-record-detail",
+        "web:payment-verify-detail",
         "web:payment-record",
         "web:audit-search",
         "web:audit-export",

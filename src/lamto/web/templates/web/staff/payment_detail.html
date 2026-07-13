@@ -9,7 +9,7 @@
   <ul class="card-list">
     {% for acceptance in pending_record %}
     <li>
-      <a class="card-link" href="{% url 'web:payment-detail' acceptance.pk %}">
+      <a class="card-link" href="{% url 'web:payment-record-detail' acceptance.pk %}">
         Acceptance #{{ acceptance.pk }} · {{ acceptance.actual_cost_vnd }} VND
       </a>
     </li>
@@ -23,7 +23,7 @@
   <ul class="card-list">
     {% for payment in pending_verify %}
     <li>
-      <a class="card-link" href="{% url 'web:payment-detail' payment.pk %}">
+      <a class="card-link" href="{% url 'web:payment-verify-detail' payment.pk %}">
         Payment #{{ payment.pk }} · {{ payment.amount_vnd }} VND
       </a>
     </li>
@@ -57,6 +57,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="record">
       {{ record_form.as_p }}
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
       <button type="submit" class="button">Record payment</button>
     </form>
   </div>
@@ -69,6 +70,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="verify">
       {{ verify_form.as_p }}
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
       <button type="submit" class="button">Verify payment</button>
     </form>
   </div>

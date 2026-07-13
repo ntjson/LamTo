@@ -174,7 +174,7 @@ def _manual_triage_items(building_id: int) -> list[ActionItem]:
                 summary=report.text[:120],
                 target_type="IssueReport",
                 target_id=report.pk,
-                url=reverse("web:case-detail", kwargs={"pk": report.pk}),
+                url=reverse("web:staff-report-detail", kwargs={"pk": report.pk}),
                 priority=10,
             )
         )
@@ -339,7 +339,7 @@ def _emergency_items(building_id: int, membership) -> list[ActionItem]:
                 summary=f"Work order #{wo.pk} · {wo.emergency_label or 'Emergency'}",
                 target_type="WorkOrder",
                 target_id=wo.pk,
-                url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
+                url=reverse("web:emergency-authorize", kwargs={"pk": wo.pk}),
                 priority=5,
             )
         )
@@ -356,7 +356,7 @@ def _emergency_items(building_id: int, membership) -> list[ActionItem]:
                 summary=f"Authorization #{auth.pk} deadline {auth.ratification_deadline}",
                 target_type="EmergencyAuthorization",
                 target_id=auth.pk,
-                url=reverse("web:work-order-detail", kwargs={"pk": auth.work_order_id}),
+                url=reverse("web:emergency-decide", kwargs={"pk": auth.pk}),
                 priority=5,
             )
         )
@@ -377,7 +377,7 @@ def _emergency_ratification_items(building_id: int) -> list[ActionItem]:
                 summary=f"Authorization #{auth.pk} deadline {auth.ratification_deadline}",
                 target_type="EmergencyAuthorization",
                 target_id=auth.pk,
-                url=reverse("web:work-order-detail", kwargs={"pk": auth.work_order_id}),
+                url=reverse("web:emergency-decide", kwargs={"pk": auth.pk}),
                 priority=5,
             )
         )
@@ -398,7 +398,7 @@ def _work_acceptance_items(building_id: int) -> list[ActionItem]:
                 summary=f"Work order #{wo.pk} awaiting acceptance",
                 target_type="WorkOrder",
                 target_id=wo.pk,
-                url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
+                url=reverse("web:work-accept", kwargs={"pk": wo.pk}),
                 priority=18,
             )
         )
@@ -423,7 +423,7 @@ def _payment_record_items(building_id: int) -> list[ActionItem]:
                 summary=f"Work order #{acceptance.work_order_id} · {acceptance.actual_cost_vnd} VND",
                 target_type="AcceptanceRecord",
                 target_id=acceptance.pk,
-                url=reverse("web:payment-detail", kwargs={"pk": acceptance.pk}),
+                url=reverse("web:payment-record-detail", kwargs={"pk": acceptance.pk}),
                 priority=16,
             )
         )
@@ -448,7 +448,7 @@ def _payment_verify_items(building_id: int) -> list[ActionItem]:
                 summary=f"Payment #{payment.pk} · {payment.amount_vnd} VND",
                 target_type="PaymentEvidence",
                 target_id=payment.pk,
-                url=reverse("web:payment-detail", kwargs={"pk": payment.pk}),
+                url=reverse("web:payment-verify-detail", kwargs={"pk": payment.pk}),
                 priority=14,
             )
         )
