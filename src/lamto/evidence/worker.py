@@ -16,7 +16,7 @@ from lamto.audit.services import record_audit
 from .chain import ChainClientError, ChainRecord, ChainTimeoutError, default_client
 from .models import BlockchainOutboxEvent
 
-LEASE_SECONDS = 60
+LEASE_SECONDS = 180
 
 def _json_safe(value):
     if isinstance(value, (bytes, bytearray)):

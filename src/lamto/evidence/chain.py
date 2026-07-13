@@ -147,6 +147,13 @@ class EvidenceRegistryClient:
             function=function,
             lock_key=RELAYER_NONCE_LOCK_KEY,
         )
+        # Persist hash ASAP so recovery does not rely only on records(eventId)
+        # if the receipt wait times out or the worker is interrupted.
+        if getattr(event, "pk", None) is not None and not getattr(
+            event, "transaction_hash", ""
+        ):
+            type(event).objects.filter(pk=event.pk).update(transaction_hash=tx_hash)
+            event.transaction_hash = tx_hash
         receipt = self._wait_for_receipt(tx_hash)
         self.last_receipt = dict(receipt)
         if int(receipt.get("status", 0)) != 1:
