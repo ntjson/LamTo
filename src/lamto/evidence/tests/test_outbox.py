@@ -453,6 +453,32 @@ class EvidenceOutboxTests(TestCase):
         with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute("TRUNCATE evidence_blockchainoutboxevent")
 
+    def test_trusted_executor_runs_the_signed_service_path(self):
+        membership = self.make_membership(suffix="trusted-executor")
+        account = Account.create()
+        challenge = begin_wallet_registration(membership)
+        proof = Account.sign_message(
+            encode_typed_data(full_message=challenge), account.key
+        ).signature.hex()
+        event_id = "0x" + "88" * 32
+        payload = self.valid_payload()
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL ROLE lamto_writer")
+            wallet = register_wallet(membership, account.address.lower(), proof)
+            event = queue_signed_event(
+                event_id,
+                EvidenceType.PROPOSAL_CREATED,
+                payload,
+                "0x" + "00" * 32,
+                membership,
+                self.sign_event(account, event_id, EvidenceType.PROPOSAL_CREATED, payload),
+            )
+
+        self.assertTrue(wallet.active)
+        self.assertEqual(event.signer_wallet_id, wallet.pk)
+
     def test_outbox_database_boundary_rejects_direct_rows_and_raw_truncate(self):
         with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute("TRUNCATE evidence_blockchainoutboxevent")

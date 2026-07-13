@@ -4,42 +4,59 @@ from django.db import migrations
 
 
 def grant_application_role(apps, schema_editor):
-    role = os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER")
-    if not role:
+    executor_role = os.getenv("POSTGRES_EXECUTOR_ROLE") or "lamto_writer"
+    roles = []
+    for role in (
+        os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER"),
+        executor_role,
+    ):
+        if role and role not in roles:
+            roles.append(role)
+    if not roles:
         return
-    quoted = schema_editor.connection.ops.quote_name(role)
     with schema_editor.connection.cursor() as cursor:
-        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [role])
-        if cursor.fetchone() is None:
-            raise RuntimeError(f"PostgreSQL application role {role!r} does not exist.")
-        cursor.execute(f"GRANT USAGE ON SCHEMA lamto_security TO {quoted}")
-        cursor.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {quoted}")
-        cursor.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {quoted}")
-        cursor.execute(
-            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {quoted}"
-        )
-        cursor.execute(
-            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {quoted}"
-        )
-        cursor.execute(
-            f"REVOKE INSERT, DELETE, TRUNCATE ON accounts_signerwallet, "
-            f"accounts_signerauthorizationrequest, evidence_blockchainoutboxevent FROM {quoted}"
-        )
-        cursor.execute(f"REVOKE UPDATE ON accounts_signerwallet, accounts_signerauthorizationrequest, evidence_blockchainoutboxevent FROM {quoted}")
-        cursor.execute(
-            f"GRANT UPDATE (status, transaction_hash, last_error, confirmed_at) "
-            f"ON accounts_signerauthorizationrequest TO {quoted}"
-        )
-        cursor.execute(
-            f"GRANT UPDATE (status, attempts, next_attempt_at, lease_expires_at, "
-            f"last_attempt_at, transaction_hash, receipt_status, receipt, last_error, "
-            f"chain_confirmed_block, chain_block_timestamp, submitted_at, confirmed_at, updated_at) "
-            f"ON evidence_blockchainoutboxevent TO {quoted}"
-        )
+        for role in roles:
+            quoted = schema_editor.connection.ops.quote_name(role)
+            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [role])
+            if cursor.fetchone() is None:
+                raise RuntimeError(f"PostgreSQL runtime role {role!r} does not exist.")
+            cursor.execute(f"GRANT USAGE ON SCHEMA lamto_security TO {quoted}")
+            cursor.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {quoted}")
+            cursor.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {quoted}")
+            cursor.execute(
+                f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {quoted}"
+            )
+            cursor.execute(
+                f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {quoted}"
+            )
+            cursor.execute(
+                f"REVOKE INSERT, DELETE, TRUNCATE ON accounts_signerwallet, "
+                f"accounts_signerauthorizationrequest, evidence_blockchainoutboxevent FROM {quoted}"
+            )
+            cursor.execute(f"REVOKE UPDATE ON accounts_signerwallet, accounts_signerauthorizationrequest, evidence_blockchainoutboxevent FROM {quoted}")
+            if role == executor_role:
+                cursor.execute(f"GRANT UPDATE ON accounts_signerwallet TO {quoted}")
+            cursor.execute(
+                f"GRANT UPDATE (status, transaction_hash, last_error, confirmed_at) "
+                f"ON accounts_signerauthorizationrequest TO {quoted}"
+            )
+            cursor.execute(
+                f"GRANT UPDATE (status, attempts, next_attempt_at, lease_expires_at, "
+                f"last_attempt_at, transaction_hash, receipt_status, receipt, last_error, "
+                f"chain_confirmed_block, chain_block_timestamp, submitted_at, confirmed_at, updated_at) "
+                f"ON evidence_blockchainoutboxevent TO {quoted}"
+            )
+        if executor_role:
+            quoted_executor_role = schema_editor.connection.ops.quote_name(executor_role)
+            cursor.execute(
+                f"GRANT EXECUTE ON FUNCTION lamto_security.evidence_insert_outbox_event("
+                f"text, smallint, jsonb, text, text, text, bigint, bigint) TO {quoted_executor_role}"
+            )
 
 def provision_evidence_service_owner(apps, schema_editor):
     service_role = os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
     application_role = os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER")
+    executor_role = os.getenv("POSTGRES_EXECUTOR_ROLE") or "lamto_writer"
     quote_name = schema_editor.connection.ops.quote_name
     quoted_service_role = quote_name(service_role)
 
@@ -62,12 +79,16 @@ def provision_evidence_service_owner(apps, schema_editor):
             "GRANT USAGE, SELECT ON SEQUENCE evidence_blockchainoutboxevent_id_seq TO "
             + quoted_service_role
         )
-        if application_role:
-            if application_role == service_role:
-                raise RuntimeError("POSTGRES_APPLICATION_ROLE must be different from POSTGRES_SERVICE_ROLE.")
-            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [application_role])
-            if cursor.fetchone() is None:
-                raise RuntimeError(f"PostgreSQL application role {application_role!r} does not exist.")
+        for role, label in (
+            (application_role, "application"),
+            (executor_role, "executor"),
+        ):
+            if role:
+                if role == service_role:
+                    raise RuntimeError(f"POSTGRES_{label.upper()}_ROLE must be different from POSTGRES_SERVICE_ROLE.")
+                cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [role])
+                if cursor.fetchone() is None:
+                    raise RuntimeError(f"PostgreSQL {label} role {role!r} does not exist.")
 
 
 class Migration(migrations.Migration):

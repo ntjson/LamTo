@@ -9,6 +9,7 @@ def provision_signed_write_authorization(apps, schema_editor):
         raise RuntimeError("EVIDENCE_WRITE_SECRET or SECRET_KEY is required for signed writes.")
 
     service_role = os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
+    executor_role = os.getenv("POSTGRES_EXECUTOR_ROLE") or "lamto_writer"
     quote_name = schema_editor.connection.ops.quote_name
     quoted_service_role = quote_name(service_role)
 
@@ -32,6 +33,20 @@ def provision_signed_write_authorization(apps, schema_editor):
         )
         if cursor.fetchone() is None:
             cursor.execute(f"GRANT {quoted_service_role} TO {quote_name(current_user)}")
+
+        quoted_executor_role = None
+        if executor_role:
+            if executor_role == service_role:
+                raise RuntimeError("POSTGRES_EXECUTOR_ROLE must be different from POSTGRES_SERVICE_ROLE.")
+            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [executor_role])
+            if cursor.fetchone() is None:
+                raise RuntimeError(f"PostgreSQL executor role {executor_role!r} does not exist.")
+            quoted_executor_role = quote_name(executor_role)
+            cursor.execute(
+                "GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text), "
+                "lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) TO "
+                + quoted_executor_role
+            )
 
         cursor.execute(
             "GRANT SELECT ON TABLE lamto_security.write_authorization_secret TO "

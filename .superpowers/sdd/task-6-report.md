@@ -87,3 +87,5 @@ The pre-existing uncommitted Task 3 report SHA edit was preserved and excluded. 
 - Removed `EXECUTE` grants for `lamto_app` from the wallet and outbox procedures; the general runtime role can no longer turn the application/database HMAC into a raw SQL write capability.
 - Added forward revoke migrations for databases that already applied the earlier runtime grants, including compatibility for legacy procedure signatures.
 - Added a valid-token regression proving `lamto_app` cannot directly invoke either privileged procedure without the Python proof/schema/audit path.
+- Added a dedicated non-owner `lamto_writer` executor role for the transaction-bearing Django service path; the default environment uses it, while `lamto_app` remains restricted. A positive regression covers wallet registration and queueing through the real Python services in one transaction.
+- Fresh PostgreSQL bootstrap with the executor role plus the affected suite — 47 passed; upgrade migrations completed and left `lamto_app` without procedure execution while `lamto_writer` retained it.
