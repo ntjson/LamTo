@@ -1,0 +1,84 @@
+{% extends "web/staff/shell.html" %}
+{% block title %}Cases · LamTo{% endblock %}
+{% block content %}
+{% if list_mode %}
+<section class="panel">
+  <h1>Open reports</h1>
+  <ul class="card-list">
+    {% for report in open_reports %}
+    <li>
+      <a class="card-link" href="{% url 'web:case-detail' report.pk %}">
+        <p class="card-title">{{ report.text }}</p>
+        <p class="card-meta">{{ report.location_path_snapshot }}</p>
+      </a>
+    </li>
+    {% empty %}
+    <li><p>No open reports.</p></li>
+    {% endfor %}
+  </ul>
+</section>
+<section class="panel">
+  <h2>Active cases</h2>
+  <ul class="card-list">
+    {% for case in cases %}
+    <li>
+      <a class="card-link" href="{% url 'web:case-detail' case.pk %}">
+        <p class="card-title">Case #{{ case.pk }} · {{ case.category }}</p>
+        <p class="card-meta">Deadline {{ case.deadline_at }} · {{ case.urgency }}</p>
+      </a>
+    </li>
+    {% empty %}
+    <li><p>No active cases.</p></li>
+    {% endfor %}
+  </ul>
+</section>
+{% else %}
+<section class="panel">
+  <h1>{% if case %}Case #{{ case.pk }}{% else %}Report #{{ report.pk }}{% endif %}</h1>
+  {% if report %}
+  <dl class="detail-list">
+    <div><dt>Report</dt><dd>{{ report.text }}</dd></div>
+    <div><dt>Location</dt><dd>{{ report.location_path_snapshot }}</dd></div>
+    <div><dt>Status</dt><dd>{{ report.status }}</dd></div>
+  </dl>
+  {% endif %}
+  {% if case %}
+  <dl class="detail-list">
+    <div><dt>Category</dt><dd>{{ case.category }}</dd></div>
+    <div><dt>Urgency</dt><dd>{{ case.urgency }}</dd></div>
+    <div><dt>Department</dt><dd>{{ case.department }}</dd></div>
+    <div><dt>Deadline</dt><dd>{{ case.deadline_at }}</dd></div>
+  </dl>
+  <h2>Work orders</h2>
+  <ul class="card-list">
+    {% for wo in work_orders %}
+    <li>
+      <a class="card-link" href="{% url 'web:work-order-detail' wo.pk %}">
+        Work order #{{ wo.pk }} · {{ wo.status }}
+      </a>
+    </li>
+    {% empty %}
+    <li><p>No work orders yet.</p></li>
+    {% endfor %}
+  </ul>
+  {% if work_form %}
+  <h2>Create work order</h2>
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create_work_order">
+    {{ work_form.as_p }}
+    <button type="submit" class="button">Create work order</button>
+  </form>
+  {% endif %}
+  {% elif form %}
+  <h2>Confirm triage</h2>
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="confirm_triage">
+    {{ form.as_p }}
+    <button type="submit" class="button">Confirm triage</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

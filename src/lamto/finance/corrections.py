@@ -338,6 +338,12 @@ def create_correction(
             "replacement_payload_hash": correction.replacement_payload_hash,
         },
     )
+    try:
+        from lamto.notifications.hooks import notify_correction_status
+
+        notify_correction_status(correction, "PENDING")
+    except Exception:
+        pass
     return correction
 
 
@@ -434,6 +440,12 @@ def decide_correction(
             "event_id": event.event_id,
         },
     )
+    try:
+        from lamto.notifications.hooks import notify_correction_status
+
+        notify_correction_status(correction, decision)
+    except Exception:
+        pass
     return row
 
 

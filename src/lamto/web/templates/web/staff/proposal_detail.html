@@ -1,0 +1,50 @@
+{% extends "web/staff/shell.html" %}
+{% block title %}Proposals · LamTo{% endblock %}
+{% block content %}
+{% if list_mode %}
+<section class="panel">
+  <h1>Proposals</h1>
+  <ul class="card-list">
+    {% for proposal in proposals %}
+    <li>
+      <a class="card-link" href="{% url 'web:proposal-detail' proposal.pk %}">
+        <p class="card-title">Proposal #{{ proposal.pk }} · {{ proposal.status }}</p>
+        <p class="card-meta">
+          {% if proposal.current_version %}{{ proposal.current_version.amount_vnd }} VND · {{ proposal.current_version.contractor_name }}{% endif %}
+        </p>
+      </a>
+    </li>
+    {% empty %}
+    <li><p>No proposals.</p></li>
+    {% endfor %}
+  </ul>
+</section>
+{% else %}
+<section class="panel">
+  <h1>Proposal #{{ proposal.pk }}</h1>
+  <dl class="detail-list">
+    <div><dt>Status</dt><dd>{{ proposal.status }}</dd></div>
+    <div><dt>Mode</dt><dd>{{ proposal.mode }}</dd></div>
+    {% if version %}
+    <div><dt>Amount</dt><dd>{{ version.amount_vnd }} VND</dd></div>
+    <div><dt>Contractor</dt><dd>{{ version.contractor_name }}</dd></div>
+    <div><dt>Snapshot hash</dt><dd><code>{{ version.snapshot_hash }}</code></dd></div>
+    <div><dt>Verification</dt><dd>{{ version.verification_label|default:"—" }}</dd></div>
+    {% endif %}
+  </dl>
+
+  {% if can_approve and form and version %}
+  <div class="signed-box">
+    <h2>Signed decision</h2>
+    <p class="hint">Canonical snapshot hash: <code>{{ version.snapshot_hash }}</code></p>
+    <pre id="snapshot-json">{{ version.snapshot }}</pre>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="button">Submit decision</button>
+    </form>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "web/staff/shell.html" %}
+{% block title %}Work order · LamTo{% endblock %}
+{% block content %}
+{% if list_mode %}
+<section class="panel">
+  <h1>Work orders</h1>
+  <ul class="card-list">
+    {% for wo in work_orders %}
+    <li>
+      <a class="card-link" href="{% url 'web:work-order-detail' wo.pk %}">
+        <p class="card-title">Work order #{{ wo.pk }} · {{ wo.status }}</p>
+        <p class="card-meta">Deadline {{ wo.deadline_at }}</p>
+      </a>
+    </li>
+    {% empty %}
+    <li><p>No work orders.</p></li>
+    {% endfor %}
+  </ul>
+</section>
+{% else %}
+<section class="panel">
+  <h1>Work order #{{ work_order.pk }}</h1>
+  <dl class="detail-list">
+    <div><dt>Status</dt><dd>{{ work_order.status }}</dd></div>
+    <div><dt>Authorization</dt><dd>{{ work_order.authorization_status }}</dd></div>
+    <div><dt>Priority</dt><dd>{{ work_order.priority }}</dd></div>
+    <div><dt>Deadline</dt><dd>{{ work_order.deadline_at }}</dd></div>
+    <div><dt>Verification</dt><dd>{{ work_order.verification_label|default:"—" }}</dd></div>
+    {% if work_order.emergency %}
+    <div><dt>Emergency</dt><dd>{{ work_order.emergency_label }}</dd></div>
+    {% endif %}
+  </dl>
+
+  {% if is_assignee and work_order.status == "ASSIGNED" %}
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="start">
+    <button type="submit" class="button">Start work</button>
+  </form>
+  {% endif %}
+
+  {% if is_assignee and work_order.status == "IN_PROGRESS" and form %}
+  <h2>Complete work</h2>
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="complete">
+    {{ form.as_p }}
+    <p class="hint">Provide before/after document version IDs (uploaded separately).</p>
+    <label>Before version IDs <input class="input" name="before_version_ids" multiple></label>
+    <label>After version IDs <input class="input" name="after_version_ids" multiple></label>
+    <button type="submit" class="button">Complete</button>
+  </form>
+  {% endif %}
+
+  {% if accept_form %}
+  <div class="signed-box">
+    <h2>Accept work (signed)</h2>
+    <p class="hint">Review the snapshot, then sign with your wallet via eth_signTypedData_v4.</p>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      {{ accept_form.as_p }}
+      <button type="submit" class="button">Submit acceptance</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if emergency_form %}
+  <div class="signed-box">
+    <h2>Authorize emergency (signed)</h2>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      {{ emergency_form.as_p }}
+      <button type="submit" class="button">Authorize</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if emergency_decide_form %}
+  <div class="signed-box">
+    <h2>Emergency ratification (signed)</h2>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      {{ emergency_decide_form.as_p }}
+      <button type="submit" class="button">Submit outcome</button>
+    </form>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

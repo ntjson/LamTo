@@ -205,6 +205,12 @@ def authorize_emergency(
         "accepted",
         {"event_id": event.event_id, "drill": authorization.drill},
     )
+    try:
+        from lamto.notifications.hooks import notify_emergency_authorized
+
+        notify_emergency_authorized(authorization)
+    except Exception:
+        pass
     return authorization
 
 
@@ -290,6 +296,12 @@ def decide_emergency(
                 "accepted",
                 {"event_id": event.event_id},
             )
+            try:
+                from lamto.notifications.hooks import notify_emergency_outcome
+
+                notify_emergency_outcome(outcome)
+            except Exception:
+                pass
             return outcome
     if late:
         record_audit(

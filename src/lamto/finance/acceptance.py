@@ -280,4 +280,10 @@ def accept_work(
             "event_id": event.event_id,
         },
     )
+    try:
+        from lamto.notifications.hooks import notify_work_accepted
+
+        notify_work_accepted(record)
+    except Exception:
+        pass
     return record

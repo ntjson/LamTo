@@ -19,12 +19,38 @@
   </dl>
 </section>
 
+<section class="panel" aria-labelledby="notices-heading">
+  <h2 id="notices-heading">In-app notices</h2>
+  {% if notices %}
+  <ul class="card-list">
+    {% for n in notices %}
+    <li>
+      <p class="card-title">{{ n.subject }}</p>
+      <p class="card-meta">{{ n.body }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="hint">No in-app notices yet. Required notices cannot be disabled.</p>
+  {% endif %}
+</section>
+
+<section class="panel" aria-labelledby="prefs-heading">
+  <h2 id="prefs-heading">Email notification preferences</h2>
+  <p class="hint">In-app notices for material events remain required. You may opt out of email only.</p>
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="prefs">
+    {{ pref_form.as_p }}
+    <button type="submit" class="button">Save preferences</button>
+  </form>
+</section>
+
 <section class="panel" aria-labelledby="security-heading">
   <h2 id="security-heading">Session and security</h2>
   <form method="post" action="{% url 'logout' %}" class="stack-form">
     {% csrf_token %}
     <button type="submit" class="button button-secondary">Sign out</button>
   </form>
-  <p class="hint">Notification preferences and unread notices will appear here in a later release.</p>
 </section>
 {% endblock %}

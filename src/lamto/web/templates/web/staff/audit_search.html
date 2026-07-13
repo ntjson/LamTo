@@ -1,0 +1,86 @@
+{% extends "web/staff/shell.html" %}
+{% block title %}Audit search · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Audit search</h1>
+  <p class="hint">Read-only path from ledger entry to reports, documents, signers, and integrity. Verify appends an observation only.</p>
+  <form method="get" class="stack-form">
+    <label for="entry">Published ledger entry ID
+      <input class="input" id="entry" name="entry" value="{{ search_entry_id }}" inputmode="numeric">
+    </label>
+    <button type="submit" class="button">Search</button>
+  </form>
+</section>
+
+{% if outbox_event %}
+<section class="panel">
+  <h2>Outbox event #{{ outbox_event.pk }}</h2>
+  <dl class="detail-list">
+    <div><dt>Event ID</dt><dd><code>{{ outbox_event.event_id }}</code></dd></div>
+    <div><dt>Status</dt><dd>{{ outbox_event.status }}</dd></div>
+    <div><dt>Tx</dt><dd>{{ outbox_event.transaction_hash|default:"—" }}</dd></div>
+    <div><dt>Error</dt><dd>{{ outbox_event.last_error|default:"—" }}</dd></div>
+  </dl>
+</section>
+{% endif %}
+
+{% if entry %}
+<section class="panel">
+  <h2>Ledger entry #{{ entry.pk }}</h2>
+  <dl class="detail-list">
+    <div><dt>Actual cost</dt><dd>{{ entry.actual_cost_vnd }} VND</dd></div>
+    <div><dt>Contractor</dt><dd>{{ entry.contractor_name }}</dd></div>
+    <div><dt>Case</dt><dd>#{{ entry.case_id }}</dd></div>
+    <div><dt>Work order</dt><dd>#{{ entry.work_order_id }}</dd></div>
+    <div><dt>Proposal</dt><dd>#{{ entry.proposal_id }}</dd></div>
+    <div><dt>Integrity</dt><dd>{{ entry.effective_integrity_status }}</dd></div>
+    <div><dt>Recomputed fund balance</dt><dd>{% if recomputed_balance is not None %}{{ recomputed_balance }} VND{% else %}—{% endif %}</dd></div>
+  </dl>
+
+  <h3>Document hashes (original vs redacted)</h3>
+  <ul>
+    {% for doc in doc_hashes %}
+    <li>{{ doc.variant }} · {{ doc.filename }} · <code>{{ doc.sha256 }}</code></li>
+    {% empty %}
+    <li>None</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Signer addresses</h3>
+  <ul>
+    {% for addr in signer_addresses %}
+    <li><code>{{ addr }}</code></li>
+    {% empty %}
+    <li>None</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Transaction IDs</h3>
+  <ul>
+    {% for tx in transaction_ids %}
+    <li><code>{{ tx }}</code></li>
+    {% empty %}
+    <li>None</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Integrity observations</h3>
+  <ul>
+    {% for obs in observations %}
+    <li>{{ obs.observed_at }} · {{ obs.result }} · docs={{ obs.checked_document_hashes|length }} · events={{ obs.checked_chain_event_ids|length }}</li>
+    {% empty %}
+    <li>No observations yet.</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="verify">
+    <input type="hidden" name="entry" value="{{ entry.pk }}">
+    <button type="submit" class="button">Run integrity verify</button>
+  </form>
+</section>
+{% elif search_entry_id %}
+<section class="panel"><p>No ledger entry found for that ID in this building.</p></section>
+{% endif %}
+{% endblock %}

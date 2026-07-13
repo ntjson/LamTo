@@ -28,6 +28,8 @@ from lamto.maintenance.models import (
 )
 from lamto.maintenance.ratings import ELIGIBLE_STATUSES
 from lamto.web.forms.resident import ResidentReportForm, WorkRatingForm
+from lamto.notifications.models import NotificationDelivery
+from lamto.web.forms.staff import NotificationPreferenceForm
 
 
 def _active_occupancy(user):
@@ -414,9 +416,22 @@ def ledger_detail(request, pk):
 
 
 @login_required
-@require_GET
+@require_http_methods(["GET", "POST"])
 def account(request):
     occupancy = _require_resident(request.user)
+    pref_form = NotificationPreferenceForm(request.POST or None, user=request.user)
+    if request.method == "POST" and request.POST.get("action") == "prefs" and pref_form.is_valid():
+        pref_form.save()
+        messages.success(request, "Notification preferences saved.")
+        return redirect("web:account")
+    notices = (
+        NotificationDelivery.objects.filter(
+            recipient=request.user,
+            channel=NotificationDelivery.Channel.IN_APP,
+            status=NotificationDelivery.Status.AVAILABLE,
+        )
+        .order_by("-created_at")[:20]
+    )
     return render(
         request,
         "web/resident/account.html",
@@ -424,6 +439,8 @@ def account(request):
             "occupancy": occupancy,
             "user_obj": request.user,
             "nav_active": "account",
+            "pref_form": pref_form,
+            "notices": notices,
         },
     )
 

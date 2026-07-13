@@ -1,10 +1,12 @@
 from django.urls import path
 
-from lamto.web.views import resident
+from lamto.web.views import auditor, board, maintenance, operator, representative, resident
+from lamto.web.views import staff_common
 
 app_name = "web"
 
 urlpatterns = [
+    # Resident
     path("", resident.home, name="resident-home"),
     path("r/", resident.home, name="resident-home-alias"),
     path("r/report/new/", resident.report_create, name="report-create"),
@@ -17,4 +19,28 @@ urlpatterns = [
     path("offline/", resident.offline, name="offline"),
     path("manifest.webmanifest", resident.manifest, name="manifest"),
     path("service-worker.js", resident.service_worker, name="service-worker"),
+    # Staff shell
+    path("s/", staff_common.staff_home, name="staff-home"),
+    path("s/inbox/", staff_common.action_inbox, name="action-inbox"),
+    path("s/membership/", staff_common.switch_membership, name="switch-membership"),
+    # Operator / shared case & proposal
+    path("s/cases/", operator.case_list, name="case-list"),
+    path("s/cases/<int:pk>/", operator.case_detail, name="case-detail"),
+    path("s/proposals/", operator.proposal_list, name="proposal-list"),
+    path("s/proposals/<int:pk>/", operator.proposal_detail, name="proposal-detail"),
+    # Maintenance / work
+    path("s/work/", maintenance.work_order_list, name="work-order-list"),
+    path("s/work/<int:pk>/", maintenance.work_order_detail, name="work-order-detail"),
+    path("s/work/<int:pk>/accept/", board.accept_work, name="work-accept"),
+    path("s/work/<int:pk>/emergency/authorize/", board.emergency_authorize, name="emergency-authorize"),
+    path(
+        "s/emergency/<int:pk>/decide/",
+        representative.emergency_decide,
+        name="emergency-decide",
+    ),
+    # Board payments
+    path("s/payments/", board.payment_list, name="payment-list"),
+    path("s/payments/<int:pk>/", board.payment_detail, name="payment-detail"),
+    # Auditor
+    path("s/audit/", auditor.audit_search, name="audit-search"),
 ]

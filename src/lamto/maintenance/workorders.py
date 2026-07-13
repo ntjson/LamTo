@@ -95,6 +95,12 @@ def create_work_order(case, operator, assignee, requires_spending):
         result="accepted",
         metadata={"case_id": case.pk, "assignee_id": assignee.pk, "requires_spending": requires_spending},
     )
+    try:
+        from lamto.notifications.hooks import notify_work_assigned
+
+        notify_work_assigned(work_order)
+    except Exception:
+        pass
     return work_order
 
 

@@ -1,0 +1,23 @@
+{% extends "web/staff/shell.html" %}
+{% block title %}Action inbox · LamTo{% endblock %}
+{% block content %}
+<section class="panel" aria-labelledby="inbox-heading">
+  <h1 id="inbox-heading">Action inbox</h1>
+  <p class="hint">Items for membership #{{ membership.pk }} only. Capabilities are never combined across memberships.</p>
+  {% if action_items %}
+  <ul class="card-list">
+    {% for item in action_items %}
+    <li>
+      <a class="card-link" href="{{ item.url }}">
+        <span class="status status-info"><span class="status-icon" aria-hidden="true">●</span> {{ item.title }}</span>
+        <p class="card-title">{{ item.summary }}</p>
+        <p class="card-meta">{{ item.target_type }} #{{ item.target_id }}</p>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No open actions for this membership.</p>
+  {% endif %}
+</section>
+{% endblock %}

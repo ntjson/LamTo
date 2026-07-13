@@ -197,6 +197,12 @@ def decide_proposal(
             "reason": approval.reason,
         },
     )
+    try:
+        from lamto.notifications.hooks import notify_proposal_decision
+
+        notify_proposal_decision(approval)
+    except Exception:
+        pass
     return approval
 
 

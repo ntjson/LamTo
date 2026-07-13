@@ -191,6 +191,12 @@ def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
         "quarantined",
         {"reason": reason},
     )
+    try:
+        from lamto.notifications.hooks import notify_quarantined_upload
+
+        notify_quarantined_upload(quarantined)
+    except Exception:
+        pass
     return quarantined
 
 

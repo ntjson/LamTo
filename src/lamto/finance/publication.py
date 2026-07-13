@@ -679,4 +679,10 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
                 "actual_cost_vnd": entry.actual_cost_vnd,
             },
         )
+        try:
+            from lamto.notifications.hooks import notify_publication
+
+            notify_publication(entry)
+        except Exception:
+            pass
     return entry

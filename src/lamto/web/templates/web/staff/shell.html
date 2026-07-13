@@ -1,0 +1,74 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Staff · LamTo{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'web/app.css' %}">
+  <style>
+    body.staff { padding-bottom: 1rem; }
+    .staff-nav { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem; background: #1c2434; }
+    .staff-nav a { color: #fff; text-decoration: none; padding: .5rem .75rem; border-radius: 8px; min-height: 44px; display: inline-flex; align-items: center; }
+    .staff-nav a.is-active, .staff-nav a:hover { background: #2f3a8f; }
+    .membership-bar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; padding: .75rem 1rem; background: #eef1f8; border-bottom: 1px solid #d7dce8; }
+    .membership-bar select, .membership-bar button { min-height: 44px; }
+    .signed-box { border: 1px solid #d7dce8; border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fff; }
+    .signed-box pre { white-space: pre-wrap; word-break: break-all; font-size: .85rem; background: #f6f7fb; padding: .75rem; border-radius: 8px; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="staff">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" role="banner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">◆</span>
+      <span class="brand-name">LamTo Staff</span>
+    </div>
+    {% if membership %}
+    <p class="building-label">
+      {{ membership.organization.building.name }} · {{ membership.get_role_display }}
+    </p>
+    {% endif %}
+  </header>
+
+  <div class="membership-bar" role="region" aria-label="Active membership">
+    <form method="post" action="{% url 'web:switch-membership' %}" class="stack-form" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;width:100%;">
+      {% csrf_token %}
+      <label for="active-membership">Active membership</label>
+      <select id="active-membership" name="membership" class="input">
+        {% for m in memberships %}
+        <option value="{{ m.pk }}" {% if membership and m.pk == membership.pk %}selected{% endif %}>
+          {{ m.organization.building.name }} — {{ m.get_role_display }} (#{{ m.pk }})
+        </option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button type="submit" class="button button-secondary">Switch</button>
+    </form>
+  </div>
+
+  <nav class="staff-nav" role="navigation" aria-label="Staff">
+    {% for item in nav_items %}
+    <a class="{% if nav_active == item.label|lower or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}is-active{% endif %}"
+       href="{% url item.url_name %}">{{ item.label }}</a>
+    {% endfor %}
+    <a href="{% url 'web:account' %}">Account</a>
+  </nav>
+
+  {% if messages %}
+  <ul class="messages" role="status">
+    {% for message in messages %}
+    <li class="message message-{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <main id="main" class="site-main" role="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{% static 'web/wallet-signing.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -324,6 +324,12 @@ def record_payment(
             "event_id": event.event_id,
         },
     )
+    try:
+        from lamto.notifications.hooks import notify_payment_recorded
+
+        notify_payment_recorded(payment)
+    except Exception:
+        pass
     return payment
 
 
@@ -396,6 +402,12 @@ def verify_payment(
                     "reason": reason,
                 },
             )
+            try:
+                from lamto.notifications.hooks import notify_payment_verified
+
+                notify_payment_verified(verification)
+            except Exception:
+                pass
             return verification
     if denied:
         record_audit(

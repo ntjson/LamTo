@@ -124,6 +124,12 @@ def confirm_triage(report, operator, category, urgency, location, department, de
         result="accepted",
         metadata={"report_id": report.pk, "differences": differences},
     )
+    try:
+        from lamto.notifications.hooks import notify_triage_confirmed
+
+        notify_triage_confirmed(case, report)
+    except Exception:
+        pass
     return case
 
 

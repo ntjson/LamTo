@@ -85,4 +85,10 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
         result="accepted",
         metadata={"occupancy_id": occupancy.pk},
     )
+    try:
+        from lamto.notifications.hooks import notify_report_receipt
+
+        notify_report_receipt(report)
+    except Exception:
+        pass
     return report

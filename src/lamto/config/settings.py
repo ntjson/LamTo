@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'lamto.evidence',
     'lamto.maintenance',
     'lamto.web',
+    'lamto.notifications',
 ]
 
 MIDDLEWARE = [
@@ -200,3 +201,10 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # Local deploy-check defaults; production sets these via environment.
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+# Notifications / email (override in production)
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.locmem.EmailBackend"
+)
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@lamto.local")

@@ -1,0 +1,78 @@
+{% extends "web/staff/shell.html" %}
+{% block title %}Payments · LamTo{% endblock %}
+{% block content %}
+{% if list_mode %}
+<section class="panel">
+  <h1>Payments</h1>
+  {% if can_record %}
+  <h2>Record payment</h2>
+  <ul class="card-list">
+    {% for acceptance in pending_record %}
+    <li>
+      <a class="card-link" href="{% url 'web:payment-detail' acceptance.pk %}">
+        Acceptance #{{ acceptance.pk }} · {{ acceptance.actual_cost_vnd }} VND
+      </a>
+    </li>
+    {% empty %}
+    <li><p>No payments to record.</p></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if can_verify %}
+  <h2>Payment verification</h2>
+  <ul class="card-list">
+    {% for payment in pending_verify %}
+    <li>
+      <a class="card-link" href="{% url 'web:payment-detail' payment.pk %}">
+        Payment #{{ payment.pk }} · {{ payment.amount_vnd }} VND
+      </a>
+    </li>
+    {% empty %}
+    <li><p>No payments awaiting verification.</p></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% else %}
+<section class="panel">
+  <h1>
+    {% if payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %}
+  </h1>
+  <dl class="detail-list">
+    {% if acceptance %}
+    <div><dt>Work order</dt><dd>#{{ acceptance.work_order_id }}</dd></div>
+    <div><dt>Actual cost</dt><dd>{{ acceptance.actual_cost_vnd }} VND</dd></div>
+    {% endif %}
+    {% if payment %}
+    <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
+    <div><dt>Amount</dt><dd>{{ payment.amount_vnd }} VND</dd></div>
+    <div><dt>Status</dt><dd>{{ payment.external_status }}</dd></div>
+    {% endif %}
+  </dl>
+
+  {% if can_record and record_form %}
+  <div class="signed-box">
+    <h2>Record payment (signed)</h2>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="record">
+      {{ record_form.as_p }}
+      <button type="submit" class="button">Record payment</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if can_verify and verify_form %}
+  <div class="signed-box">
+    <h2>Payment verification (signed)</h2>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="verify">
+      {{ verify_form.as_p }}
+      <button type="submit" class="button">Verify payment</button>
+    </form>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

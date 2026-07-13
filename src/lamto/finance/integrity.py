@@ -199,4 +199,10 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
                     "details": details,
                 },
             )
+            try:
+                from lamto.notifications.hooks import notify_integrity_mismatch
+
+                notify_integrity_mismatch(entry, observation)
+            except Exception:
+                pass
         return observation
