@@ -36,9 +36,11 @@ class EmergencyAuthorization(InsertOnlyModel):
                 condition=models.Q(estimate_vnd__isnull=True) | models.Q(estimate_vnd__gt=0),
                 name="emergency_estimate_positive",
             ),
+            # Exact 24h equality is enforced in finance.0006 via PostgreSQL interval CHECK;
+            # Django state keeps the weaker F-expression form for cross-backend metadata.
             models.CheckConstraint(
                 condition=models.Q(ratification_deadline__gt=models.F("authorized_at")),
-                name="emergency_deadline_after_authorization",
+                name="emergency_deadline_exact_24h",
             ),
         ]
 

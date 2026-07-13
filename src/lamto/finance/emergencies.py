@@ -212,9 +212,19 @@ def _locked_authorization(authorization):
 
 
 def decide_emergency(
-    authorization, representative_membership, decision, reason, signature, event_id
+    authorization,
+    representative_membership,
+    decision,
+    reason,
+    signature,
+    event_id,
+    *,
+    now=None,
 ) -> EmergencyRatification:
-    now = timezone.now()
+    if now is None:
+        now = timezone.now()
+    if not isinstance(now, type(timezone.now())) or now.tzinfo is None:
+        raise ValidationError("Decision time must be timezone-aware.")
     late = False
     with transaction.atomic():
         authorization = _locked_authorization(authorization)
@@ -232,7 +242,7 @@ def decide_emergency(
                 late = True
             else:
                 raise ValidationError("Emergency already has a terminal outcome.")
-        if now > authorization.ratification_deadline:
+        if now >= authorization.ratification_deadline:
             late = True
         else:
             if decision not in {"RATIFY", "REJECT"}:
@@ -240,7 +250,7 @@ def decide_emergency(
             if not isinstance(reason, str) or not (reason := reason.strip()):
                 raise ValidationError("Emergency outcome reason is required.")
             payload = build_emergency_ratification_evidence_payload(
-                authorization, decision, reason
+                authorization, decision, reason, timestamp=now
             )
             event = queue_signed_event(
                 event_id,
@@ -276,7 +286,7 @@ def decide_emergency(
         record_audit(
             representative_membership.user,
             representative_membership,
-            "emergency.ratify",
+            "emergency.ratify" if decision == "RATIFY" else "emergency.reject",
             "EmergencyAuthorization",
             str(authorization.pk),
             "denied",
@@ -290,7 +300,7 @@ def mark_overdue_ratifications(now) -> int:
         raise ValidationError("Overdue check time must be timezone-aware.")
     with transaction.atomic():
         authorizations = EmergencyAuthorization.objects.select_for_update().filter(
-            ratification_deadline__lt=now,
+            ratification_deadline__lte=now,
         ).exclude(
             pk__in=EmergencyRatification.objects.values("authorization_id")
         )
@@ -314,11 +324,15 @@ def emergency_verification_label(work_order):
         authorization = work_order.emergency_authorization
     except EmergencyAuthorization.DoesNotExist:
         return _label(work_order.drill)
-    events = [authorization.outbox_event]
     try:
         outcome = authorization.ratification
     except EmergencyRatification.DoesNotExist:
         outcome = None
+    # Unsigned OVERDUE has no outbox event; keep pending until a later publisher
+    # snapshot can anchor that exact overdue fact.
+    if outcome is not None and not outcome.outbox_event_id:
+        return PENDING_ANCHORING_LABEL
+    events = [authorization.outbox_event]
     if outcome is not None and outcome.outbox_event_id:
         events.append(outcome.outbox_event)
     if any(event.status != BlockchainOutboxEvent.Status.CONFIRMED for event in events):

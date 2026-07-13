@@ -95,3 +95,56 @@ Expected RED on a fresh PostgreSQL test database: 7 tests found; 2 failures, 4 e
 - The new database constraint preserves the valid unsigned system-overdue row and rejects empty human signatures and mismatched decision/outcome pairs.
 - No Task 10 or unrelated source changes were made. The pre-existing dirty `.superpowers/sdd/task-3-report.md` remains untouched.
 - Minor finding retained as directed: a denied late decision still audits action `emergency.ratify` even when the attempted decision is `REJECT`; this correction pass did not widen scope to change it.
+
+## Fix pass 2 — decision-time binding, DB boundaries, overdue labels
+
+### Root cause evidence
+
+1. `build_emergency_ratification_evidence_payload()` defaulted `decision_timestamp` to `authorization.authorized_at`, and `decide_emergency()` always persisted `timezone.now()` while verifying that unauthenticated default. A signature for one decision time could therefore produce a record at another, and the 24-hour window was not signature-bound for the human outcome.
+2. A direct ORM/SQL update could set a requested emergency WorkOrder to `AUTHORIZED`. `start_work_order()` trusts that status, so paid work could start without a matching Board authorization/outbox transition.
+3. Partial emergency request identity (`emergency=True` alone) was accepted at the database. Deadline was only constrained as `>` authorization time, not exact `+ 24 hours`. An unsigned `OVERDUE` row could be inserted before the deadline. An unsigned overdue outcome rendered as `Blockchain anchored` when only the earlier authorization outbox was confirmed.
+4. Late denied decisions always audited `emergency.ratify`, including when the attempted decision was `REJECT`.
+
+### TDD RED evidence
+
+Regressions were present before production edits. Focused command:
+
+```bash
+SECRET_KEY=task9-fix2 POSTGRES_DB=lamto POSTGRES_USER=lamto POSTGRES_PASSWORD=lamto POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 CLAMAV_HOST=127.0.0.1 CLAMAV_PORT=3310 AI_TRIAGE_URL=https://triage.example.test/v1/triage AI_TRIAGE_TOKEN=test-token PRIVATE_STORAGE_ENDPOINT_URL=http://127.0.0.1:9000 PRIVATE_STORAGE_BUCKET=lamto-documents PRIVATE_STORAGE_ACCESS_KEY=lamto-local PRIVATE_STORAGE_SECRET_KEY=lamto-local-secret .venv/bin/python manage.py test lamto.finance.tests.test_emergencies -v 2 --noinput
+```
+
+Expected RED on a fresh PostgreSQL test database: 13 tests; 4 failures, 6 errors. Evidence included `decide_emergency() got an unexpected keyword argument 'now'`, `IntegrityError not raised` for direct AUTHORIZED / partial identity / premature OVERDUE / non-24h deadline, and overdue verification label `Blockchain anchored` instead of pending.
+
+### Minimal repair
+
+- Added keyword-only `now=` on `decide_emergency()` (default `timezone.now()`), validated it as timezone-aware, bound both the signed payload `decision_timestamp` and persisted `decided_at` to that value, and rejected decisions with `now >= ratification_deadline`.
+- Late denied audits now use `emergency.ratify` or `emergency.reject` matching the attempted decision.
+- `mark_overdue_ratifications()` selects authorizations with `ratification_deadline <= now` so the boundary matches human rejection at/after the deadline.
+- `emergency_verification_label()` keeps unsigned OVERDUE (no outcome outbox) as `Pending blockchain anchoring` even when the authorization outbox is confirmed.
+- Added `work_order_emergency_request_identity` CHECK requiring complete emergency request identity or a clean non-emergency row.
+- Added trigger `work_order_emergency_authorization_required` so emergency WorkOrders cannot become `AUTHORIZED` without a matching `EmergencyAuthorization` row.
+- Replaced the soft deadline CHECK with exact `authorized_at + interval '24 hours'` and added insert-time outcome temporal validation for OVERDUE/human decisions.
+- Updated the emergency-proposal fixture so it authorizes through the service path instead of forging partial emergency state.
+
+### GREEN verification
+
+- Focused fresh PostgreSQL run: 14 tests passed.
+- Affected suite: `.venv/bin/python manage.py test lamto.finance.tests.test_emergencies lamto.finance lamto.maintenance -v 1 --noinput` — 59 tests passed.
+- `manage.py makemigrations --check --dry-run finance maintenance` — no changes detected.
+- `git diff --check` — clean.
+
+### Changed files and migrations
+
+- `src/lamto/finance/emergencies.py`
+- `src/lamto/finance/models/emergencies.py`
+- `src/lamto/finance/migrations/0006_emergency_deadline_and_outcome_invariants.py`
+- `src/lamto/finance/tests/test_emergencies.py`
+- `src/lamto/finance/tests/test_proposals.py`
+- `src/lamto/maintenance/models.py`
+- `src/lamto/maintenance/migrations/0007_emergency_authorization_boundary.py`
+- `.superpowers/sdd/task-9-report.md`
+
+### Remaining intentionally application-trust-bound
+
+- ECDSA signature verification and JSON canonicalization remain in the application/outbox path; PostgreSQL enforces relational/temporal/identity invariants and the emergency AUTHORIZED transition boundary, not cryptography.
+- Task 10 (Foundry/OpenZeppelin contract work) remains gated until independent re-review of the full Task 9 range accepts these corrections.

@@ -212,7 +212,24 @@ class WorkOrder(models.Model):
                     | models.Q(requires_spending=True, authorization_status__in=["PENDING", "AUTHORIZED"])
                 ),
                 name="work_order_spending_authorization",
-            )
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        emergency=False,
+                        emergency_requested_at__isnull=True,
+                        emergency_requested_by__isnull=True,
+                        emergency_reason="",
+                    )
+                    | (
+                        models.Q(emergency=True)
+                        & models.Q(emergency_requested_at__isnull=False)
+                        & models.Q(emergency_requested_by__isnull=False)
+                        & ~models.Q(emergency_reason="")
+                    )
+                ),
+                name="work_order_emergency_request_identity",
+            ),
         ]
 
 

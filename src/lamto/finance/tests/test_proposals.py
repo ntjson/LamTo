@@ -5,7 +5,9 @@ from django.test import TestCase
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import PROPOSAL_CREATE
+from django.utils import timezone
+
+from lamto.accounts.capabilities import EMERGENCY_AUTHORIZE, PROPOSAL_CREATE, WORK_ASSIGN
 from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
 from lamto.accounts.services import grant_capability
 from lamto.documents.models import Document, DocumentVersion
@@ -13,6 +15,11 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
 from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
+from lamto.finance.emergencies import (
+    authorize_emergency,
+    build_emergency_authorization_evidence_typed_data,
+    request_emergency,
+)
 from lamto.maintenance.models import (
     BuildingLocation,
     IssueReport,
@@ -253,9 +260,43 @@ class ProposalVersionTests(TestCase):
 
     def test_emergency_submission_preserves_existing_authorization(self):
         operator, work_order, quotation, account = self.make_signed_proposal_inputs()
-        work_order.emergency = True
-        work_order.authorization_status = WorkOrder.AuthorizationStatus.AUTHORIZED
-        work_order.save(update_fields=["emergency", "authorization_status"])
+        grant_capability(operator, WORK_ASSIGN)
+        board_user = get_user_model().objects.create_user(
+            email="board-emergency@example.test",
+            password="secret",
+            display_name="Board",
+        )
+        board_org = Organization.objects.create(
+            building=work_order.case.building,
+            name="Board",
+            kind=Organization.Kind.BOARD,
+        )
+        board = OrganizationMembership.objects.create(
+            user=board_user,
+            organization=board_org,
+            role=OrganizationMembership.Role.BOARD,
+        )
+        grant_capability(board, EMERGENCY_AUTHORIZE)
+        board_account = Account.create()
+        challenge = begin_wallet_registration(board)
+        proof = Account.sign_message(
+            encode_typed_data(full_message=challenge), board_account.key
+        ).signature.hex()
+        register_wallet(board, board_account.address, proof)
+
+        requested = request_emergency(work_order, operator, "Active water leak")
+        authorized_at = requested.emergency_requested_at or timezone.now()
+        auth_event_id = "0x" + "e1" * 32
+        typed_data = build_emergency_authorization_evidence_typed_data(
+            requested, board, 9_200_000, auth_event_id, timestamp=authorized_at
+        )
+        auth_signature = Account.sign_message(
+            encode_typed_data(full_message=typed_data), board_account.key
+        ).signature.hex()
+        authorize_emergency(
+            requested, board, 9_200_000, auth_signature, auth_event_id, now=authorized_at
+        )
+
         proposal = create_proposal(work_order, operator)
         signature, event_id = self.signed_submission(proposal, account, quotation)
 
