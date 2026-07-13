@@ -34,6 +34,19 @@ def provision_signed_write_authorization(apps, schema_editor):
         if cursor.fetchone() is None:
             cursor.execute(f"GRANT {quoted_service_role} TO {quote_name(current_user)}")
 
+        if application_role:
+            if application_role == service_role:
+                raise RuntimeError("POSTGRES_APPLICATION_ROLE must be different from POSTGRES_SERVICE_ROLE.")
+            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [application_role])
+            if cursor.fetchone() is None:
+                raise RuntimeError(f"PostgreSQL application role {application_role!r} does not exist.")
+            quoted_application_role = quote_name(application_role)
+            cursor.execute(
+                "GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text), "
+                "lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) TO "
+                + quoted_application_role + ", " + quote_name(current_user)
+            )
+
         cursor.execute(
             "GRANT SELECT ON TABLE lamto_security.write_authorization_secret TO "
             + quoted_service_role
@@ -46,18 +59,13 @@ def provision_signed_write_authorization(apps, schema_editor):
             "ALTER FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) "
             "OWNER TO " + quoted_service_role
         )
-        if application_role:
-            if application_role == service_role:
-                raise RuntimeError("POSTGRES_APPLICATION_ROLE must be different from POSTGRES_SERVICE_ROLE.")
-            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [application_role])
-            if cursor.fetchone() is None:
-                raise RuntimeError(f"PostgreSQL application role {application_role!r} does not exist.")
-            quoted_application_role = quote_name(application_role)
-            cursor.execute(
-                "GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text), "
-                "lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) TO "
-                + quoted_application_role
-            )
+        cursor.execute("SET ROLE " + quoted_service_role)
+        cursor.execute(
+            "GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text), "
+            "lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) TO "
+            + quote_name(current_user)
+        )
+        cursor.execute("RESET ROLE")
 
 
 class Migration(migrations.Migration):

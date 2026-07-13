@@ -9,18 +9,11 @@ def provision_outbox_authorization(apps, schema_editor):
     quote_name = schema_editor.connection.ops.quote_name
     quoted_service_role = quote_name(service_role)
     with schema_editor.connection.cursor() as cursor:
+        cursor.execute("SELECT current_user")
+        current_role = quote_name(cursor.fetchone()[0])
         cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [service_role])
         if cursor.fetchone() is None:
             raise RuntimeError(f"PostgreSQL service role {service_role!r} does not exist.")
-        cursor.execute(
-            "GRANT SELECT ON TABLE lamto_security.write_authorization_secret TO "
-            + quoted_service_role
-        )
-        cursor.execute(
-            "ALTER FUNCTION lamto_security.evidence_insert_outbox_event("
-            "text, smallint, jsonb, text, text, text, bigint, bigint, text, text) OWNER TO "
-            + quoted_service_role
-        )
         if application_role:
             if application_role == service_role:
                 raise RuntimeError("POSTGRES_APPLICATION_ROLE must be different from POSTGRES_SERVICE_ROLE.")
@@ -30,8 +23,24 @@ def provision_outbox_authorization(apps, schema_editor):
             cursor.execute(
                 "GRANT EXECUTE ON FUNCTION lamto_security.evidence_insert_outbox_event("
                 "text, smallint, jsonb, text, text, text, bigint, bigint, text, text) TO "
-                + quote_name(application_role)
+                + quote_name(application_role) + ", " + current_role
             )
+        cursor.execute(
+            "GRANT SELECT ON TABLE lamto_security.write_authorization_secret TO "
+            + quoted_service_role
+        )
+        cursor.execute(
+            "ALTER FUNCTION lamto_security.evidence_insert_outbox_event("
+            "text, smallint, jsonb, text, text, text, bigint, bigint, text, text) OWNER TO "
+            + quoted_service_role
+        )
+        cursor.execute("SET ROLE " + quoted_service_role)
+        cursor.execute(
+            "GRANT EXECUTE ON FUNCTION lamto_security.evidence_insert_outbox_event("
+            "text, smallint, jsonb, text, text, text, bigint, bigint, text, text) TO "
+            + current_role
+        )
+        cursor.execute("RESET ROLE")
 
 
 class Migration(migrations.Migration):

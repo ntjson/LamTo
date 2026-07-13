@@ -66,7 +66,7 @@ The pre-existing uncommitted Task 3 report SHA edit was preserved and excluded. 
 
 - Replaced permissive field allowlists with required/optional schemas for every evidence type. IDs, positive integer versions, integer đồng amounts, booleans, UTC timestamps, enums, bytes32 links, and non-empty declared hash lists are validated before hashing or duplicate lookup.
 - Locked the active signing membership first and its active wallet second while queueing evidence; wallet revocation follows the same membership-before-wallet order.
-- Removed forgeable transaction GUC authorization. Wallet and outbox write procedures now live in a dedicated `lamto_security` schema, are owned by a separate NOLOGIN `POSTGRES_SERVICE_ROLE`, and are the only identities accepted by the insert/revocation triggers. Compose provisions the role for migrations and removes the migration role's temporary membership after ownership transfer.
+- Removed forgeable transaction GUC authorization. Wallet and outbox write procedures now live in a dedicated `lamto_security` schema, are owned by a separate NOLOGIN `POSTGRES_SERVICE_ROLE`, and are the only identities accepted by the insert/revocation triggers. Compose provisions the service role and gives the non-inheriting migration owner controlled admin-enabled membership for migrations.
 - Added regression coverage for complete event schemas, value-slot smuggling, malformed enums/timestamps/hash lists, and the old GUC bypass.
 
 ### Final verification
@@ -75,3 +75,9 @@ The pre-existing uncommitted Task 3 report SHA edit was preserved and excluded. 
 - `manage.py makemigrations --check --dry-run` — no changes detected.
 - `python -m compileall -q src/lamto/accounts src/lamto/evidence src/lamto/config` — passed.
 - `git diff --check` — passed.
+
+### Bootstrap ordering fix
+
+- Granted the runtime role's procedure privileges before transferring ownership to `lamto_service`; after transfer, used the service role to preserve the migration owner's explicit execute grant because PostgreSQL removes the former owner's ACL entry during ownership transfer.
+- Fresh PostgreSQL 17 bootstrap with the exact non-inheriting Compose roles plus `manage.py test lamto.evidence lamto.accounts lamto.audit -v 1 --noinput` — 46 passed.
+- `docker compose config --quiet`, `manage.py makemigrations --check --dry-run`, compileall, and `git diff --check` — passed.

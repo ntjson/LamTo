@@ -12,6 +12,8 @@ def grant_application_role(apps, schema_editor):
         cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [role])
         if cursor.fetchone() is None:
             raise RuntimeError(f"PostgreSQL application role {role!r} does not exist.")
+        cursor.execute("SELECT current_user")
+        current_role = schema_editor.connection.ops.quote_name(cursor.fetchone()[0])
         cursor.execute(f"GRANT USAGE ON SCHEMA lamto_security TO {quoted}")
         cursor.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {quoted}")
         cursor.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {quoted}")
@@ -36,7 +38,10 @@ def grant_application_role(apps, schema_editor):
             f"chain_confirmed_block, chain_block_timestamp, submitted_at, confirmed_at, updated_at) "
             f"ON evidence_blockchainoutboxevent TO {quoted}"
         )
-        cursor.execute(f"GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text), lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text), lamto_security.evidence_insert_outbox_event(text, smallint, jsonb, text, text, text, bigint, bigint) TO {quoted}")
+        cursor.execute(
+            f"GRANT EXECUTE ON FUNCTION lamto_security.evidence_insert_outbox_event("
+            f"text, smallint, jsonb, text, text, text, bigint, bigint) TO {quoted}, {current_role}"
+        )
 
 
 def provision_evidence_service_owner(apps, schema_editor):
@@ -149,6 +154,6 @@ class Migration(migrations.Migration):
             DROP FUNCTION lamto_security.evidence_insert_outbox_event(text, smallint, jsonb, text, text, text, bigint, bigint);
             """,
         ),
-        migrations.RunPython(provision_evidence_service_owner, migrations.RunPython.noop),
         migrations.RunPython(grant_application_role, migrations.RunPython.noop),
+        migrations.RunPython(provision_evidence_service_owner, migrations.RunPython.noop),
     ]
