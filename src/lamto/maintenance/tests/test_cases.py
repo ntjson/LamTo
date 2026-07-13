@@ -1,6 +1,9 @@
+import threading
+
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, close_old_connections, connection, transaction
+from django.test import TestCase, TransactionTestCase
 
 from lamto.accounts.capabilities import REPORT_TRIAGE
 from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
@@ -17,12 +20,13 @@ from lamto.maintenance.models import (
 from lamto.maintenance.triage import confirm_triage, group_report
 
 
-class CaseTests(TestCase):
+class CaseFixture:
     def setUp(self):
+        self.fixture_id = self._testMethodName
         self.building = Building.objects.create(name="Minh An Residence")
         self.location = BuildingLocation.objects.create(building=self.building, name="Lift 2")
         self.operator = get_user_model().objects.create_user(
-            email="operator@example.test", password="secret", display_name="Operator"
+            email=f"operator-{self.fixture_id}@example.test", password="secret", display_name="Operator"
         )
         organization = Organization.objects.create(
             building=self.building, name="Operator", kind=Organization.Kind.OPERATOR
@@ -34,15 +38,19 @@ class CaseTests(TestCase):
         )
         grant_capability(membership, REPORT_TRIAGE)
 
-    def make_report(self, number):
+    def make_report(self, number, building=None, location=None):
+        building = building or self.building
+        location = location or self.location
         resident = get_user_model().objects.create_user(
-            email=f"resident-{number}@example.test", password="secret", display_name="Resident"
+            email=f"resident-{number}-{self.fixture_id}@example.test",
+            password="secret",
+            display_name="Resident",
         )
         report = IssueReport.objects.create(
             reporter=resident,
-            unit=Unit.objects.create(building=self.building, label=f"A-{number}"),
+            unit=Unit.objects.create(building=building, label=f"A-{number}"),
             text="Elevator shakes",
-            selected_location=self.location,
+            selected_location=location,
             location_path_snapshot="Minh An Residence / Lift 2",
         )
         job = TriageJob.objects.create(report=report)
@@ -60,6 +68,9 @@ class CaseTests(TestCase):
             elapsed_ms=1,
         )
         return report
+
+
+class CaseTests(CaseFixture, TestCase):
 
     def test_confirmation_records_operator_difference_and_grouping_is_idempotent(self):
         first, second = self.make_report(1), self.make_report(2)
@@ -94,3 +105,132 @@ class CaseTests(TestCase):
 
         self.assertEqual(other_case.reports.get(), third)
         self.assertEqual(MaintenanceCase.objects.count(), 2)
+
+    def test_triage_rejects_unaffiliated_or_cross_building_operator_and_location(self):
+        report = self.make_report(1)
+        other_building = Building.objects.create(name="Other Residence")
+        other_location = BuildingLocation.objects.create(building=other_building, name="Lift 1")
+        other_operator = get_user_model().objects.create_user(
+            email="other-operator@example.test", password="secret", display_name="Other Operator"
+        )
+        membership = OrganizationMembership.objects.create(
+            user=other_operator,
+            organization=Organization.objects.create(
+                building=other_building, name="Other Operator", kind=Organization.Kind.OPERATOR
+            ),
+            role=OrganizationMembership.Role.OPERATOR,
+        )
+        grant_capability(membership, REPORT_TRIAGE)
+
+        with self.assertRaises(PermissionDenied):
+            confirm_triage(report, other_operator, "Elevator", "HIGH", self.location, "Maintenance", 60)
+        with self.assertRaises(PermissionDenied):
+            confirm_triage(
+                report,
+                get_user_model().objects.create_user(
+                    email="unaffiliated@example.test", password="secret", display_name="Unaffiliated"
+                ),
+                "Elevator",
+                "HIGH",
+                self.location,
+                "Maintenance",
+                60,
+            )
+        with self.assertRaisesMessage(ValidationError, "belong to the report building"):
+            confirm_triage(report, self.operator, "Elevator", "HIGH", other_location, "Maintenance", 60)
+
+    def test_grouping_rejects_cross_building_report(self):
+        case = confirm_triage(
+            self.make_report(1), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        other_building = Building.objects.create(name="Other Residence")
+        other_report = self.make_report(
+            2,
+            other_building,
+            BuildingLocation.objects.create(building=other_building, name="Lift 1"),
+        )
+
+        with self.assertRaisesMessage(ValidationError, "case building"):
+            group_report(case, other_report, self.operator)
+
+
+class CaseDatabaseConstraintTests(CaseFixture, TransactionTestCase):
+    available_apps = [
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "lamto.accounts",
+        "lamto.audit",
+        "lamto.maintenance",
+    ]
+
+    def _fixture_teardown(self):
+        # Immutable audit/document triggers correctly reject Django's TRUNCATE flush.
+        pass
+
+    def test_database_rejects_second_active_case_link_for_orm_raw_and_queryset_writes(self):
+        first, second = self.make_report(1), self.make_report(2)
+        first_case = confirm_triage(first, self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60)
+        second_case = confirm_triage(second, self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            CaseReport.objects.create(case=second_case, report=first, grouped_by=self.operator)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO maintenance_casereport (case_id, report_id, grouped_by_id, created_at) "
+                    "VALUES (%s, %s, %s, NOW())",
+                    [second_case.pk, first.pk, self.operator.pk],
+                )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            CaseReport.objects.filter(case=second_case, report=second).update(report=first)
+
+    def test_database_rejects_reactivating_case_that_conflicts_with_an_active_link(self):
+        report = self.make_report(1)
+        inactive_case = confirm_triage(
+            report, self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        inactive_case.active = False
+        inactive_case.save(update_fields=["active"])
+        other_case = confirm_triage(
+            self.make_report(2), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        CaseReport.objects.create(case=other_case, report=report, grouped_by=self.operator)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            MaintenanceCase.objects.filter(pk=inactive_case.pk).update(active=True)
+
+    def test_concurrent_grouping_allows_only_one_active_case(self):
+        first_case = confirm_triage(
+            self.make_report(1), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        second_case = confirm_triage(
+            self.make_report(2), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        target = self.make_report(3)
+        barrier = threading.Barrier(2)
+        outcomes = []
+
+        def group(case_id):
+            close_old_connections()
+            try:
+                barrier.wait()
+                group_report(
+                    MaintenanceCase.objects.get(pk=case_id),
+                    IssueReport.objects.get(pk=target.pk),
+                    get_user_model().objects.get(pk=self.operator.pk),
+                )
+            except ValidationError:
+                outcomes.append("rejected")
+            else:
+                outcomes.append("linked")
+            finally:
+                close_old_connections()
+
+        threads = [threading.Thread(target=group, args=(case.pk,)) for case in (first_case, second_case)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(sorted(outcomes), ["linked", "rejected"])
+        self.assertEqual(CaseReport.objects.filter(report=target).count(), 1)

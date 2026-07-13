@@ -165,6 +165,17 @@ class WorkOrder(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(requires_spending=False, authorization_status="NOT_REQUIRED")
+                    | models.Q(requires_spending=True, authorization_status__in=["PENDING", "AUTHORIZED"])
+                ),
+                name="work_order_spending_authorization",
+            )
+        ]
+
 
 class AppendOnlyModel(models.Model):
     class Meta:
