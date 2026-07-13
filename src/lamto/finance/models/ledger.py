@@ -77,6 +77,13 @@ class MaintenanceFundEntry(InsertOnlyModel):
         on_delete=models.PROTECT,
         related_name="fund_entries",
     )
+    correction = models.ForeignKey(
+        "Correction",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="fund_entries",
+    )
     source_key = models.CharField(max_length=128, unique=True)
     recorded_at = models.DateTimeField()
 
@@ -200,6 +207,15 @@ class PublishedLedgerEntry(InsertOnlyModel):
     @property
     def created_at(self):
         return self.published_at
+
+    @property
+    def effective_integrity_status(self):
+        latest = (
+            self.verification_observations.order_by("-observed_at", "-pk").first()
+        )
+        if latest is None:
+            return "UNCHECKED"
+        return latest.result
 
     class Meta:
         constraints = [
