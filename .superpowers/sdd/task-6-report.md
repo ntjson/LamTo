@@ -26,3 +26,26 @@
 ## Scope
 
 The pre-existing uncommitted Task 3 report SHA edit was preserved and excluded. Task 11 chain submission, receipt polling, retries, relayer/owner keys, and signer synchronization remain intentionally unimplemented.
+
+## Review fixes
+
+- Canonicalized proof/evidence signatures to exactly 65 bytes with `v` 27/28 and secp256k1 low-`s`, rejecting malformed/high-`s` values before recovery and storing normalized lowercase `0x` hex.
+- Moved complete event, payload-schema/hash, active-wallet, and signature validation before duplicate lookup; idempotency now compares every signed immutable field.
+- Added transaction-local service guards and PostgreSQL triggers for wallet insert/revocation/deletion and outbox insertion, plus outbox `BEFORE TRUNCATE` rejection. Delivery metadata remains mutable and signed identity remains immutable.
+- Replaced the private-key blacklist with per-`EvidenceType` field allowlists, nested-object rejection, and 32-byte hash/digest validation.
+- Added ORM, queryset, raw-SQL, audit, malformed duplicate, alternate-sensitive-key, and high-`s` regression coverage. No private keys are stored.
+
+### TDD and verification
+
+- Initial adversarial run: 23 tests, 12 expected failures across all five findings.
+- Additional hash-slot privacy test failed when raw report text was accepted under `report_snapshot_hash`, then passed after digest validation.
+- Focused signature/outbox run: 23 passed.
+- `manage.py test --keepdb lamto.evidence lamto.accounts lamto.audit -v 1 --noinput` — 40 passed.
+- `manage.py makemigrations --check --dry-run` — no changes detected.
+- `manage.py migrate --noinput` applied `accounts.0004` and `evidence.0002`; `manage.py migrate --check` passed.
+- `python -m compileall -q src/lamto/accounts src/lamto/evidence src/lamto/config` — passed.
+- `git diff --check` — passed.
+
+### Final fix commit
+
+- `64eb0b598bc9697f9850ac7051170f69617e1c8a` — `fix: harden signed evidence boundaries`.
