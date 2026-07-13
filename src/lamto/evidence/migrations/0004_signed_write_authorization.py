@@ -3,65 +3,22 @@ import os
 from django.db import migrations
 
 
-def grant_application_role(apps, schema_editor):
-    role = os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER")
-    if not role:
-        return
-    quoted = schema_editor.connection.ops.quote_name(role)
-    with schema_editor.connection.cursor() as cursor:
-        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [role])
-        if cursor.fetchone() is None:
-            raise RuntimeError(f"PostgreSQL application role {role!r} does not exist.")
-        cursor.execute(f"GRANT USAGE ON SCHEMA lamto_security TO {quoted}")
-        cursor.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {quoted}")
-        cursor.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {quoted}")
-        cursor.execute(
-            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {quoted}"
-        )
-        cursor.execute(
-            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {quoted}"
-        )
-        cursor.execute(
-            f"REVOKE INSERT, DELETE, TRUNCATE ON accounts_signerwallet, "
-            f"accounts_signerauthorizationrequest, evidence_blockchainoutboxevent FROM {quoted}"
-        )
-        cursor.execute(f"REVOKE UPDATE ON accounts_signerwallet, accounts_signerauthorizationrequest, evidence_blockchainoutboxevent FROM {quoted}")
-        cursor.execute(
-            f"GRANT UPDATE (status, transaction_hash, last_error, confirmed_at) "
-            f"ON accounts_signerauthorizationrequest TO {quoted}"
-        )
-        cursor.execute(
-            f"GRANT UPDATE (status, attempts, next_attempt_at, lease_expires_at, "
-            f"last_attempt_at, transaction_hash, receipt_status, receipt, last_error, "
-            f"chain_confirmed_block, chain_block_timestamp, submitted_at, confirmed_at, updated_at) "
-            f"ON evidence_blockchainoutboxevent TO {quoted}"
-        )
-        cursor.execute(f"GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text), lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text), lamto_security.evidence_insert_outbox_event(text, smallint, jsonb, text, text, text, bigint, bigint) TO {quoted}")
-
-
-def provision_evidence_service_owner(apps, schema_editor):
+def provision_outbox_authorization(apps, schema_editor):
     service_role = os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
     application_role = os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER")
     quote_name = schema_editor.connection.ops.quote_name
     quoted_service_role = quote_name(service_role)
-
     with schema_editor.connection.cursor() as cursor:
-        cursor.execute("SELECT current_user")
-        if cursor.fetchone()[0] == service_role:
-            raise RuntimeError("POSTGRES_SERVICE_ROLE must be different from the migration/application role.")
         cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [service_role])
         if cursor.fetchone() is None:
             raise RuntimeError(f"PostgreSQL service role {service_role!r} does not exist.")
         cursor.execute(
-            "ALTER FUNCTION lamto_security.evidence_insert_outbox_event(text, smallint, jsonb, text, text, text, bigint, bigint) OWNER TO "
+            "GRANT SELECT ON TABLE lamto_security.write_authorization_secret TO "
             + quoted_service_role
         )
         cursor.execute(
-            "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE evidence_blockchainoutboxevent TO "
-            + quoted_service_role
-        )
-        cursor.execute(
-            "GRANT USAGE, SELECT ON SEQUENCE evidence_blockchainoutboxevent_id_seq TO "
+            "ALTER FUNCTION lamto_security.evidence_insert_outbox_event("
+            "text, smallint, jsonb, text, text, text, bigint, bigint, text, text) OWNER TO "
             + quoted_service_role
         )
         if application_role:
@@ -70,24 +27,61 @@ def provision_evidence_service_owner(apps, schema_editor):
             cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [application_role])
             if cursor.fetchone() is None:
                 raise RuntimeError(f"PostgreSQL application role {application_role!r} does not exist.")
+            cursor.execute(
+                "GRANT EXECUTE ON FUNCTION lamto_security.evidence_insert_outbox_event("
+                "text, smallint, jsonb, text, text, text, bigint, bigint, text, text) TO "
+                + quote_name(application_role)
+            )
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("accounts", "0005_wallet_write_procedures"),
-        ("evidence", "0002_guard_outbox_transitions"),
+        ("accounts", "0006_signed_write_authorization"),
+        ("evidence", "0003_outbox_write_procedure"),
     ]
 
     operations = [
         migrations.RunSQL(
-            r"""
+            """
+            DROP FUNCTION lamto_security.evidence_insert_outbox_event(
+                text, smallint, jsonb, text, text, text, bigint, bigint
+            );
+
             CREATE FUNCTION lamto_security.evidence_insert_outbox_event(
                 p_event_id text, p_event_type smallint, p_payload jsonb, p_payload_hash text,
-                p_previous_hash text, p_signature text, p_wallet_id bigint, p_membership_id bigint
+                p_previous_hash text, p_signature text, p_wallet_id bigint, p_membership_id bigint,
+                p_canonical_payload text, p_authorization text
             ) RETURNS bigint
             LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
             DECLARE event_pk bigint;
             BEGIN
+                IF p_payload IS DISTINCT FROM p_canonical_payload::jsonb THEN
+                    RAISE EXCEPTION 'canonical evidence payload does not match the queued payload'
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                IF p_authorization IS DISTINCT FROM (
+                    SELECT encode(
+                        sha256(
+                            secret || sha256(
+                                secret ||
+                                convert_to(
+                                    format(
+                                    'evidence-queue|%s|%s|%s|%s|%s|%s|%s|%s',
+                                    p_event_id, p_event_type, p_payload_hash, p_previous_hash,
+                                    p_signature, p_wallet_id, p_membership_id, p_canonical_payload
+                                    ),
+                                    'UTF8'
+                                )
+                            )
+                        ),
+                        'hex'
+                    )
+                    FROM lamto_security.write_authorization_secret
+                    WHERE id = TRUE
+                ) THEN
+                    RAISE EXCEPTION 'evidence queue authorization is invalid'
+                    USING ERRCODE = 'insufficient_privilege';
+                END IF;
                 PERFORM 1 FROM public.accounts_organizationmembership
                 WHERE id = p_membership_id AND active
                   AND role IN ('OPERATOR', 'BOARD', 'RESIDENT_REP') FOR UPDATE;
@@ -115,14 +109,16 @@ class Migration(migrations.Migration):
                 RETURN event_pk;
             END;
             $$;
-            REVOKE ALL ON FUNCTION lamto_security.evidence_insert_outbox_event(text, smallint, jsonb, text, text, text, bigint, bigint) FROM PUBLIC;
+            REVOKE ALL ON FUNCTION lamto_security.evidence_insert_outbox_event(
+                text, smallint, jsonb, text, text, text, bigint, bigint, text, text
+            ) FROM PUBLIC;
 
             CREATE OR REPLACE FUNCTION evidence_protect_outbox_identity()
             RETURNS trigger AS $$
             DECLARE service_owner name;
             BEGIN
                 SELECT pg_get_userbyid(proowner) INTO service_owner
-                FROM pg_proc WHERE oid = 'lamto_security.evidence_insert_outbox_event(text,smallint,jsonb,text,text,text,bigint,bigint)'::regprocedure;
+                FROM pg_proc WHERE oid = 'lamto_security.evidence_insert_outbox_event(text,smallint,jsonb,text,text,text,bigint,bigint,text,text)'::regprocedure;
                 IF TG_OP = 'INSERT' THEN
                     IF current_user IS DISTINCT FROM service_owner THEN
                         RAISE EXCEPTION 'outbox inserts require the queue procedure'
@@ -145,10 +141,11 @@ class Migration(migrations.Migration):
             END;
             $$ LANGUAGE plpgsql;
             """,
-            r"""
-            DROP FUNCTION lamto_security.evidence_insert_outbox_event(text, smallint, jsonb, text, text, text, bigint, bigint);
+            """
+            DROP FUNCTION lamto_security.evidence_insert_outbox_event(
+                text, smallint, jsonb, text, text, text, bigint, bigint, text, text
+            );
             """,
         ),
-        migrations.RunPython(provision_evidence_service_owner, migrations.RunPython.noop),
-        migrations.RunPython(grant_application_role, migrations.RunPython.noop),
+        migrations.RunPython(provision_outbox_authorization, migrations.RunPython.noop),
     ]

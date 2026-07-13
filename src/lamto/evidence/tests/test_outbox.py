@@ -1,9 +1,11 @@
+import json
 from datetime import timedelta
+from threading import Barrier, Thread
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import DatabaseError, IntegrityError, connection, transaction
-from django.test import TestCase, override_settings
+from django.db import DatabaseError, IntegrityError, close_old_connections, connection, transaction
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
@@ -386,6 +388,58 @@ class EvidenceOutboxTests(TestCase):
                 [membership.pk, Account.create().address],
             )
 
+    def test_runtime_role_cannot_call_privileged_write_procedures_without_proof(self):
+        membership = self.make_membership(suffix="runtime-procedure-boundary")
+        event_id = "0x" + "77" * 32
+        payload = self.valid_payload()
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL ROLE lamto_app")
+            cursor.execute(
+                "SELECT has_function_privilege(current_user, "
+                "'lamto_security.accounts_register_signer_wallet(bigint,text,text)', 'EXECUTE')"
+            )
+            self.assertTrue(cursor.fetchone()[0])
+            cursor.execute(
+                "SELECT has_function_privilege(current_user, "
+                "'lamto_security.evidence_insert_outbox_event(text,smallint,jsonb,text,text,text,bigint,bigint,text,text)', 'EXECUTE')"
+            )
+            self.assertTrue(cursor.fetchone()[0])
+            cursor.execute(
+                "SELECT pg_get_userbyid(relowner) FROM pg_class "
+                "WHERE oid = 'accounts_signerwallet'::regclass"
+            )
+            self.assertNotEqual(cursor.fetchone()[0], "lamto_app")
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT lamto_security.accounts_register_signer_wallet(%s, %s, %s)",
+                [membership.pk, Account.create().address, "bad-proof"],
+            )
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                """SELECT lamto_security.evidence_insert_outbox_event(
+                    %s, 1, %s::jsonb, %s, %s, %s, %s, %s, %s, %s
+                )""",
+                [
+                    event_id,
+                    json.dumps(payload),
+                    "0" * 64,
+                    "0x" + "00" * 32,
+                    "0x" + "11" * 65,
+                    1,
+                    membership.pk,
+                    json.dumps(payload),
+                    "bad-proof",
+                ],
+            )
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("ALTER TABLE accounts_signerwallet DISABLE TRIGGER signer_wallet_history")
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("TRUNCATE evidence_blockchainoutboxevent")
+
     def test_outbox_database_boundary_rejects_direct_rows_and_raw_truncate(self):
         with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute("TRUNCATE evidence_blockchainoutboxevent")
@@ -560,3 +614,101 @@ class EvidenceOutboxTests(TestCase):
             queue_signed_event(
                 event_id, 1, payload, "0x" + "00" * 32, outsider, signature
             )
+
+
+@override_settings(
+    BLOCKCHAIN_CHAIN_ID=1337,
+    EVIDENCE_CONTRACT_ADDRESS="0x0000000000000000000000000000000000000001",
+    WALLET_REGISTRATION_TTL_SECONDS=600,
+)
+class ConcurrentOutboxTests(TransactionTestCase):
+    def _fixture_teardown(self):
+        # The database trigger suite intentionally rejects Django's DELETE-based
+        # flush. This class has one test and the whole test database is dropped
+        # by the runner, so no trigger-bypassing cleanup is needed here.
+        pass
+
+    def make_membership(self, suffix):
+        building = Building.objects.create(name=f"Building {suffix}")
+        organization = Organization.objects.create(
+            building=building,
+            name=f"Organization {suffix}",
+            kind=Organization.Kind.OPERATOR,
+        )
+        user = get_user_model().objects.create_user(
+            email=f"{suffix}@example.test", password="secret", display_name=suffix
+        )
+        return OrganizationMembership.objects.create(
+            user=user, organization=organization, role=OrganizationMembership.Role.OPERATOR
+        )
+
+    def register(self, membership, account):
+        challenge = begin_wallet_registration(membership)
+        proof = Account.sign_message(
+            encode_typed_data(full_message=challenge), account.key
+        ).signature.hex()
+        return register_wallet(membership, account.address, proof)
+
+    def sign_event(self, account, event_id, payload):
+        typed = build_evidence_typed_data(
+            event_id,
+            EvidenceType.PROPOSAL_CREATED,
+            "0x" + payload_hash(payload),
+            "0x" + "00" * 32,
+        )
+        return Account.sign_message(
+            encode_typed_data(full_message=typed), account.key
+        ).signature.hex()
+
+    def test_concurrent_conflicting_event_id_raises_evidence_conflict_without_poisoning_transaction(self):
+        first_membership = self.make_membership("race-first")
+        second_membership = self.make_membership("race-second")
+        first_account = Account.create()
+        second_account = Account.create()
+        self.register(first_membership, first_account)
+        self.register(second_membership, second_account)
+        event_id = "0x" + "aa" * 32
+        payload = VALID_PAYLOADS[EvidenceType.PROPOSAL_CREATED]
+        signatures = (
+            self.sign_event(first_account, event_id, payload),
+            self.sign_event(second_account, event_id, payload),
+        )
+        memberships = (first_membership.pk, second_membership.pk)
+        barrier = Barrier(2)
+        outcomes = [None, None]
+
+        def submit(index):
+            close_old_connections()
+            try:
+                barrier.wait(timeout=5)
+                membership = OrganizationMembership.objects.get(pk=memberships[index])
+                with transaction.atomic():
+                    outcomes[index] = queue_signed_event(
+                        event_id,
+                        EvidenceType.PROPOSAL_CREATED,
+                        payload,
+                        "0x" + "00" * 32,
+                        membership,
+                        signatures[index],
+                    )
+            except BaseException as exc:  # surface thread failures in the assertion below
+                outcomes[index] = exc
+            finally:
+                close_old_connections()
+
+        threads = [Thread(target=submit, args=(index,)) for index in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        self.assertEqual(
+            sum(isinstance(outcome, BlockchainOutboxEvent) for outcome in outcomes), 1
+        )
+        self.assertEqual(
+            sum(isinstance(outcome, EvidenceConflict) for outcome in outcomes), 1
+        )
+        self.assertEqual(
+            BlockchainOutboxEvent.objects.filter(event_id=event_id).count(), 1
+        )

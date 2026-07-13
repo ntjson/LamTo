@@ -1,8 +1,17 @@
--- The application/migration role owns the Django tables.  Write procedures
--- run as this separate NOLOGIN role so ordinary SQL cannot forge their trigger
--- identity by setting a custom GUC.
+-- The bootstrap role supplied by the postgres image is never used by Django.
+-- Django migrations run as lamto_owner; web/worker processes run as lamto_app.
 DO $$
 BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'lamto_owner') THEN
+        CREATE ROLE lamto_owner
+            LOGIN PASSWORD 'lamto-owner'
+            NOSUPERUSER CREATEDB NOCREATEROLE NOINHERIT;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'lamto_app') THEN
+        CREATE ROLE lamto_app
+            LOGIN PASSWORD 'lamto-app'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+    END IF;
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'lamto_service') THEN
         CREATE ROLE lamto_service
             NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
@@ -10,4 +19,9 @@ BEGIN
 END
 $$;
 
-GRANT lamto_service TO lamto WITH ADMIN OPTION;
+ALTER DATABASE lamto OWNER TO lamto_owner;
+ALTER SCHEMA public OWNER TO lamto_owner;
+GRANT CONNECT ON DATABASE lamto TO lamto_owner, lamto_app;
+GRANT lamto_service TO lamto_owner WITH ADMIN OPTION;
+GRANT lamto_app TO lamto_owner WITH ADMIN OPTION;
+REVOKE CREATE ON SCHEMA public FROM lamto_app;

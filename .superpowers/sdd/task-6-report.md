@@ -23,6 +23,18 @@
 - `python -m compileall -q src/lamto/accounts src/lamto/evidence src/lamto/config` — passed.
 - `git diff --check` — passed.
 
+### Final review-fix pass
+
+- Added an independent database authorization proof for wallet and outbox procedures. PostgreSQL 17 verifies a nested keyed SHA-256 token over every immutable procedure argument; the runtime role cannot read the secret or forge a direct SQL call, while the Python proof/signature path remains authoritative.
+- Bootstrapped separate `lamto_owner`, `lamto_app`, and `lamto_service` roles in Compose. Protected tables and security functions are owned by non-runtime roles; the runtime role has no DDL/superuser/table-identity privileges and delivery updates remain column-limited.
+- Reworked wallet revocation to lock owner and authorizer memberships together in ascending ID order before locking the wallet. Added a real two-connection conflicting-event race test and an inner savepoint around outbox insertion so a unique-ID loser resolves to `EvidenceConflict` without poisoning its caller transaction.
+
+### Final review-fix verification
+
+- Fresh PostgreSQL migrations plus `manage.py test lamto.evidence lamto.accounts lamto.audit -v 1 --noinput` — 46 passed.
+- `docker compose config --quiet` — passed.
+- `manage.py makemigrations --check --dry-run`, compileall, and `git diff --check` — passed.
+
 ## Scope
 
 The pre-existing uncommitted Task 3 report SHA edit was preserved and excluded. Task 11 chain submission, receipt polling, retries, relayer/owner keys, and signer synchronization remain intentionally unimplemented.

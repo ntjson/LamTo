@@ -1,3 +1,4 @@
+import hashlib
 import json
 import re
 import secrets
@@ -122,6 +123,13 @@ def normalize_vnd(value) -> int:
     return value
 
 
+def _signed_write_authorization(scope, *parts) -> str:
+    message = "|".join((scope, *(str(part) for part in parts)))
+    secret = settings.EVIDENCE_WRITE_SECRET.encode()
+    inner = hashlib.sha256(secret + message.encode()).digest()
+    return hashlib.sha256(secret + inner).hexdigest()
+
+
 def _active_signing_membership(membership, *, lock=False):
     queryset = OrganizationMembership.objects.select_related("user", "organization")
     if lock:
@@ -217,10 +225,13 @@ def register_wallet(membership, checksum_address, proof_signature) -> SignerWall
             if recovered != address:
                 error = "Wallet proof does not match the submitted address."
         if error is None:
+            authorization = _signed_write_authorization(
+                "wallet-register", membership.pk, address
+            )
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT lamto_security.accounts_register_signer_wallet(%s, %s)",
-                    [membership.pk, address],
+                    "SELECT lamto_security.accounts_register_signer_wallet(%s, %s, %s)",
+                    [membership.pk, address, authorization],
                 )
                 wallet_id = cursor.fetchone()[0]
             wallet = SignerWallet.objects.get(pk=wallet_id)
@@ -240,16 +251,44 @@ def register_wallet(membership, checksum_address, proof_signature) -> SignerWall
 
 @transaction.atomic
 def revoke_wallet(wallet, authorizing_membership) -> SignerWallet:
-    authorizer = _active_signing_membership(authorizing_membership, lock=True)
+    authorizer_id = getattr(authorizing_membership, "pk", None)
+    owner_membership_id = (
+        SignerWallet.objects.filter(pk=getattr(wallet, "pk", None))
+        .values_list("membership_id", flat=True)
+        .first()
+    )
+    if authorizer_id is None or owner_membership_id is None:
+        raise PermissionDenied("Wallet revocation authorization is invalid.")
+    locked_memberships = {
+        membership.pk: membership
+        for membership in OrganizationMembership.objects.select_related(
+            "user", "organization"
+        )
+        .select_for_update()
+        .filter(pk__in={owner_membership_id, authorizer_id})
+        .order_by("pk")
+    }
+    authorizer = locked_memberships.get(authorizer_id)
+    owner_membership = locked_memberships.get(owner_membership_id)
+    if (
+        authorizer is None
+        or owner_membership is None
+        or not authorizer.active
+        or authorizer.role not in SIGNING_ROLES
+    ):
+        raise PermissionDenied("Membership is not eligible to authorize wallet revocation.")
     wallet = SignerWallet.objects.select_for_update().select_related("membership").get(pk=wallet.pk)
     if wallet.membership.organization_id != authorizer.organization_id:
         raise PermissionDenied("Wallet revocation requires the same organization.")
     if not wallet.active:
         return wallet
+    authorization = _signed_write_authorization(
+        "wallet-revoke", wallet.pk, authorizer.pk
+    )
     with connection.cursor() as cursor:
         cursor.execute(
-            "SELECT lamto_security.accounts_revoke_signer_wallet(%s, %s)",
-            [wallet.pk, authorizer.pk],
+            "SELECT lamto_security.accounts_revoke_signer_wallet(%s, %s, %s)",
+            [wallet.pk, authorizer.pk, authorization],
         )
     wallet.refresh_from_db()
     record_audit(
@@ -346,6 +385,7 @@ def queue_signed_event(
     if wallet is None:
         raise PermissionDenied("Membership has no active signing wallet.")
     normalized_payload = json.loads(canonical_bytes(payload))
+    canonical_payload = canonical_bytes(normalized_payload).decode("utf-8")
     typed_data = build_evidence_typed_data(event_id, event_type, "0x" + digest, previous_hash)
     try:
         signature = normalize_signature(signature)
@@ -354,22 +394,34 @@ def queue_signed_event(
         raise ValidationError("Evidence signature is invalid.") from exc
     if recovered != wallet.address:
         raise PermissionDenied("Evidence signature does not match the active wallet.")
+    authorization = _signed_write_authorization(
+        "evidence-queue",
+        event_id,
+        int(event_type),
+        digest,
+        previous_hash,
+        signature,
+        wallet.pk,
+        membership.pk,
+        canonical_payload,
+    )
     existing = BlockchainOutboxEvent.objects.filter(event_id=event_id).first()
     if existing:
         return _resolve_duplicate(
             existing, event_type, normalized_payload, digest, previous_hash, wallet, signature
         )
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """SELECT lamto_security.evidence_insert_outbox_event(
-                    %s, %s::smallint, %s::jsonb, %s, %s, %s, %s, %s
-                )""",
-                [event_id, event_type, json.dumps(normalized_payload), digest, previous_hash,
-                 signature, wallet.pk, membership.pk],
-            )
-            event_id_pk = cursor.fetchone()[0]
-        event = BlockchainOutboxEvent.objects.get(pk=event_id_pk)
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT lamto_security.evidence_insert_outbox_event(
+                        %s, %s::smallint, %s::jsonb, %s, %s, %s, %s, %s, %s, %s
+                    )""",
+                    [event_id, event_type, canonical_payload, digest, previous_hash,
+                     signature, wallet.pk, membership.pk, canonical_payload, authorization],
+                )
+                event_id_pk = cursor.fetchone()[0]
+            event = BlockchainOutboxEvent.objects.get(pk=event_id_pk)
     except IntegrityError:
         existing = BlockchainOutboxEvent.objects.select_related("signer_wallet").get(
             event_id=event_id

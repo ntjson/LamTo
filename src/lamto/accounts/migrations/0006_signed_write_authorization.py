@@ -3,7 +3,11 @@ import os
 from django.db import migrations
 
 
-def provision_service_owner(apps, schema_editor):
+def provision_signed_write_authorization(apps, schema_editor):
+    secret = os.getenv("EVIDENCE_WRITE_SECRET") or os.getenv("SECRET_KEY")
+    if not secret:
+        raise RuntimeError("EVIDENCE_WRITE_SECRET or SECRET_KEY is required for signed writes.")
+
     service_role = os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
     application_role = os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER")
     quote_name = schema_editor.connection.ops.quote_name
@@ -11,29 +15,18 @@ def provision_service_owner(apps, schema_editor):
 
     with schema_editor.connection.cursor() as cursor:
         cursor.execute(
-            "SELECT current_user, rolsuper, rolcreaterole, oid "
-            "FROM pg_roles WHERE rolname = current_user"
+            "INSERT INTO lamto_security.write_authorization_secret (id, secret) "
+            "VALUES (TRUE, %s) ON CONFLICT (id) DO NOTHING",
+            [secret.encode()],
         )
-        current_user, is_superuser, can_create_role, current_oid = cursor.fetchone()
-        if is_superuser:
-            raise RuntimeError("Run accountability migrations with a non-superuser schema owner.")
-        if service_role == current_user:
-            raise RuntimeError("POSTGRES_SERVICE_ROLE must be different from the migration/application role.")
         cursor.execute("SELECT oid FROM pg_roles WHERE rolname = %s", [service_role])
         service_oid_row = cursor.fetchone()
         if service_oid_row is None:
-            if not (is_superuser or can_create_role):
-                raise RuntimeError(
-                    f"PostgreSQL role {service_role!r} must be pre-created, "
-                    "or the migration role must have CREATEROLE."
-                )
-            cursor.execute(
-                f"CREATE ROLE {quoted_service_role} NOLOGIN NOSUPERUSER NOCREATEDB "
-                f"NOCREATEROLE NOINHERIT"
-            )
-            cursor.execute("SELECT oid FROM pg_roles WHERE rolname = %s", [service_role])
-            service_oid_row = cursor.fetchone()
-
+            raise RuntimeError(f"PostgreSQL service role {service_role!r} does not exist.")
+        cursor.execute("SELECT current_user, oid FROM pg_roles WHERE rolname = current_user")
+        current_user, current_oid = cursor.fetchone()
+        if current_user == service_role:
+            raise RuntimeError("POSTGRES_SERVICE_ROLE must be different from the migration/application role.")
         cursor.execute(
             "SELECT 1 FROM pg_auth_members WHERE roleid = %s AND member = %s",
             [service_oid_row[0], current_oid],
@@ -42,24 +35,16 @@ def provision_service_owner(apps, schema_editor):
             cursor.execute(f"GRANT {quoted_service_role} TO {quote_name(current_user)}")
 
         cursor.execute(
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "
-            f"accounts_organizationmembership, accounts_signerwallet, "
-            f"accounts_signerauthorizationrequest TO {quoted_service_role}"
-        )
-        cursor.execute(
-            f"GRANT USAGE, SELECT ON SEQUENCE accounts_signerwallet_id_seq, "
-            f"accounts_signerauthorizationrequest_id_seq TO {quoted_service_role}"
-        )
-        cursor.execute(
-            f"GRANT USAGE, CREATE ON SCHEMA lamto_security TO {quoted_service_role}"
-        )
-        cursor.execute(
-            "ALTER FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text) OWNER TO "
+            "GRANT SELECT ON TABLE lamto_security.write_authorization_secret TO "
             + quoted_service_role
         )
         cursor.execute(
-            "ALTER FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint) OWNER TO "
-            + quoted_service_role
+            "ALTER FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text) "
+            "OWNER TO " + quoted_service_role
+        )
+        cursor.execute(
+            "ALTER FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) "
+            "OWNER TO " + quoted_service_role
         )
         if application_role:
             if application_role == service_role:
@@ -69,28 +54,47 @@ def provision_service_owner(apps, schema_editor):
                 raise RuntimeError(f"PostgreSQL application role {application_role!r} does not exist.")
             quoted_application_role = quote_name(application_role)
             cursor.execute(
-                "GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text), "
-                "lamto_security.accounts_revoke_signer_wallet(bigint, bigint) TO "
+                "GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text), "
+                "lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) TO "
                 + quoted_application_role
             )
 
 
 class Migration(migrations.Migration):
-    dependencies = [("accounts", "0004_guard_wallet_transitions")]
+    dependencies = [("accounts", "0005_wallet_write_procedures")]
 
     operations = [
         migrations.RunSQL(
-            "CREATE SCHEMA IF NOT EXISTS lamto_security AUTHORIZATION CURRENT_USER"
-        ),
-        migrations.RunSQL(
-            r"""
-            CREATE FUNCTION lamto_security.accounts_register_signer_wallet(p_membership_id bigint, p_address text)
-            RETURNS bigint
+            """
+            CREATE TABLE IF NOT EXISTS lamto_security.write_authorization_secret (
+                id boolean PRIMARY KEY DEFAULT TRUE,
+                secret bytea NOT NULL,
+                CONSTRAINT one_write_authorization_secret CHECK (id)
+            );
+            REVOKE ALL ON TABLE lamto_security.write_authorization_secret FROM PUBLIC;
+
+            DROP FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text);
+            DROP FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint);
+
+            CREATE FUNCTION lamto_security.accounts_register_signer_wallet(
+                p_membership_id bigint, p_address text, p_authorization text
+            ) RETURNS bigint
             LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
             DECLARE
                 wallet_id bigint;
                 old_wallet record;
             BEGIN
+                IF p_authorization IS DISTINCT FROM (
+                    SELECT encode(
+                        sha256(secret || sha256(secret || convert_to(format('wallet-register|%s|%s', p_membership_id, p_address), 'UTF8'))),
+                        'hex'
+                    )
+                    FROM lamto_security.write_authorization_secret
+                    WHERE id = TRUE
+                ) THEN
+                    RAISE EXCEPTION 'wallet registration authorization is invalid'
+                    USING ERRCODE = 'insufficient_privilege';
+                END IF;
                 PERFORM 1 FROM public.accounts_organizationmembership
                 WHERE id = p_membership_id AND active AND role IN ('OPERATOR', 'BOARD', 'RESIDENT_REP')
                 FOR UPDATE;
@@ -126,13 +130,25 @@ class Migration(migrations.Migration):
             END;
             $$;
 
-            CREATE FUNCTION lamto_security.accounts_revoke_signer_wallet(p_wallet_id bigint, p_authorizer_id bigint)
-            RETURNS bigint
+            CREATE FUNCTION lamto_security.accounts_revoke_signer_wallet(
+                p_wallet_id bigint, p_authorizer_id bigint, p_authorization text
+            ) RETURNS bigint
             LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
             DECLARE
                 owner_membership_id bigint;
                 owner_organization_id bigint;
             BEGIN
+                IF p_authorization IS DISTINCT FROM (
+                    SELECT encode(
+                        sha256(secret || sha256(secret || convert_to(format('wallet-revoke|%s|%s', p_wallet_id, p_authorizer_id), 'UTF8'))),
+                        'hex'
+                    )
+                    FROM lamto_security.write_authorization_secret
+                    WHERE id = TRUE
+                ) THEN
+                    RAISE EXCEPTION 'wallet revocation authorization is invalid'
+                    USING ERRCODE = 'insufficient_privilege';
+                END IF;
                 SELECT membership_id INTO owner_membership_id
                 FROM public.accounts_signerwallet WHERE id = p_wallet_id;
                 IF owner_membership_id IS NULL THEN
@@ -166,15 +182,15 @@ class Migration(migrations.Migration):
             END;
             $$;
 
-            REVOKE ALL ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text) FROM PUBLIC;
-            REVOKE ALL ON FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint) FROM PUBLIC;
+            REVOKE ALL ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text) FROM PUBLIC;
+            REVOKE ALL ON FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text) FROM PUBLIC;
 
             CREATE OR REPLACE FUNCTION accounts_protect_wallet_history()
             RETURNS trigger AS $$
             DECLARE service_owner name;
             BEGIN
                 SELECT pg_get_userbyid(proowner) INTO service_owner
-                FROM pg_proc WHERE oid = 'lamto_security.accounts_register_signer_wallet(bigint,text)'::regprocedure;
+                FROM pg_proc WHERE oid = 'lamto_security.accounts_register_signer_wallet(bigint,text,text)'::regprocedure;
                 IF TG_OP = 'INSERT' THEN
                     IF current_user IS DISTINCT FROM service_owner THEN
                         RAISE EXCEPTION 'signer wallet inserts require the registration procedure'
@@ -203,7 +219,7 @@ class Migration(migrations.Migration):
             DECLARE service_owner name;
             BEGIN
                 SELECT pg_get_userbyid(proowner) INTO service_owner
-                FROM pg_proc WHERE oid = 'lamto_security.accounts_register_signer_wallet(bigint,text)'::regprocedure;
+                FROM pg_proc WHERE oid = 'lamto_security.accounts_register_signer_wallet(bigint,text,text)'::regprocedure;
                 IF TG_OP = 'INSERT' AND current_user IS DISTINCT FROM service_owner THEN
                     RAISE EXCEPTION 'signer authorization requests require the wallet procedure'
                     USING ERRCODE = 'check_violation';
@@ -219,20 +235,11 @@ class Migration(migrations.Migration):
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql;
-
-            DROP TRIGGER signer_authorization_request_identity ON accounts_signerauthorizationrequest;
-            CREATE TRIGGER signer_authorization_request_identity
-            BEFORE INSERT OR UPDATE OR DELETE ON accounts_signerauthorizationrequest
-            FOR EACH ROW EXECUTE FUNCTION accounts_protect_signer_request_identity();
             """,
-            r"""
-            DROP TRIGGER signer_authorization_request_identity ON accounts_signerauthorizationrequest;
-            CREATE TRIGGER signer_authorization_request_identity
-            BEFORE UPDATE OR DELETE ON accounts_signerauthorizationrequest
-            FOR EACH ROW EXECUTE FUNCTION accounts_protect_signer_request_identity();
-            DROP FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint);
-            DROP FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text);
+            """
+            DROP FUNCTION lamto_security.accounts_revoke_signer_wallet(bigint, bigint, text);
+            DROP FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text, text);
             """,
         ),
-        migrations.RunPython(provision_service_owner, migrations.RunPython.noop),
+        migrations.RunPython(provision_signed_write_authorization, migrations.RunPython.noop),
     ]
