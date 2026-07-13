@@ -1,7 +1,6 @@
 import json
 import re
 import secrets
-from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 from django.conf import settings
@@ -34,69 +33,77 @@ SIGNING_ROLES = {
     OrganizationMembership.Role.RESIDENT_REP,
 }
 HASH_RE = re.compile(r"(?:0x)?[0-9a-f]{64}\Z")
-EVIDENCE_PAYLOAD_FIELDS = {
-    EvidenceType.PROPOSAL_CREATED: frozenset({
-        "proposal_id", "proposal_version", "record_id", "work_order_id", "case_id",
-        "report_id", "amount_vnd", "estimated_amount_vnd", "proposal_snapshot_hash",
-        "work_snapshot_hash", "case_snapshot_hash", "report_snapshot_hash",
-        "quotation_original_hash", "quotation_redacted_hash", "photo_hash", "photo_hashes",
-    }),
-    EvidenceType.BOARD_APPROVAL: frozenset({
-        "proposal_hash", "decision", "actor_organization_id", "decision_timestamp",
-    }),
-    EvidenceType.REPRESENTATIVE_APPROVAL: frozenset({
-        "proposal_hash", "decision", "actor_organization_id", "decision_timestamp",
-    }),
-    EvidenceType.EMERGENCY_AUTHORIZATION: frozenset({
-        "work_order_id", "reason_digest", "available_estimate_vnd",
-        "estimate_document_hash", "authorization_timestamp", "drill",
-    }),
-    EvidenceType.EMERGENCY_OUTCOME: frozenset({
-        "decision", "result", "reason_digest", "deadline_result", "decision_timestamp", "drill",
-    }),
-    EvidenceType.WORK_ACCEPTANCE: frozenset({
-        "work_order_id", "actual_cost_vnd", "acceptance_timestamp", "invoice_original_hash",
-        "invoice_redacted_hash", "acceptance_report_original_hash",
-        "acceptance_report_redacted_hash", "photo_hashes", "drill",
-    }),
-    EvidenceType.PAYMENT_RECORDED: frozenset({
-        "payment_id", "amount_vnd", "bank_reference_digest", "external_status",
-        "external_timestamp", "payment_proof_original_hash", "payment_proof_redacted_hash",
-    }),
-    EvidenceType.PAYMENT_VERIFIED: frozenset({
-        "payment_hash", "decision", "verification_result", "verification_timestamp",
-    }),
-    EvidenceType.PUBLICATION_SNAPSHOT: frozenset({
-        "publication_id", "prerequisite_event_hashes", "emergency_outcome_hash",
-        "resident_payload_hash", "document_hashes", "publication_timestamp", "drill",
-    }),
-    EvidenceType.CORRECTION: frozenset({
-        "correction_id", "original_event_id", "original_hash", "replacement_hashes",
-        "reason_digest", "decision", "actor_organization_id", "publisher_snapshot_hash",
-        "correction_timestamp",
-    }),
-    EvidenceType.FUND_ENTRY: frozenset({
-        "fund_entry_id", "entry_type", "amount_vnd", "source_document_original_hash",
-        "source_document_redacted_hash", "maker_membership_id", "checker_membership_id",
-        "entry_timestamp",
-    }),
+UTC_RFC3339_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\Z")
+APPROVAL = frozenset({"APPROVE", "REJECT"})
+EVIDENCE_PAYLOAD_SCHEMAS = {
+    EvidenceType.PROPOSAL_CREATED: ({
+        "proposal_id": "id", "proposal_version": "positive_int", "record_id": "id",
+        "work_order_id": "id", "case_id": "id", "report_id": "id",
+        "amount_vnd": "money", "proposal_snapshot_hash": "hash",
+        "work_snapshot_hash": "hash", "case_snapshot_hash": "hash",
+        "report_snapshot_hash": "hash", "quotation_original_hash": "hash",
+        "quotation_redacted_hash": "hash",
+    }, {"estimated_amount_vnd": "money", "photo_hash": "hash", "photo_hashes": "hashes"}),
+    EvidenceType.BOARD_APPROVAL: ({
+        "proposal_hash": "hash", "decision": APPROVAL,
+        "actor_organization_id": "id", "decision_timestamp": "timestamp",
+    }, {}),
+    EvidenceType.REPRESENTATIVE_APPROVAL: ({
+        "proposal_hash": "hash", "decision": APPROVAL,
+        "actor_organization_id": "id", "decision_timestamp": "timestamp",
+    }, {}),
+    EvidenceType.EMERGENCY_AUTHORIZATION: ({
+        "work_order_id": "id", "reason_digest": "hash",
+        "available_estimate_vnd": "money", "authorization_timestamp": "timestamp",
+        "drill": "bool",
+    }, {"estimate_document_hash": "hash"}),
+    EvidenceType.EMERGENCY_OUTCOME: ({
+        "decision": frozenset({"RATIFY", "REJECT"}),
+        "result": frozenset({"RATIFIED", "REJECTED"}), "reason_digest": "hash",
+        "deadline_result": frozenset({"MET", "MISSED"}),
+        "decision_timestamp": "timestamp", "drill": "bool",
+    }, {}),
+    EvidenceType.WORK_ACCEPTANCE: ({
+        "work_order_id": "id", "actual_cost_vnd": "money",
+        "acceptance_timestamp": "timestamp", "invoice_original_hash": "hash",
+        "invoice_redacted_hash": "hash", "acceptance_report_original_hash": "hash",
+        "acceptance_report_redacted_hash": "hash", "photo_hashes": "hashes",
+        "drill": "bool",
+    }, {}),
+    EvidenceType.PAYMENT_RECORDED: ({
+        "payment_id": "id", "amount_vnd": "money", "bank_reference_digest": "hash",
+        "external_status": frozenset({"PENDING", "SETTLED", "FAILED", "REVERSED"}),
+        "external_timestamp": "timestamp", "payment_proof_original_hash": "hash",
+        "payment_proof_redacted_hash": "hash",
+    }, {}),
+    EvidenceType.PAYMENT_VERIFIED: ({
+        "payment_hash": "hash", "decision": APPROVAL,
+        "verification_result": frozenset({"MATCH", "MISMATCH"}),
+        "verification_timestamp": "timestamp",
+    }, {}),
+    EvidenceType.PUBLICATION_SNAPSHOT: ({
+        "publication_id": "id", "prerequisite_event_hashes": "hashes",
+        "resident_payload_hash": "hash", "document_hashes": "hashes",
+        "publication_timestamp": "timestamp", "drill": "bool",
+    }, {"emergency_outcome_hash": "hash"}),
+    EvidenceType.CORRECTION: ({
+        "correction_id": "id", "original_event_id": "bytes32",
+        "original_hash": "hash", "replacement_hashes": "hashes",
+        "reason_digest": "hash", "decision": APPROVAL,
+        "actor_organization_id": "id", "publisher_snapshot_hash": "hash",
+        "correction_timestamp": "timestamp",
+    }, {}),
+    EvidenceType.FUND_ENTRY: ({
+        "fund_entry_id": "id", "entry_type": frozenset({"OPENING", "INFLOW"}),
+        "amount_vnd": "money", "source_document_original_hash": "hash",
+        "source_document_redacted_hash": "hash", "maker_membership_id": "id",
+        "checker_membership_id": "id", "entry_timestamp": "timestamp",
+    }, {}),
 }
 
 
 class EvidenceConflict(Exception):
     pass
-
-
-@contextmanager
-def _db_transition(name):
-    setting = f"lamto.{name}_transition"
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT set_config(%s, 'on', true)", [setting])
-    try:
-        yield
-    finally:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT set_config(%s, 'off', true)", [setting])
 
 
 def utc_rfc3339(value: datetime) -> str:
@@ -210,24 +217,13 @@ def register_wallet(membership, checksum_address, proof_signature) -> SignerWall
             if recovered != address:
                 error = "Wallet proof does not match the submitted address."
         if error is None:
-            with _db_transition("wallet"), transaction.atomic():
-                for previous in SignerWallet.objects.select_for_update().filter(
-                    membership=membership, active=True
-                ):
-                    previous.active = False
-                    previous.revoked_at = now
-                    previous.save(update_fields=["active", "revoked_at"])
-                    SignerAuthorizationRequest.objects.get_or_create(
-                        wallet=previous,
-                        action=SignerAuthorizationRequest.Action.REVOKE,
-                        defaults={"requested_by": membership},
-                    )
-                wallet = SignerWallet.objects.create(membership=membership, address=address)
-            SignerAuthorizationRequest.objects.create(
-                wallet=wallet,
-                requested_by=membership,
-                action=SignerAuthorizationRequest.Action.AUTHORIZE,
-            )
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT lamto_security.accounts_register_signer_wallet(%s, %s)",
+                    [membership.pk, address],
+                )
+                wallet_id = cursor.fetchone()[0]
+            wallet = SignerWallet.objects.get(pk=wallet_id)
             record_audit(
                 membership.user,
                 membership,
@@ -244,21 +240,18 @@ def register_wallet(membership, checksum_address, proof_signature) -> SignerWall
 
 @transaction.atomic
 def revoke_wallet(wallet, authorizing_membership) -> SignerWallet:
-    wallet = SignerWallet.objects.select_for_update().select_related("membership").get(pk=wallet.pk)
     authorizer = _active_signing_membership(authorizing_membership, lock=True)
+    wallet = SignerWallet.objects.select_for_update().select_related("membership").get(pk=wallet.pk)
     if wallet.membership.organization_id != authorizer.organization_id:
         raise PermissionDenied("Wallet revocation requires the same organization.")
     if not wallet.active:
         return wallet
-    with _db_transition("wallet"), transaction.atomic():
-        wallet.active = False
-        wallet.revoked_at = timezone.now()
-        wallet.save(update_fields=["active", "revoked_at"])
-    SignerAuthorizationRequest.objects.get_or_create(
-        wallet=wallet,
-        action=SignerAuthorizationRequest.Action.REVOKE,
-        defaults={"requested_by": authorizer},
-    )
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT lamto_security.accounts_revoke_signer_wallet(%s, %s)",
+            [wallet.pk, authorizer.pk],
+        )
+    wallet.refresh_from_db()
     record_audit(
         authorizer.user,
         authorizer,
@@ -279,33 +272,48 @@ def _require_caller_transaction():
 
 
 def _validate_payload(event_type, payload):
-    allowed = EVIDENCE_PAYLOAD_FIELDS.get(event_type)
-    if allowed is None:
+    if not isinstance(event_type, int) or isinstance(event_type, bool):
+        raise ValueError("Evidence event type must be an integer from 1 through 11.")
+    schema = EVIDENCE_PAYLOAD_SCHEMAS.get(event_type)
+    if schema is None:
         raise ValueError("Evidence event type must be an integer from 1 through 11.")
     if not isinstance(payload, dict) or any(not isinstance(key, str) for key in payload):
         raise ValidationError("Evidence payload must be an object with known fields.")
-    if set(payload) - allowed:
+    required, optional = schema
+    if set(payload) - required.keys() - optional.keys():
         raise ValidationError("Evidence payload contains fields outside its event schema.")
-    for key, value in payload.items():
-        if key.endswith(("_hash", "_digest")) and (
-            not isinstance(value, str) or not HASH_RE.fullmatch(value)
-        ):
-            raise ValidationError("Evidence hashes and digests must be lowercase 32-byte hex.")
-        if key.endswith("_hashes") and (
-            not isinstance(value, list)
-            or any(not isinstance(item, str) or not HASH_RE.fullmatch(item) for item in value)
-        ):
-            raise ValidationError("Evidence hash lists must contain lowercase 32-byte hex.")
+    if missing := required.keys() - payload.keys():
+        raise ValidationError(f"Evidence payload is missing required fields: {', '.join(sorted(missing))}.")
+    for field, value in payload.items():
+        shape = required.get(field, optional.get(field))
+        valid = (
+            (shape == "id" and type(value) is int and value > 0)
+            or (shape == "positive_int" and type(value) is int and value > 0)
+            or (shape == "money" and type(value) is int and value >= 0)
+            or (shape == "bool" and type(value) is bool)
+            or (shape == "hash" and isinstance(value, str) and bool(HASH_RE.fullmatch(value)))
+            or (shape == "bytes32" and isinstance(value, str) and bool(BYTES32_RE.fullmatch(value)))
+            or (
+                shape == "hashes" and isinstance(value, list) and bool(value)
+                and all(isinstance(item, str) and HASH_RE.fullmatch(item) for item in value)
+            )
+            or (
+                shape == "timestamp" and isinstance(value, str)
+                and bool(UTC_RFC3339_RE.fullmatch(value))
+                and _is_valid_utc_timestamp(value)
+            )
+            or (isinstance(shape, frozenset) and type(value) is str and value in shape)
+        )
+        if not valid:
+            raise ValidationError(f"Evidence payload field {field!r} has an invalid value.")
 
-    def reject_nested_objects(value):
-        if isinstance(value, dict):
-            raise ValidationError("Nested evidence objects are not allowed; include hashes or IDs.")
-        if isinstance(value, list):
-            for item in value:
-                reject_nested_objects(item)
 
-    for value in payload.values():
-        reject_nested_objects(value)
+def _is_valid_utc_timestamp(value):
+    try:
+        datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
+    except ValueError:
+        return False
+    return True
 
 
 def _resolve_duplicate(existing, event_type, payload, digest, previous_hash, wallet, signature):
@@ -329,10 +337,12 @@ def queue_signed_event(
     previous_hash = lowercase_identifier(previous_hash)
     _validate_payload(event_type, payload)
     digest = payload_hash(payload)
-    membership = _active_signing_membership(membership)
+    membership = _active_signing_membership(membership, lock=True)
     if not BYTES32_RE.fullmatch(event_id) or not BYTES32_RE.fullmatch(previous_hash):
         raise ValidationError("Event ID and previous hash must be 0x-prefixed bytes32 values.")
-    wallet = SignerWallet.objects.filter(membership=membership, active=True).first()
+    wallet = SignerWallet.objects.select_for_update().filter(
+        membership=membership, active=True
+    ).first()
     if wallet is None:
         raise PermissionDenied("Membership has no active signing wallet.")
     normalized_payload = json.loads(canonical_bytes(payload))
@@ -350,12 +360,16 @@ def queue_signed_event(
             existing, event_type, normalized_payload, digest, previous_hash, wallet, signature
         )
     try:
-        with _db_transition("outbox"), transaction.atomic():
-            event = BlockchainOutboxEvent.objects.create(
-                event_id=event_id, event_type=event_type, payload=normalized_payload,
-                payload_hash=digest, previous_hash=previous_hash, signature=signature,
-                signer_wallet=wallet,
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """SELECT lamto_security.evidence_insert_outbox_event(
+                    %s, %s::smallint, %s::jsonb, %s, %s, %s, %s, %s
+                )""",
+                [event_id, event_type, json.dumps(normalized_payload), digest, previous_hash,
+                 signature, wallet.pk, membership.pk],
             )
+            event_id_pk = cursor.fetchone()[0]
+        event = BlockchainOutboxEvent.objects.get(pk=event_id_pk)
     except IntegrityError:
         existing = BlockchainOutboxEvent.objects.select_related("signer_wallet").get(
             event_id=event_id

@@ -49,3 +49,17 @@ The pre-existing uncommitted Task 3 report SHA edit was preserved and excluded. 
 ### Final fix commit
 
 - `64eb0b598bc9697f9850ac7051170f69617e1c8a` — `fix: harden signed evidence boundaries`.
+
+### Final review fixes
+
+- Replaced permissive field allowlists with required/optional schemas for every evidence type. IDs, positive integer versions, integer đồng amounts, booleans, UTC timestamps, enums, bytes32 links, and non-empty declared hash lists are validated before hashing or duplicate lookup.
+- Locked the active signing membership first and its active wallet second while queueing evidence; wallet revocation follows the same membership-before-wallet order.
+- Removed forgeable transaction GUC authorization. Wallet and outbox write procedures now live in a dedicated `lamto_security` schema, are owned by a separate NOLOGIN `POSTGRES_SERVICE_ROLE`, and are the only identities accepted by the insert/revocation triggers. Compose provisions the role for migrations and removes the migration role's temporary membership after ownership transfer.
+- Added regression coverage for complete event schemas, value-slot smuggling, malformed enums/timestamps/hash lists, and the old GUC bypass.
+
+### Final verification
+
+- Fresh PostgreSQL migration plus `manage.py test lamto.evidence lamto.accounts lamto.audit -v 1 --noinput` — 44 passed.
+- `manage.py makemigrations --check --dry-run` — no changes detected.
+- `python -m compileall -q src/lamto/accounts src/lamto/evidence src/lamto/config` — passed.
+- `git diff --check` — passed.

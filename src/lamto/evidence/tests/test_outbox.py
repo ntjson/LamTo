@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import IntegrityError, connection, transaction
+from django.db import DatabaseError, IntegrityError, connection, transaction
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from eth_account import Account
@@ -21,6 +21,7 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
 from lamto.evidence.services import (
     EvidenceConflict,
+    _validate_payload,
     begin_wallet_registration,
     queue_signed_event,
     register_wallet,
@@ -30,12 +31,82 @@ from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.evidence.tests.test_signatures import high_s_signature
 
 
+HASH = "a" * 64
+OTHER_HASH = "b" * 64
+TIMESTAMP = "2026-07-13T02:00:00.000000Z"
+VALID_PAYLOADS = {
+    EvidenceType.PROPOSAL_CREATED: {
+        "proposal_id": 1, "proposal_version": 1, "record_id": 2,
+        "work_order_id": 3, "case_id": 4, "report_id": 5,
+        "amount_vnd": 18_500_000, "proposal_snapshot_hash": HASH,
+        "work_snapshot_hash": HASH, "case_snapshot_hash": HASH,
+        "report_snapshot_hash": HASH, "quotation_original_hash": HASH,
+        "quotation_redacted_hash": HASH,
+    },
+    EvidenceType.BOARD_APPROVAL: {
+        "proposal_hash": HASH, "decision": "APPROVE",
+        "actor_organization_id": 1, "decision_timestamp": TIMESTAMP,
+    },
+    EvidenceType.REPRESENTATIVE_APPROVAL: {
+        "proposal_hash": HASH, "decision": "APPROVE",
+        "actor_organization_id": 1, "decision_timestamp": TIMESTAMP,
+    },
+    EvidenceType.EMERGENCY_AUTHORIZATION: {
+        "work_order_id": 1, "reason_digest": HASH,
+        "available_estimate_vnd": 1_000_000,
+        "authorization_timestamp": TIMESTAMP, "drill": False,
+    },
+    EvidenceType.EMERGENCY_OUTCOME: {
+        "decision": "RATIFY", "result": "RATIFIED", "reason_digest": HASH,
+        "deadline_result": "MET", "decision_timestamp": TIMESTAMP, "drill": False,
+    },
+    EvidenceType.WORK_ACCEPTANCE: {
+        "work_order_id": 1, "actual_cost_vnd": 1_000_000,
+        "acceptance_timestamp": TIMESTAMP, "invoice_original_hash": HASH,
+        "invoice_redacted_hash": HASH, "acceptance_report_original_hash": HASH,
+        "acceptance_report_redacted_hash": HASH, "photo_hashes": [HASH], "drill": False,
+    },
+    EvidenceType.PAYMENT_RECORDED: {
+        "payment_id": 1, "amount_vnd": 1_000_000,
+        "bank_reference_digest": HASH, "external_status": "SETTLED",
+        "external_timestamp": TIMESTAMP, "payment_proof_original_hash": HASH,
+        "payment_proof_redacted_hash": HASH,
+    },
+    EvidenceType.PAYMENT_VERIFIED: {
+        "payment_hash": HASH, "decision": "APPROVE",
+        "verification_result": "MATCH", "verification_timestamp": TIMESTAMP,
+    },
+    EvidenceType.PUBLICATION_SNAPSHOT: {
+        "publication_id": 1, "prerequisite_event_hashes": [HASH],
+        "resident_payload_hash": HASH, "document_hashes": [HASH],
+        "publication_timestamp": TIMESTAMP, "drill": False,
+    },
+    EvidenceType.CORRECTION: {
+        "correction_id": 1, "original_event_id": "0x" + "11" * 32,
+        "original_hash": HASH, "replacement_hashes": [OTHER_HASH],
+        "reason_digest": HASH, "decision": "APPROVE",
+        "actor_organization_id": 1, "publisher_snapshot_hash": HASH,
+        "correction_timestamp": TIMESTAMP,
+    },
+    EvidenceType.FUND_ENTRY: {
+        "fund_entry_id": 1, "entry_type": "INFLOW", "amount_vnd": 1_000_000,
+        "source_document_original_hash": HASH,
+        "source_document_redacted_hash": HASH,
+        "maker_membership_id": 1, "checker_membership_id": 2,
+        "entry_timestamp": TIMESTAMP,
+    },
+}
+
+
 @override_settings(
     BLOCKCHAIN_CHAIN_ID=1337,
     EVIDENCE_CONTRACT_ADDRESS="0x0000000000000000000000000000000000000001",
     WALLET_REGISTRATION_TTL_SECONDS=600,
 )
 class EvidenceOutboxTests(TestCase):
+    def valid_payload(self, event_type=EvidenceType.PROPOSAL_CREATED, **changes):
+        return {**VALID_PAYLOADS[event_type], **changes}
+
     def make_membership(self, role=OrganizationMembership.Role.OPERATOR, suffix="one"):
         kind = OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role]
         building = Building.objects.create(name=f"Building {suffix}")
@@ -142,7 +213,7 @@ class EvidenceOutboxTests(TestCase):
         account, wallet = self.register(membership)
         event_id = "0x" + "AB" * 32
         normalized_id = event_id.lower()
-        payload = {"amount_vnd": 18_500_000, "record_id": "abc"}
+        payload = self.valid_payload()
         signature = self.sign_event(account, normalized_id, EvidenceType.PROPOSAL_CREATED, payload)
 
         with transaction.atomic():
@@ -176,7 +247,7 @@ class EvidenceOutboxTests(TestCase):
         membership = self.make_membership(suffix="duplicate-fields")
         account, _ = self.register(membership)
         event_id = "0x" + "21" * 32
-        payload = {"proposal_version": 1}
+        payload = self.valid_payload()
         zero_hash = "0x" + "00" * 32
         signature = self.sign_event(account, event_id, 1, payload)
         with transaction.atomic():
@@ -199,7 +270,7 @@ class EvidenceOutboxTests(TestCase):
                 changed_previous_signature,
             )
 
-        changed_type_payload = {"decision": "APPROVE"}
+        changed_type_payload = self.valid_payload(EvidenceType.BOARD_APPROVAL)
         changed_type_signature = self.sign_event(account, event_id, 2, changed_type_payload)
         with transaction.atomic(), self.assertRaises(EvidenceConflict):
             queue_signed_event(
@@ -217,13 +288,13 @@ class EvidenceOutboxTests(TestCase):
         membership = self.make_membership()
         account, _ = self.register(membership)
         event_id = "0x" + "22" * 32
-        payload = {"proposal_version": 1}
+        payload = self.valid_payload()
         signature = self.sign_event(account, event_id, 1, payload)
         with self.assertRaises(RuntimeError):
             queue_signed_event(event_id, 1, payload, "0x" + "00" * 32, membership, signature)
         with transaction.atomic():
             queue_signed_event(event_id, 1, payload, "0x" + "00" * 32, membership, signature)
-        changed_payload = {"proposal_version": 2}
+        changed_payload = self.valid_payload(proposal_version=2)
         changed_signature = self.sign_event(account, event_id, 1, changed_payload)
         with transaction.atomic(), self.assertRaises(EvidenceConflict):
             queue_signed_event(
@@ -251,7 +322,7 @@ class EvidenceOutboxTests(TestCase):
         membership = self.make_membership()
         account, _ = self.register(membership)
         event_id = "0x" + "44" * 32
-        payload = {"proposal_version": 1}
+        payload = self.valid_payload()
         signature = self.sign_event(account, event_id, 1, payload)
         with transaction.atomic():
             event = queue_signed_event(
@@ -302,14 +373,27 @@ class EvidenceOutboxTests(TestCase):
                 [maintenance.pk, Account.create().address],
             )
 
+    def test_application_role_cannot_enable_the_old_guc_bypass(self):
+        membership = self.make_membership(suffix="app-role-guc")
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("SELECT set_config('lamto.wallet_transition', 'on', true)")
+            cursor.execute(
+                """
+                INSERT INTO accounts_signerwallet
+                    (membership_id, address, active, registered_at, revoked_at)
+                VALUES (%s, %s, TRUE, NOW(), NULL)
+                """,
+                [membership.pk, Account.create().address],
+            )
+
     def test_outbox_database_boundary_rejects_direct_rows_and_raw_truncate(self):
-        with self.assertRaises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute("TRUNCATE evidence_blockchainoutboxevent")
 
         membership = self.make_membership(suffix="direct-outbox")
         account, wallet = self.register(membership)
         event_id = "0x" + "45" * 32
-        payload = {"proposal_version": 1}
+        payload = self.valid_payload()
         signature = self.sign_event(account, event_id, 1, payload)
 
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -344,12 +428,54 @@ class EvidenceOutboxTests(TestCase):
                 ],
             )
 
+    def test_all_evidence_types_have_complete_payload_schemas(self):
+        self.assertEqual(set(VALID_PAYLOADS), set(EvidenceType))
+        for event_type, payload in VALID_PAYLOADS.items():
+            with self.subTest(event_type=event_type):
+                _validate_payload(event_type, payload)
+
+    def test_payload_schemas_reject_missing_fields_and_value_slot_smuggling(self):
+        for event_type, payload in VALID_PAYLOADS.items():
+            incomplete = dict(payload)
+            incomplete.pop(next(iter(incomplete)))
+            with self.subTest(event_type=event_type), self.assertRaises(ValidationError):
+                _validate_payload(event_type, incomplete)
+
+        for field, value in (
+            ("record_id", "private bank account 1234"),
+            ("proposal_version", True),
+            ("amount_vnd", True),
+            ("proposal_id", [1]),
+            ("proposal_snapshot_hash", {"digest": HASH}),
+        ):
+            with self.subTest(field=field), self.assertRaises(ValidationError):
+                _validate_payload(
+                    EvidenceType.PROPOSAL_CREATED,
+                    self.valid_payload(**{field: value}),
+                )
+
+    def test_payload_schemas_reject_bad_enums_timestamps_and_digest_lists(self):
+        cases = (
+            (EvidenceType.BOARD_APPROVAL, {"decision": "private approval reason"}),
+            (EvidenceType.BOARD_APPROVAL, {"decision_timestamp": "not-a-timestamp"}),
+            (EvidenceType.EMERGENCY_AUTHORIZATION, {"drill": 0}),
+            (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": []}),
+            (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": [HASH, 1]}),
+            (EvidenceType.PUBLICATION_SNAPSHOT, {"document_hashes": "not-a-list"}),
+            (EvidenceType.FUND_ENTRY, {"entry_type": "BANK_ACCOUNT_DETAILS"}),
+        )
+        for event_type, changes in cases:
+            with self.subTest(event_type=event_type, changes=changes), self.assertRaises(
+                ValidationError
+            ):
+                _validate_payload(event_type, self.valid_payload(event_type, **changes))
+
 
     def test_queue_rejects_non_integer_event_type(self):
         membership = self.make_membership()
         account, _ = self.register(membership)
         event_id = "0x" + "66" * 32
-        payload = {"proposal_version": 1}
+        payload = self.valid_payload()
         signature = self.sign_event(account, event_id, 1, payload)
 
         with transaction.atomic(), self.assertRaises(ValueError):
@@ -374,7 +500,7 @@ class EvidenceOutboxTests(TestCase):
                 signature,
             )
 
-        safe_payload = {"report_snapshot_hash": "a" * 64, "photo_hash": "b" * 64}
+        safe_payload = self.valid_payload(photo_hash=OTHER_HASH)
         safe_id = "0x" + "88" * 32
         safe_signature = self.sign_event(account, safe_id, 1, safe_payload)
         with transaction.atomic():
@@ -421,7 +547,7 @@ class EvidenceOutboxTests(TestCase):
         membership = self.make_membership()
         account, _ = self.register(membership)
         event_id = "0x" + "99" * 32
-        payload = {"proposal_version": 1}
+        payload = self.valid_payload()
         signature = self.sign_event(account, event_id, 1, payload)
         with transaction.atomic():
             queue_signed_event(

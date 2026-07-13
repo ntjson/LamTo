@@ -11,7 +11,9 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
-    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data"
+      - "./ops/postgres-init.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro"
   minio:
     image: minio/minio:latest
     command: server /data --console-address :9001
