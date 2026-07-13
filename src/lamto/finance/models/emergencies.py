@@ -95,11 +95,17 @@ class EmergencyRatification(InsertOnlyModel):
                         outbox_event__isnull=True,
                         signature="",
                     )
-                    | models.Q(
-                        decision__in=["RATIFY", "REJECT"],
-                        membership__isnull=False,
-                        wallet__isnull=False,
-                        outbox_event__isnull=False,
+                    | (
+                        models.Q(
+                            membership__isnull=False,
+                            wallet__isnull=False,
+                            outbox_event__isnull=False,
+                        )
+                        & ~models.Q(signature="")
+                        & (
+                            models.Q(decision="RATIFY", outcome="RATIFIED")
+                            | models.Q(decision="REJECT", outcome="REJECTED")
+                        )
                     )
                 ),
                 name="emergency_ratification_provenance",

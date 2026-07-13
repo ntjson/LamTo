@@ -72,13 +72,17 @@ def build_emergency_authorization_evidence_typed_data(
     )
 
 
-def build_emergency_ratification_evidence_payload(authorization, decision, timestamp=None):
+def build_emergency_ratification_evidence_payload(
+    authorization, decision, reason, timestamp=None
+):
     if decision not in {"RATIFY", "REJECT"}:
         raise ValidationError("Emergency decision is invalid.")
+    if not isinstance(reason, str) or not (reason := reason.strip()):
+        raise ValidationError("Emergency outcome reason is required.")
     return {
         "decision": decision,
         "result": "RATIFIED" if decision == "RATIFY" else "REJECTED",
-        "reason_digest": _reason_digest(authorization.reason),
+        "reason_digest": _reason_digest(reason),
         "deadline_result": "MET",
         "decision_timestamp": utc_rfc3339(timestamp or authorization.authorized_at),
         "drill": authorization.drill,
@@ -86,9 +90,11 @@ def build_emergency_ratification_evidence_payload(authorization, decision, times
 
 
 def build_emergency_ratification_evidence_typed_data(
-    authorization, membership, decision, event_id, timestamp=None
+    authorization, membership, decision, reason, event_id, timestamp=None
 ):
-    payload = build_emergency_ratification_evidence_payload(authorization, decision, timestamp)
+    payload = build_emergency_ratification_evidence_payload(
+        authorization, decision, reason, timestamp
+    )
     return build_evidence_typed_data(
         event_id,
         EvidenceType.EMERGENCY_OUTCOME,
@@ -153,7 +159,11 @@ def authorize_emergency(
         raise ValidationError("Emergency has already been authorized.")
     if not isinstance(now, type(timezone.now())) or now.tzinfo is None:
         raise ValidationError("Authorization time must be timezone-aware.")
-    payload = build_emergency_authorization_evidence_payload(work_order, estimate_vnd)
+    if now < work_order.emergency_requested_at:
+        raise ValidationError("Authorization time cannot precede the emergency request.")
+    payload = build_emergency_authorization_evidence_payload(
+        work_order, estimate_vnd, timestamp=now
+    )
     event = queue_signed_event(
         event_id,
         EvidenceType.EMERGENCY_AUTHORIZATION,
@@ -229,7 +239,9 @@ def decide_emergency(
                 raise ValidationError("Emergency decision is invalid.")
             if not isinstance(reason, str) or not (reason := reason.strip()):
                 raise ValidationError("Emergency outcome reason is required.")
-            payload = build_emergency_ratification_evidence_payload(authorization, decision)
+            payload = build_emergency_ratification_evidence_payload(
+                authorization, decision, reason
+            )
             event = queue_signed_event(
                 event_id,
                 EvidenceType.EMERGENCY_OUTCOME,
