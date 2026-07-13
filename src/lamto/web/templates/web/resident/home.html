@@ -55,7 +55,10 @@
     {% for entry in recent_spending %}
     <li>
       <a class="card-link" href="{% url 'web:ledger-detail' entry.pk %}">
-        <span class="status status-verified"><span class="status-icon" aria-hidden="true">✓</span> {{ entry.integrity_label }}</span>
+        <span class="status {{ entry.integrity_class }}">
+          <span class="status-icon" aria-hidden="true">{{ entry.integrity_icon }}</span>
+          {{ entry.integrity_label }}
+        </span>
         <p class="card-title">{{ entry.contractor_name }}</p>
         <p class="card-meta">{{ entry.actual_cost_vnd }} VND · {{ entry.published_at }}</p>
       </a>

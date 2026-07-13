@@ -11,7 +11,11 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.models import ResidentOccupancy
 from lamto.evidence.models import BlockchainOutboxEvent
-from lamto.finance.fund import fund_balance
+from lamto.finance.fund import (
+    _finalized_posting_q,
+    _source_verified_q,
+    fund_balance,
+)
 from lamto.finance.models import (
     MaintenanceFundEntry,
     PublishedLedgerEntry,
@@ -71,24 +75,58 @@ def _published_ledger_qs(building_id):
     )
 
 
-def _integrity_label(entry):
+def _integrity_display(entry):
+    """Map effective integrity status to plain-language label, style, and icon."""
     status = entry.effective_integrity_status
     if status == "VERIFIED":
-        return "Record verified"
+        return {
+            "label": "Record verified",
+            "css_class": "status-verified",
+            "icon": "✓",
+            "alert": False,
+        }
     if status == "MISMATCH":
-        return "Integrity mismatch detected"
+        return {
+            "label": "Integrity mismatch detected",
+            "css_class": "status-mismatch",
+            "icon": "!",
+            "alert": True,
+        }
     if status == "UNAVAILABLE":
-        return "Integrity check unavailable"
-    # Published entries always passed payment verification gates.
-    return "Record verified"
+        return {
+            "label": "Integrity check unavailable",
+            "css_class": "status-warning",
+            "icon": "!",
+            "alert": False,
+        }
+    # UNCHECKED or unknown: published, but integrity not yet observed.
+    return {
+        "label": "Published — integrity not yet checked",
+        "css_class": "status-info",
+        "icon": "○",
+        "alert": False,
+    }
+
+
+def _apply_integrity_display(entry):
+    display = _integrity_display(entry)
+    entry.integrity_label = display["label"]
+    entry.integrity_class = display["css_class"]
+    entry.integrity_icon = display["icon"]
+    entry.integrity_alert = display["alert"]
+    return entry
+
+
+def _verified_fund_entries(building_id):
+    """Fund rows held to the same verified/finalized bar as fund_balance(verified_only=True)."""
+    return MaintenanceFundEntry.objects.filter(fund__building_id=building_id).filter(
+        _source_verified_q() | _finalized_posting_q()
+    )
 
 
 def _period_flows(building_id, *, days=30):
     since = timezone.now() - timedelta(days=days)
-    fund_entries = MaintenanceFundEntry.objects.filter(
-        fund__building_id=building_id,
-        recorded_at__gte=since,
-    )
+    fund_entries = _verified_fund_entries(building_id).filter(recorded_at__gte=since)
     inflows = (
         fund_entries.filter(
             entry_type__in=[
@@ -129,10 +167,8 @@ def home(request):
     building = occupancy.unit.building
     balance = fund_balance(building.pk, verified_only=True)
     opening = (
-        MaintenanceFundEntry.objects.filter(
-            fund__building_id=building.pk,
-            entry_type=MaintenanceFundEntry.EntryType.OPENING_BALANCE,
-        )
+        _verified_fund_entries(building.pk)
+        .filter(entry_type=MaintenanceFundEntry.EntryType.OPENING_BALANCE)
         .order_by("recorded_at", "pk")
         .first()
     )
@@ -140,9 +176,9 @@ def home(request):
     active_reports = _resident_reports(request.user).filter(status=IssueReport.Status.OPEN)[
         :10
     ]
-    recent_spending = _published_ledger_qs(building.pk)[:5]
+    recent_spending = list(_published_ledger_qs(building.pk)[:5])
     for entry in recent_spending:
-        entry.integrity_label = _integrity_label(entry)
+        _apply_integrity_display(entry)
     return render(
         request,
         "web/resident/home.html",
@@ -286,7 +322,7 @@ def ledger_list(request):
     occupancy = _require_resident(request.user)
     entries = list(_published_ledger_qs(occupancy.unit.building_id)[:100])
     for entry in entries:
-        entry.integrity_label = _integrity_label(entry)
+        _apply_integrity_display(entry)
     return render(
         request,
         "web/resident/ledger_list.html",
@@ -350,6 +386,7 @@ def ledger_detail(request, pk):
         if event is not None and event.transaction_hash:
             tx_ids.append(event.transaction_hash)
     emergency = payload.get("emergency")
+    integrity = _integrity_display(entry)
     return render(
         request,
         "web/resident/ledger_detail.html",
@@ -365,7 +402,10 @@ def ledger_detail(request, pk):
             "corrections": corrections,
             "transaction_ids": tx_ids,
             "emergency": emergency,
-            "integrity_label": _integrity_label(entry),
+            "integrity_label": integrity["label"],
+            "integrity_class": integrity["css_class"],
+            "integrity_icon": integrity["icon"],
+            "integrity_alert": integrity["alert"],
             "integrity_status": entry.effective_integrity_status,
             "occupancy": occupancy,
             "nav_active": "ledger",

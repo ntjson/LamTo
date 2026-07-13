@@ -21,9 +21,10 @@
 
 <section class="panel" aria-labelledby="security-heading">
   <h2 id="security-heading">Session and security</h2>
-  <ul class="plain-list">
-    <li><a class="text-link" href="{% url 'logout' %}">Sign out</a></li>
-  </ul>
+  <form method="post" action="{% url 'logout' %}" class="stack-form">
+    {% csrf_token %}
+    <button type="submit" class="button button-secondary">Sign out</button>
+  </form>
   <p class="hint">Notification preferences and unread notices will appear here in a later release.</p>
 </section>
 {% endblock %}

@@ -254,6 +254,16 @@ h2 {
   background: var(--color-success-bg);
 }
 
+.status-mismatch {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.status-warning {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
 .status-icon {
   font-size: 0.75rem;
 }

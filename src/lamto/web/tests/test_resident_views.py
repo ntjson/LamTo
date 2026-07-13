@@ -31,6 +31,7 @@ from lamto.evidence.services import (
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import (
     AcceptanceRecord,
+    FundEntryVerification,
     MaintenanceFund,
     MaintenanceFundEntry,
     PaymentEvidence,
@@ -194,6 +195,7 @@ class ResidentViewTests(TestCase):
         contractor_name,
         snapshot_status=BlockchainOutboxEvent.Status.CONFIRMED,
         bank_reference=None,
+        integrity_result=VerificationObservation.Result.VERIFIED,
     ):
         report = IssueReport.objects.create(
             reporter=resident,
@@ -360,15 +362,53 @@ class ResidentViewTests(TestCase):
             contractor_name=contractor_name,
             published_at=timezone.now(),
         )
-        VerificationObservation.objects.create(
-            published_entry=entry,
-            result=VerificationObservation.Result.VERIFIED,
-            checked_document_hashes=payload["document_hashes"],
-            checked_chain_event_ids=[],
-            details={},
-            observed_at=timezone.now(),
-        )
+        if integrity_result is not None:
+            VerificationObservation.objects.create(
+                published_entry=entry,
+                result=integrity_result,
+                checked_document_hashes=payload["document_hashes"],
+                checked_chain_event_ids=[],
+                details={},
+                observed_at=timezone.now(),
+            )
         return report, entry, acceptance
+
+
+    def make_verified_source_entry(
+        self,
+        *,
+        fund,
+        recorder_membership,
+        verifier_membership,
+        entry_type,
+        amount_vnd,
+        source_key,
+    ):
+        """Create a source fund entry that counts in verified_only balances/flows."""
+        recorder_event = self.queue_event(recorder_membership, confirm=True)
+        entry = MaintenanceFundEntry.objects.create(
+            fund=fund,
+            entry_type=entry_type,
+            amount_vnd=amount_vnd,
+            source_key=source_key,
+            recorded_at=timezone.now(),
+            evidence_original_hash="a" * 64,
+            evidence_redacted_hash="b" * 64,
+            recorder=recorder_membership,
+            outbox_event=recorder_event,
+        )
+        verifier_wallet = SignerWallet.objects.get(
+            membership=verifier_membership, active=True
+        )
+        FundEntryVerification.objects.create(
+            entry=entry,
+            membership=verifier_membership,
+            wallet=verifier_wallet,
+            signature="0x" + secrets.token_hex(65),
+            outbox_event=self.queue_event(verifier_membership, confirm=True),
+            verified_at=timezone.now(),
+        )
+        return entry
 
     def make_resident_view_fixtures(self):
         tag = self._unique("res")
@@ -551,3 +591,149 @@ class ResidentViewTests(TestCase):
         self.assertContains(response, resident.email)
         self.assertNotContains(response, "OPERATOR")
         self.assertNotContains(response, "BOARD")
+
+    def test_sign_out_post_clears_session_and_redirects_to_login(self):
+        resident, *_ = self.make_resident_view_fixtures()
+        self.client.force_login(resident)
+        account = self.client.get(reverse("web:account"))
+        self.assertContains(account, 'method="post"')
+        self.assertContains(account, reverse("logout"))
+        # GET logout is not allowed on Django 5 LogoutView.
+        get_logout = self.client.get(reverse("logout"))
+        self.assertEqual(get_logout.status_code, 405)
+        response = self.client.post(reverse("logout"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login", response["Location"])
+        # Session is cleared — home requires auth again.
+        home = self.client.get(reverse("web:resident-home"))
+        self.assertEqual(home.status_code, 302)
+        self.assertIn("/accounts/login", home["Location"])
+
+    def test_integrity_labels_for_mismatch_and_unchecked(self):
+        resident, *_rest = self.make_resident_view_fixtures()
+        occupancy = ResidentOccupancy.objects.get(user=resident, active=True)
+        building = occupancy.unit.building
+        unit = occupancy.unit
+        location = BuildingLocation.objects.filter(building=building).first()
+        operator = OrganizationMembership.objects.filter(
+            organization__building=building,
+            role=OrganizationMembership.Role.OPERATOR,
+        ).first()
+        board_members = list(
+            OrganizationMembership.objects.filter(
+                organization__building=building,
+                role=OrganizationMembership.Role.BOARD,
+            ).order_by("pk")
+        )
+        publisher = board_members[0]
+        payment_recorder = board_members[1]
+        self.client.force_login(resident)
+
+        _report_m, mismatch_entry, _ = self.make_ledger_entry(
+            building=building,
+            resident=resident,
+            unit=unit,
+            location=location,
+            operator_membership=operator,
+            publisher_membership=publisher,
+            payment_membership=payment_recorder,
+            report_text="Mismatch integrity case",
+            actual_cost_vnd=12_100_000,
+            contractor_name="Mismatch Co",
+            integrity_result=VerificationObservation.Result.MISMATCH,
+        )
+        detail = self.client.get(
+            reverse("web:ledger-detail", kwargs={"pk": mismatch_entry.pk})
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Integrity mismatch detected")
+        self.assertContains(detail, "status-mismatch")
+        self.assertContains(detail, 'role="alert"')
+        self.assertNotContains(detail, "Record verified")
+        ledger = self.client.get(reverse("web:ledger-list"))
+        self.assertContains(ledger, "Integrity mismatch detected")
+        self.assertContains(ledger, "status-mismatch")
+
+        _report_u, unchecked_entry, _ = self.make_ledger_entry(
+            building=building,
+            resident=resident,
+            unit=unit,
+            location=location,
+            operator_membership=operator,
+            publisher_membership=publisher,
+            payment_membership=payment_recorder,
+            report_text="Unchecked integrity case",
+            actual_cost_vnd=13_200_000,
+            contractor_name="Unchecked Co",
+            integrity_result=None,
+        )
+        detail = self.client.get(
+            reverse("web:ledger-detail", kwargs={"pk": unchecked_entry.pk})
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Published — integrity not yet checked")
+        self.assertContains(detail, "status-info")
+        self.assertNotContains(detail, "Record verified")
+        self.assertNotContains(detail, 'role="alert"')
+        ledger = self.client.get(reverse("web:ledger-list"))
+        self.assertContains(ledger, "Published — integrity not yet checked")
+        self.assertContains(ledger, "status-info")
+
+    def test_home_period_and_opening_use_verified_fund_filter(self):
+        resident, *_ = self.make_resident_view_fixtures()
+        occupancy = ResidentOccupancy.objects.get(user=resident, active=True)
+        building = occupancy.unit.building
+        fund = MaintenanceFund.objects.get(building=building)
+        operator = OrganizationMembership.objects.filter(
+            organization__building=building,
+            role=OrganizationMembership.Role.OPERATOR,
+        ).first()
+        board_members = list(
+            OrganizationMembership.objects.filter(
+                organization__building=building,
+                role=OrganizationMembership.Role.BOARD,
+            ).order_by("pk")
+        )
+        recorder = board_members[0]
+        verifier = board_members[1] if len(board_members) > 1 else operator
+
+        # Unverified opening already exists from fixtures; add unverified inflow.
+        MaintenanceFundEntry.objects.create(
+            fund=fund,
+            entry_type=MaintenanceFundEntry.EntryType.INFLOW,
+            amount_vnd=7_777_000,
+            source_key=f"INFLOW:unverified:{fund.pk}:{self._unique('u')}",
+            recorded_at=timezone.now(),
+            evidence_original_hash="c" * 64,
+            evidence_redacted_hash="d" * 64,
+        )
+        # Verified inflow should appear in period totals and balance.
+        self.make_verified_source_entry(
+            fund=fund,
+            recorder_membership=recorder,
+            verifier_membership=verifier,
+            entry_type=MaintenanceFundEntry.EntryType.INFLOW,
+            amount_vnd=3_000_000,
+            source_key=f"INFLOW:verified:{fund.pk}:{self._unique('v')}",
+        )
+        # Verified opening should drive opening_balance display.
+        self.make_verified_source_entry(
+            fund=fund,
+            recorder_membership=recorder,
+            verifier_membership=verifier,
+            entry_type=MaintenanceFundEntry.EntryType.OPENING_BALANCE,
+            amount_vnd=50_000_000,
+            source_key=f"OPENING_BALANCE:verified:{fund.pk}:{self._unique('o')}",
+        )
+
+        self.client.force_login(resident)
+        home = self.client.get(reverse("web:resident-home"))
+        self.assertEqual(home.status_code, 200)
+        # Unverified 100M opening and 7.777M inflow must not inflate figures.
+        self.assertEqual(home.context["opening_balance"], 50_000_000)
+        self.assertEqual(home.context["balance"], 53_000_000)
+        # Opening was recorded in-window, so period inflows include verified opening + inflow.
+        self.assertEqual(home.context["period_inflows"], 53_000_000)
+        self.assertEqual(home.context["period_outflows"], 0)
+        self.assertNotContains(home, "100000000")
+        self.assertNotContains(home, "7777000")
