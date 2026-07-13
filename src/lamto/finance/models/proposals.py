@@ -69,6 +69,12 @@ class ProposalVersion(InsertOnlyModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def verification_label(self):
+        from lamto.finance.approvals import proposal_verification_label
+
+        return proposal_verification_label(self)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["proposal", "number"], name="proposal_version_once"),

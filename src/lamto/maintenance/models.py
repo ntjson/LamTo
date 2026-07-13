@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 
 from lamto.accounts.models import Building, Unit
@@ -164,6 +164,27 @@ class WorkOrder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def authorization_state(self):
+        return self.authorization_status
+
+    @authorization_state.setter
+    def authorization_state(self, value):
+        self.authorization_status = value
+
+    @property
+    def verification_label(self):
+        try:
+            proposal = self.proposal
+        except ObjectDoesNotExist:
+            return None
+        version = getattr(proposal, "current_version", None) if proposal else None
+        if version is None:
+            return None
+        from lamto.finance.approvals import proposal_verification_label
+
+        return proposal_verification_label(version)
 
     class Meta:
         constraints = [
