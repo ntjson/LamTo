@@ -65,6 +65,18 @@ class ReportSubmissionTests(TestCase):
         root.refresh_from_db()
         self.assertIsNone(root.parent_id)
 
+    def test_location_building_update_rejects_existing_children(self):
+        building = Building.objects.create(name="First Building")
+        other_building = Building.objects.create(name="Second Building")
+        root = BuildingLocation.objects.create(building=building, name="Basement")
+        BuildingLocation.objects.create(building=building, parent=root, name="Lift 2")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            BuildingLocation.objects.filter(pk=root.pk).update(building=other_building)
+
+        root.refresh_from_db()
+        self.assertEqual(root.building_id, building.id)
+
     def test_location_path_label_is_deterministic(self):
         building = Building.objects.create(name="First Building")
         basement = BuildingLocation.objects.create(building=building, name="Basement")
