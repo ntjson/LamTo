@@ -72,6 +72,17 @@ class ReportSubmissionTests(TestCase):
 
         self.assertEqual(lift.path_label, "First Building / Basement / Lift 2")
 
+    def test_submission_rejects_inactive_location_ancestor(self):
+        resident, unit, location = self.make_resident_unit_and_location()
+        parent = BuildingLocation.objects.create(building=unit.building, name="Basement")
+        location.parent = parent
+        location.save(update_fields=["parent"])
+        parent.active = False
+        parent.save(update_fields=["active"])
+
+        with self.assertRaisesMessage(ValidationError, "active"):
+            submit_report(resident, unit, "Elevator shakes", location, [])
+
     def test_submission_rejects_inactive_occupancy(self):
         resident, unit, location = self.make_resident_unit_and_location()
         ResidentOccupancy.objects.filter(user=resident, unit=unit).update(active=False)

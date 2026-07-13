@@ -20,8 +20,12 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
     path_location = location
     seen_locations = set()
     while path_location is not None:
-        if path_location.pk in seen_locations or path_location.building_id != unit.building_id:
-            raise ValidationError("Report location hierarchy must belong to the unit building.")
+        if (
+            path_location.pk in seen_locations
+            or not path_location.active
+            or path_location.building_id != unit.building_id
+        ):
+            raise ValidationError("Report location hierarchy must be active and belong to the unit building.")
         seen_locations.add(path_location.pk)
         path_location = path_location.parent
 
