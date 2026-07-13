@@ -21,6 +21,7 @@ from urllib.error import URLError
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.files.base import ContentFile
 from django.core.files.storage import storages
 from django.test import override_settings
 from django.utils import timezone
@@ -163,11 +164,14 @@ def _temp_storage_settings(location: str) -> dict:
 
 
 def write_bytes(key: str, content: bytes) -> None:
+    """Write object bytes to private storage (filesystem or S3/MinIO).
+
+    Do not use storage.path(): S3 backends raise NotImplementedError.
+    """
     storage = storages["private"]
-    parent = Path(storage.path(key)).parent
-    parent.mkdir(parents=True, exist_ok=True)
-    with storage.open(key, "wb") as handle:
-        handle.write(content)
+    if storage.exists(key):
+        storage.delete(key)
+    storage.save(key, ContentFile(content))
 
 
 def document_pair(building, kind, uploader, tag: str):
