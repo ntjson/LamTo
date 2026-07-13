@@ -98,8 +98,8 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
         "fund_entry_id": "id", "entry_type": frozenset({"OPENING", "INFLOW"}),
         "amount_vnd": "money", "source_document_original_hash": "hash",
         "source_document_redacted_hash": "hash", "maker_membership_id": "id",
-        "checker_membership_id": "id", "entry_timestamp": "timestamp",
-    }, {}),
+        "entry_timestamp": "timestamp",
+    }, {"checker_membership_id": "id"}),
 }
 
 
