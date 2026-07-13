@@ -582,6 +582,126 @@ class CorrectionTests(TestCase):
         ).signature.hex()
         return signature, event_id
 
+
+    def publish_amount_correction(self, ctx, new_amount, reason):
+        """Create, dual-approve, publish, and finalize an amount correction."""
+        entry = ctx["entry"]
+        building = ctx["building"]
+        operator = ctx["operator"]
+        evidence = self.correction_evidence_doc(building, operator.user)
+        correction_id = allocate_correction_id()
+        create_ts = timezone.now()
+        replacement_hashes = [evidence.sha256]
+        sig, event_id = self.sign_correction(
+            operator,
+            ctx["accounts"][operator.pk],
+            correction_id=correction_id,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason=reason,
+            decision="APPROVE",
+            publisher_snapshot_hash=ZERO_BARE,
+            timestamp=create_ts,
+            previous_hash="0x" + entry.snapshot.outbox_event.payload_hash,
+        )
+        correction = create_correction(
+            entry,
+            operator,
+            reason,
+            {"actual_cost_vnd": new_amount, "contractor_name": "Company X"},
+            [evidence],
+            sig,
+            event_id,
+            correction_id=correction_id,
+            timestamp=create_ts,
+        )
+        self.confirm(correction.outbox_event)
+
+        board = ctx["corr_board"]
+        board_ts = timezone.now()
+        board_sig, board_event = self.sign_correction(
+            board,
+            ctx["accounts"][board.pk],
+            correction_id=correction.pk,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason="Board accepts",
+            decision="APPROVE",
+            publisher_snapshot_hash=ZERO_BARE,
+            timestamp=board_ts,
+            previous_hash="0x" + correction.outbox_event.payload_hash,
+        )
+        board_decision = decide_correction(
+            correction,
+            board,
+            CorrectionDecision.Stage.BOARD,
+            "APPROVE",
+            "Board accepts",
+            board_sig,
+            board_event,
+            timestamp=board_ts,
+        )
+        self.confirm(board_decision.outbox_event)
+
+        rep = ctx["corr_rep"]
+        rep_ts = timezone.now()
+        rep_sig, rep_event = self.sign_correction(
+            rep,
+            ctx["accounts"][rep.pk],
+            correction_id=correction.pk,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason="Rep co-approves",
+            decision="APPROVE",
+            publisher_snapshot_hash=ZERO_BARE,
+            timestamp=rep_ts,
+            previous_hash="0x" + board_decision.outbox_event.payload_hash,
+        )
+        rep_decision = decide_correction(
+            correction,
+            rep,
+            CorrectionDecision.Stage.RESIDENT_REP,
+            "APPROVE",
+            "Rep co-approves",
+            rep_sig,
+            rep_event,
+            timestamp=rep_ts,
+        )
+        self.confirm(rep_decision.outbox_event)
+
+        from lamto.finance.corrections import _correction_resident_payload
+
+        publisher = ctx["corr_publisher"]
+        snapshot_id = allocate_correction_publication_id()
+        pub_ts = timezone.now()
+        resident_payload_hash = payload_hash(_correction_resident_payload(correction))
+        pub_sig, pub_event = self.sign_correction(
+            publisher,
+            ctx["accounts"][publisher.pk],
+            correction_id=correction.pk,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason=correction.reason,
+            decision="APPROVE",
+            publisher_snapshot_hash=resident_payload_hash,
+            timestamp=pub_ts,
+            previous_hash="0x" + rep_decision.outbox_event.payload_hash,
+        )
+        snapshot = prepare_correction_publication(
+            correction,
+            publisher,
+            pub_sig,
+            pub_event,
+            snapshot_id=snapshot_id,
+            timestamp=pub_ts,
+        )
+        self.confirm(snapshot.outbox_event)
+        return finalize_correction_publication(snapshot.pk)
+
     def test_correction_flow_reverses_and_replaces_without_mutating_original(self):
         ctx = self.make_published_context()
         entry = ctx["entry"]
@@ -765,6 +885,54 @@ class CorrectionTests(TestCase):
         with self.assertRaises(ValueError):
             entry.actual_cost_vnd = 1
             entry.save()
+
+
+    def test_successive_amount_corrections_chain_effective_balance(self):
+        """Second amount correction reverses prior effective amount, not original."""
+        ctx = self.make_published_context(amount=20_000_000)
+        entry = ctx["entry"]
+        building = ctx["building"]
+        opening_balance = fund_balance(building.pk, verified_only=True) + entry.actual_cost_vnd
+        # After publish: opening - 20M
+        self.assertEqual(
+            fund_balance(building.pk, verified_only=True),
+            opening_balance - 20_000_000,
+        )
+
+        corr1 = self.publish_amount_correction(
+            ctx, 17_000_000, "First supplier credit"
+        )
+        reverse1 = MaintenanceFundEntry.objects.get(
+            correction=corr1, entry_type=MaintenanceFundEntry.EntryType.REVERSAL
+        )
+        replace1 = MaintenanceFundEntry.objects.get(
+            correction=corr1, entry_type=MaintenanceFundEntry.EntryType.REPLACEMENT
+        )
+        self.assertEqual(reverse1.amount_vnd, 20_000_000)
+        self.assertEqual(replace1.amount_vnd, -17_000_000)
+        self.assertEqual(
+            fund_balance(building.pk, verified_only=True),
+            opening_balance - 17_000_000,
+        )
+
+        corr2 = self.publish_amount_correction(
+            ctx, 15_000_000, "Second supplier credit"
+        )
+        reverse2 = MaintenanceFundEntry.objects.get(
+            correction=corr2, entry_type=MaintenanceFundEntry.EntryType.REVERSAL
+        )
+        replace2 = MaintenanceFundEntry.objects.get(
+            correction=corr2, entry_type=MaintenanceFundEntry.EntryType.REPLACEMENT
+        )
+        # Must reverse the *current* effective 17M, not re-reverse original 20M.
+        self.assertEqual(reverse2.amount_vnd, 17_000_000)
+        self.assertEqual(replace2.amount_vnd, -15_000_000)
+        self.assertEqual(
+            fund_balance(building.pk, verified_only=True),
+            opening_balance - 15_000_000,
+        )
+        entry.refresh_from_db()
+        self.assertEqual(entry.actual_cost_vnd, 20_000_000)
 
     def test_correction_board_approver_cannot_publish(self):
         ctx = self.make_published_context()

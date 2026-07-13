@@ -281,13 +281,15 @@ def _resident_payload(
     return payload
 
 
-def _collect_document_checks(proposal, version, acceptance, payment, verification):
+def _collect_document_checks(
+    proposal, version, acceptance, payment, verification, using="default"
+):
     from lamto.documents.models import DocumentVersion
 
     checks = []
     for item in version.snapshot.get("quotation_versions", []):
-        original = DocumentVersion.objects.get(pk=item["original_id"])
-        redacted = DocumentVersion.objects.get(pk=item["redacted_id"])
+        original = DocumentVersion.objects.using(using).get(pk=item["original_id"])
+        redacted = DocumentVersion.objects.using(using).get(pk=item["redacted_id"])
         checks.append((original, item["original_sha256"], "QUOTATION_ORIGINAL"))
         checks.append((redacted, item["redacted_sha256"], "QUOTATION_REDACTED"))
     acc_payload = acceptance.outbox_event.payload

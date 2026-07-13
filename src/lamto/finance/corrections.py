@@ -597,11 +597,34 @@ def prepare_correction_publication(
     return snapshot
 
 
+def _current_effective_cost_vnd(entry, exclude_correction_id=None) -> int:
+    """Effective actual cost after prior finalized amount corrections.
+
+    Fund postings keep the original OUTFLOW and adjust via REVERSAL/REPLACEMENT.
+    The latest REPLACEMENT magnitude (excluding the correction being finalized)
+    is the current effective cost; otherwise the immutable original amount.
+    """
+    qs = MaintenanceFundEntry.objects.filter(
+        correction__original_entry_id=entry.pk,
+        entry_type=MaintenanceFundEntry.EntryType.REPLACEMENT,
+    )
+    if exclude_correction_id is not None:
+        qs = qs.exclude(correction_id=exclude_correction_id)
+    latest = (
+        qs.order_by("-recorded_at", "-pk").values_list("amount_vnd", flat=True).first()
+    )
+    if latest is None:
+        return entry.actual_cost_vnd
+    return abs(int(latest))
+
+
 def _create_correction_fund_entries(correction, recorded_at):
     entry = correction.original_entry
-    original_amount = entry.actual_cost_vnd
+    current_amount = _current_effective_cost_vnd(
+        entry, exclude_correction_id=correction.pk
+    )
     new_amount = correction.replacement_payload["actual_cost_vnd"]
-    if new_amount == original_amount:
+    if new_amount == current_amount:
         return None, None
 
     fund = get_or_create_fund(entry.case.building_id)
@@ -612,7 +635,7 @@ def _create_correction_fund_entries(correction, recorded_at):
         reverse = MaintenanceFundEntry.objects.create(
             fund=fund,
             entry_type=MaintenanceFundEntry.EntryType.REVERSAL,
-            amount_vnd=original_amount,  # undo original negative outflow
+            amount_vnd=current_amount,  # undo current effective outflow, not always original
             proposal=entry.proposal,
             publication=entry.snapshot,
             correction=correction,

@@ -59,13 +59,12 @@ class Command(BaseCommand):
 
         results = []
         for entry_id in entry_ids:
-            # Domain service uses the default connection routing; force alias
-            # by ensuring the entry is readable from the selected database.
+            # Domain service reads/writes the selected alias; assert presence first.
             if not PublishedLedgerEntry.objects.using(using).filter(pk=entry_id).exists():
                 raise CommandError(
                     f"Published entry {entry_id} not found on database {using!r}."
                 )
-            observation = verify_published_entry(entry_id)
+            observation = verify_published_entry(entry_id, using=using)
             results.append(
                 {
                     "entry_id": entry_id,

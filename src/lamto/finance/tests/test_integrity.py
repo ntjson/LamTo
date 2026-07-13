@@ -2,8 +2,11 @@ import hashlib
 from pathlib import Path
 import secrets
 import tempfile
+from io import StringIO
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.files.storage import storages
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -545,3 +548,49 @@ class IntegrityTests(TestCase):
         self.assertEqual(observation.result, VerificationObservation.Result.VERIFIED)
         self.assertEqual(entry.published_at, original_published_at)
         self.assertEqual(entry.effective_integrity_status, "VERIFIED")
+
+
+    def test_verify_published_entry_routes_to_database_alias(self):
+        entry, _version = self.make_published_entry()
+        aliases = []
+        real_ple = PublishedLedgerEntry.objects.using
+        real_vo = VerificationObservation.objects.using
+
+        def ple_using(alias):
+            aliases.append(("PublishedLedgerEntry", alias))
+            return real_ple(alias)
+
+        def vo_using(alias):
+            aliases.append(("VerificationObservation", alias))
+            return real_vo(alias)
+
+        with (
+            patch.object(PublishedLedgerEntry.objects, "using", side_effect=ple_using),
+            patch.object(VerificationObservation.objects, "using", side_effect=vo_using),
+        ):
+            observation = verify_published_entry(entry.id, using="default")
+
+        self.assertEqual(observation.result, VerificationObservation.Result.VERIFIED)
+        self.assertIn(("PublishedLedgerEntry", "default"), aliases)
+        self.assertIn(("VerificationObservation", "default"), aliases)
+
+    def test_verify_integrity_command_passes_database_alias(self):
+        entry, _version = self.make_published_entry()
+        mock_obs = MagicMock()
+        mock_obs.pk = 12345
+        mock_obs.result = VerificationObservation.Result.VERIFIED
+        mock_obs.observed_at = timezone.now()
+        with patch(
+            "lamto.finance.management.commands.verify_integrity.verify_published_entry",
+            return_value=mock_obs,
+        ) as mock_verify:
+            out = StringIO()
+            call_command(
+                "verify_integrity",
+                f"--entry-id={entry.pk}",
+                "--database=default",
+                stdout=out,
+            )
+            mock_verify.assert_called_once_with(entry.pk, using="default")
+            self.assertIn(str(entry.pk), out.getvalue())
+
