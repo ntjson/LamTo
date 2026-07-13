@@ -19,10 +19,11 @@ from lamto.accounts.models import (
     WalletRegistrationChallenge,
 )
 from lamto.audit.models import AuditEvent
-from lamto.evidence.canonical import payload_hash
+from lamto.evidence.canonical import canonical_bytes, payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
 from lamto.evidence.services import (
     EvidenceConflict,
+    _signed_write_authorization,
     _validate_payload,
     begin_wallet_registration,
     queue_signed_event,
@@ -390,47 +391,59 @@ class EvidenceOutboxTests(TestCase):
 
     def test_runtime_role_cannot_call_privileged_write_procedures_without_proof(self):
         membership = self.make_membership(suffix="runtime-procedure-boundary")
+        account, wallet = self.register(membership)
         event_id = "0x" + "77" * 32
         payload = self.valid_payload()
-        with connection.cursor() as cursor:
+        previous_hash = "0x" + "00" * 32
+        signature = self.sign_event(account, event_id, 1, payload, previous_hash)
+        canonical_payload = canonical_bytes(payload).decode("utf-8")
+        registration_address = Account.create().address
+        registration_authorization = _signed_write_authorization(
+            "wallet-register", membership.pk, registration_address
+        )
+        queue_authorization = _signed_write_authorization(
+            "evidence-queue", event_id, 1, payload_hash(payload), previous_hash,
+            signature, wallet.pk, membership.pk, canonical_payload
+        )
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute("SET LOCAL ROLE lamto_app")
             cursor.execute(
                 "SELECT has_function_privilege(current_user, "
                 "'lamto_security.accounts_register_signer_wallet(bigint,text,text)', 'EXECUTE')"
             )
-            self.assertTrue(cursor.fetchone()[0])
+            self.assertFalse(cursor.fetchone()[0])
             cursor.execute(
                 "SELECT has_function_privilege(current_user, "
                 "'lamto_security.evidence_insert_outbox_event(text,smallint,jsonb,text,text,text,bigint,bigint,text,text)', 'EXECUTE')"
             )
-            self.assertTrue(cursor.fetchone()[0])
+            self.assertFalse(cursor.fetchone()[0])
             cursor.execute(
                 "SELECT pg_get_userbyid(relowner) FROM pg_class "
                 "WHERE oid = 'accounts_signerwallet'::regclass"
             )
             self.assertNotEqual(cursor.fetchone()[0], "lamto_app")
-
-        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute(
                 "SELECT lamto_security.accounts_register_signer_wallet(%s, %s, %s)",
-                [membership.pk, Account.create().address, "bad-proof"],
+                [membership.pk, registration_address, registration_authorization],
             )
 
         with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("SET LOCAL ROLE lamto_app")
             cursor.execute(
                 """SELECT lamto_security.evidence_insert_outbox_event(
                     %s, 1, %s::jsonb, %s, %s, %s, %s, %s, %s, %s
                 )""",
                 [
                     event_id,
-                    json.dumps(payload),
-                    "0" * 64,
-                    "0x" + "00" * 32,
-                    "0x" + "11" * 65,
-                    1,
+                    canonical_payload,
+                    payload_hash(payload),
+                    previous_hash,
+                    signature,
+                    wallet.pk,
                     membership.pk,
-                    json.dumps(payload),
-                    "bad-proof",
+                    canonical_payload,
+                    queue_authorization,
                 ],
             )
 

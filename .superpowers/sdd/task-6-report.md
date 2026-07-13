@@ -78,6 +78,12 @@ The pre-existing uncommitted Task 3 report SHA edit was preserved and excluded. 
 
 ### Bootstrap ordering fix
 
-- Granted the runtime role's procedure privileges before transferring ownership to `lamto_service`; after transfer, used the service role to preserve the migration owner's explicit execute grant because PostgreSQL removes the former owner's ACL entry during ownership transfer.
+- Granted procedure privileges before transferring ownership to `lamto_service`; after transfer, used the service role to preserve the migration owner's explicit execute grant because PostgreSQL removes the former owner's ACL entry during ownership transfer.
 - Fresh PostgreSQL 17 bootstrap with the exact non-inheriting Compose roles plus `manage.py test lamto.evidence lamto.accounts lamto.audit -v 1 --noinput` — 46 passed.
 - `docker compose config --quiet`, `manage.py makemigrations --check --dry-run`, compileall, and `git diff --check` — passed.
+
+### Runtime procedure boundary fix
+
+- Removed `EXECUTE` grants for `lamto_app` from the wallet and outbox procedures; the general runtime role can no longer turn the application/database HMAC into a raw SQL write capability.
+- Added forward revoke migrations for databases that already applied the earlier runtime grants, including compatibility for legacy procedure signatures.
+- Added a valid-token regression proving `lamto_app` cannot directly invoke either privileged procedure without the Python proof/schema/audit path.

@@ -5,7 +5,6 @@ from django.db import migrations
 
 def provision_outbox_authorization(apps, schema_editor):
     service_role = os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
-    application_role = os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER")
     quote_name = schema_editor.connection.ops.quote_name
     quoted_service_role = quote_name(service_role)
     with schema_editor.connection.cursor() as cursor:
@@ -14,17 +13,6 @@ def provision_outbox_authorization(apps, schema_editor):
         cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [service_role])
         if cursor.fetchone() is None:
             raise RuntimeError(f"PostgreSQL service role {service_role!r} does not exist.")
-        if application_role:
-            if application_role == service_role:
-                raise RuntimeError("POSTGRES_APPLICATION_ROLE must be different from POSTGRES_SERVICE_ROLE.")
-            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [application_role])
-            if cursor.fetchone() is None:
-                raise RuntimeError(f"PostgreSQL application role {application_role!r} does not exist.")
-            cursor.execute(
-                "GRANT EXECUTE ON FUNCTION lamto_security.evidence_insert_outbox_event("
-                "text, smallint, jsonb, text, text, text, bigint, bigint, text, text) TO "
-                + quote_name(application_role) + ", " + current_role
-            )
         cursor.execute(
             "GRANT SELECT ON TABLE lamto_security.write_authorization_secret TO "
             + quoted_service_role

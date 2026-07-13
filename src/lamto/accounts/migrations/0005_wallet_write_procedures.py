@@ -5,7 +5,6 @@ from django.db import migrations
 
 def provision_service_owner(apps, schema_editor):
     service_role = os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
-    application_role = os.getenv("POSTGRES_APPLICATION_ROLE") or os.getenv("POSTGRES_USER")
     quote_name = schema_editor.connection.ops.quote_name
     quoted_service_role = quote_name(service_role)
 
@@ -40,20 +39,6 @@ def provision_service_owner(apps, schema_editor):
         )
         if cursor.fetchone() is None:
             cursor.execute(f"GRANT {quoted_service_role} TO {quote_name(current_user)}")
-
-        quoted_application_role = None
-        if application_role:
-            if application_role == service_role:
-                raise RuntimeError("POSTGRES_APPLICATION_ROLE must be different from POSTGRES_SERVICE_ROLE.")
-            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [application_role])
-            if cursor.fetchone() is None:
-                raise RuntimeError(f"PostgreSQL application role {application_role!r} does not exist.")
-            quoted_application_role = quote_name(application_role)
-            cursor.execute(
-                "GRANT EXECUTE ON FUNCTION lamto_security.accounts_register_signer_wallet(bigint, text), "
-                "lamto_security.accounts_revoke_signer_wallet(bigint, bigint) TO "
-                + quoted_application_role + ", " + quote_name(current_user)
-            )
 
         cursor.execute(
             f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "
