@@ -6,6 +6,7 @@ from eth_account.messages import encode_typed_data
 
 
 BYTES32_RE = re.compile(r"0x[0-9a-f]{64}\Z")
+SECP256K1_N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 def build_evidence_typed_data(event_id, event_type, payload_hash_hex, previous_hash_hex):
@@ -47,7 +48,27 @@ def build_evidence_typed_data(event_id, event_type, payload_hash_hex, previous_h
     }
 
 
+def normalize_signature(signature) -> str:
+    if isinstance(signature, str):
+        value = signature.removeprefix("0x")
+        try:
+            raw = bytes.fromhex(value)
+        except ValueError as exc:
+            raise ValueError("Signature must be hexadecimal.") from exc
+    elif isinstance(signature, bytes):
+        raw = signature
+    else:
+        raise ValueError("Signature must be bytes or hexadecimal.")
+    if len(raw) != 65:
+        raise ValueError("Signature must be exactly 65 bytes.")
+    r = int.from_bytes(raw[:32], "big")
+    s = int.from_bytes(raw[32:64], "big")
+    if not 0 < r < SECP256K1_N or not 0 < s <= SECP256K1_N // 2 or raw[64] not in (27, 28):
+        raise ValueError("Signature is not canonical secp256k1.")
+    return "0x" + raw.hex()
+
+
 def recover_signer(typed_data, signature) -> str:
     return Account.recover_message(
-        encode_typed_data(full_message=typed_data), signature=signature
+        encode_typed_data(full_message=typed_data), signature=normalize_signature(signature)
     )

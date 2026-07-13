@@ -10,6 +10,16 @@ from lamto.evidence.signatures import build_evidence_typed_data, recover_signer
 from lamto.evidence.services import lowercase_identifier, normalize_vnd, utc_rfc3339
 
 
+SECP256K1_N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+
+def high_s_signature(signature):
+    raw = bytearray(signature)
+    raw[32:64] = (SECP256K1_N - int.from_bytes(raw[32:64], "big")).to_bytes(32, "big")
+    raw[64] = 27 if raw[64] == 28 else 28
+    return "0x" + raw.hex()
+
+
 @override_settings(
     BLOCKCHAIN_CHAIN_ID=1337,
     EVIDENCE_CONTRACT_ADDRESS="0x0000000000000000000000000000000000000001",
@@ -29,6 +39,19 @@ class EvidenceSignatureTests(SimpleTestCase):
         ).signature.hex()
 
         self.assertEqual(recover_signer(typed, signature), wallet.address)
+
+    def test_recovery_rejects_high_s_and_malformed_signatures(self):
+        wallet = Account.create()
+        typed = build_evidence_typed_data(
+            "0x" + "12" * 32, 1, "0x" + "34" * 32, "0x" + "00" * 32
+        )
+        signature = Account.sign_message(
+            encode_typed_data(full_message=typed), wallet.key
+        ).signature
+
+        for invalid in (high_s_signature(signature), bytes(signature[:-1]), bytes(signature[:64]) + b"\x00"):
+            with self.subTest(signature=invalid), self.assertRaises(ValueError):
+                recover_signer(typed, invalid)
 
     def test_canonical_bytes_are_sorted_compact_utf8_and_nfc(self):
         self.assertEqual(

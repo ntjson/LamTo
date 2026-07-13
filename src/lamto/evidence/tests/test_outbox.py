@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from eth_account import Account
@@ -27,6 +27,7 @@ from lamto.evidence.services import (
     revoke_wallet,
 )
 from lamto.evidence.signatures import build_evidence_typed_data
+from lamto.evidence.tests.test_signatures import high_s_signature
 
 
 @override_settings(
@@ -107,6 +108,18 @@ class EvidenceOutboxTests(TestCase):
         with self.assertRaises(ValidationError):
             register_wallet(membership, account.address, proof)
 
+    def test_wallet_registration_rejects_high_s_proof(self):
+        membership = self.make_membership(suffix="high-s-proof")
+        account = Account.create()
+        challenge = begin_wallet_registration(membership)
+        proof = Account.sign_message(
+            encode_typed_data(full_message=challenge), account.key
+        ).signature
+
+        with self.assertRaises(ValidationError):
+            register_wallet(membership, account.address, high_s_signature(proof))
+        self.assertFalse(SignerWallet.objects.filter(membership=membership).exists())
+
     def test_revocation_requires_active_same_organization_authorizer_and_preserves_history(self):
         membership = self.make_membership()
         _, wallet = self.register(membership)
@@ -156,7 +169,49 @@ class EvidenceOutboxTests(TestCase):
         self.assertEqual(event.payload_hash, payload_hash(payload))
         self.assertEqual(event.signer_wallet, wallet)
         self.assertEqual(event.status, BlockchainOutboxEvent.Status.PENDING)
+        self.assertEqual(event.signature, "0x" + bytes.fromhex(signature.removeprefix("0x")).hex())
         self.assertTrue(AuditEvent.objects.filter(action="evidence.queue", target_id=event.event_id).exists())
+
+    def test_duplicate_validates_signature_and_all_immutable_fields_before_lookup(self):
+        membership = self.make_membership(suffix="duplicate-fields")
+        account, _ = self.register(membership)
+        event_id = "0x" + "21" * 32
+        payload = {"proposal_version": 1}
+        zero_hash = "0x" + "00" * 32
+        signature = self.sign_event(account, event_id, 1, payload)
+        with transaction.atomic():
+            queue_signed_event(event_id, 1, payload, zero_hash, membership, signature)
+
+        with transaction.atomic(), self.assertRaises(ValidationError):
+            queue_signed_event(event_id, 1, payload, zero_hash, membership, "0x00")
+
+        changed_previous = "0x" + "01" * 32
+        changed_previous_signature = self.sign_event(
+            account, event_id, 1, payload, changed_previous
+        )
+        with transaction.atomic(), self.assertRaises(EvidenceConflict):
+            queue_signed_event(
+                event_id,
+                1,
+                payload,
+                changed_previous,
+                membership,
+                changed_previous_signature,
+            )
+
+        changed_type_payload = {"decision": "APPROVE"}
+        changed_type_signature = self.sign_event(account, event_id, 2, changed_type_payload)
+        with transaction.atomic(), self.assertRaises(EvidenceConflict):
+            queue_signed_event(
+                event_id, 2, changed_type_payload, zero_hash, membership, changed_type_signature
+            )
+
+        replacement_account, _ = self.register(membership)
+        replacement_signature = self.sign_event(replacement_account, event_id, 1, payload)
+        with transaction.atomic(), self.assertRaises(EvidenceConflict):
+            queue_signed_event(
+                event_id, 1, payload, zero_hash, membership, replacement_signature
+            )
 
     def test_queue_rejects_conflict_wallet_mismatch_and_missing_caller_transaction(self):
         membership = self.make_membership()
@@ -168,14 +223,16 @@ class EvidenceOutboxTests(TestCase):
             queue_signed_event(event_id, 1, payload, "0x" + "00" * 32, membership, signature)
         with transaction.atomic():
             queue_signed_event(event_id, 1, payload, "0x" + "00" * 32, membership, signature)
+        changed_payload = {"proposal_version": 2}
+        changed_signature = self.sign_event(account, event_id, 1, changed_payload)
         with transaction.atomic(), self.assertRaises(EvidenceConflict):
             queue_signed_event(
                 event_id,
                 1,
-                {"proposal_version": 2},
+                changed_payload,
                 "0x" + "00" * 32,
                 membership,
-                signature,
+                changed_signature,
             )
 
         other = Account.create()
@@ -211,6 +268,83 @@ class EvidenceOutboxTests(TestCase):
         event.refresh_from_db()
         self.assertEqual(event.status, BlockchainOutboxEvent.Status.SUBMITTED)
 
+    def test_wallet_database_boundary_rejects_orm_queryset_and_raw_bypasses(self):
+        maintenance = self.make_membership(
+            OrganizationMembership.Role.MAINTENANCE, "direct-wallet"
+        )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            SignerWallet.objects.create(membership=maintenance, address=Account.create().address)
+
+        membership = self.make_membership(suffix="direct-revoke")
+        _, wallet = self.register(membership)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            SignerWallet.objects.filter(pk=wallet.pk).update(
+                active=False, revoked_at=timezone.now()
+            )
+        self.assertFalse(
+            SignerAuthorizationRequest.objects.filter(
+                wallet=wallet, action=SignerAuthorizationRequest.Action.REVOKE
+            ).exists()
+        )
+        self.assertFalse(
+            AuditEvent.objects.filter(action="wallet.revoke", target_id=str(wallet.pk)).exists()
+        )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            SignerWallet.objects.filter(pk=wallet.pk).delete()
+
+        with self.assertRaises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO accounts_signerwallet
+                    (membership_id, address, active, registered_at, revoked_at)
+                VALUES (%s, %s, TRUE, NOW(), NULL)
+                """,
+                [maintenance.pk, Account.create().address],
+            )
+
+    def test_outbox_database_boundary_rejects_direct_rows_and_raw_truncate(self):
+        with self.assertRaises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("TRUNCATE evidence_blockchainoutboxevent")
+
+        membership = self.make_membership(suffix="direct-outbox")
+        account, wallet = self.register(membership)
+        event_id = "0x" + "45" * 32
+        payload = {"proposal_version": 1}
+        signature = self.sign_event(account, event_id, 1, payload)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            BlockchainOutboxEvent.objects.create(
+                event_id=event_id,
+                event_type=1,
+                payload=payload,
+                payload_hash="0" * 64,
+                previous_hash="0x" + "00" * 32,
+                signature=signature,
+                signer_wallet=wallet,
+            )
+        self.assertFalse(AuditEvent.objects.filter(action="evidence.queue", target_id=event_id).exists())
+
+        with self.assertRaises(IntegrityError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO evidence_blockchainoutboxevent
+                    (event_id, event_type, payload, payload_hash, previous_hash, signature,
+                     signer_wallet_id, status, attempts, transaction_hash, receipt, last_error,
+                     created_at, updated_at)
+                VALUES (%s, 1, %s::jsonb, %s, %s, %s, %s, 'PENDING', 0, '', '{}'::jsonb,
+                        '', NOW(), NOW())
+                """,
+                [
+                    "0x" + "46" * 32,
+                    '{"proposal_version":1}',
+                    "0" * 64,
+                    "0x" + "00" * 32,
+                    signature,
+                    wallet.pk,
+                ],
+            )
+
+
     def test_queue_rejects_non_integer_event_type(self):
         membership = self.make_membership()
         account, _ = self.register(membership)
@@ -240,7 +374,7 @@ class EvidenceOutboxTests(TestCase):
                 signature,
             )
 
-        safe_payload = {"report_snapshot_hash": "abc", "photo_hash": "def"}
+        safe_payload = {"report_snapshot_hash": "a" * 64, "photo_hash": "b" * 64}
         safe_id = "0x" + "88" * 32
         safe_signature = self.sign_event(account, safe_id, 1, safe_payload)
         with transaction.atomic():
@@ -253,6 +387,35 @@ class EvidenceOutboxTests(TestCase):
                 safe_signature,
             )
         self.assertEqual(event.payload, safe_payload)
+
+    def test_queue_rejects_unknown_alternate_and_nested_sensitive_payload_keys(self):
+        membership = self.make_membership(suffix="payload-schema")
+        account, _ = self.register(membership)
+        for index, payload in enumerate(
+            (
+                {"account_number": "123"},
+                {"identity_number": "ABC"},
+                {"full_name": "Private Person"},
+                {"report_body": "private"},
+                {"evidence": {"accountNumber": "123"}},
+                {"report_snapshot_hash": "raw report body"},
+                {"proposal_version": 1, "unexpected": "value"},
+            ),
+            start=1,
+        ):
+            event_id = "0x" + f"{index + 128:02x}" * 32
+            signature = self.sign_event(account, event_id, 1, payload)
+            with self.subTest(payload=payload), transaction.atomic(), self.assertRaises(
+                ValidationError
+            ):
+                queue_signed_event(
+                    event_id,
+                    1,
+                    payload,
+                    "0x" + "00" * 32,
+                    membership,
+                    signature,
+                )
 
     def test_idempotent_lookup_does_not_bypass_membership_authorization(self):
         membership = self.make_membership()

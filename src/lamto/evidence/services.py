@@ -1,13 +1,13 @@
 import json
+import re
 import secrets
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
-from eth_account import Account
-from eth_account.messages import encode_typed_data
 from eth_utils import to_checksum_address
 
 from lamto.accounts.models import (
@@ -19,8 +19,13 @@ from lamto.accounts.models import (
 from lamto.audit.services import record_audit
 
 from .canonical import canonical_bytes, payload_hash
-from .models import BlockchainOutboxEvent
-from .signatures import BYTES32_RE, build_evidence_typed_data, recover_signer
+from .models import BlockchainOutboxEvent, EvidenceType
+from .signatures import (
+    BYTES32_RE,
+    build_evidence_typed_data,
+    normalize_signature,
+    recover_signer,
+)
 
 
 SIGNING_ROLES = {
@@ -28,24 +33,70 @@ SIGNING_ROLES = {
     OrganizationMembership.Role.BOARD,
     OrganizationMembership.Role.RESIDENT_REP,
 }
-PRIVATE_PAYLOAD_KEYS = {
-    "report_text",
-    "photo",
-    "photos",
-    "bank_account",
-    "bank_details",
-    "bank_reference",
-    "display_name",
-    "email",
-    "personal_profile",
-    "phone",
-    "profile",
-    "private_key",
+HASH_RE = re.compile(r"(?:0x)?[0-9a-f]{64}\Z")
+EVIDENCE_PAYLOAD_FIELDS = {
+    EvidenceType.PROPOSAL_CREATED: frozenset({
+        "proposal_id", "proposal_version", "record_id", "work_order_id", "case_id",
+        "report_id", "amount_vnd", "estimated_amount_vnd", "proposal_snapshot_hash",
+        "work_snapshot_hash", "case_snapshot_hash", "report_snapshot_hash",
+        "quotation_original_hash", "quotation_redacted_hash", "photo_hash", "photo_hashes",
+    }),
+    EvidenceType.BOARD_APPROVAL: frozenset({
+        "proposal_hash", "decision", "actor_organization_id", "decision_timestamp",
+    }),
+    EvidenceType.REPRESENTATIVE_APPROVAL: frozenset({
+        "proposal_hash", "decision", "actor_organization_id", "decision_timestamp",
+    }),
+    EvidenceType.EMERGENCY_AUTHORIZATION: frozenset({
+        "work_order_id", "reason_digest", "available_estimate_vnd",
+        "estimate_document_hash", "authorization_timestamp", "drill",
+    }),
+    EvidenceType.EMERGENCY_OUTCOME: frozenset({
+        "decision", "result", "reason_digest", "deadline_result", "decision_timestamp", "drill",
+    }),
+    EvidenceType.WORK_ACCEPTANCE: frozenset({
+        "work_order_id", "actual_cost_vnd", "acceptance_timestamp", "invoice_original_hash",
+        "invoice_redacted_hash", "acceptance_report_original_hash",
+        "acceptance_report_redacted_hash", "photo_hashes", "drill",
+    }),
+    EvidenceType.PAYMENT_RECORDED: frozenset({
+        "payment_id", "amount_vnd", "bank_reference_digest", "external_status",
+        "external_timestamp", "payment_proof_original_hash", "payment_proof_redacted_hash",
+    }),
+    EvidenceType.PAYMENT_VERIFIED: frozenset({
+        "payment_hash", "decision", "verification_result", "verification_timestamp",
+    }),
+    EvidenceType.PUBLICATION_SNAPSHOT: frozenset({
+        "publication_id", "prerequisite_event_hashes", "emergency_outcome_hash",
+        "resident_payload_hash", "document_hashes", "publication_timestamp", "drill",
+    }),
+    EvidenceType.CORRECTION: frozenset({
+        "correction_id", "original_event_id", "original_hash", "replacement_hashes",
+        "reason_digest", "decision", "actor_organization_id", "publisher_snapshot_hash",
+        "correction_timestamp",
+    }),
+    EvidenceType.FUND_ENTRY: frozenset({
+        "fund_entry_id", "entry_type", "amount_vnd", "source_document_original_hash",
+        "source_document_redacted_hash", "maker_membership_id", "checker_membership_id",
+        "entry_timestamp",
+    }),
 }
 
 
 class EvidenceConflict(Exception):
     pass
+
+
+@contextmanager
+def _db_transition(name):
+    setting = f"lamto.{name}_transition"
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT set_config(%s, 'on', true)", [setting])
+    try:
+        yield
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT set_config(%s, 'off', true)", [setting])
 
 
 def utc_rfc3339(value: datetime) -> str:
@@ -153,27 +204,25 @@ def register_wallet(membership, checksum_address, proof_signature) -> SignerWall
             error = "Wallet registration challenge has expired."
         else:
             try:
-                recovered = Account.recover_message(
-                    encode_typed_data(full_message=_registration_typed_data(challenge)),
-                    signature=proof_signature,
-                )
+                recovered = recover_signer(_registration_typed_data(challenge), proof_signature)
             except Exception:
                 recovered = None
             if recovered != address:
                 error = "Wallet proof does not match the submitted address."
         if error is None:
-            for previous in SignerWallet.objects.select_for_update().filter(
-                membership=membership, active=True
-            ):
-                previous.active = False
-                previous.revoked_at = now
-                previous.save(update_fields=["active", "revoked_at"])
-                SignerAuthorizationRequest.objects.get_or_create(
-                    wallet=previous,
-                    action=SignerAuthorizationRequest.Action.REVOKE,
-                    defaults={"requested_by": membership},
-                )
-            wallet = SignerWallet.objects.create(membership=membership, address=address)
+            with _db_transition("wallet"), transaction.atomic():
+                for previous in SignerWallet.objects.select_for_update().filter(
+                    membership=membership, active=True
+                ):
+                    previous.active = False
+                    previous.revoked_at = now
+                    previous.save(update_fields=["active", "revoked_at"])
+                    SignerAuthorizationRequest.objects.get_or_create(
+                        wallet=previous,
+                        action=SignerAuthorizationRequest.Action.REVOKE,
+                        defaults={"requested_by": membership},
+                    )
+                wallet = SignerWallet.objects.create(membership=membership, address=address)
             SignerAuthorizationRequest.objects.create(
                 wallet=wallet,
                 requested_by=membership,
@@ -201,9 +250,10 @@ def revoke_wallet(wallet, authorizing_membership) -> SignerWallet:
         raise PermissionDenied("Wallet revocation requires the same organization.")
     if not wallet.active:
         return wallet
-    wallet.active = False
-    wallet.revoked_at = timezone.now()
-    wallet.save(update_fields=["active", "revoked_at"])
+    with _db_transition("wallet"), transaction.atomic():
+        wallet.active = False
+        wallet.revoked_at = timezone.now()
+        wallet.save(update_fields=["active", "revoked_at"])
     SignerAuthorizationRequest.objects.get_or_create(
         wallet=wallet,
         action=SignerAuthorizationRequest.Action.REVOKE,
@@ -228,26 +278,47 @@ def _require_caller_transaction():
         raise RuntimeError("queue_signed_event must run inside the caller's transaction.")
 
 
-def _reject_private_payload(value):
-    if isinstance(value, dict):
-        if any(key.casefold() in PRIVATE_PAYLOAD_KEYS for key in value if isinstance(key, str)):
-            raise ValidationError("Evidence payload contains private data; include hashes only.")
-        for item in value.values():
-            _reject_private_payload(item)
-    elif isinstance(value, list):
-        for item in value:
-            _reject_private_payload(item)
+def _validate_payload(event_type, payload):
+    allowed = EVIDENCE_PAYLOAD_FIELDS.get(event_type)
+    if allowed is None:
+        raise ValueError("Evidence event type must be an integer from 1 through 11.")
+    if not isinstance(payload, dict) or any(not isinstance(key, str) for key in payload):
+        raise ValidationError("Evidence payload must be an object with known fields.")
+    if set(payload) - allowed:
+        raise ValidationError("Evidence payload contains fields outside its event schema.")
+    for key, value in payload.items():
+        if key.endswith(("_hash", "_digest")) and (
+            not isinstance(value, str) or not HASH_RE.fullmatch(value)
+        ):
+            raise ValidationError("Evidence hashes and digests must be lowercase 32-byte hex.")
+        if key.endswith("_hashes") and (
+            not isinstance(value, list)
+            or any(not isinstance(item, str) or not HASH_RE.fullmatch(item) for item in value)
+        ):
+            raise ValidationError("Evidence hash lists must contain lowercase 32-byte hex.")
+
+    def reject_nested_objects(value):
+        if isinstance(value, dict):
+            raise ValidationError("Nested evidence objects are not allowed; include hashes or IDs.")
+        if isinstance(value, list):
+            for item in value:
+                reject_nested_objects(item)
+
+    for value in payload.values():
+        reject_nested_objects(value)
 
 
-def _resolve_duplicate(existing, digest, membership):
+def _resolve_duplicate(existing, event_type, payload, digest, previous_hash, wallet, signature):
     if (
-        existing.signer_wallet.membership_id != membership.pk
-        or not existing.signer_wallet.active
+        existing.event_type == event_type
+        and existing.payload == payload
+        and existing.payload_hash == digest
+        and existing.previous_hash == previous_hash
+        and existing.signer_wallet_id == wallet.pk
+        and existing.signature == signature
     ):
-        raise PermissionDenied("Evidence event belongs to another active signer wallet.")
-    if existing.payload_hash == digest:
         return existing
-    raise EvidenceConflict("Event ID already exists with a different payload hash.")
+    raise EvidenceConflict("Event ID already exists with different signed identity.")
 
 
 def queue_signed_event(
@@ -256,16 +327,9 @@ def queue_signed_event(
     _require_caller_transaction()
     event_id = lowercase_identifier(event_id)
     previous_hash = lowercase_identifier(previous_hash)
-    _reject_private_payload(payload)
+    _validate_payload(event_type, payload)
     digest = payload_hash(payload)
     membership = _active_signing_membership(membership)
-    existing = (
-        BlockchainOutboxEvent.objects.select_related("signer_wallet")
-        .filter(event_id=event_id)
-        .first()
-    )
-    if existing:
-        return _resolve_duplicate(existing, digest, membership)
     if not BYTES32_RE.fullmatch(event_id) or not BYTES32_RE.fullmatch(previous_hash):
         raise ValidationError("Event ID and previous hash must be 0x-prefixed bytes32 values.")
     wallet = SignerWallet.objects.filter(membership=membership, active=True).first()
@@ -274,30 +338,31 @@ def queue_signed_event(
     normalized_payload = json.loads(canonical_bytes(payload))
     typed_data = build_evidence_typed_data(event_id, event_type, "0x" + digest, previous_hash)
     try:
+        signature = normalize_signature(signature)
         recovered = recover_signer(typed_data, signature)
     except Exception as exc:
         raise ValidationError("Evidence signature is invalid.") from exc
     if recovered != wallet.address:
         raise PermissionDenied("Evidence signature does not match the active wallet.")
-    signature = lowercase_identifier(signature)
-    if not signature.startswith("0x"):
-        signature = "0x" + signature
+    existing = BlockchainOutboxEvent.objects.filter(event_id=event_id).first()
+    if existing:
+        return _resolve_duplicate(
+            existing, event_type, normalized_payload, digest, previous_hash, wallet, signature
+        )
     try:
-        with transaction.atomic():
+        with _db_transition("outbox"), transaction.atomic():
             event = BlockchainOutboxEvent.objects.create(
-                event_id=event_id,
-                event_type=event_type,
-                payload=normalized_payload,
-                payload_hash=digest,
-                previous_hash=previous_hash,
-                signature=signature,
+                event_id=event_id, event_type=event_type, payload=normalized_payload,
+                payload_hash=digest, previous_hash=previous_hash, signature=signature,
                 signer_wallet=wallet,
             )
     except IntegrityError:
         existing = BlockchainOutboxEvent.objects.select_related("signer_wallet").get(
             event_id=event_id
         )
-        return _resolve_duplicate(existing, digest, membership)
+        return _resolve_duplicate(
+            existing, event_type, normalized_payload, digest, previous_hash, wallet, signature
+        )
     record_audit(
         membership.user,
         membership,
