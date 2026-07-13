@@ -19,6 +19,7 @@ from lamto.evidence.services import begin_wallet_registration, register_wallet, 
 from lamto.finance.acceptance import accept_work
 from lamto.finance.models import PaymentEvidence, PaymentVerification
 from lamto.finance.payments import (
+    allocate_payment_id,
     build_payment_evidence_typed_data,
     build_payment_verification_evidence_typed_data,
     normalize_bank_reference,
@@ -110,16 +111,8 @@ class PaymentMakerCheckerTests(TestCase):
         return acceptance, board, proof_original, proof_redacted
 
     def next_payment_id(self):
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT last_value FROM finance_paymentevidence_id_seq"
-            )
-            last = cursor.fetchone()[0]
-            cursor.execute(
-                "SELECT is_called FROM finance_paymentevidence_id_seq"
-            )
-            is_called = cursor.fetchone()[0]
-        return last + 1 if is_called else last
+        # Reserve via nextval so sign and record share one concurrent-safe id.
+        return allocate_payment_id()
 
     def sign_payment(
         self,
@@ -207,7 +200,7 @@ class PaymentMakerCheckerTests(TestCase):
             acceptance_event,
             timestamp=acceptance_ts,
         )
-        payment_signature, payment_event, completed_at, _ = self.sign_payment(
+        payment_signature, payment_event, completed_at, payment_id = self.sign_payment(
             acceptance,
             board_recorder,
             proof_original=proof_original,
@@ -224,6 +217,7 @@ class PaymentMakerCheckerTests(TestCase):
             proof_redacted,
             payment_signature,
             payment_event,
+            payment_id,
         )
 
         verification_signature, verification_event, _ = self.sign_payment_verification(
@@ -250,7 +244,7 @@ class PaymentMakerCheckerTests(TestCase):
         inputs = self.make_completed_work_inputs()
         acceptance, board_recorder, proof_original, proof_redacted = self.accept_default(inputs)
         verifier = self.make_second_board(acceptance.work_order.case.building)
-        payment_signature, payment_event, completed_at, _ = self.sign_payment(
+        payment_signature, payment_event, completed_at, payment_id = self.sign_payment(
             acceptance,
             board_recorder,
             bank_reference="BANK-2026-002",
@@ -268,6 +262,7 @@ class PaymentMakerCheckerTests(TestCase):
             proof_redacted,
             payment_signature,
             payment_event,
+            payment_id,
         )
         self.assertEqual(payment.outbox_event.event_type, EvidenceType.PAYMENT_RECORDED)
         self.assertEqual(payment.outbox_event.payload["external_status"], "SETTLED")
@@ -309,7 +304,7 @@ class PaymentMakerCheckerTests(TestCase):
     def test_payment_amount_must_match_and_bank_reference_is_unique(self):
         inputs = self.make_completed_work_inputs()
         acceptance, board, proof_original, proof_redacted = self.accept_default(inputs)
-        wrong_signature, wrong_event, completed_at, _ = self.sign_payment(
+        wrong_signature, wrong_event, completed_at, wrong_payment_id = self.sign_payment(
             acceptance,
             board,
             bank_reference="BANK-2026-003",
@@ -329,8 +324,9 @@ class PaymentMakerCheckerTests(TestCase):
                 proof_redacted,
                 wrong_signature,
                 wrong_event,
+                wrong_payment_id,
             )
-        payment_signature, payment_event, completed_at, _ = self.sign_payment(
+        payment_signature, payment_event, completed_at, payment_id = self.sign_payment(
             acceptance,
             board,
             bank_reference="BANK-2026-003",
@@ -349,6 +345,7 @@ class PaymentMakerCheckerTests(TestCase):
             proof_redacted,
             payment_signature,
             payment_event,
+            payment_id,
         )
         self.assertEqual(payment.bank_reference, "BANK-2026-003")
         self.assertEqual(normalize_bank_reference(" bank-2026-003 "), "BANK-2026-003")
@@ -359,7 +356,7 @@ class PaymentMakerCheckerTests(TestCase):
         second_acceptance, second_board, second_proof_original, second_proof_redacted = (
             self.accept_default(second_inputs)
         )
-        second_signature, second_event, second_completed, _ = self.sign_payment(
+        second_signature, second_event, second_completed, second_payment_id = self.sign_payment(
             second_acceptance,
             second_board,
             bank_reference="BANK-2026-003",
@@ -379,12 +376,13 @@ class PaymentMakerCheckerTests(TestCase):
                 second_proof_redacted,
                 second_signature,
                 second_event,
+                second_payment_id,
             )
 
     def test_payment_is_insert_only_and_db_rejects_self_verification(self):
         inputs = self.make_completed_work_inputs()
         acceptance, board, proof_original, proof_redacted = self.accept_default(inputs)
-        payment_signature, payment_event, completed_at, _ = self.sign_payment(
+        payment_signature, payment_event, completed_at, payment_id = self.sign_payment(
             acceptance,
             board,
             bank_reference="BANK-2026-004",
@@ -402,6 +400,7 @@ class PaymentMakerCheckerTests(TestCase):
             proof_redacted,
             payment_signature,
             payment_event,
+            payment_id,
         )
         payment.amount_vnd = 1
         with self.assertRaises(ValueError):

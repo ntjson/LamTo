@@ -36,6 +36,16 @@ def _allocate_pk(model):
         return cursor.fetchone()[0]
 
 
+def allocate_payment_id() -> int:
+    """Reserve a PaymentEvidence primary key for sign-before-write.
+
+    Call once before signing PAYMENT_RECORDED evidence, include the returned
+    id in the signed payload, and pass the same id to record_payment.
+    Clients must not peek finance_paymentevidence_id_seq.last_value.
+    """
+    return int(_allocate_pk(PaymentEvidence))
+
+
 def normalize_bank_reference(value) -> str:
     if not isinstance(value, str):
         raise ValidationError("Bank reference is required.")
@@ -234,6 +244,7 @@ def record_payment(
     proof_redacted,
     signature,
     event_id,
+    payment_id,
 ) -> PaymentEvidence:
     acceptance = _locked_acceptance(acceptance)
     actor = require_capability(membership.user, membership.pk, PAYMENT_RECORD)
@@ -261,7 +272,10 @@ def record_payment(
         work_order.case.building_id,
         lock=True,
     )
-    payment_id = _allocate_pk(PaymentEvidence)
+    if type(payment_id) is not int or payment_id <= 0:
+        raise ValidationError("Payment id must be a positive integer.")
+    if PaymentEvidence.objects.filter(pk=payment_id).exists():
+        raise ValidationError("Payment id is already used.")
     payload = build_payment_evidence_payload(
         acceptance,
         payment_id,
