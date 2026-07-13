@@ -148,3 +148,16 @@ Expected RED on a fresh PostgreSQL test database: 13 tests; 4 failures, 6 errors
 
 - ECDSA signature verification and JSON canonicalization remain in the application/outbox path; PostgreSQL enforces relational/temporal/identity invariants and the emergency AUTHORIZED transition boundary, not cryptography.
 - Task 10 (Foundry/OpenZeppelin contract work) remains gated until independent re-review of the full Task 9 range accepts these corrections.
+
+## Fix pass 3 — emergency-on-already-AUTHORIZED boundary
+
+### Root cause
+The authorization-boundary trigger only checked when transitioning *into* `AUTHORIZED`. Setting complete emergency identity on an already-`AUTHORIZED` normal work order skipped the existence check. `request_emergency()` also accepted already-authorized work orders.
+
+### Repair
+- Service: `request_emergency()` rejects `AUTHORIZED` and other non-eligible statuses.
+- DB: `maintenance.0008` replaces the trigger function with a pure state invariant: `emergency AND AUTHORIZED` always requires an `EmergencyAuthorization` row.
+- Tests: service rejection + direct ORM conversion IntegrityError.
+
+### GREEN
+Focused emergency suite 15 passed; affected finance+maintenance suite results recorded in scratch.

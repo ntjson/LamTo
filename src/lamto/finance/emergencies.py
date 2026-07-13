@@ -118,6 +118,15 @@ def request_emergency(work_order, operator_membership, reason, drill=False) -> W
         raise ValidationError("Emergency has already been requested.")
     if EmergencyAuthorization.objects.filter(work_order=work_order).exists():
         raise ValidationError("Emergency has already been authorized.")
+    if work_order.authorization_status == WorkOrder.AuthorizationStatus.AUTHORIZED:
+        raise ValidationError(
+            "Cannot request emergency on an already authorized work order."
+        )
+    if work_order.authorization_status not in {
+        WorkOrder.AuthorizationStatus.PENDING,
+        WorkOrder.AuthorizationStatus.NOT_REQUIRED,
+    }:
+        raise ValidationError("Work order is not eligible for emergency request.")
     work_order.emergency = True
     work_order.drill = drill
     work_order.emergency_requested_by = membership

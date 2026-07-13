@@ -456,6 +456,35 @@ class EmergencyFlowTests(TestCase):
         requested.refresh_from_db()
         self.assertEqual(requested.authorization_status, "AUTHORIZED")
 
+    def test_cannot_request_emergency_after_normal_authorization(self):
+        work, operator, board, _, _ = self.make_emergency_actors()
+        work.authorization_status = type(work).AuthorizationStatus.AUTHORIZED
+        work.save(update_fields=["authorization_status"])
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Cannot request emergency on an already authorized work order.",
+        ):
+            request_emergency(work, operator, "Active water leak")
+        work.refresh_from_db()
+        self.assertFalse(work.emergency)
+        self.assertIsNone(work.emergency_requested_at)
+
+        # Direct ORM conversion of already-AUTHORIZED non-emergency into emergency
+        # must also fail while AUTHORIZED and no EmergencyAuthorization exists.
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            type(work).objects.filter(pk=work.pk).update(
+                emergency=True,
+                emergency_reason="Forged after authorization",
+                emergency_requested_by=operator,
+                emergency_requested_at=timezone.now(),
+            )
+        work.refresh_from_db()
+        self.assertFalse(work.emergency)
+        self.assertEqual(
+            work.authorization_status, type(work).AuthorizationStatus.AUTHORIZED
+        )
+
     def test_database_rejects_partial_emergency_request_identity(self):
         work, _, _, _, _ = self.make_emergency_actors()
 
