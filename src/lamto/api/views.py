@@ -17,7 +17,7 @@ from lamto.accounts.security import (
     reset_auth_throttle,
 )
 from lamto.accounts.tenancy import active_occupancies
-from lamto.api.serializers import LoginSerializer, TokenResponseSerializer
+from lamto.api.serializers import LoginSerializer, MeSerializer, TokenResponseSerializer
 from lamto.api.services import (
     INVALID_CREDENTIALS_DETAIL,
     canonicalize_login_identifier,
@@ -106,3 +106,33 @@ class LogoutAllView(KnoxLogoutAllView):
     @extend_schema(request=None, responses={204: None})
     def post(self, request, format=None):
         return super().post(request, format)
+
+
+class MeView(APIView):
+    @extend_schema(responses={200: MeSerializer})
+    def get(self, request):
+        occupancies = list(active_occupancies(request.user))
+        if not occupancies:
+            raise exceptions.PermissionDenied(
+                "An active resident occupancy is required."
+            )
+        preferences = list(
+            request.user.notification_preferences.order_by("event_code").values(
+                "event_code", "email_enabled"
+            )
+        )
+        data = {
+            "display_name": request.user.display_name,
+            "email": request.user.email,
+            "phone": request.user.phone,
+            "occupancies": [
+                {
+                    "id": occupancy.pk,
+                    "unit_label": occupancy.unit.label,
+                    "building_name": occupancy.unit.building.name,
+                }
+                for occupancy in occupancies
+            ],
+            "notification_preferences": preferences,
+        }
+        return Response(MeSerializer(data).data)

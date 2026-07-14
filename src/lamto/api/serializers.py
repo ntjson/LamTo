@@ -12,3 +12,22 @@ class LoginSerializer(serializers.Serializer):
 class TokenResponseSerializer(serializers.Serializer):
     token = serializers.CharField()
     expiry = serializers.DateTimeField()
+
+
+class OccupancySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    unit_label = serializers.CharField()
+    building_name = serializers.CharField()
+
+
+class NotificationPreferenceSerializer(serializers.Serializer):
+    event_code = serializers.CharField()
+    email_enabled = serializers.BooleanField()
+
+
+class MeSerializer(serializers.Serializer):
+    display_name = serializers.CharField()
+    email = serializers.EmailField()
+    phone = serializers.CharField(allow_null=True)
+    occupancies = OccupancySerializer(many=True)
+    notification_preferences = NotificationPreferenceSerializer(many=True)
