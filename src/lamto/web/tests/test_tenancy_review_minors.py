@@ -5,11 +5,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from lamto.accounts.models import Building, ResidentOccupancy, Unit
-from lamto.accounts.tenancy import SESSION_OCCUPANCY_KEY, TenantContext
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
+from lamto.accounts.tenancy import SESSION_OCCUPANCY_KEY
+from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.notifications.models import NotificationDelivery
 from lamto.web.action_inbox import _failed_outbox_items
-from lamto.web.views.resident import home, ledger_list
 from lamto.web.views.security import PhoneOrEmailAuthenticationForm
 
 
