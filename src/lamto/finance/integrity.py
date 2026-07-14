@@ -1,11 +1,12 @@
 import hashlib
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from lamto.audit.services import record_audit
 from lamto.documents.access import _read_stored_version
-from lamto.evidence.models import BlockchainOutboxEvent
+from lamto.evidence.models import BlockchainOutboxEvent, is_settled
 from lamto.finance.models import (
     PublishedLedgerEntry,
     VerificationObservation,
@@ -38,18 +39,51 @@ def _related_outbox_events(entry):
 
 
 def _check_chain_records(events):
-    """Return (chain_ok, chain_unavailable, details)."""
+    """Return (chain_ok, chain_unavailable, details).
+
+    Chain-dependent checks are skipped, never faked (spec 5.2): disabled mode
+    skips every event; besu mode skips LOCAL-settled events individually.
+    """
+    if settings.EVIDENCE_ANCHORING_BACKEND == "disabled":
+        return None, True, {
+            "anchoring_backend": "disabled",
+            "chain_checks": [
+                {
+                    "event_id": event.event_id,
+                    "local_status": event.status,
+                    "result": "SKIPPED_ANCHORING_DISABLED",
+                }
+                for event in events
+            ],
+        }
+
     details = {"chain_checks": []}
+    chain_events = []
+    for event in events:
+        if event.status == BlockchainOutboxEvent.Status.LOCAL:
+            details["chain_checks"].append(
+                {
+                    "event_id": event.event_id,
+                    "local_status": event.status,
+                    "result": "SKIPPED_LOCAL",
+                }
+            )
+        else:
+            chain_events.append(event)
+    if not chain_events:
+        return None, True, details
+
     try:
-        from lamto.evidence.chain import ChainClientError, EvidenceRegistryClient
+        from lamto.evidence.chain import EvidenceRegistryClient
 
         client = EvidenceRegistryClient()
     except Exception as exc:  # pragma: no cover - import/config failure path
-        return None, True, {"chain_error": str(exc), "chain_checks": []}
+        details["chain_error"] = str(exc)
+        return None, True, details
 
     any_unavailable = False
     any_mismatch = False
-    for event in events:
+    for event in chain_events:
         check = {
             "event_id": event.event_id,
             "local_payload_hash": event.payload_hash,
@@ -160,9 +194,9 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
         elif chain_ok is False:
             result = VerificationObservation.Result.MISMATCH
         elif chain_unavailable:
-            # Documents verified; chain not independently reachable. Prefer VERIFIED when
-            # every local outbox event is CONFIRMED (pilot may lack live registry).
-            if all(e.status == BlockchainOutboxEvent.Status.CONFIRMED for e in events):
+            # Documents verified; chain not independently reachable or anchoring
+            # skipped. Prefer VERIFIED when every local outbox event is settled.
+            if all(is_settled(event.status) for event in events):
                 result = VerificationObservation.Result.VERIFIED
             else:
                 result = VerificationObservation.Result.UNAVAILABLE

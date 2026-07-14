@@ -70,6 +70,7 @@ from lamto.maintenance.models import (
     WorkOrder,
 )
 from lamto.maintenance.workorders import complete_work_order, start_work_order
+from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-integrity-")
 
@@ -593,4 +594,86 @@ class IntegrityTests(TestCase):
             )
             mock_verify.assert_called_once_with(entry.pk, using="default")
             self.assertIn(str(entry.pk), out.getvalue())
+
+
+_ANCHOR_TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-integrity-anchor-")
+
+
+@override_settings(
+    STORAGES={
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": _ANCHOR_TEMP_STORAGE},
+        },
+        "private": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": _ANCHOR_TEMP_STORAGE},
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+)
+class AnchoringAwareIntegrityTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.seed = seed_pilot_world(
+            building_name="Integrity Anchor Building", create_sample_report=False
+        )
+        driver = PilotDomainDriver(cls.seed)
+        driver.prepare_locally_approved_normal_work(None)
+        driver.complete_assigned_work()
+        driver.accept_and_record_payment()
+        driver.verify_payment()
+        driver.confirm_all_chain_events()
+        driver.sign_publication_snapshot()
+        driver.confirm_all_chain_events()
+        cls.entry = PublishedLedgerEntry.objects.get(
+            case__building=cls.seed.building
+        )
+
+    def test_disabled_mode_skips_chain_checks_without_faking(self):
+        with override_settings(EVIDENCE_ANCHORING_BACKEND="disabled"):
+            observation = verify_published_entry(self.entry.pk)
+
+        self.assertEqual(
+            observation.result, VerificationObservation.Result.VERIFIED
+        )
+        self.assertEqual(observation.details.get("anchoring_backend"), "disabled")
+        results = {check["result"] for check in observation.details["chain_checks"]}
+        self.assertEqual(results, {"SKIPPED_ANCHORING_DISABLED"})
+
+    def test_local_events_are_skipped_not_faked_in_besu_mode(self):
+        snapshot_event_id = self.entry.snapshot.outbox_event_id
+        BlockchainOutboxEvent.objects.filter(pk=snapshot_event_id).update(
+            status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None
+        )
+
+        observation = verify_published_entry(self.entry.pk)
+
+        by_event = {
+            check["event_id"]: check["result"]
+            for check in observation.details["chain_checks"]
+        }
+        self.assertEqual(
+            by_event[self.entry.snapshot.outbox_event.event_id], "SKIPPED_LOCAL"
+        )
+        # Documents verified and every event settled: VERIFIED even though the
+        # chain is unreachable in the test environment.
+        self.assertEqual(
+            observation.result, VerificationObservation.Result.VERIFIED
+        )
+
+    def test_unsettled_event_downgrades_to_unavailable(self):
+        snapshot_event_id = self.entry.snapshot.outbox_event_id
+        BlockchainOutboxEvent.objects.filter(pk=snapshot_event_id).update(
+            status=BlockchainOutboxEvent.Status.PENDING, confirmed_at=None
+        )
+
+        with override_settings(EVIDENCE_ANCHORING_BACKEND="disabled"):
+            observation = verify_published_entry(self.entry.pk)
+
+        self.assertEqual(
+            observation.result, VerificationObservation.Result.UNAVAILABLE
+        )
 

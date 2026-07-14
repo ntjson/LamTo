@@ -56,7 +56,7 @@ from lamto.accounts.services import grant_capability
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
+from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType, is_settled
 from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.acceptance import accept_work, build_acceptance_evidence_typed_data
@@ -988,9 +988,9 @@ class PilotDomainDriver:
             observation.details.get("document_result")
             in {observation.Result.VERIFIED, "VERIFIED"}
         )
-        # Chain may be UNAVAILABLE without live Besu; accept local CONFIRMED as match.
+        # Chain may be UNAVAILABLE without live Besu; accept settled events as match.
         chain_ok = observation.result in {observation.Result.VERIFIED, "VERIFIED"} or all(
-            e.status == BlockchainOutboxEvent.Status.CONFIRMED
+            is_settled(e.status)
             for e in BlockchainOutboxEvent.objects.filter(
                 event_id__in=observation.checked_chain_event_ids
             )
