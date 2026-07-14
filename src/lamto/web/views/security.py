@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect, render
@@ -43,8 +44,20 @@ from lamto.web.staff import resolve_active_membership
 from lamto.audit.services import record_audit
 
 
+class PhoneOrEmailAuthenticationForm(AuthenticationForm):
+    """Login form labeled for email (staff) or phone (residents)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].label = "Email or phone"
+        self.fields["username"].widget.attrs.setdefault(
+            "autocomplete", "username"
+        )
+
+
 class SecureLoginView(LoginView):
     template_name = "web/resident/login.html"
+    authentication_form = PhoneOrEmailAuthenticationForm
 
     def form_valid(self, form):
         username = form.cleaned_data.get("username") or form.cleaned_data.get("email") or ""

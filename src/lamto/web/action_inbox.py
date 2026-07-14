@@ -597,10 +597,10 @@ def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
 
 def _failed_outbox_items(building_id: int) -> list[ActionItem]:
     items = []
-    # Outbox rows linked to wallets whose membership is in this building.
+    # Denormalized building on the outbox event is the tenant key (spec 2.2).
     qs = BlockchainOutboxEvent.objects.filter(
         status=BlockchainOutboxEvent.Status.FAILED,
-        signer_wallet__membership__organization__building_id=building_id,
+        building_id=building_id,
     ).order_by("-updated_at")[:30]
     for event in qs:
         items.append(

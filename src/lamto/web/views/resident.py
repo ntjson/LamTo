@@ -1,12 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_http_methods
 
-from lamto.accounts.tenancy import resolve_resident_occupancy
+from lamto.accounts.tenancy import TenantContext, resolve_resident_occupancy
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import MaintenanceFundEntry
 from lamto.finance.selectors import (
@@ -67,19 +68,20 @@ def _apply_integrity_display(entry):
 @require_GET
 def home(request):
     occupancy, _occupancies = resolve_resident_occupancy(request)
+    tenant = TenantContext.from_occupancy(occupancy)
     building = occupancy.unit.building
-    balance = fund_balance(building.pk, verified_only=True)
+    balance = fund_balance(tenant.building_id, verified_only=True)
     opening = (
-        verified_fund_entries(building.pk)
+        verified_fund_entries(tenant.building_id)
         .filter(entry_type=MaintenanceFundEntry.EntryType.OPENING_BALANCE)
         .order_by("recorded_at", "pk")
         .first()
     )
-    inflows, outflows = fund_period_flows(building.pk)
+    inflows, outflows = fund_period_flows(tenant.building_id)
     active_reports = resident_reports(request.user).filter(status=IssueReport.Status.OPEN)[
         :10
     ]
-    recent_spending = list(published_ledger_entries(building.pk)[:5])
+    recent_spending = list(published_ledger_entries(tenant.building_id)[:5])
     for entry in recent_spending:
         _apply_integrity_display(entry)
     return render(
@@ -224,7 +226,8 @@ def work_rate(request, pk):
 @require_GET
 def ledger_list(request):
     occupancy, _occupancies = resolve_resident_occupancy(request)
-    entries = list(published_ledger_entries(occupancy.unit.building_id)[:100])
+    tenant = TenantContext.from_occupancy(occupancy)
+    entries = list(published_ledger_entries(tenant.building_id)[:100])
     for entry in entries:
         _apply_integrity_display(entry)
     return render(
@@ -242,8 +245,9 @@ def ledger_list(request):
 @require_GET
 def ledger_detail(request, pk):
     occupancy, _occupancies = resolve_resident_occupancy(request)
+    tenant = TenantContext.from_occupancy(occupancy)
     entry = (
-        published_ledger_entries(occupancy.unit.building_id)
+        published_ledger_entries(tenant.building_id)
         .filter(pk=pk)
         .first()
     )
@@ -336,17 +340,21 @@ def switch_occupancy(request):
 @require_http_methods(["GET", "POST"])
 def account(request):
     occupancy, occupancies = resolve_resident_occupancy(request)
+    tenant = TenantContext.from_occupancy(occupancy)
     pref_form = NotificationPreferenceForm(request.POST or None, user=request.user)
     if request.method == "POST" and request.POST.get("action") == "prefs" and pref_form.is_valid():
         pref_form.save()
         messages.success(request, "Notification preferences saved.")
         return redirect("web:account")
+    # Active-building notices only; other buildings' stamped rows stay hidden.
+    # Legacy null-building rows remain visible (pre-tenancy deliveries).
     notices = (
         NotificationDelivery.objects.filter(
             recipient=request.user,
             channel=NotificationDelivery.Channel.IN_APP,
             status=NotificationDelivery.Status.AVAILABLE,
         )
+        .filter(Q(building_id=tenant.building_id) | Q(building_id__isnull=True))
         .order_by("-created_at")[:20]
     )
     return render(

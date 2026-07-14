@@ -179,10 +179,10 @@ class CrossBuildingAccessTests(TestCase):
                 response = (
                     self.client.post(url, {}) if method == "POST" else self.client.get(url)
                 )
-                assert response.status_code in {403, 404, 405}, (
-                    route,
-                    response.status_code,
-                )
+                # Design §2.3: pure cross-tenant object access is 404 (not 403).
+                # Roles here already hold the capability for the route inside
+                # their own building, so the only failure mode is wrong tenant.
+                assert response.status_code == 404, (route, response.status_code)
                 if hasattr(response, "content"):
                     assert B_LEAK_MARKER.encode() not in response.content
                 self.client.logout()
