@@ -2,7 +2,7 @@ from django.db import models
 
 from lamto.accounts.models import Building, OrganizationMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
-from lamto.evidence.models import BlockchainOutboxEvent
+from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.maintenance.models import MaintenanceCase, WorkOrder
 
 from .execution import PaymentEvidence
@@ -164,6 +164,37 @@ class PublicationSnapshot(InsertOnlyModel):
     @property
     def status(self):
         return self.outbox_event.status
+
+    @property
+    def anchoring_backend(self) -> str:
+        """Backend in force at settlement, derived from the terminal outbox status.
+
+        LOCAL and CONFIRMED are terminal, and confirmed_at survives the only
+        post-settlement transition (CONFIRMED -> MISMATCH), so this is exact.
+        Empty string while unsettled.
+        """
+        status = self.outbox_event.status
+        if status == BlockchainOutboxEvent.Status.LOCAL:
+            return "disabled"
+        if (
+            status == BlockchainOutboxEvent.Status.CONFIRMED
+            or self.outbox_event.confirmed_at is not None
+        ):
+            return "besu"
+        return ""
+
+    @property
+    def settled_evidence_level(self) -> str:
+        """Evidence level at settlement (spec 5.2); empty string while unsettled."""
+        status = self.outbox_event.status
+        if status == BlockchainOutboxEvent.Status.LOCAL:
+            return EvidenceLevel.LOCAL_SIGNED
+        if (
+            status == BlockchainOutboxEvent.Status.CONFIRMED
+            or self.outbox_event.confirmed_at is not None
+        ):
+            return EvidenceLevel.CHAIN_CONFIRMED
+        return ""
 
 
 class PublicationGateFailure(InsertOnlyModel):
