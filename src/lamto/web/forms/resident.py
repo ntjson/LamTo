@@ -2,7 +2,6 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms.widgets import Input
 
-from lamto.accounts.models import ResidentOccupancy
 from lamto.documents.scanner import scan_with_clamav
 from lamto.documents.services import (
     DocumentUploadQuarantined,
@@ -61,17 +60,10 @@ class ResidentReportForm(forms.Form):
         ),
     )
 
-    def __init__(self, *args, resident=None, **kwargs):
+    def __init__(self, *args, resident=None, occupancy=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.resident = resident
-        self.occupancy = None
-        if resident is not None:
-            self.occupancy = (
-                ResidentOccupancy.objects.select_related("unit__building")
-                .filter(user=resident, active=True)
-                .order_by("pk")
-                .first()
-            )
+        self.occupancy = occupancy
         if self.occupancy is not None:
             self.fields["location"].queryset = BuildingLocation.objects.filter(
                 building_id=self.occupancy.unit.building_id,

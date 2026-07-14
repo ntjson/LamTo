@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.tenancy import resolve_resident_occupancy
@@ -18,22 +19,6 @@ from lamto.maintenance.selectors import rateable_work_orders, resident_reports
 from lamto.web.forms.resident import ResidentReportForm, WorkRatingForm
 from lamto.notifications.models import NotificationDelivery
 from lamto.web.forms.staff import NotificationPreferenceForm
-
-
-def _active_occupancy(user):
-    return (
-        ResidentOccupancy.objects.select_related("unit__building")
-        .filter(user=user, active=True)
-        .order_by("pk")
-        .first()
-    )
-
-
-def _require_resident(user):
-    occupancy = _active_occupancy(user)
-    if occupancy is None:
-        raise PermissionDenied("Active resident occupancy is required.")
-    return occupancy
 
 
 def _integrity_display(entry):
@@ -81,7 +66,7 @@ def _apply_integrity_display(entry):
 @login_required
 @require_GET
 def home(request):
-    occupancy = _require_resident(request.user)
+    occupancy, _occupancies = resolve_resident_occupancy(request)
     building = occupancy.unit.building
     balance = fund_balance(building.pk, verified_only=True)
     opening = (
@@ -117,11 +102,12 @@ def home(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def report_create(request):
-    occupancy = _require_resident(request.user)
+    occupancy, _occupancies = resolve_resident_occupancy(request)
     form = ResidentReportForm(
         request.POST or None,
         request.FILES or None,
         resident=request.user,
+        occupancy=occupancy,
     )
     if request.method == "POST" and form.is_valid():
         photos = request.FILES.getlist("photos")
@@ -149,7 +135,7 @@ def report_create(request):
 @login_required
 @require_GET
 def report_list(request):
-    occupancy = _require_resident(request.user)
+    occupancy, _occupancies = resolve_resident_occupancy(request)
     reports = resident_reports(request.user)
     return render(
         request,
@@ -165,7 +151,7 @@ def report_list(request):
 @login_required
 @require_GET
 def report_detail(request, pk):
-    occupancy = _require_resident(request.user)
+    occupancy, _occupancies = resolve_resident_occupancy(request)
     report = get_object_or_404(
         IssueReport.objects.select_related("unit", "selected_location"),
         pk=pk,
@@ -187,7 +173,7 @@ def report_detail(request, pk):
 @login_required
 @require_http_methods(["GET", "POST"])
 def work_rate(request, pk):
-    occupancy = _require_resident(request.user)
+    occupancy, _occupancies = resolve_resident_occupancy(request)
     work_order = get_object_or_404(
         WorkOrder.objects.select_related("case"),
         pk=pk,
@@ -237,7 +223,7 @@ def work_rate(request, pk):
 @login_required
 @require_GET
 def ledger_list(request):
-    occupancy = _require_resident(request.user)
+    occupancy, _occupancies = resolve_resident_occupancy(request)
     entries = list(published_ledger_entries(occupancy.unit.building_id)[:100])
     for entry in entries:
         _apply_integrity_display(entry)
@@ -255,7 +241,7 @@ def ledger_list(request):
 @login_required
 @require_GET
 def ledger_detail(request, pk):
-    occupancy = _require_resident(request.user)
+    occupancy, _occupancies = resolve_resident_occupancy(request)
     entry = (
         published_ledger_entries(occupancy.unit.building_id)
         .filter(pk=pk)
@@ -332,9 +318,24 @@ def ledger_detail(request, pk):
 
 
 @login_required
+@require_http_methods(["POST"])
+def switch_occupancy(request):
+    occupancy_id = request.POST.get("occupancy")
+    if occupancy_id is None:
+        raise Http404("occupancy is required")
+    resolve_resident_occupancy(request, occupancy_id=occupancy_id)
+    next_url = request.POST.get("next") or ""
+    if not url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        next_url = ""
+    return redirect(next_url or "web:resident-home")
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def account(request):
-    occupancy = _require_resident(request.user)
+    occupancy, occupancies = resolve_resident_occupancy(request)
     pref_form = NotificationPreferenceForm(request.POST or None, user=request.user)
     if request.method == "POST" and request.POST.get("action") == "prefs" and pref_form.is_valid():
         pref_form.save()
@@ -353,6 +354,7 @@ def account(request):
         "web/resident/account.html",
         {
             "occupancy": occupancy,
+            "occupancies": occupancies,
             "user_obj": request.user,
             "nav_active": "account",
             "pref_form": pref_form,
