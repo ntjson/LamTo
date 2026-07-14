@@ -3,7 +3,7 @@
 {% block content %}
 <section class="panel" aria-labelledby="login-heading">
   <h1 id="login-heading">Sign in</h1>
-  <p class="lede">Use your resident account email and password.</p>
+  <p class="lede">Use your account email or phone number, and your password.</p>
   <form method="post" class="stack-form">
     {% csrf_token %}
     {% if form.non_field_errors %}

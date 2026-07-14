@@ -155,6 +155,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = "accounts.User"
+AUTHENTICATION_BACKENDS = ["lamto.accounts.backends.PhoneOrEmailBackend"]
 
 DOCUMENT_MAX_UPLOAD_BYTES = int(os.getenv("DOCUMENT_MAX_UPLOAD_BYTES", 20 * 1024 * 1024))
 DOCUMENT_SPOOL_MAX_BYTES = int(os.getenv("DOCUMENT_SPOOL_MAX_BYTES", 1024 * 1024))
