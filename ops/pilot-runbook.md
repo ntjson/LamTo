@@ -75,3 +75,12 @@ source /tmp/grok-goal-717590634826/implementer/env.sh  # or project env
 
 Collect sign-off in `ops/acceptance-report-template.md` from Board, operator,
 resident representative, auditor, maintenance, and participating resident.
+
+## Tenant integrity (nightly)
+
+```bash
+.venv/bin/python manage.py tenant_integrity
+```
+
+Runs the cross-building consistency checks (spec 2.3). Non-zero exit means a
+scoping bug wrote cross-tenant references; treat as a security incident.
