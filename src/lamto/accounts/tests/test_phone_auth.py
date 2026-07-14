@@ -48,3 +48,9 @@ class PhoneOrEmailBackendTests(TestCase):
             {"username": "0901234567", "password": "pw-secret"},
         )
         assert response.status_code == 302
+
+    def test_phone_is_normalized_on_save(self):
+        self.user.phone = "+84 901 234 567"
+        self.user.save()
+        self.user.refresh_from_db()
+        assert self.user.phone == "0901234567"

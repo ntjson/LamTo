@@ -98,7 +98,7 @@ def audit_export(request):
         elif kind == "documents":
             header, rows = _document_rows(building_id)
         elif kind == "outbox":
-            header, rows = _outbox_rows()
+            header, rows = _outbox_rows(building_id)
         elif kind == "observations":
             header, rows = _observation_rows(building_id)
         elif kind == "corrections":
@@ -285,7 +285,7 @@ def _document_rows(building_id):
     return header, qs
 
 
-def _outbox_rows():
+def _outbox_rows(building_id):
     header = [
         "id",
         "event_id",
@@ -300,7 +300,8 @@ def _outbox_rows():
     ]
     rows = []
     for event in (
-        BlockchainOutboxEvent.objects.select_related("signer_wallet")
+        BlockchainOutboxEvent.objects.filter(building_id=building_id)
+        .select_related("signer_wallet")
         .order_by("id")
         .iterator(chunk_size=200)
     ):

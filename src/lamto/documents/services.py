@@ -164,13 +164,19 @@ def _store(storage, storage_key, file_obj, content_type):
 
 
 def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
-    membership = (
+    memberships = list(
         OrganizationMembership.objects.select_related("organization")
         .filter(user=uploader, active=True)
-        .first()
+        .order_by("pk")
     )
-    if membership is None:
+    if not memberships:
         raise PermissionDenied("Quarantine upload cannot be audited.")
+    building_ids = {m.organization.building_id for m in memberships}
+    if len(building_ids) > 1:
+        raise PermissionDenied(
+            "Ambiguous building for quarantine; active membership must be unique to one building."
+        )
+    membership = memberships[0]
     metadata = _metadata(uploaded_file)
     digest = hashlib.sha256()
     with tempfile.SpooledTemporaryFile(max_size=settings.DOCUMENT_SPOOL_MAX_BYTES) as temporary:

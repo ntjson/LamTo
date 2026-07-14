@@ -16,6 +16,7 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 
 from lamto.accounts.security import RECENT_REAUTH_KEY
+from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import (
     AcceptanceRecord,
     PaymentEvidence,
@@ -213,9 +214,23 @@ class CrossBuildingAccessTests(TestCase):
 
     def test_auditor_export_never_leaks_other_building(self):
         self._staff_login("auditor")
-        response = self.client.get(reverse("web:audit-export"), {"kind": "fund"})
-        assert response.status_code in {200, 400}
-        if response.status_code == 200:
-            body = b"".join(response.streaming_content) if response.streaming else response.content
-            assert B_LEAK_MARKER.encode() not in body
-            assert B_BUILDING_NAME.encode() not in body
+        b_event_ids = list(
+            BlockchainOutboxEvent.objects.filter(
+                building_id=self.seed_b.building.pk
+            ).values_list("event_id", flat=True)
+        )
+        for kind in ("fund_entries", "outbox", "audit_events", "documents"):
+            with self.subTest(kind=kind):
+                response = self.client.get(reverse("web:audit-export"), {"kind": kind})
+                assert response.status_code in {200, 400}
+                if response.status_code != 200:
+                    continue
+                body = (
+                    b"".join(response.streaming_content)
+                    if getattr(response, "streaming", False)
+                    else response.content
+                )
+                assert B_LEAK_MARKER.encode() not in body
+                assert B_BUILDING_NAME.encode() not in body
+                for event_id in b_event_ids:
+                    assert event_id.encode() not in body

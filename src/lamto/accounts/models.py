@@ -20,6 +20,16 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = []
 
+    def save(self, *args, **kwargs):
+        # Keep User.phone in the same canonical form login accepts.
+        if self.phone:
+            from lamto.accounts.backends import normalize_phone
+
+            canonical = normalize_phone(self.phone)
+            if canonical is not None:
+                self.phone = canonical
+        return super().save(*args, **kwargs)
+
 
 class Building(models.Model):
     name = models.CharField(max_length=200)
