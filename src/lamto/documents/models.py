@@ -65,6 +65,13 @@ class DocumentVersion(InsertOnlyModel):
 
 class QuarantinedUpload(InsertOnlyModel):
     uploader = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    building = models.ForeignKey(
+        Building,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="quarantined_uploads",
+    )
     filename = models.CharField(max_length=255)
     content_type = models.CharField(max_length=127, blank=True)
     byte_size = models.PositiveBigIntegerField()

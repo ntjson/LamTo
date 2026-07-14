@@ -56,6 +56,7 @@ def notify_report_receipt(report):
         subject="Report received",
         body=f"Report #{report.pk} was submitted: {report.text[:200]}",
         event_code=EVENT_REPORT_RECEIPT,
+        building=building_id,
     )
 
 
@@ -69,6 +70,7 @@ def notify_triage_confirmed(case, report):
         subject="Triage confirmed",
         body=f"Case #{case.pk} opened for report #{report.pk} ({case.category}).",
         event_code=EVENT_TRIAGE_STATUS,
+        building=case.building_id,
     )
 
 
@@ -82,6 +84,7 @@ def notify_work_assigned(work_order):
         subject="Work assigned",
         body=f"Work order #{work_order.pk} assigned (deadline {work_order.deadline_at}).",
         event_code=EVENT_WORK_ASSIGNED,
+        building=work_order.case.building_id,
     )
 
 
@@ -98,6 +101,7 @@ def notify_deadline_risk(work_order):
         subject="Deadline risk",
         body=f"Work order #{work_order.pk} approaches deadline {work_order.deadline_at}.",
         event_code=EVENT_DEADLINE_RISK,
+        building=work_order.case.building_id,
     )
 
 
@@ -121,6 +125,7 @@ def notify_proposal_decision(approval):
         subject="Proposal decision",
         body=f"Proposal #{proposal.pk} {approval.decision} at stage {approval.stage}.",
         event_code=code,
+        building=building_id,
     )
 
 
@@ -140,6 +145,7 @@ def notify_emergency_authorized(authorization):
             f"Ratify by {authorization.ratification_deadline}."
         ),
         event_code=EVENT_EMERGENCY_DEADLINE,
+        building=building_id,
     )
 
 
@@ -157,6 +163,7 @@ def notify_emergency_outcome(ratification):
         subject=f"Emergency outcome: {ratification.outcome}",
         body=f"Work order #{auth.work_order_id} emergency outcome {ratification.outcome}.",
         event_code=EVENT_EMERGENCY_OUTCOME,
+        building=building_id,
     )
 
 
@@ -173,6 +180,7 @@ def notify_work_accepted(record):
         subject="Work accepted",
         body=f"Work order #{record.work_order_id} accepted at {record.actual_cost_vnd} VND.",
         event_code=EVENT_WORK_ACCEPTED,
+        building=building_id,
     )
 
 
@@ -187,6 +195,7 @@ def notify_payment_recorded(payment):
         subject="Payment recorded",
         body=f"Payment #{payment.pk} for {payment.amount_vnd} VND awaiting verification.",
         event_code=EVENT_PAYMENT_RECORDED,
+        building=building_id,
     )
 
 
@@ -210,6 +219,7 @@ def notify_payment_verified(verification):
         subject=subject,
         body=f"Payment #{payment.pk} {verification.decision}.",
         event_code=code,
+        building=building_id,
     )
 
 
@@ -233,6 +243,7 @@ def notify_publication(entry):
         subject="Ledger publication",
         body=f"Spending of {entry.actual_cost_vnd} VND published to the resident ledger.",
         event_code=EVENT_PUBLICATION,
+        building=building_id,
     )
 
 
@@ -249,6 +260,7 @@ def notify_correction_status(correction, status_label: str):
         subject=f"Correction {status_label}",
         body=f"Correction #{correction.pk} is now {status_label}.",
         event_code=EVENT_CORRECTION_STATUS,
+        building=building_id,
     )
 
 
@@ -264,6 +276,7 @@ def notify_integrity_mismatch(entry, observation):
         subject="Integrity mismatch detected",
         body=f"Published ledger entry #{entry.pk} failed integrity verification.",
         event_code=EVENT_INTEGRITY_MISMATCH,
+        building=building_id,
     )
 
 
@@ -277,4 +290,5 @@ def notify_quarantined_upload(upload, building_id=None):
         subject="Upload quarantined",
         body=f"File {upload.filename} was quarantined: {upload.reason}",
         event_code=EVENT_QUARANTINED_UPLOAD,
+        building=building_id if building_id is not None else upload.building_id,
     )

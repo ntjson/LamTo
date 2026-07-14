@@ -107,8 +107,14 @@ def _retention_expires_at():
 
 
 def _create_rejection(uploader, membership, metadata, reason, occupancy=None):
+    building = None
+    if membership is not None:
+        building = membership.organization.building
+    elif occupancy is not None:
+        building = occupancy.unit.building
     rejected = QuarantinedUpload.objects.create(
         uploader=uploader,
+        building=building,
         reason=reason,
         storage_key=None,
         provider_version_id="",
@@ -176,6 +182,7 @@ def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
         provider_version_id = _store(storages["private"], storage_key, temporary, metadata["content_type"])
     quarantined = QuarantinedUpload.objects.create(
         uploader=uploader,
+        building=membership.organization.building,
         reason=reason,
         storage_key=storage_key,
         provider_version_id=provider_version_id,
@@ -258,8 +265,14 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
             provider_version_id = _store(
                 storages["private"], storage_key, temporary, metadata["content_type"]
             )
+            building = None
+            if membership is not None:
+                building = membership.organization.building
+            elif occupancy is not None:
+                building = occupancy.unit.building
             quarantined = QuarantinedUpload.objects.create(
                 uploader=uploader,
+                building=building,
                 reason=reason,
                 storage_key=storage_key,
                 provider_version_id=provider_version_id,

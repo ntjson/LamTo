@@ -99,6 +99,7 @@ def queue_notification(
     channels=None,
     *,
     event_code: str = "",
+    building=None,
 ) -> list[NotificationDelivery]:
     """Idempotently enqueue delivery rows for the given channels.
 
@@ -106,6 +107,7 @@ def queue_notification(
     """
     if channels is None:
         channels = list(DEFAULT_CHANNELS)
+    building_id = getattr(building, "pk", building)
     created: list[NotificationDelivery] = []
     for channel in channels:
         if channel == NotificationDelivery.Channel.EMAIL:
@@ -121,6 +123,7 @@ def queue_notification(
                 "body": body,
                 "event_code": event_code or _event_code_from_key(event_key),
                 "status": NotificationDelivery.Status.PENDING,
+                "building_id": building_id,
             },
         )
         created.append(delivery)
@@ -135,9 +138,11 @@ def queue_notification_after_commit(
     channels=None,
     *,
     event_code: str = "",
+    building=None,
 ):
     """Schedule queue_notification after the current transaction commits."""
     recipient_id = getattr(recipient, "pk", recipient)
+    building_id = getattr(building, "pk", building)
 
     def _enqueue():
         from django.contrib.auth import get_user_model
@@ -153,6 +158,7 @@ def queue_notification_after_commit(
                 body,
                 channels,
                 event_code=event_code,
+                building=building_id,
             )
         except Exception:
             # Never raise into business path; failures are isolated to the worker.
@@ -275,6 +281,7 @@ def notify_users(
     subject: str,
     body: str,
     event_code: str,
+    building=None,
 ):
     """Queue notifications for many users after commit (deduped by id)."""
     seen = set()
@@ -291,4 +298,5 @@ def notify_users(
             subject=subject,
             body=body,
             event_code=event_code,
+            building=building,
         )

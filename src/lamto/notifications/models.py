@@ -42,6 +42,13 @@ class NotificationDelivery(models.Model):
         on_delete=models.CASCADE,
         related_name="notification_deliveries",
     )
+    building = models.ForeignKey(
+        "accounts.Building",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="notification_deliveries",
+    )
     event_key = models.CharField(max_length=255)
     event_code = models.CharField(max_length=64, blank=True)
     subject = models.CharField(max_length=255)

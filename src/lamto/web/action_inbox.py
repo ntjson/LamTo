@@ -619,11 +619,10 @@ def _failed_outbox_items(building_id: int) -> list[ActionItem]:
 
 def _quarantined_upload_items(building_id: int, membership) -> list[ActionItem]:
     items = []
-    # Quarantined uploads by users in this building (uploader membership or occupancy).
-    qs = QuarantinedUpload.objects.filter(
-        Q(uploader__organizationmembership__organization__building_id=building_id)
-        | Q(uploader__residentoccupancy__unit__building_id=building_id)
-    ).distinct().order_by("-created_at")[:20]
+    qs = (
+        QuarantinedUpload.objects.filter(building_id=building_id)
+        .order_by("-created_at")[:20]
+    )
     for upload in qs:
         items.append(
             ActionItem(
