@@ -1,32 +1,20 @@
-from datetime import timedelta
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Sum
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
-from lamto.accounts.models import ResidentOccupancy
-from lamto.evidence.models import BlockchainOutboxEvent
-from lamto.finance.fund import (
-    _finalized_posting_q,
-    _source_verified_q,
-    fund_balance,
+from lamto.accounts.tenancy import resolve_resident_occupancy
+from lamto.finance.fund import fund_balance
+from lamto.finance.models import MaintenanceFundEntry
+from lamto.finance.selectors import (
+    fund_period_flows,
+    published_ledger_entries,
+    verified_fund_entries,
 )
-from lamto.finance.models import (
-    MaintenanceFundEntry,
-    PublishedLedgerEntry,
-)
-from lamto.maintenance.models import (
-    CaseReport,
-    CompletionRating,
-    IssueReport,
-    WorkOrder,
-)
-from lamto.maintenance.ratings import ELIGIBLE_STATUSES
+from lamto.maintenance.models import CaseReport, IssueReport, WorkOrder
+from lamto.maintenance.selectors import rateable_work_orders, resident_reports
 from lamto.web.forms.resident import ResidentReportForm, WorkRatingForm
 from lamto.notifications.models import NotificationDelivery
 from lamto.web.forms.staff import NotificationPreferenceForm
@@ -46,35 +34,6 @@ def _require_resident(user):
     if occupancy is None:
         raise PermissionDenied("Active resident occupancy is required.")
     return occupancy
-
-
-def _resident_reports(user):
-    return (
-        IssueReport.objects.filter(reporter=user)
-        .select_related("unit", "selected_location")
-        .order_by("-created_at", "-pk")
-    )
-
-
-def _published_ledger_qs(building_id):
-    return (
-        PublishedLedgerEntry.objects.filter(
-            case__building_id=building_id,
-            snapshot__outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
-        )
-        .select_related(
-            "snapshot",
-            "snapshot__outbox_event",
-            "work_order",
-            "case",
-            "proposal",
-            "proposal__current_version",
-            "payment",
-            "payment__verification",
-            "payment__verification__membership__user",
-        )
-        .order_by("-published_at", "-pk")
-    )
 
 
 def _integrity_display(entry):
@@ -119,49 +78,6 @@ def _apply_integrity_display(entry):
     return entry
 
 
-def _verified_fund_entries(building_id):
-    """Fund rows held to the same verified/finalized bar as fund_balance(verified_only=True)."""
-    return MaintenanceFundEntry.objects.filter(fund__building_id=building_id).filter(
-        _source_verified_q() | _finalized_posting_q()
-    )
-
-
-def _period_flows(building_id, *, days=30):
-    since = timezone.now() - timedelta(days=days)
-    fund_entries = _verified_fund_entries(building_id).filter(recorded_at__gte=since)
-    inflows = (
-        fund_entries.filter(
-            entry_type__in=[
-                MaintenanceFundEntry.EntryType.OPENING_BALANCE,
-                MaintenanceFundEntry.EntryType.INFLOW,
-            ]
-        ).aggregate(total=Sum("amount_vnd"))["total"]
-        or 0
-    )
-    outflows = (
-        fund_entries.filter(
-            entry_type__in=[
-                MaintenanceFundEntry.EntryType.OUTFLOW,
-                MaintenanceFundEntry.EntryType.REVERSAL,
-                MaintenanceFundEntry.EntryType.REPLACEMENT,
-            ]
-        ).aggregate(total=Sum("amount_vnd"))["total"]
-        or 0
-    )
-    return int(inflows), int(outflows)
-
-
-def _rateable_work_orders(user, report):
-    case_ids = CaseReport.objects.filter(report=report).values_list("case_id", flat=True)
-    rated = CompletionRating.objects.filter(resident=user).values_list(
-        "work_order_id", flat=True
-    )
-    return WorkOrder.objects.filter(
-        case_id__in=case_ids,
-        status__in=ELIGIBLE_STATUSES,
-    ).exclude(pk__in=rated)
-
-
 @login_required
 @require_GET
 def home(request):
@@ -169,16 +85,16 @@ def home(request):
     building = occupancy.unit.building
     balance = fund_balance(building.pk, verified_only=True)
     opening = (
-        _verified_fund_entries(building.pk)
+        verified_fund_entries(building.pk)
         .filter(entry_type=MaintenanceFundEntry.EntryType.OPENING_BALANCE)
         .order_by("recorded_at", "pk")
         .first()
     )
-    inflows, outflows = _period_flows(building.pk)
-    active_reports = _resident_reports(request.user).filter(status=IssueReport.Status.OPEN)[
+    inflows, outflows = fund_period_flows(building.pk)
+    active_reports = resident_reports(request.user).filter(status=IssueReport.Status.OPEN)[
         :10
     ]
-    recent_spending = list(_published_ledger_qs(building.pk)[:5])
+    recent_spending = list(published_ledger_entries(building.pk)[:5])
     for entry in recent_spending:
         _apply_integrity_display(entry)
     return render(
@@ -234,7 +150,7 @@ def report_create(request):
 @require_GET
 def report_list(request):
     occupancy = _require_resident(request.user)
-    reports = _resident_reports(request.user)
+    reports = resident_reports(request.user)
     return render(
         request,
         "web/resident/report_list.html",
@@ -255,7 +171,7 @@ def report_detail(request, pk):
         pk=pk,
         reporter=request.user,
     )
-    rateable = _rateable_work_orders(request.user, report)
+    rateable = rateable_work_orders(request.user, report)
     return render(
         request,
         "web/resident/report_detail.html",
@@ -322,7 +238,7 @@ def work_rate(request, pk):
 @require_GET
 def ledger_list(request):
     occupancy = _require_resident(request.user)
-    entries = list(_published_ledger_qs(occupancy.unit.building_id)[:100])
+    entries = list(published_ledger_entries(occupancy.unit.building_id)[:100])
     for entry in entries:
         _apply_integrity_display(entry)
     return render(
@@ -341,7 +257,7 @@ def ledger_list(request):
 def ledger_detail(request, pk):
     occupancy = _require_resident(request.user)
     entry = (
-        _published_ledger_qs(occupancy.unit.building_id)
+        published_ledger_entries(occupancy.unit.building_id)
         .filter(pk=pk)
         .first()
     )
