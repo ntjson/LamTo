@@ -29,6 +29,15 @@
       <dt>Integrity status</dt>
       <dd>{{ integrity_status }}</dd>
     </div>
+    <div>
+      <dt>Evidence anchoring</dt>
+      <dd>
+        <span class="status {{ anchoring_class }}">
+          <span class="status-icon" aria-hidden="true">{{ anchoring_icon }}</span>
+          {{ anchoring_label }}
+        </span>
+      </dd>
+    </div>
   </dl>
 </article>
 
@@ -120,7 +129,11 @@
     {% endfor %}
   </ul>
   {% else %}
+  {% if evidence_level == "LOCAL_SIGNED" %}
+  <p class="empty">Blockchain anchoring is off for this deployment. Records are signed and hash-locked locally.</p>
+  {% else %}
   <p class="empty">No on-chain transaction IDs recorded yet.</p>
+  {% endif %}
   {% endif %}
 </section>
 

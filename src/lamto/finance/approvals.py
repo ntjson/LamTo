@@ -7,7 +7,7 @@ from lamto.accounts.models import Organization
 from lamto.accounts.services import require_capability
 from lamto.audit.services import record_audit
 from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
+from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType, is_settled
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.maintenance.models import WorkOrder
@@ -17,6 +17,7 @@ from .models import ApprovalDecision, Proposal, ProposalVersion
 
 PENDING_ANCHORING_LABEL = "Pending blockchain anchoring"
 ANCHORED_LABEL = "Blockchain anchored"
+LOCAL_SIGNED_LABEL = "Signed and hash-locked (off-chain)"
 
 STAGE_BY_ORGANIZATION_KIND = {
     Organization.Kind.BOARD: ApprovalDecision.Stage.BOARD,
@@ -247,6 +248,10 @@ def proposal_verification_label(version):
             approval_decision__version=version
         )
     )
-    if any(event.status != BlockchainOutboxEvent.Status.CONFIRMED for event in events):
+    if any(not is_settled(event.status) for event in events):
         return PENDING_ANCHORING_LABEL
-    return ANCHORED_LABEL
+    if all(
+        event.status == BlockchainOutboxEvent.Status.CONFIRMED for event in events
+    ):
+        return ANCHORED_LABEL
+    return LOCAL_SIGNED_LABEL

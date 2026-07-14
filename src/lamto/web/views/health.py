@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q
@@ -84,6 +85,7 @@ def collect_health_snapshot() -> dict:
         "queue_age_seconds": queue_age_seconds,
         "queue_count": pending_outbox.count(),
         "outbox_status_counts": status_counts,
+        "anchoring_backend": settings.EVIDENCE_ANCHORING_BACKEND,
         "quarantined_files": quarantined,
         "notification_failures": notification_failures,
         "last_confirmed_block": (last_confirmed or {}).get("chain_confirmed_block"),
@@ -158,6 +160,7 @@ def collect_pilot_metrics() -> dict:
         "work_response_time_seconds_avg": work_response,
         "approval_time_seconds_avg": None,
         "anchoring_delay_seconds_avg": anchoring_delay_seconds,
+        "anchoring_backend": settings.EVIDENCE_ANCHORING_BACKEND,
         "authoritative": False,
         "generated_at": timezone.now().isoformat(),
     }

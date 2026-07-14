@@ -8,6 +8,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.tenancy import TenantContext, resolve_resident_occupancy
+from lamto.evidence.models import EvidenceLevel, evidence_level
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import MaintenanceFundEntry
 from lamto.finance.selectors import (
@@ -53,6 +54,21 @@ def _integrity_display(entry):
         "icon": "○",
         "alert": False,
     }
+
+
+def _evidence_level_display(level):
+    """Distinct presentation per level; LOCAL_SIGNED never borrows chain wording (spec 5.2)."""
+    if level == EvidenceLevel.CHAIN_CONFIRMED:
+        return {"label": "Blockchain anchored", "css_class": "status-verified", "icon": "✓"}
+    if level == EvidenceLevel.LOCAL_SIGNED:
+        return {
+            "label": "Signed and hash-locked — blockchain anchoring is off for this deployment",
+            "css_class": "status-info",
+            "icon": "◆",
+        }
+    if level == EvidenceLevel.MISMATCH:
+        return {"label": "Anchoring mismatch detected", "css_class": "status-mismatch", "icon": "!"}
+    return {"label": "Pending blockchain anchoring", "css_class": "status-warning", "icon": "○"}
 
 
 def _apply_integrity_display(entry):
@@ -295,6 +311,8 @@ def ledger_detail(request, pk):
             tx_ids.append(event.transaction_hash)
     emergency = payload.get("emergency")
     integrity = _integrity_display(entry)
+    snapshot_level = evidence_level(entry.snapshot.outbox_event.status)
+    anchoring = _evidence_level_display(snapshot_level)
     return render(
         request,
         "web/resident/ledger_detail.html",
@@ -315,6 +333,10 @@ def ledger_detail(request, pk):
             "integrity_icon": integrity["icon"],
             "integrity_alert": integrity["alert"],
             "integrity_status": entry.effective_integrity_status,
+            "evidence_level": snapshot_level,
+            "anchoring_label": anchoring["label"],
+            "anchoring_class": anchoring["css_class"],
+            "anchoring_icon": anchoring["icon"],
             "occupancy": occupancy,
             "nav_active": "ledger",
         },
