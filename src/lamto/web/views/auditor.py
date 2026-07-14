@@ -86,7 +86,9 @@ def audit_search(request):
 
     if outbox_id:
         try:
-            outbox_event = BlockchainOutboxEvent.objects.filter(pk=int(outbox_id)).first()
+            outbox_event = BlockchainOutboxEvent.objects.filter(
+                pk=int(outbox_id), building_id=building_id
+            ).first()
         except (TypeError, ValueError):
             outbox_event = None
 

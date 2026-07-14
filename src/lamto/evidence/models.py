@@ -32,6 +32,12 @@ class BlockchainOutboxEvent(models.Model):
     previous_hash = models.CharField(max_length=66)
     signature = models.CharField(max_length=132)
     signer_wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
+    building = models.ForeignKey(
+        "accounts.Building",
+        on_delete=models.PROTECT,
+        related_name="outbox_events",
+        editable=False,
+    )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     attempts = models.PositiveIntegerField(default=0)
     next_attempt_at = models.DateTimeField(null=True, blank=True)
