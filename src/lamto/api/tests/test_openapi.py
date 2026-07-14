@@ -56,28 +56,32 @@ class OpenApiDriftTests(SimpleTestCase):
         assert "application/problem+json" in content
 
     def test_tenant_routes_document_occupancy_header(self):
-        """Optional X-LamTo-Occupancy is documented on tenant-list/object paths."""
-        content = SCHEMA_PATH.read_text()
-        assert "X-LamTo-Occupancy" in content
-        # Header must appear in the schema for each tenant surface (list + detail + fund).
-        # spectacular may emit the name as a parameter $ref or inline; substring is enough
-        # to prove generation included OCCUPANCY_HEADER_PARAMETER on those views.
-        tenant_markers = (
-            "/api/v1/ledger:",
-            "/api/v1/ledger/{id}:",
-            "/api/v1/fund/summary:",
+        """Optional X-LamTo-Occupancy is a header parameter on each tenant path."""
+        import yaml
+
+        schema = yaml.safe_load(SCHEMA_PATH.read_text())
+        paths = schema["paths"]
+        detail_key = (
+            "/api/v1/ledger/{id}"
+            if "/api/v1/ledger/{id}" in paths
+            else "/api/v1/ledger/{pk}"
         )
-        # Allow {pk} alternate for ledger detail path key.
-        if "/api/v1/ledger/{id}:" not in content:
-            tenant_markers = (
-                "/api/v1/ledger:",
-                "/api/v1/ledger/{pk}:",
-                "/api/v1/fund/summary:",
+        tenant_gets = (
+            paths["/api/v1/ledger"]["get"],
+            paths[detail_key]["get"],
+            paths["/api/v1/fund/summary"]["get"],
+        )
+        for operation in tenant_gets:
+            names = {
+                (param.get("name") if isinstance(param, dict) else None)
+                for param in operation.get("parameters", [])
+            }
+            assert "X-LamTo-Occupancy" in names, (
+                f"X-LamTo-Occupancy header missing from {operation.get('operationId')}"
             )
-        for marker in tenant_markers:
-            assert marker in content or marker.rstrip(":") in content, (
-                f"tenant path missing from schema: {marker}"
-            )
-        # Count occurrences: login/me should not require the header; tenant ops should list it.
-        # At least three parameter blocks reference the header name (one per tenant route).
-        assert content.count("X-LamTo-Occupancy") >= 3
+        # Non-tenant routes must not require the occupancy header.
+        login_params = paths["/api/v1/auth/login"]["post"].get("parameters") or []
+        login_names = {
+            (p.get("name") if isinstance(p, dict) else None) for p in login_params
+        }
+        assert "X-LamTo-Occupancy" not in login_names

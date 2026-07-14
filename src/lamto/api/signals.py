@@ -1,7 +1,8 @@
 """Server-side knox token revocation (spec 3.2).
 
 Safety net for ``.save()`` paths. Bulk ``queryset.update()`` bypasses signals;
-prefer ``lamto.api.services.deactivate_occupancy`` / ``deactivate_user`` or call
+prefer ``lamto.api.services.deactivate_occupancy`` /
+``deactivate_occupancies`` / ``deactivate_user`` or call
 ``revoke_tokens_if_no_active_occupancy`` defensively after bulk updates.
 Authentication itself also rejects inactive users (knox checks ``is_active``).
 """
