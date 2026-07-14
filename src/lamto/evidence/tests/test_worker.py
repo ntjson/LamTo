@@ -19,7 +19,11 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
 from lamto.evidence.services import begin_wallet_registration, queue_signed_event, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
-from lamto.evidence.worker import process_outbox_event, sync_signer_authorizations
+from lamto.evidence.worker import (
+    process_due_outbox_events,
+    process_outbox_event,
+    sync_signer_authorizations,
+)
 
 
 HASH = "a" * 64
@@ -122,12 +126,9 @@ class FakeChainClient:
         return "0x" + "cc" * 32
 
 
-@override_settings(
-    BLOCKCHAIN_CHAIN_ID=1337,
-    EVIDENCE_CONTRACT_ADDRESS="0x0000000000000000000000000000000000000001",
-    WALLET_REGISTRATION_TTL_SECONDS=600,
-)
-class BlockchainWorkerTests(TestCase):
+class OutboxEventFactoryMixin:
+    """Wallet + signed-event setup shared by worker test variants."""
+
     def make_membership(self, role=OrganizationMembership.Role.OPERATOR, suffix="worker"):
         kind = OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role]
         building = Building.objects.create(name=f"Building {suffix}")
@@ -181,6 +182,13 @@ class BlockchainWorkerTests(TestCase):
     def fake_chain_client(self, **kwargs):
         return FakeChainClient(**kwargs)
 
+
+@override_settings(
+    BLOCKCHAIN_CHAIN_ID=1337,
+    EVIDENCE_CONTRACT_ADDRESS="0x0000000000000000000000000000000000000001",
+    WALLET_REGISTRATION_TTL_SECONDS=600,
+)
+class BlockchainWorkerTests(OutboxEventFactoryMixin, TestCase):
     def test_existing_matching_chain_event_confirms_without_resubmit(self):
         event = self.make_pending_outbox_event()
         client = self.fake_chain_client(existing_hash=event.payload_hash)
@@ -308,3 +316,63 @@ class BlockchainWorkerTests(TestCase):
         self.assertEqual(request.status, SignerAuthorizationRequest.Status.CONFIRMED)
         self.assertEqual(request.transaction_hash, "0x" + "cc" * 32)
         self.assertEqual(client.set_signer_calls, [(wallet.address, True)])
+
+
+@override_settings(
+    BLOCKCHAIN_CHAIN_ID=1337,
+    EVIDENCE_CONTRACT_ADDRESS="0x0000000000000000000000000000000000000001",
+    WALLET_REGISTRATION_TTL_SECONDS=600,
+    EVIDENCE_ANCHORING_BACKEND="disabled",
+)
+class DisabledAnchoringWorkerTests(OutboxEventFactoryMixin, TestCase):
+    """Disabled backend settles LOCAL, honestly and terminally (spec 5.2)."""
+
+    def test_pending_event_settles_local_without_touching_chain(self):
+        event = self.make_pending_outbox_event(suffix="local", event_byte="44")
+        client = self.fake_chain_client()
+
+        processed = process_outbox_event(event.id, client=client)
+
+        self.assertEqual(processed.status, BlockchainOutboxEvent.Status.LOCAL)
+        self.assertEqual(processed.transaction_hash, "")
+        self.assertIsNone(processed.confirmed_at)
+        self.assertIsNone(processed.lease_expires_at)
+        self.assertEqual(client.find_calls, 0)
+        self.assertEqual(client.submit_calls, 0)
+
+    def test_local_is_terminal_and_never_retro_anchored(self):
+        event = self.make_pending_outbox_event(suffix="terminal", event_byte="55")
+        process_outbox_event(event.id, client=self.fake_chain_client())
+
+        # Mode switch back to besu: settled events keep their status (spec 5.2).
+        with override_settings(EVIDENCE_ANCHORING_BACKEND="besu"):
+            client = self.fake_chain_client()
+            again = process_outbox_event(event.id, client=client)
+
+        self.assertEqual(again.status, BlockchainOutboxEvent.Status.LOCAL)
+        self.assertEqual(client.find_calls, 0)
+        self.assertEqual(client.submit_calls, 0)
+
+    def test_batch_processing_constructs_no_chain_client(self):
+        self.make_pending_outbox_event(suffix="batch", event_byte="66")
+
+        # client=None must not call default_client() in disabled mode.
+        results = process_due_outbox_events()
+
+        self.assertEqual(
+            [event.status for event in results],
+            [BlockchainOutboxEvent.Status.LOCAL],
+        )
+
+    def test_confirmed_event_keeps_chain_record_in_disabled_mode(self):
+        event = self.make_pending_outbox_event(suffix="keepconf", event_byte="77")
+        with override_settings(EVIDENCE_ANCHORING_BACKEND="besu"):
+            confirmed = process_outbox_event(event.id, client=self.fake_chain_client())
+        self.assertEqual(confirmed.status, BlockchainOutboxEvent.Status.CONFIRMED)
+
+        client = self.fake_chain_client()
+        again = process_outbox_event(event.id, client=client)
+
+        self.assertEqual(again.status, BlockchainOutboxEvent.Status.CONFIRMED)
+        # Disabled mode skips the chain re-check entirely.
+        self.assertEqual(client.find_calls, 0)

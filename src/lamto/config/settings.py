@@ -194,6 +194,17 @@ EVIDENCE_REGISTRY_ABI_PATH = os.getenv(
 )
 EVIDENCE_WRITE_SECRET = os.getenv("EVIDENCE_WRITE_SECRET") or SECRET_KEY
 
+# Anchoring transport (spec 5.2): "besu" performs the chain round-trip;
+# "disabled" settles outbox events locally as LOCAL — honest, never CONFIRMED.
+EVIDENCE_ANCHORING_BACKEND = os.getenv("EVIDENCE_ANCHORING_BACKEND", "besu")
+if EVIDENCE_ANCHORING_BACKEND not in {"besu", "disabled"}:
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        "EVIDENCE_ANCHORING_BACKEND must be 'besu' or 'disabled', got "
+        f"{EVIDENCE_ANCHORING_BACKEND!r}."
+    )
+
 STORAGES = {
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",

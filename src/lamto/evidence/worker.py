@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -13,7 +14,7 @@ from eth_utils import to_checksum_address
 from lamto.accounts.models import SignerAuthorizationRequest
 from lamto.audit.services import record_audit
 
-from .chain import ChainClientError, ChainRecord, ChainTimeoutError, default_client
+from .chain import ChainRecord, default_client
 from .models import BlockchainOutboxEvent
 
 LEASE_SECONDS = 180
@@ -53,6 +54,10 @@ def _retry_delay(attempts: int) -> timedelta:
     exponent = max(attempts - 1, 0)
     seconds = min(RETRY_BASE_SECONDS * (2**exponent), RETRY_MAX_SECONDS)
     return timedelta(seconds=seconds)
+
+
+def anchoring_disabled() -> bool:
+    return settings.EVIDENCE_ANCHORING_BACKEND == "disabled"
 
 
 def _normalize_payload_hash(value: str) -> str:
@@ -203,15 +208,23 @@ def _mark_retry(event: BlockchainOutboxEvent, error: BaseException) -> Blockchai
     return event
 
 
+def _mark_local(event: BlockchainOutboxEvent) -> BlockchainOutboxEvent:
+    """Settle without a chain round-trip. Honest LOCAL: no tx hash, no confirmed_at."""
+    event.status = BlockchainOutboxEvent.Status.LOCAL
+    event.lease_expires_at = None
+    event.last_error = ""
+    event.save(update_fields=["status", "lease_expires_at", "last_error", "updated_at"])
+    return event
+
+
 def process_outbox_event(event_id, client: ChainClient | None = None) -> BlockchainOutboxEvent:
     """
     Process one outbox row idempotently by stable event primary key.
 
     Never re-signs or changes payload identity fields. Only delivery status,
-    attempts, lease, and receipt metadata are mutated.
+    attempts, lease, and receipt metadata are mutated. With anchoring disabled,
+    due rows settle immediately as LOCAL and no chain client is constructed.
     """
-    client = client or default_client()
-
     existing = (
         BlockchainOutboxEvent.objects.select_related("signer_wallet__membership__user")
         .filter(pk=event_id)
@@ -224,9 +237,15 @@ def process_outbox_event(event_id, client: ChainClient | None = None) -> Blockch
     if existing.status in {
         BlockchainOutboxEvent.Status.CONFIRMED,
         BlockchainOutboxEvent.Status.MISMATCH,
+        BlockchainOutboxEvent.Status.LOCAL,
     }:
         # Terminal states: re-check chain for CONFIRMED but never resubmit.
-        if existing.status == BlockchainOutboxEvent.Status.CONFIRMED:
+        # LOCAL settled off-chain and is never retro-anchored (spec 5.2).
+        if (
+            existing.status == BlockchainOutboxEvent.Status.CONFIRMED
+            and not anchoring_disabled()
+        ):
+            client = client or default_client()
             try:
                 record = client.find(existing)
             except Exception:
@@ -239,53 +258,11 @@ def process_outbox_event(event_id, client: ChainClient | None = None) -> Blockch
     claimed = _claim_outbox_event(event_id)
     if claimed is None:
         # Another worker holds the lease, or the row is not due.
-        refreshed = BlockchainOutboxEvent.objects.select_related(
-            "signer_wallet"
-        ).get(pk=event_id)
-        return refreshed
+        return BlockchainOutboxEvent.objects.select_related("signer_wallet").get(
+            pk=event_id
+        )
 
-    # Database transaction released before network I/O.
-    try:
-        record = client.find(claimed)
-    except Exception as exc:
-        with transaction.atomic():
-            event = BlockchainOutboxEvent.objects.select_for_update().get(pk=claimed.pk)
-            return _mark_retry(event, exc)
-
-    if record is not None:
-        with transaction.atomic():
-            event = (
-                BlockchainOutboxEvent.objects.select_for_update()
-                .select_related("signer_wallet__membership__user")
-                .get(pk=claimed.pk)
-            )
-            if _record_matches_event(record, event):
-                return _mark_confirmed(
-                    event,
-                    transaction_hash=event.transaction_hash,
-                    recorded_at=record.recorded_at,
-                )
-            return _mark_mismatch(event, record)
-
-    try:
-        tx_hash = client.submit(claimed)
-        receipt = getattr(client, "last_receipt", None) or {}
-    except (ChainTimeoutError, TimeoutError, ConnectionError, OSError) as exc:
-        with transaction.atomic():
-            event = BlockchainOutboxEvent.objects.select_for_update().get(pk=claimed.pk)
-            return _mark_retry(event, exc)
-    except ChainClientError as exc:
-        with transaction.atomic():
-            event = BlockchainOutboxEvent.objects.select_for_update().get(pk=claimed.pk)
-            return _mark_retry(event, exc)
-    except Exception as exc:
-        with transaction.atomic():
-            event = BlockchainOutboxEvent.objects.select_for_update().get(pk=claimed.pk)
-            return _mark_retry(event, exc)
-
-    with transaction.atomic():
-        event = BlockchainOutboxEvent.objects.select_for_update().get(pk=claimed.pk)
-        return _mark_confirmed(event, transaction_hash=tx_hash, receipt=receipt)
+    return _process_claimed_event(claimed, client=client)
 
 
 def claim_next_due_outbox_event() -> BlockchainOutboxEvent | None:
@@ -329,24 +306,26 @@ def claim_next_due_outbox_event() -> BlockchainOutboxEvent | None:
 def process_due_outbox_events(
     *, limit: int = 100, client: ChainClient | None = None
 ) -> list[BlockchainOutboxEvent]:
-    client = client or default_client()
+    if client is None and not anchoring_disabled():
+        client = default_client()
     processed: list[BlockchainOutboxEvent] = []
     for _ in range(limit):
         claimed = claim_next_due_outbox_event()
         if claimed is None:
             break
-        # process_outbox_event will see SUBMITTED with active lease owned by us;
-        # re-claim path: call the post-claim pipeline directly via event id after
-        # resetting claim is awkward. Instead, run the network portion inline by
-        # temporarily treating the already-claimed row.
-        result = _process_claimed_event(claimed, client=client)
-        processed.append(result)
+        processed.append(_process_claimed_event(claimed, client=client))
     return processed
 
 
 def _process_claimed_event(
-    claimed: BlockchainOutboxEvent, *, client: ChainClient
+    claimed: BlockchainOutboxEvent, *, client: ChainClient | None = None
 ) -> BlockchainOutboxEvent:
+    if anchoring_disabled():
+        with transaction.atomic():
+            event = BlockchainOutboxEvent.objects.select_for_update().get(pk=claimed.pk)
+            return _mark_local(event)
+
+    client = client or default_client()
     try:
         record = client.find(claimed)
     except Exception as exc:
