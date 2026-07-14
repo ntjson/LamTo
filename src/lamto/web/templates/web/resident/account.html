@@ -19,6 +19,27 @@
   </dl>
 </section>
 
+{% if occupancies|length > 1 %}
+<section class="panel" aria-labelledby="occupancy-heading">
+  <h2 id="occupancy-heading">Active unit</h2>
+  <p class="hint">Reports and the ledger show the building of your active unit.</p>
+  <form method="post" action="{% url 'web:switch-occupancy' %}" class="stack-form">
+    {% csrf_token %}
+    <div class="field">
+      <label for="occupancy-select">Unit</label>
+      <select id="occupancy-select" name="occupancy">
+        {% for o in occupancies %}
+        <option value="{{ o.pk }}" {% if o.pk == occupancy.pk %}selected{% endif %}>
+          {{ o.unit.building.name }} · {{ o.unit.label }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="button">Switch unit</button>
+  </form>
+</section>
+{% endif %}
+
 <section class="panel" aria-labelledby="notices-heading">
   <h2 id="notices-heading">In-app notices</h2>
   {% if notices %}

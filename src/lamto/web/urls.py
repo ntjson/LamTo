@@ -16,6 +16,7 @@ urlpatterns = [
     path("r/ledger/", resident.ledger_list, name="ledger-list"),
     path("r/ledger/<int:pk>/", resident.ledger_detail, name="ledger-detail"),
     path("r/account/", resident.account, name="account"),
+    path("r/occupancy/", resident.switch_occupancy, name="switch-occupancy"),
     path("offline/", resident.offline, name="offline"),
     path("manifest.webmanifest", resident.manifest, name="manifest"),
     path("service-worker.js", resident.service_worker, name="service-worker"),
