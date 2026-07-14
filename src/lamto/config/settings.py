@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -49,6 +50,10 @@ INSTALLED_APPS = [
     'lamto.maintenance',
     'lamto.web',
     'lamto.notifications',
+    'rest_framework',
+    'knox',
+    'drf_spectacular',
+    'lamto.api',
 ]
 
 MIDDLEWARE = [
@@ -275,4 +280,25 @@ PILOT_ALLOW_FIXTURES = os.getenv("PILOT_ALLOW_FIXTURES", "false").lower() in {
     "1",
     "true",
     "yes",
+}
+
+# --- Resident API (spec 3): DRF + knox tokens + OpenAPI schema ---
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["knox.auth.TokenAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "lamto.api.problems.problem_exception_handler",
+}
+
+REST_KNOX = {
+    "TOKEN_TTL": timedelta(days=30),  # spec 3.2: TTL 30 days
+    "AUTO_REFRESH": True,  # spec 3.2: sliding refresh on use
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "LamTo Resident API",
+    "VERSION": "v1",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1",
 }

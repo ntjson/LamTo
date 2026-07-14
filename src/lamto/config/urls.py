@@ -19,5 +19,6 @@ urlpatterns = [
         secure_logout,
         name="logout",
     ),
+    path("api/v1/", include("lamto.api.urls")),
     path("", include("lamto.web.urls")),
 ]
