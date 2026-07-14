@@ -112,6 +112,29 @@ class ApiAuthTests(TestCase):
         assert body["detail"] == "Invalid credentials."
         assert not AuthToken.objects.filter(user=self.staff).exists()
         assert any("no_active_occupancy" in msg for msg in cm.output)
+        # Same throttle path as invalid credentials (Important #1).
+        assert AuthThrottleBucket.objects.count() == 1
+        assert AuthThrottleBucket.objects.get().failure_count == 1
+
+    def test_login_ineligible_counts_toward_throttle_lockout(self):
+        """Staff / no occupancy failures lock out like wrong-password failures."""
+        for _ in range(5):
+            response = self._login("api-staff@example.com")
+            assert response.status_code == 401
+        # Further attempts (even with correct password) are 429.
+        response = self._login("api-staff@example.com")
+        assert response.status_code == 429
+        assert problem(response)["code"] == "throttled"
+        assert AuthThrottleBucket.objects.get().failure_count >= 5
+
+    def test_login_without_active_occupancy_revokes_leftover_tokens(self):
+        """Bulk occupancy deactivation can leave tokens; login cleans them up."""
+        self._token(user=self.resident)
+        ResidentOccupancy.objects.filter(pk=self.occupancy.pk).update(active=False)
+        assert AuthToken.objects.filter(user=self.resident).count() == 1
+        response = self._login("api-resident@example.com")
+        assert response.status_code == 401
+        assert AuthToken.objects.filter(user=self.resident).count() == 0
 
     def test_inactive_user_cannot_login(self):
         self.resident.is_active = False

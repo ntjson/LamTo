@@ -22,6 +22,7 @@ from lamto.api.services import (
     INVALID_CREDENTIALS_DETAIL,
     canonicalize_login_identifier,
     log_auth_outcome,
+    revoke_tokens_if_no_active_occupancy,
 )
 
 TOKEN_CAP_PER_USER = 5  # spec 3.2: 5 concurrent tokens; oldest evicted at login
@@ -64,7 +65,12 @@ class LoginView(APIView):
             raise exceptions.AuthenticationFailed(INVALID_CREDENTIALS_DETAIL)
         if not active_occupancies(user).exists():
             # Unified external 401 (clarification 2); distinct internal reason.
-            # Do not issue a token; do not reveal that the password was valid.
+            # Count toward the same login throttle as wrong-password failures so
+            # correct-password / ineligible accounts cannot oracle around lockout.
+            # Revoke any leftover knox tokens (bulk occupancy deactivation bypasses
+            # post_save signals; login is the defensive cleanup path).
+            record_auth_failure(identifier, ip, kind="login")
+            revoke_tokens_if_no_active_occupancy(user)
             log_auth_outcome(
                 reason="no_active_occupancy",
                 identifier=identifier,
