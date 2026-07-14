@@ -2,11 +2,11 @@
 
 from django.contrib.auth import authenticate
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from knox.models import AuthToken
 from knox.views import LogoutAllView as KnoxLogoutAllView
 from knox.views import LogoutView as KnoxLogoutView
-from rest_framework import exceptions, permissions
+from rest_framework import exceptions, generics, pagination, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -17,12 +17,28 @@ from lamto.accounts.security import (
     reset_auth_throttle,
 )
 from lamto.accounts.tenancy import active_occupancies
-from lamto.api.serializers import LoginSerializer, MeSerializer, TokenResponseSerializer
+from lamto.api.occupancy import resolve_api_occupancy
+from lamto.api.serializers import (
+    FundSummarySerializer,
+    LedgerEntryDetailSerializer,
+    LedgerEntryListSerializer,
+    LedgerFilterSerializer,
+    LoginSerializer,
+    MeSerializer,
+    TokenResponseSerializer,
+)
 from lamto.api.services import (
     INVALID_CREDENTIALS_DETAIL,
     canonicalize_login_identifier,
     log_auth_outcome,
     revoke_tokens_if_no_active_occupancy,
+)
+from lamto.evidence.models import evidence_level
+from lamto.finance.fund import fund_balance
+from lamto.finance.selectors import (
+    fund_period_flows,
+    ledger_entry_proof,
+    published_ledger_entries,
 )
 
 TOKEN_CAP_PER_USER = 5  # spec 3.2: 5 concurrent tokens; oldest evicted at login
@@ -136,3 +152,97 @@ class MeView(APIView):
             "notification_preferences": preferences,
         }
         return Response(MeSerializer(data).data)
+
+
+class LedgerCursorPagination(pagination.CursorPagination):
+    page_size = 20  # spec 3.1
+    ordering = ("-published_at", "-pk")
+
+
+@extend_schema_view(
+    get=extend_schema(parameters=[LedgerFilterSerializer]),
+)
+class LedgerListView(generics.ListAPIView):
+    serializer_class = LedgerEntryListSerializer
+    pagination_class = LedgerCursorPagination
+
+    def get_queryset(self):
+        filters = LedgerFilterSerializer(data=self.request.query_params)
+        filters.is_valid(raise_exception=True)
+        _occupancy, tenant = resolve_api_occupancy(self.request)
+        entries = published_ledger_entries(tenant.building_id)
+        year = filters.validated_data.get("year")
+        month = filters.validated_data.get("month")
+        if year is not None:
+            entries = entries.filter(published_at__year=year)
+        if month is not None:
+            entries = entries.filter(published_at__month=month)
+        return entries
+
+
+class LedgerDetailView(APIView):
+    @extend_schema(responses={200: LedgerEntryDetailSerializer})
+    def get(self, request, pk):
+        _occupancy, tenant = resolve_api_occupancy(request)
+        entry = published_ledger_entries(tenant.building_id).filter(pk=pk).first()
+        if entry is None:
+            raise exceptions.NotFound("Published ledger entry not found.")
+        detail = ledger_entry_proof(entry)
+        verification = detail["verification"]
+        data = {
+            "id": entry.pk,
+            "contractor_name": entry.contractor_name,
+            "actual_cost_vnd": entry.actual_cost_vnd,
+            "published_at": entry.published_at,
+            "proposed_amount_vnd": detail["proposed_amount"],
+            "integrity_status": entry.effective_integrity_status,
+            "payload": detail["payload"],
+            "verification": (
+                {
+                    "decision": verification.decision,
+                    "verified_by": verification.membership.user.display_name,
+                    "verified_at": verification.verified_at,
+                }
+                if verification is not None
+                else None
+            ),
+            "redacted_documents": detail["redacted_docs"],
+            "corrections": [
+                {
+                    "id": correction.pk,
+                    "status": correction.status,
+                    "reason": correction.reason,
+                }
+                for correction in detail["corrections"]
+            ],
+            "proof": {
+                "evidence_level": detail["evidence_level"],
+                "anchoring_backend": entry.snapshot.anchoring_backend,
+                "payload_hash": entry.snapshot.resident_payload_hash,
+                "events": [
+                    {
+                        "event_id": event.event_id,
+                        "event_type": event.event_type,
+                        "status": event.status,
+                        "evidence_level": evidence_level(event.status),
+                        "transaction_hash": event.transaction_hash,
+                    }
+                    for event in detail["events"]
+                ],
+            },
+        }
+        return Response(LedgerEntryDetailSerializer(data).data)
+
+
+class FundSummaryView(APIView):
+    @extend_schema(responses={200: FundSummarySerializer})
+    def get(self, request):
+        _occupancy, tenant = resolve_api_occupancy(request)
+        inflows, outflows = fund_period_flows(tenant.building_id)
+        data = {
+            "balance_vnd": fund_balance(tenant.building_id, verified_only=True),
+            "period_days": 30,
+            "period_inflows_vnd": inflows,
+            "period_outflows_vnd": outflows,
+        }
+        return Response(FundSummarySerializer(data).data)
