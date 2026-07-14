@@ -21,6 +21,7 @@ ZERO_HASH = "0x" + "00" * 32
 PENDING_ANCHORING_LABEL = "Pending blockchain anchoring"
 ANCHORED_LABEL = "Blockchain anchored"
 LOCAL_SIGNED_LABEL = "Signed and hash-locked (off-chain)"
+MISMATCH_LABEL = "Anchoring mismatch detected"
 
 
 def _label(drill):
@@ -357,6 +358,8 @@ def emergency_verification_label(work_order):
     events = [authorization.outbox_event]
     if outcome is not None and outcome.outbox_event_id:
         events.append(outcome.outbox_event)
+    if any(event.status == BlockchainOutboxEvent.Status.MISMATCH for event in events):
+        return MISMATCH_LABEL
     if any(not is_settled(event.status) for event in events):
         return PENDING_ANCHORING_LABEL
     if all(

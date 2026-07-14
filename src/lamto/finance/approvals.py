@@ -18,6 +18,7 @@ from .models import ApprovalDecision, Proposal, ProposalVersion
 PENDING_ANCHORING_LABEL = "Pending blockchain anchoring"
 ANCHORED_LABEL = "Blockchain anchored"
 LOCAL_SIGNED_LABEL = "Signed and hash-locked (off-chain)"
+MISMATCH_LABEL = "Anchoring mismatch detected"
 
 STAGE_BY_ORGANIZATION_KIND = {
     Organization.Kind.BOARD: ApprovalDecision.Stage.BOARD,
@@ -248,6 +249,8 @@ def proposal_verification_label(version):
             approval_decision__version=version
         )
     )
+    if any(event.status == BlockchainOutboxEvent.Status.MISMATCH for event in events):
+        return MISMATCH_LABEL
     if any(not is_settled(event.status) for event in events):
         return PENDING_ANCHORING_LABEL
     if all(

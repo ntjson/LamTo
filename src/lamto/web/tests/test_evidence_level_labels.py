@@ -9,13 +9,22 @@ from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.approvals import (
     ANCHORED_LABEL,
     LOCAL_SIGNED_LABEL,
+    MISMATCH_LABEL,
     PENDING_ANCHORING_LABEL,
     proposal_verification_label,
 )
+from lamto.finance.emergencies import (
+    ANCHORED_LABEL as EMERGENCY_ANCHORED_LABEL,
+    LOCAL_SIGNED_LABEL as EMERGENCY_LOCAL_SIGNED_LABEL,
+    MISMATCH_LABEL as EMERGENCY_MISMATCH_LABEL,
+    PENDING_ANCHORING_LABEL as EMERGENCY_PENDING_ANCHORING_LABEL,
+    emergency_verification_label,
+)
 from lamto.finance.models import PublishedLedgerEntry
+from lamto.maintenance.models import WorkOrder
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 from lamto.web.views.exports import _outbox_rows
-from lamto.web.views.health import collect_health_snapshot
+from lamto.web.views.health import collect_health_snapshot, collect_pilot_metrics
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-evidence-labels-")
 
@@ -51,6 +60,22 @@ class EvidenceLevelLabelTests(TestCase):
         driver.confirm_all_chain_events()
         cls.entry = PublishedLedgerEntry.objects.get(case__building=cls.seed.building)
 
+        # Separate emergency path fixture (own building so outbox status mutations
+        # do not collide with proposal/ledger assertions above).
+        cls.emergency_seed = seed_pilot_world(
+            building_name="Emergency Label Building", create_sample_report=False
+        )
+        emergency_driver = PilotDomainDriver(cls.emergency_seed)
+        emergency_driver.authorize_emergency_drill()
+        emergency_driver.ratify_drill()
+        cls.emergency_work_order = emergency_driver._ctx["drill_work_order"]
+        auth = emergency_driver._ctx["emergency_authorization"]
+        outcome = emergency_driver._ctx["emergency_outcome"]
+        cls.emergency_event_ids = [
+            auth.outbox_event_id,
+            outcome.outbox_event_id,
+        ]
+
     def _proposal_event_ids(self):
         version = self.entry.proposal.current_version
         ids = [version.outbox_event_id]
@@ -74,6 +99,62 @@ class EvidenceLevelLabelTests(TestCase):
             status=BlockchainOutboxEvent.Status.PENDING
         )
         self.assertEqual(proposal_verification_label(version), PENDING_ANCHORING_LABEL)
+
+    def test_staff_label_mismatch_is_distinct(self):
+        version = self.entry.proposal.current_version
+        BlockchainOutboxEvent.objects.filter(pk__in=self._proposal_event_ids()).update(
+            status=BlockchainOutboxEvent.Status.MISMATCH
+        )
+        label = proposal_verification_label(version)
+        self.assertEqual(label, MISMATCH_LABEL)
+        self.assertEqual(label, "Anchoring mismatch detected")
+        self.assertNotEqual(label, PENDING_ANCHORING_LABEL)
+        self.assertNotEqual(label, ANCHORED_LABEL)
+        self.assertNotEqual(label, LOCAL_SIGNED_LABEL)
+
+    def _fresh_emergency_work_order(self):
+        # Re-fetch so related outbox rows are not served from instance cache.
+        return WorkOrder.objects.get(pk=self.emergency_work_order.pk)
+
+    def test_emergency_label_four_way(self):
+        event_ids = self.emergency_event_ids
+        self.assertEqual(MISMATCH_LABEL, EMERGENCY_MISMATCH_LABEL)
+        self.assertEqual(ANCHORED_LABEL, EMERGENCY_ANCHORED_LABEL)
+        self.assertEqual(LOCAL_SIGNED_LABEL, EMERGENCY_LOCAL_SIGNED_LABEL)
+        self.assertEqual(PENDING_ANCHORING_LABEL, EMERGENCY_PENDING_ANCHORING_LABEL)
+
+        BlockchainOutboxEvent.objects.filter(pk__in=event_ids).update(
+            status=BlockchainOutboxEvent.Status.CONFIRMED
+        )
+        self.assertEqual(
+            emergency_verification_label(self._fresh_emergency_work_order()),
+            ANCHORED_LABEL,
+        )
+
+        BlockchainOutboxEvent.objects.filter(pk__in=event_ids).update(
+            status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None
+        )
+        self.assertEqual(
+            emergency_verification_label(self._fresh_emergency_work_order()),
+            LOCAL_SIGNED_LABEL,
+        )
+
+        BlockchainOutboxEvent.objects.filter(pk=event_ids[0]).update(
+            status=BlockchainOutboxEvent.Status.PENDING
+        )
+        self.assertEqual(
+            emergency_verification_label(self._fresh_emergency_work_order()),
+            PENDING_ANCHORING_LABEL,
+        )
+
+        BlockchainOutboxEvent.objects.filter(pk=event_ids[0]).update(
+            status=BlockchainOutboxEvent.Status.MISMATCH
+        )
+        label = emergency_verification_label(self._fresh_emergency_work_order())
+        self.assertEqual(label, MISMATCH_LABEL)
+        self.assertNotEqual(label, PENDING_ANCHORING_LABEL)
+        self.assertNotEqual(label, ANCHORED_LABEL)
+        self.assertNotEqual(label, LOCAL_SIGNED_LABEL)
 
     def test_resident_detail_shows_offchain_label_for_local(self):
         BlockchainOutboxEvent.objects.filter(
@@ -122,3 +203,8 @@ class EvidenceLevelLabelTests(TestCase):
             self.assertEqual(
                 collect_health_snapshot()["anchoring_backend"], "disabled"
             )
+
+    def test_pilot_metrics_reports_anchoring_backend(self):
+        self.assertEqual(collect_pilot_metrics()["anchoring_backend"], "besu")
+        with override_settings(EVIDENCE_ANCHORING_BACKEND="disabled"):
+            self.assertEqual(collect_pilot_metrics()["anchoring_backend"], "disabled")
