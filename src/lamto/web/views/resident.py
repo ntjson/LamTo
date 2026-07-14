@@ -8,11 +8,12 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.tenancy import TenantContext, resolve_resident_occupancy
-from lamto.evidence.models import EvidenceLevel, evidence_level
+from lamto.evidence.models import EvidenceLevel
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import MaintenanceFundEntry
 from lamto.finance.selectors import (
     fund_period_flows,
+    ledger_entry_proof,
     published_ledger_entries,
     verified_fund_entries,
 )
@@ -269,71 +270,29 @@ def ledger_detail(request, pk):
     )
     if entry is None:
         raise Http404("Published ledger entry not found.")
-    payload = entry.snapshot.resident_payload or {}
-    version = entry.proposal.current_version
-    verification = getattr(entry.payment, "verification", None)
-    redacted_docs = []
-    acceptance = getattr(entry.work_order, "acceptance", None)
-    if acceptance is not None:
-        for label, version_obj in (
-            ("Invoice (redacted)", acceptance.invoice_redacted),
-            ("Acceptance report (redacted)", acceptance.acceptance_redacted),
-        ):
-            if version_obj is not None:
-                redacted_docs.append(
-                    {
-                        "label": label,
-                        "filename": version_obj.filename,
-                        "sha256": version_obj.sha256,
-                    }
-                )
-    proof_redacted = entry.payment.proof_redacted
-    if proof_redacted is not None:
-        redacted_docs.append(
-            {
-                "label": "Payment proof (redacted)",
-                "filename": proof_redacted.filename,
-                "sha256": proof_redacted.sha256,
-            }
-        )
-    corrections = [
-        correction
-        for correction in entry.corrections.all()
-        if correction.is_resident_visible
-    ]
-    tx_ids = []
-    for event in (
-        entry.snapshot.outbox_event,
-        getattr(verification, "outbox_event", None) if verification else None,
-        entry.payment.outbox_event,
-    ):
-        if event is not None and event.transaction_hash:
-            tx_ids.append(event.transaction_hash)
-    emergency = payload.get("emergency")
+    detail = ledger_entry_proof(entry)
+    payload = detail["payload"]
     integrity = _integrity_display(entry)
-    snapshot_level = evidence_level(entry.snapshot.outbox_event.status)
-    anchoring = _evidence_level_display(snapshot_level)
+    anchoring = _evidence_level_display(detail["evidence_level"])
     return render(
         request,
         "web/resident/ledger_detail.html",
         {
             "entry": entry,
             "payload": payload,
-            "proposed_amount": (
-                version.amount_vnd if version is not None else payload.get("proposed_amount_vnd")
-            ),
+            "proposed_amount": detail["proposed_amount"],
             "approvals": payload.get("approvals") or {},
-            "verification": verification,
-            "redacted_docs": redacted_docs,
-            "corrections": corrections,
-            "transaction_ids": tx_ids,
-            "emergency": emergency,
+            "verification": detail["verification"],
+            "redacted_docs": detail["redacted_docs"],
+            "corrections": detail["corrections"],
+            "transaction_ids": detail["transaction_ids"],
+            "emergency": detail["emergency"],
             "integrity_label": integrity["label"],
             "integrity_class": integrity["css_class"],
             "integrity_icon": integrity["icon"],
             "integrity_alert": integrity["alert"],
             "integrity_status": entry.effective_integrity_status,
-            "evidence_level": snapshot_level,
+            "evidence_level": detail["evidence_level"],
             "anchoring_label": anchoring["label"],
             "anchoring_class": anchoring["css_class"],
             "anchoring_icon": anchoring["icon"],

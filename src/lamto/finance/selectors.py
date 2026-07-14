@@ -10,7 +10,7 @@ from datetime import timedelta
 from django.db.models import Sum
 from django.utils import timezone
 
-from lamto.evidence.models import SETTLED_STATUSES
+from lamto.evidence.models import SETTLED_STATUSES, evidence_level
 from lamto.finance.fund import _finalized_posting_q, _source_verified_q
 from lamto.finance.models import MaintenanceFundEntry, PublishedLedgerEntry
 
@@ -68,3 +68,66 @@ def fund_period_flows(building_id, *, days=30):
         or 0
     )
     return int(inflows), int(outflows)
+
+
+def ledger_entry_proof(entry):
+    """Detail assembly for one published entry, shared by the resident web
+    template and the API (spec 3.1: one query path, one set of gates).
+    """
+    payload = entry.snapshot.resident_payload or {}
+    version = entry.proposal.current_version
+    verification = getattr(entry.payment, "verification", None)
+    redacted_docs = []
+    acceptance = getattr(entry.work_order, "acceptance", None)
+    if acceptance is not None:
+        for label, version_obj in (
+            ("Invoice (redacted)", acceptance.invoice_redacted),
+            ("Acceptance report (redacted)", acceptance.acceptance_redacted),
+        ):
+            if version_obj is not None:
+                redacted_docs.append(
+                    {
+                        "label": label,
+                        "filename": version_obj.filename,
+                        "sha256": version_obj.sha256,
+                    }
+                )
+    proof_redacted = entry.payment.proof_redacted
+    if proof_redacted is not None:
+        redacted_docs.append(
+            {
+                "label": "Payment proof (redacted)",
+                "filename": proof_redacted.filename,
+                "sha256": proof_redacted.sha256,
+            }
+        )
+    events = [
+        event
+        for event in (
+            entry.snapshot.outbox_event,
+            getattr(verification, "outbox_event", None) if verification else None,
+            entry.payment.outbox_event,
+        )
+        if event is not None
+    ]
+    return {
+        "payload": payload,
+        "proposed_amount": (
+            version.amount_vnd
+            if version is not None
+            else payload.get("proposed_amount_vnd")
+        ),
+        "verification": verification,
+        "redacted_docs": redacted_docs,
+        "corrections": [
+            correction
+            for correction in entry.corrections.all()
+            if correction.is_resident_visible
+        ],
+        "events": events,
+        "transaction_ids": [
+            event.transaction_hash for event in events if event.transaction_hash
+        ],
+        "emergency": payload.get("emergency"),
+        "evidence_level": evidence_level(entry.snapshot.outbox_event.status),
+    }
