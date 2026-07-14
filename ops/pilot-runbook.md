@@ -84,3 +84,17 @@ resident representative, auditor, maintenance, and participating resident.
 
 Runs the cross-building consistency checks (spec 2.3). Non-zero exit means a
 scoping bug wrote cross-tenant references; treat as a security incident.
+
+## Onboard a new building
+
+```bash
+.venv/bin/python manage.py onboard_building \
+  --name "Toà nhà Example" \
+  --locations "Sảnh, Thang máy 1, Hầm xe" \
+  --units "A-101,A-102,A-103"
+```
+
+Then, per the printed next steps: create staff users + memberships, grant
+capabilities, register signer wallets, add resident occupancies (with phone
+numbers), and record + verify the fund opening balance. Run
+`manage.py tenant_integrity` afterwards.
