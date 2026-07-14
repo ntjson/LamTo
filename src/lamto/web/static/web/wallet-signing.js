@@ -15,14 +15,13 @@
   "use strict";
 
   function randomBytes32() {
-    var bytes = new Uint8Array(32);
-    if (global.crypto && typeof global.crypto.getRandomValues === "function") {
-      global.crypto.getRandomValues(bytes);
-    } else {
-      for (var i = 0; i < 32; i++) {
-        bytes[i] = Math.floor(Math.random() * 256);
-      }
+    // Event IDs must be cryptographically random (spec 2.2): a predictable ID
+    // would leak submission ordering to chain observers. No Math.random fallback.
+    if (!global.crypto || typeof global.crypto.getRandomValues !== "function") {
+      throw new Error("Secure random generator unavailable; cannot sign evidence.");
     }
+    var bytes = new Uint8Array(32);
+    global.crypto.getRandomValues(bytes);
     var hex = "";
     for (var j = 0; j < bytes.length; j++) {
       hex += bytes[j].toString(16).padStart(2, "0");

@@ -85,6 +85,26 @@ resident representative, auditor, maintenance, and participating resident.
 Runs the cross-building consistency checks (spec 2.3). Non-zero exit means a
 scoping bug wrote cross-tenant references; treat as a security incident.
 
+## Anchoring mode switch
+
+`EVIDENCE_ANCHORING_BACKEND` (environment) selects the evidence anchoring
+transport: `besu` (default, chain round-trip) or `disabled` (local settlement,
+`LOCAL_SIGNED`).
+
+- Switching is an audited ops action, never a UI toggle: record who/why/when in
+  the ops log, then change the environment value and restart web + worker.
+- Events keep the status they settled with. A `LOCAL` event is never
+  retro-anchored; a `CONFIRMED` event keeps its chain record.
+- Events still `PENDING` at switch time settle with whichever backend is active
+  when the worker next claims them.
+- Verify after switching: `/s/ops/health/?format=json` reports
+  `anchoring_backend`; new publications must show `LOCAL_SIGNED` (disabled) or
+  `CHAIN_CONFIRMED` (besu) — never each other's wording, badges, or export values.
+- Disabling never disables: wallet signatures on decisions, the outbox,
+  canonical hashing, publication gates, idempotent fund posting, corrections,
+  or document-hash integrity checks. Only the chain round-trip is skipped, and
+  chain-dependent verification observations are skipped, not faked.
+
 ## Onboard a new building
 
 ```bash
