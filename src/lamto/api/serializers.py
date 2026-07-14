@@ -3,6 +3,40 @@
 from rest_framework import serializers
 
 
+class ProblemSerializer(serializers.Serializer):
+    """RFC 9457 problem+json body with a LamTo stable machine ``code`` (spec 3.1).
+
+    ``detail`` is developer English; the Flutter client owns Vietnamese UI copy
+    keyed off ``code``. ``errors`` is present only for validation failures.
+    """
+
+    type = serializers.CharField(
+        help_text="Problem type URI reference; usually about:blank.",
+    )
+    title = serializers.CharField(
+        help_text="Short human-readable summary (HTTP status phrase).",
+    )
+    status = serializers.IntegerField(help_text="HTTP status code.")
+    code = serializers.CharField(
+        help_text=(
+            "Stable machine code for client branching "
+            "(e.g. validation_failed, authentication_failed, not_authenticated, "
+            "permission_denied, not_found, occupancy_selection_required, throttled)."
+        ),
+    )
+    detail = serializers.CharField(
+        required=False,
+        help_text="Developer-English explanation; not shown raw to residents.",
+    )
+    errors = serializers.DictField(
+        required=False,
+        help_text=(
+            "Per-field validation errors when code is validation_failed. "
+            "Values are lists of {message, code} objects (may nest for non-field errors)."
+        ),
+    )
+
+
 class LoginSerializer(serializers.Serializer):
     identifier = serializers.CharField(help_text="Email or Vietnamese phone number.")
     # trim_whitespace=False: passwords may legitimately contain spaces.

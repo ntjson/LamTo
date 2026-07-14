@@ -1,0 +1,559 @@
+openapi: 3.0.3
+info:
+  title: LamTo Resident API
+  version: v1
+paths:
+  /api/v1/auth/login:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '429':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Too many authentication attempts (code=throttled).
+  /api/v1/auth/logout:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+  /api/v1/auth/logout-all:
+    post:
+      operationId: auth_logout_all_create
+      description: |-
+        Log the user out of all sessions
+        I.E. deletes all auth tokens for the user
+      tags:
+      - auth
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+  /api/v1/fund/summary:
+    get:
+      operationId: fund_summary_retrieve
+      tags:
+      - fund
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FundSummary'
+          description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Occupancy selection required (code=occupancy_selection_required);
+            send X-LamTo-Occupancy.
+  /api/v1/ledger:
+    get:
+      operationId: ledger_list
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: month
+        schema:
+          type: integer
+          maximum: 12
+          minimum: 1
+      - in: query
+        name: year
+        schema:
+          type: integer
+          maximum: 2100
+          minimum: 2000
+      tags:
+      - ledger
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLedgerEntryListList'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Occupancy selection required (code=occupancy_selection_required);
+            send X-LamTo-Occupancy.
+  /api/v1/ledger/{id}:
+    get:
+      operationId: ledger_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ledger
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerEntryDetail'
+          description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Occupancy selection required (code=occupancy_selection_required);
+            send X-LamTo-Occupancy.
+  /api/v1/me:
+    get:
+      operationId: me_retrieve
+      tags:
+      - me
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+components:
+  schemas:
+    Correction:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        reason:
+          type: string
+      required:
+      - id
+      - reason
+      - status
+    FundSummary:
+      type: object
+      properties:
+        balance_vnd:
+          type: integer
+        period_days:
+          type: integer
+        period_inflows_vnd:
+          type: integer
+        period_outflows_vnd:
+          type: integer
+      required:
+      - balance_vnd
+      - period_days
+      - period_inflows_vnd
+      - period_outflows_vnd
+    LedgerEntryDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        contractor_name:
+          type: string
+        actual_cost_vnd:
+          type: integer
+        published_at:
+          type: string
+          format: date-time
+        proposed_amount_vnd:
+          type: integer
+          nullable: true
+        integrity_status:
+          type: string
+        payload: {}
+        verification:
+          allOf:
+          - $ref: '#/components/schemas/Verification'
+          nullable: true
+        redacted_documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/RedactedDocument'
+        corrections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Correction'
+        proof:
+          $ref: '#/components/schemas/Proof'
+      required:
+      - actual_cost_vnd
+      - contractor_name
+      - corrections
+      - id
+      - integrity_status
+      - payload
+      - proof
+      - proposed_amount_vnd
+      - published_at
+      - redacted_documents
+      - verification
+    LedgerEntryList:
+      type: object
+      properties:
+        id:
+          type: integer
+        contractor_name:
+          type: string
+        actual_cost_vnd:
+          type: integer
+        published_at:
+          type: string
+          format: date-time
+        integrity_status:
+          type: string
+        evidence_level:
+          type: string
+          readOnly: true
+      required:
+      - actual_cost_vnd
+      - contractor_name
+      - evidence_level
+      - id
+      - integrity_status
+      - published_at
+    Login:
+      type: object
+      properties:
+        identifier:
+          type: string
+          description: Email or Vietnamese phone number.
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - identifier
+      - password
+    Me:
+      type: object
+      properties:
+        display_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        occupancies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Occupancy'
+        notification_preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationPreference'
+      required:
+      - display_name
+      - email
+      - notification_preferences
+      - occupancies
+      - phone
+    NotificationPreference:
+      type: object
+      properties:
+        event_code:
+          type: string
+        email_enabled:
+          type: boolean
+      required:
+      - email_enabled
+      - event_code
+    Occupancy:
+      type: object
+      properties:
+        id:
+          type: integer
+        unit_label:
+          type: string
+        building_name:
+          type: string
+      required:
+      - building_name
+      - id
+      - unit_label
+    PaginatedLedgerEntryListList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerEntryList'
+    Problem:
+      type: object
+      description: |-
+        RFC 9457 problem+json body with a LamTo stable machine ``code`` (spec 3.1).
+
+        ``detail`` is developer English; the Flutter client owns Vietnamese UI copy
+        keyed off ``code``. ``errors`` is present only for validation failures.
+      properties:
+        type:
+          type: string
+          description: Problem type URI reference; usually about:blank.
+        title:
+          type: string
+          description: Short human-readable summary (HTTP status phrase).
+        status:
+          type: integer
+          description: HTTP status code.
+        code:
+          type: string
+          description: Stable machine code for client branching (e.g. validation_failed,
+            authentication_failed, not_authenticated, permission_denied, not_found,
+            occupancy_selection_required, throttled).
+        detail:
+          type: string
+          description: Developer-English explanation; not shown raw to residents.
+        errors:
+          type: object
+          additionalProperties: {}
+          description: Per-field validation errors when code is validation_failed.
+            Values are lists of {message, code} objects (may nest for non-field errors).
+      required:
+      - code
+      - status
+      - title
+      - type
+    Proof:
+      type: object
+      properties:
+        evidence_level:
+          type: string
+        anchoring_backend:
+          type: string
+        payload_hash:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProofEvent'
+      required:
+      - anchoring_backend
+      - events
+      - evidence_level
+      - payload_hash
+    ProofEvent:
+      type: object
+      properties:
+        event_id:
+          type: string
+        event_type:
+          type: integer
+        status:
+          type: string
+        evidence_level:
+          type: string
+        transaction_hash:
+          type: string
+      required:
+      - event_id
+      - event_type
+      - evidence_level
+      - status
+      - transaction_hash
+    RedactedDocument:
+      type: object
+      properties:
+        label:
+          type: string
+        filename:
+          type: string
+        sha256:
+          type: string
+      required:
+      - filename
+      - label
+      - sha256
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expiry:
+          type: string
+          format: date-time
+      required:
+      - expiry
+      - token
+    Verification:
+      type: object
+      properties:
+        decision:
+          type: string
+        verified_by:
+          type: string
+        verified_at:
+          type: string
+          format: date-time
+      required:
+      - decision
+      - verified_at
+      - verified_by
+  securitySchemes:
+    knoxApiToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"

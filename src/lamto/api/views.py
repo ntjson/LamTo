@@ -18,6 +18,7 @@ from lamto.accounts.security import (
 )
 from lamto.accounts.tenancy import active_occupancies
 from lamto.api.occupancy import resolve_api_occupancy
+from lamto.api.problems import problem_responses
 from lamto.api.serializers import (
     FundSummarySerializer,
     LedgerEntryDetailSerializer,
@@ -53,7 +54,13 @@ class LoginView(APIView):
         # WWW-Authenticate header. Keep login failures as 401 (clarification 2).
         return 'Token'
 
-    @extend_schema(request=LoginSerializer, responses={200: TokenResponseSerializer})
+    @extend_schema(
+        request=LoginSerializer,
+        responses={
+            200: TokenResponseSerializer,
+            **problem_responses(400, 401, 429),
+        },
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -113,19 +120,25 @@ class LoginView(APIView):
 
 
 class LogoutView(KnoxLogoutView):
-    @extend_schema(request=None, responses={204: None})
+    @extend_schema(
+        request=None,
+        responses={204: None, **problem_responses(401)},
+    )
     def post(self, request, format=None):
         return super().post(request, format)
 
 
 class LogoutAllView(KnoxLogoutAllView):
-    @extend_schema(request=None, responses={204: None})
+    @extend_schema(
+        request=None,
+        responses={204: None, **problem_responses(401)},
+    )
     def post(self, request, format=None):
         return super().post(request, format)
 
 
 class MeView(APIView):
-    @extend_schema(responses={200: MeSerializer})
+    @extend_schema(responses={200: MeSerializer, **problem_responses(401, 403)})
     def get(self, request):
         occupancies = list(active_occupancies(request.user))
         if not occupancies:
@@ -160,7 +173,13 @@ class LedgerCursorPagination(pagination.CursorPagination):
 
 
 @extend_schema_view(
-    get=extend_schema(parameters=[LedgerFilterSerializer]),
+    get=extend_schema(
+        parameters=[LedgerFilterSerializer],
+        responses={
+            200: LedgerEntryListSerializer,
+            **problem_responses(400, 401, 403, 404, 422),
+        },
+    ),
 )
 class LedgerListView(generics.ListAPIView):
     serializer_class = LedgerEntryListSerializer
@@ -181,7 +200,12 @@ class LedgerListView(generics.ListAPIView):
 
 
 class LedgerDetailView(APIView):
-    @extend_schema(responses={200: LedgerEntryDetailSerializer})
+    @extend_schema(
+        responses={
+            200: LedgerEntryDetailSerializer,
+            **problem_responses(401, 403, 404, 422),
+        },
+    )
     def get(self, request, pk):
         _occupancy, tenant = resolve_api_occupancy(request)
         entry = published_ledger_entries(tenant.building_id).filter(pk=pk).first()
@@ -235,7 +259,12 @@ class LedgerDetailView(APIView):
 
 
 class FundSummaryView(APIView):
-    @extend_schema(responses={200: FundSummarySerializer})
+    @extend_schema(
+        responses={
+            200: FundSummarySerializer,
+            **problem_responses(401, 403, 404, 422),
+        },
+    )
     def get(self, request):
         _occupancy, tenant = resolve_api_occupancy(request)
         inflows, outflows = fund_period_flows(tenant.building_id)
