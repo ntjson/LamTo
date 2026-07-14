@@ -17,11 +17,21 @@ class EvidenceType(models.IntegerChoices):
     FUND_ENTRY = 11, "Fund entry"
 
 
+class EvidenceLevel(models.TextChoices):
+    """Explicit verification state — replaces any boolean notion of verified (spec 5.1)."""
+
+    PENDING = "PENDING", "Pending"
+    LOCAL_SIGNED = "LOCAL_SIGNED", "Locally signed"
+    CHAIN_CONFIRMED = "CHAIN_CONFIRMED", "Chain confirmed"
+    MISMATCH = "MISMATCH", "Mismatch"
+
+
 class BlockchainOutboxEvent(models.Model):
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
         SUBMITTED = "SUBMITTED", "Submitted"
         CONFIRMED = "CONFIRMED", "Confirmed"
+        LOCAL = "LOCAL", "Locally settled"
         FAILED = "FAILED", "Failed"
         MISMATCH = "MISMATCH", "Mismatch"
 
@@ -54,6 +64,10 @@ class BlockchainOutboxEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def evidence_level(self) -> str:
+        return evidence_level(self.status)
+
     class Meta:
         constraints = [
             models.CheckConstraint(
@@ -73,3 +87,26 @@ class BlockchainOutboxEvent(models.Model):
                 name="outbox_known_event_type",
             ),
         ]
+
+
+SETTLED_STATUSES = (
+    BlockchainOutboxEvent.Status.LOCAL,
+    BlockchainOutboxEvent.Status.CONFIRMED,
+)
+
+
+def evidence_level(status) -> str:
+    """Map an outbox delivery status to the explicit evidence level (spec 5.1)."""
+    if status == BlockchainOutboxEvent.Status.LOCAL:
+        return EvidenceLevel.LOCAL_SIGNED
+    if status == BlockchainOutboxEvent.Status.CONFIRMED:
+        return EvidenceLevel.CHAIN_CONFIRMED
+    if status == BlockchainOutboxEvent.Status.MISMATCH:
+        return EvidenceLevel.MISMATCH
+    return EvidenceLevel.PENDING
+
+
+def is_settled(status) -> bool:
+    """Settled = evidence durably recorded: locally signed or chain-confirmed."""
+    return status in SETTLED_STATUSES
+
