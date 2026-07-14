@@ -202,7 +202,7 @@ class CrossBuildingAccessTests(TestCase):
         session[RECENT_REAUTH_KEY] = time.time()
         session.save()
 
-    def test_every_pk_route_is_classified(self):
+    def test_every_registered_route_is_classified(self):
         """Web <int:pk> routes + every registered API route must be classified."""
         from lamto.api import urls as api_urls
         from lamto.web import urls as web_urls
@@ -311,6 +311,19 @@ class CrossBuildingAccessTests(TestCase):
             with self.subTest(route=route):
                 response = self.client.get(
                     reverse(route),
+                    headers={**auth, "x-lamto-occupancy": str(b_occupancy.pk)},
+                )
+                assert response.status_code == 404, (route, response.status_code)
+                assert B_LEAK_MARKER.encode() not in response.content
+                assert B_BUILDING_NAME.encode() not in response.content
+
+        # Tenant-object routes use the same occupancy resolver; foreign header
+        # must 404 before any object payload is considered.
+        for route, (pk_attr, method, _expected) in API_TENANT_OBJECT.items():
+            with self.subTest(route=route, kind="tenant-object"):
+                assert method == "GET"
+                response = self.client.get(
+                    reverse(route, args=[self.b[pk_attr]]),
                     headers={**auth, "x-lamto-occupancy": str(b_occupancy.pk)},
                 )
                 assert response.status_code == 404, (route, response.status_code)

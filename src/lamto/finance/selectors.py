@@ -37,6 +37,28 @@ def published_ledger_entries(building_id):
     )
 
 
+def published_ledger_entry_for_proof(building_id, pk):
+    """One settled published entry with relations needed by ``ledger_entry_proof``.
+
+    Extends the list selector with acceptance/redacted-doc/payment event joins
+    and corrections prefetch so detail assembly avoids obvious extra queries.
+    """
+    return (
+        published_ledger_entries(building_id)
+        .filter(pk=pk)
+        .select_related(
+            "work_order__acceptance",
+            "work_order__acceptance__invoice_redacted",
+            "work_order__acceptance__acceptance_redacted",
+            "payment__proof_redacted",
+            "payment__outbox_event",
+            "payment__verification__outbox_event",
+        )
+        .prefetch_related("corrections")
+        .first()
+    )
+
+
 def verified_fund_entries(building_id):
     """Fund rows held to the same verified/finalized bar as fund_balance(verified_only=True)."""
     return MaintenanceFundEntry.objects.filter(fund__building_id=building_id).filter(

@@ -17,7 +17,8 @@ from lamto.accounts.security import (
     reset_auth_throttle,
 )
 from lamto.accounts.tenancy import active_occupancies
-from lamto.api.occupancy import resolve_api_occupancy
+from lamto.api.authentication import ResidentTokenAuthentication
+from lamto.api.occupancy import OCCUPANCY_HEADER_PARAMETER, resolve_api_occupancy
 from lamto.api.problems import problem_responses
 from lamto.api.serializers import (
     FundSummarySerializer,
@@ -40,6 +41,7 @@ from lamto.finance.selectors import (
     fund_period_flows,
     ledger_entry_proof,
     published_ledger_entries,
+    published_ledger_entry_for_proof,
 )
 
 TOKEN_CAP_PER_USER = 5  # spec 3.2: 5 concurrent tokens; oldest evicted at login
@@ -120,6 +122,9 @@ class LoginView(APIView):
 
 
 class LogoutView(KnoxLogoutView):
+    # Use the resident auth class so spectacular sees one knox scheme only.
+    authentication_classes = [ResidentTokenAuthentication]
+
     @extend_schema(
         request=None,
         responses={204: None, **problem_responses(401)},
@@ -129,6 +134,8 @@ class LogoutView(KnoxLogoutView):
 
 
 class LogoutAllView(KnoxLogoutAllView):
+    authentication_classes = [ResidentTokenAuthentication]
+
     @extend_schema(
         request=None,
         responses={204: None, **problem_responses(401)},
@@ -174,7 +181,7 @@ class LedgerCursorPagination(pagination.CursorPagination):
 
 @extend_schema_view(
     get=extend_schema(
-        parameters=[LedgerFilterSerializer],
+        parameters=[LedgerFilterSerializer, OCCUPANCY_HEADER_PARAMETER],
         responses={
             200: LedgerEntryListSerializer,
             **problem_responses(400, 401, 403, 404, 422),
@@ -201,6 +208,7 @@ class LedgerListView(generics.ListAPIView):
 
 class LedgerDetailView(APIView):
     @extend_schema(
+        parameters=[OCCUPANCY_HEADER_PARAMETER],
         responses={
             200: LedgerEntryDetailSerializer,
             **problem_responses(401, 403, 404, 422),
@@ -208,7 +216,7 @@ class LedgerDetailView(APIView):
     )
     def get(self, request, pk):
         _occupancy, tenant = resolve_api_occupancy(request)
-        entry = published_ledger_entries(tenant.building_id).filter(pk=pk).first()
+        entry = published_ledger_entry_for_proof(tenant.building_id, pk)
         if entry is None:
             raise exceptions.NotFound("Published ledger entry not found.")
         detail = ledger_entry_proof(entry)
@@ -260,6 +268,7 @@ class LedgerDetailView(APIView):
 
 class FundSummaryView(APIView):
     @extend_schema(
+        parameters=[OCCUPANCY_HEADER_PARAMETER],
         responses={
             200: FundSummarySerializer,
             **problem_responses(401, 403, 404, 422),

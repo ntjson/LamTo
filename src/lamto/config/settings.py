@@ -284,7 +284,9 @@ PILOT_ALLOW_FIXTURES = os.getenv("PILOT_ALLOW_FIXTURES", "false").lower() in {
 
 # --- Resident API (spec 3): DRF + knox tokens + OpenAPI schema ---
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ["knox.auth.TokenAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "lamto.api.authentication.ResidentTokenAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",

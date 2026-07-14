@@ -96,6 +96,29 @@ def deactivate_occupancy(occupancy, *, reason: str = "") -> None:
     )
 
 
+def deactivate_occupancies(queryset, *, reason: str = "") -> int:
+    """Bulk-deactivate occupancies and revoke knox tokens for users left with none.
+
+    Preferred path for multi-row deactivation. Uses ``QuerySet.update()`` then
+    defensive cleanup so residual knox tokens are not left until re-login.
+    Returns the number of rows updated to inactive.
+    """
+    active_qs = queryset.filter(active=True)
+    user_ids = list(active_qs.values_list("user_id", flat=True).distinct())
+    updated = active_qs.update(active=False)
+    User = get_user_model()
+    for user in User.objects.filter(pk__in=user_ids):
+        revoke_tokens_if_no_active_occupancy(user)
+    if updated:
+        logger.info(
+            "occupancies.bulk_deactivated count=%s user_count=%s reason=%s",
+            updated,
+            len(user_ids),
+            reason or "",
+        )
+    return updated
+
+
 def deactivate_user(user, *, reason: str = "") -> None:
     """Deactivate a user and always revoke all of their knox tokens."""
     if user.is_active:

@@ -7,12 +7,27 @@ selected when the header is absent. Multiple and no header -> 422. An ID that
 is not the caller's active occupancy -> 404 (existence not revealed).
 """
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter
 from rest_framework import exceptions
 
 from lamto.accounts.tenancy import TenantContext, active_occupancies
 from lamto.api.problems import OccupancySelectionRequired
 
 OCCUPANCY_HEADER = "X-LamTo-Occupancy"
+
+# Shared OpenAPI parameter for tenant-list / tenant-object routes.
+OCCUPANCY_HEADER_PARAMETER = OpenApiParameter(
+    name=OCCUPANCY_HEADER,
+    type=OpenApiTypes.INT,
+    location=OpenApiParameter.HEADER,
+    required=False,
+    description=(
+        "Active occupancy id for the authenticated resident. Required when the "
+        "caller has multiple active occupancies; omitted when exactly one is "
+        "auto-selected. Invalid or foreign ids yield 404."
+    ),
+)
 
 
 def resolve_api_occupancy(request):

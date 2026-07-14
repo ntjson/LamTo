@@ -12,6 +12,7 @@ from knox.models import AuthToken
 from lamto.accounts.models import AuthThrottleBucket, Building, ResidentOccupancy, Unit
 from lamto.api.services import (
     canonicalize_login_identifier,
+    deactivate_occupancies,
     deactivate_occupancy,
     deactivate_user,
     revoke_tokens_if_no_active_occupancy,
@@ -267,6 +268,35 @@ class ApiAuthTests(TestCase):
         assert AuthToken.objects.filter(user=self.resident).count() == 1
         deleted = revoke_tokens_if_no_active_occupancy(self.resident)
         assert deleted >= 1
+        assert AuthToken.objects.filter(user=self.resident).count() == 0
+
+    def test_deactivate_occupancies_bulk_service_revokes_without_relogin(self):
+        """Preferred bulk path: tokens gone immediately, no login required."""
+        self._token()
+        self._token()
+        updated = deactivate_occupancies(
+            ResidentOccupancy.objects.filter(user=self.resident),
+            reason="test-bulk",
+        )
+        assert updated == 1
+        self.occupancy.refresh_from_db()
+        assert not self.occupancy.active
+        assert AuthToken.objects.filter(user=self.resident).count() == 0
+
+    def test_authenticated_request_revokes_residual_tokens_after_signal_bypass(self):
+        """Bulk occupancy update leaves a knox token; first API use cleans it.
+
+        Cleanup happens at authentication time — not only on the next login.
+        """
+        token = self._token()
+        ResidentOccupancy.objects.filter(pk=self.occupancy.pk).update(active=False)
+        assert AuthToken.objects.filter(user=self.resident).count() == 1
+        response = self.client.post(
+            reverse("api:auth-logout"),
+            headers={"authorization": f"Token {token}"},
+        )
+        assert response.status_code == 401
+        assert problem(response)["code"] == "authentication_failed"
         assert AuthToken.objects.filter(user=self.resident).count() == 0
 
     def test_bulk_user_deactivation_service_revokes_tokens(self):

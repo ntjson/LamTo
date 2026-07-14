@@ -54,3 +54,30 @@ class OpenApiDriftTests(SimpleTestCase):
         for field in ("type:", "title:", "status:", "code:"):
             assert field in content
         assert "application/problem+json" in content
+
+    def test_tenant_routes_document_occupancy_header(self):
+        """Optional X-LamTo-Occupancy is documented on tenant-list/object paths."""
+        content = SCHEMA_PATH.read_text()
+        assert "X-LamTo-Occupancy" in content
+        # Header must appear in the schema for each tenant surface (list + detail + fund).
+        # spectacular may emit the name as a parameter $ref or inline; substring is enough
+        # to prove generation included OCCUPANCY_HEADER_PARAMETER on those views.
+        tenant_markers = (
+            "/api/v1/ledger:",
+            "/api/v1/ledger/{id}:",
+            "/api/v1/fund/summary:",
+        )
+        # Allow {pk} alternate for ledger detail path key.
+        if "/api/v1/ledger/{id}:" not in content:
+            tenant_markers = (
+                "/api/v1/ledger:",
+                "/api/v1/ledger/{pk}:",
+                "/api/v1/fund/summary:",
+            )
+        for marker in tenant_markers:
+            assert marker in content or marker.rstrip(":") in content, (
+                f"tenant path missing from schema: {marker}"
+            )
+        # Count occurrences: login/me should not require the header; tenant ops should list it.
+        # At least three parameter blocks reference the header name (one per tenant route).
+        assert content.count("X-LamTo-Occupancy") >= 3

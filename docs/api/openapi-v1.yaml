@@ -88,6 +88,14 @@ paths:
   /api/v1/fund/summary:
     get:
       operationId: fund_summary_retrieve
+      parameters:
+      - in: header
+        name: X-LamTo-Occupancy
+        schema:
+          type: integer
+        description: Active occupancy id for the authenticated resident. Required
+          when the caller has multiple active occupancies; omitted when exactly one
+          is auto-selected. Invalid or foreign ids yield 404.
       tags:
       - fund
       security:
@@ -129,6 +137,13 @@ paths:
     get:
       operationId: ledger_list
       parameters:
+      - in: header
+        name: X-LamTo-Occupancy
+        schema:
+          type: integer
+        description: Active occupancy id for the authenticated resident. Required
+          when the caller has multiple active occupancies; omitted when exactly one
+          is auto-selected. Invalid or foreign ids yield 404.
       - name: cursor
         required: false
         in: query
@@ -194,6 +209,13 @@ paths:
     get:
       operationId: ledger_retrieve
       parameters:
+      - in: header
+        name: X-LamTo-Occupancy
+        schema:
+          type: integer
+        description: Active occupancy id for the authenticated resident. Required
+          when the caller has multiple active occupancies; omitted when exactly one
+          is auto-selected. Invalid or foreign ids yield 404.
       - in: path
         name: id
         schema:

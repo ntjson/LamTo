@@ -62,11 +62,21 @@ class MeViewTests(TestCase):
         assert response["Content-Type"].startswith("application/problem+json")
         assert json.loads(response.content)["code"] == "not_authenticated"
 
-    def test_me_without_active_occupancy_is_403(self):
+    def test_me_without_active_occupancy_rejects_token(self):
+        """No active occupancy → residual knox token is revoked at authenticate.
+
+        Staff (or a former resident after bulk deactivation) never receive data.
+        Auth-time cleanup turns leftover tokens into authentication_failed rather
+        than leaving a live token that only fails later with 403.
+        """
         staff = get_user_model().objects.create_user(
             email="me-staff@example.com",
             password="resident-pass-123",
             display_name="Me Staff",
         )
-        response = self.client.get(reverse("api:me"), headers=self._auth(staff))
-        assert response.status_code == 403
+        headers = self._auth(staff)
+        response = self.client.get(reverse("api:me"), headers=headers)
+        assert response.status_code == 401
+        assert response["Content-Type"].startswith("application/problem+json")
+        assert json.loads(response.content)["code"] == "authentication_failed"
+        assert not AuthToken.objects.filter(user=staff).exists()
