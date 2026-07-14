@@ -18,7 +18,8 @@ class BuildingLocation(models.Model):
                 fields=["building", "parent", "name"],
                 name="location_sibling_name_once",
                 nulls_distinct=False,
-            )
+            ),
+            models.UniqueConstraint(fields=["id", "building"], name="location_id_building_key"),
         ]
 
     def clean(self):
@@ -49,11 +50,27 @@ class IssueReport(models.Model):
 
     reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT)
+    building = models.ForeignKey(
+        Building, on_delete=models.PROTECT,
+        editable=False, related_name="issue_reports",
+    )
     text = models.TextField()
     selected_location = models.ForeignKey(BuildingLocation, on_delete=models.PROTECT)
     location_path_snapshot = models.CharField(max_length=1000)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # Always stamp building from unit so ORM creates (and composite FKs)
+        # stay consistent even when callers omit the denormalized column.
+        if self.unit_id is not None:
+            unit_building_id = getattr(self.unit, "building_id", None)
+            if unit_building_id is None:
+                unit_building_id = Unit.objects.filter(pk=self.unit_id).values_list(
+                    "building_id", flat=True
+                ).first()
+            self.building_id = unit_building_id
+        return super().save(*args, **kwargs)
 
 
 class ReportPhoto(models.Model):

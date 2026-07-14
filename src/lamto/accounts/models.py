@@ -32,7 +32,8 @@ class Unit(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["building", "label"], name="unit_label_per_building")
+            models.UniqueConstraint(fields=["building", "label"], name="unit_label_per_building"),
+            models.UniqueConstraint(fields=["id", "building"], name="unit_id_building_key"),
         ]
 
 

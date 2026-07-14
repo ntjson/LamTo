@@ -68,6 +68,7 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
     report = IssueReport.objects.create(
         reporter=resident,
         unit=unit,
+        building=unit.building,
         text=text,
         selected_location=location,
         location_path_snapshot=location_path_snapshot,
