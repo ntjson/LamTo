@@ -36,6 +36,12 @@ SIGNING_ROLES = {
 HASH_RE = re.compile(r"(?:0x)?[0-9a-f]{64}\Z")
 UTC_RFC3339_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\Z")
 APPROVAL = frozenset({"APPROVE", "REJECT"})
+# Closed vocabulary of payload value shapes (spec 2.2 opacity). Free-text shapes
+# must not be added — chain hashes remain non-invertible only if payloads stay opaque.
+OPAQUE_PAYLOAD_SHAPES = frozenset({
+    "id", "positive_int", "money", "bool", "hash", "hashes", "bytes32", "timestamp",
+})
+HASH_PAYLOAD_SHAPES = frozenset({"hash", "hashes", "bytes32"})
 EVIDENCE_PAYLOAD_SCHEMAS = {
     EvidenceType.PROPOSAL_CREATED: ({
         "proposal_id": "id", "proposal_version": "positive_int", "record_id": "id",
@@ -325,6 +331,10 @@ def _validate_payload(event_type, payload):
         raise ValidationError(f"Evidence payload is missing required fields: {', '.join(sorted(missing))}.")
     for field, value in payload.items():
         shape = required.get(field, optional.get(field))
+        if isinstance(shape, str) and shape not in OPAQUE_PAYLOAD_SHAPES:
+            raise ValidationError(
+                f"Evidence payload field {field!r} uses non-opaque shape {shape!r}."
+            )
         valid = (
             (shape == "id" and type(value) is int and value > 0)
             or (shape == "positive_int" and type(value) is int and value > 0)

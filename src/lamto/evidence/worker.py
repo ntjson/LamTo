@@ -212,8 +212,17 @@ def _mark_local(event: BlockchainOutboxEvent) -> BlockchainOutboxEvent:
     """Settle without a chain round-trip. Honest LOCAL: no tx hash, no confirmed_at."""
     event.status = BlockchainOutboxEvent.Status.LOCAL
     event.lease_expires_at = None
+    event.submitted_at = None
     event.last_error = ""
-    event.save(update_fields=["status", "lease_expires_at", "last_error", "updated_at"])
+    event.save(
+        update_fields=[
+            "status",
+            "lease_expires_at",
+            "submitted_at",
+            "last_error",
+            "updated_at",
+        ]
+    )
     return event
 
 

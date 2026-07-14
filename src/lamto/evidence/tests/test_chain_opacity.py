@@ -9,12 +9,11 @@ evidence payload schemas forever.
 from django.test import SimpleTestCase
 
 from lamto.evidence.models import EvidenceType
-from lamto.evidence.services import EVIDENCE_PAYLOAD_SCHEMAS
-
-# Closed vocabulary of value shapes. Anything else — in particular any
-# free-text shape — is an opacity regression and must not be added.
-OPAQUE_SHAPES = {"id", "positive_int", "money", "bool", "hash", "hashes", "bytes32", "timestamp"}
-HASH_SHAPES = {"hash", "hashes", "bytes32"}
+from lamto.evidence.services import (
+    EVIDENCE_PAYLOAD_SCHEMAS,
+    HASH_PAYLOAD_SHAPES,
+    OPAQUE_PAYLOAD_SHAPES,
+)
 
 
 class ChainOpacityTests(SimpleTestCase):
@@ -30,7 +29,7 @@ class ChainOpacityTests(SimpleTestCase):
                         for member in shape:
                             self.assertRegex(member, r"^[A-Z_]+$")
                     else:
-                        self.assertIn(shape, OPAQUE_SHAPES)
+                        self.assertIn(shape, OPAQUE_PAYLOAD_SHAPES)
 
     def test_every_schema_requires_a_hash_field(self):
         # At least one 256-bit unknown per payload keeps the on-chain
@@ -38,6 +37,6 @@ class ChainOpacityTests(SimpleTestCase):
         for event_type, (required, _optional) in EVIDENCE_PAYLOAD_SCHEMAS.items():
             with self.subTest(event_type=event_type):
                 self.assertTrue(
-                    HASH_SHAPES.intersection(required.values()),
+                    HASH_PAYLOAD_SHAPES.intersection(required.values()),
                     f"event type {event_type} has no required hash field",
                 )

@@ -336,6 +336,7 @@ class DisabledAnchoringWorkerTests(OutboxEventFactoryMixin, TestCase):
         self.assertEqual(processed.status, BlockchainOutboxEvent.Status.LOCAL)
         self.assertEqual(processed.transaction_hash, "")
         self.assertIsNone(processed.confirmed_at)
+        self.assertIsNone(processed.submitted_at)
         self.assertIsNone(processed.lease_expires_at)
         self.assertEqual(client.find_calls, 0)
         self.assertEqual(client.submit_calls, 0)
