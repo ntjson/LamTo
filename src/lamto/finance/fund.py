@@ -9,7 +9,7 @@ from lamto.accounts.services import require_capability
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
+from lamto.evidence.models import EvidenceType, SETTLED_STATUSES
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
 
@@ -116,8 +116,8 @@ def _prior_verified_source_hash(fund):
             fund=fund,
             entry_type__in=SOURCE_ENTRY_TYPES,
             verification__isnull=False,
-            verification__outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
-            outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
+            verification__outbox_event__status__in=SETTLED_STATUSES,
+            outbox_event__status__in=SETTLED_STATUSES,
         )
         .select_related("verification__outbox_event")
         .order_by("-recorded_at", "-pk")
@@ -420,8 +420,8 @@ def verify_fund_source(
 def _source_verified_q():
     return Q(
         entry_type__in=SOURCE_ENTRY_TYPES,
-        outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
-        verification__outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
+        outbox_event__status__in=SETTLED_STATUSES,
+        verification__outbox_event__status__in=SETTLED_STATUSES,
     )
 
 

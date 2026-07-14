@@ -12,7 +12,7 @@ from lamto.accounts.services import require_capability
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
+from lamto.evidence.models import EvidenceType, is_settled
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.fund import get_or_create_fund
@@ -267,8 +267,8 @@ def create_correction(
     timestamp=None,
 ) -> Correction:
     entry = _locked_entry(entry)
-    if entry.snapshot.outbox_event.status != BlockchainOutboxEvent.Status.CONFIRMED:
-        raise ValidationError("Only published entries with confirmed snapshots may be corrected.")
+    if not is_settled(entry.snapshot.outbox_event.status):
+        raise ValidationError("Only published entries with settled snapshots may be corrected.")
     actor = require_capability(operator.user, operator.pk, CORRECTION_CREATE)
     if actor.organization.kind != Organization.Kind.OPERATOR:
         raise PermissionDenied("Only an operator membership may create corrections.")
@@ -388,8 +388,8 @@ def decide_correction(
                 "Board correction approval is required before resident co-approval."
             )
 
-    if correction.outbox_event.status != BlockchainOutboxEvent.Status.CONFIRMED:
-        raise ValidationError("Correction creation must be chain-confirmed before decisions.")
+    if not is_settled(correction.outbox_event.status):
+        raise ValidationError("Correction creation must be settled before decisions.")
 
     versions = [link.version for link in correction.documents.select_related("version")]
     replacement_hashes = _replacement_hashes(versions)
@@ -538,8 +538,8 @@ def prepare_correction_publication(
         ("Board correction decision", board.outbox_event),
         ("Representative correction decision", rep.outbox_event),
     ):
-        if event.status != BlockchainOutboxEvent.Status.CONFIRMED:
-            raise ValidationError(f"{label} is not chain-confirmed.")
+        if not is_settled(event.status):
+            raise ValidationError(f"{label} is not settled.")
 
     from lamto.finance.models import PaymentVerification
 
@@ -688,9 +688,9 @@ def finalize_correction_publication(snapshot_id) -> Correction:
         ).get(pk=locked_id)
     )
     correction = snapshot.correction
-    if snapshot.outbox_event.status != BlockchainOutboxEvent.Status.CONFIRMED:
+    if not is_settled(snapshot.outbox_event.status):
         raise ValidationError(
-            "Correction publication snapshot must be chain-confirmed before finalization."
+            "Correction publication snapshot must be settled before finalization."
         )
     if not correction.board_and_rep_approved:
         raise ValidationError("Correction approvals must remain APPROVE at finalization.")

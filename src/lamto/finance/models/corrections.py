@@ -2,7 +2,7 @@ from django.db import models
 
 from lamto.accounts.models import OrganizationMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
-from lamto.evidence.models import BlockchainOutboxEvent
+from lamto.evidence.models import BlockchainOutboxEvent, is_settled
 
 from .ledger import PublishedLedgerEntry
 from .proposals import InsertOnlyModel
@@ -37,7 +37,7 @@ class Correction(InsertOnlyModel):
             snapshot = self.publication_snapshot
         except CorrectionPublicationSnapshot.DoesNotExist:
             return False
-        if snapshot.outbox_event.status != BlockchainOutboxEvent.Status.CONFIRMED:
+        if not is_settled(snapshot.outbox_event.status):
             return False
         if self.amount_changed and not self.fund_entries.filter(
             entry_type__in=["REVERSAL", "REPLACEMENT"]
@@ -75,7 +75,7 @@ class Correction(InsertOnlyModel):
                 snap = self.publication_snapshot
             except CorrectionPublicationSnapshot.DoesNotExist:
                 return "APPROVED"
-            if snap.outbox_event.status == BlockchainOutboxEvent.Status.CONFIRMED:
+            if is_settled(snap.outbox_event.status):
                 return "APPROVED"
             return "PUBLICATION_PENDING"
         return "PENDING"

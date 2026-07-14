@@ -10,7 +10,7 @@ from datetime import timedelta
 from django.db.models import Sum
 from django.utils import timezone
 
-from lamto.evidence.models import BlockchainOutboxEvent
+from lamto.evidence.models import SETTLED_STATUSES
 from lamto.finance.fund import _finalized_posting_q, _source_verified_q
 from lamto.finance.models import MaintenanceFundEntry, PublishedLedgerEntry
 
@@ -20,7 +20,7 @@ def published_ledger_entries(building_id):
     return (
         PublishedLedgerEntry.objects.filter(
             case__building_id=building_id,
-            snapshot__outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
+            snapshot__outbox_event__status__in=SETTLED_STATUSES,
         )
         .select_related(
             "snapshot",

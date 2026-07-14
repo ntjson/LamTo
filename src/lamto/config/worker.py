@@ -82,7 +82,7 @@ def process_blockchain_outbox_batch(*, limit: int = 50) -> ProcessorResult:
 def process_publication_finalization_batch(*, limit: int = 50) -> ProcessorResult:
     name = "publication_finalize"
     try:
-        from lamto.evidence.models import BlockchainOutboxEvent
+        from lamto.evidence.models import SETTLED_STATUSES
         from lamto.finance.corrections import finalize_correction_publication
         from lamto.finance.models import (
             CorrectionPublicationSnapshot,
@@ -94,7 +94,7 @@ def process_publication_finalization_batch(*, limit: int = 50) -> ProcessorResul
         count = 0
         pending = (
             PublicationSnapshot.objects.filter(
-                outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
+                outbox_event__status__in=SETTLED_STATUSES,
             )
             .exclude(pk__in=PublishedLedgerEntry.objects.values("snapshot_id"))
             .order_by("pk")[:limit]
@@ -108,7 +108,7 @@ def process_publication_finalization_batch(*, limit: int = 50) -> ProcessorResul
 
         corr_pending = (
             CorrectionPublicationSnapshot.objects.filter(
-                outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
+                outbox_event__status__in=SETTLED_STATUSES,
             )
             .order_by("pk")[:limit]
         )

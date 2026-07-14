@@ -863,7 +863,11 @@ class PilotDomainDriver:
         except ValidationError as exc:
             messages = "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
             # Map domain wording to pilot acceptance phrasing used in the brief.
-            if "not chain-confirmed" in messages or "chain-confirmed" in messages:
+            if (
+                "not chain-confirmed" in messages
+                or "chain-confirmed" in messages
+                or "not settled" in messages
+            ):
                 reason = "Required blockchain evidence is still pending"
             else:
                 reason = messages

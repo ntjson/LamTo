@@ -10,7 +10,7 @@ from lamto.accounts.services import require_capability
 from lamto.audit.services import record_audit
 from lamto.documents.access import _read_stored_version
 from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
+from lamto.evidence.models import EvidenceType, is_settled
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.maintenance.models import WorkOrder
@@ -127,11 +127,11 @@ def _confirm_document(version, expected_hash, gate_code):
     return actual, None
 
 
-def _require_confirmed(event, label):
+def _require_settled(event, label):
     if event is None:
         raise ValidationError(f"{label} evidence event is required.")
-    if event.status != BlockchainOutboxEvent.Status.CONFIRMED:
-        raise ValidationError(f"{label} evidence is not chain-confirmed.")
+    if not is_settled(event.status):
+        raise ValidationError(f"{label} evidence is not settled.")
     return event
 
 
@@ -482,7 +482,7 @@ def prepare_publication(
             ]
         )
         for event in prerequisite_events:
-            _require_confirmed(event, "Prerequisite")
+            _require_settled(event, "Prerequisite")
 
         if actor.user_id in _forbidden_publisher_user_ids(proposal, payment):
             denied = True
@@ -623,9 +623,9 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
     existing = PublishedLedgerEntry.objects.filter(snapshot=snapshot).first()
     if existing is not None:
         return existing
-    if snapshot.outbox_event.status != BlockchainOutboxEvent.Status.CONFIRMED:
+    if not is_settled(snapshot.outbox_event.status):
         raise ValidationError(
-            "Publication snapshot must be chain-confirmed before finalization."
+            "Publication snapshot must be settled before finalization."
         )
     proposal = snapshot.proposal
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():

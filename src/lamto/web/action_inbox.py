@@ -29,7 +29,7 @@ from lamto.accounts.capabilities import (
 )
 from lamto.accounts.models import CapabilityGrant, Organization, OrganizationMembership
 from lamto.documents.models import QuarantinedUpload
-from lamto.evidence.models import BlockchainOutboxEvent
+from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
     AcceptanceRecord,
     ApprovalDecision,
@@ -488,10 +488,10 @@ def _pending_publication_items(building_id: int) -> list[ActionItem]:
                 priority=17,
             )
         )
-    # Snapshots waiting finalize (CONFIRMED outbox)
+    # Snapshots waiting finalize (settled outbox)
     snaps = PublicationSnapshot.objects.filter(
         proposal__work_order__case__building_id=building_id,
-        outbox_event__status=BlockchainOutboxEvent.Status.CONFIRMED,
+        outbox_event__status__in=SETTLED_STATUSES,
     ).exclude(
         pk__in=PublishedLedgerEntry.objects.values("snapshot_id")
     ).order_by("pk")[:20]
@@ -500,7 +500,7 @@ def _pending_publication_items(building_id: int) -> list[ActionItem]:
             ActionItem(
                 kind="pending_publication",
                 title="Pending publication",
-                summary=f"Snapshot #{snap.pk} confirmed — finalize pending",
+                summary=f"Snapshot #{snap.pk} settled — finalize pending",
                 target_type="PublicationSnapshot",
                 target_id=snap.pk,
                 url=reverse("web:proposal-detail", kwargs={"pk": snap.proposal_id}),
