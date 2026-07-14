@@ -329,6 +329,11 @@ class DisabledAnchoringWorkerTests(OutboxEventFactoryMixin, TestCase):
 
     def test_pending_event_settles_local_without_touching_chain(self):
         event = self.make_pending_outbox_event(suffix="local", event_byte="44")
+        # Pre-seed receipt fields that must not survive honest LOCAL settlement.
+        BlockchainOutboxEvent.objects.filter(pk=event.pk).update(
+            transaction_hash="0x" + "ab" * 32,
+            confirmed_at=timezone.now(),
+        )
         client = self.fake_chain_client()
 
         processed = process_outbox_event(event.id, client=client)

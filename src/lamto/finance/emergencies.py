@@ -351,15 +351,18 @@ def emergency_verification_label(work_order):
         outcome = authorization.ratification
     except EmergencyRatification.DoesNotExist:
         outcome = None
+    events = [authorization.outbox_event]
+    if outcome is not None and outcome.outbox_event_id:
+        events.append(outcome.outbox_event)
+    if any(
+        event is not None and event.status == BlockchainOutboxEvent.Status.MISMATCH
+        for event in events
+    ):
+        return MISMATCH_LABEL
     # Unsigned OVERDUE has no outbox event; keep pending until a later publisher
     # snapshot can anchor that exact overdue fact.
     if outcome is not None and not outcome.outbox_event_id:
         return PENDING_ANCHORING_LABEL
-    events = [authorization.outbox_event]
-    if outcome is not None and outcome.outbox_event_id:
-        events.append(outcome.outbox_event)
-    if any(event.status == BlockchainOutboxEvent.Status.MISMATCH for event in events):
-        return MISMATCH_LABEL
     if any(not is_settled(event.status) for event in events):
         return PENDING_ANCHORING_LABEL
     if all(

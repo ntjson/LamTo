@@ -209,16 +209,24 @@ def _mark_retry(event: BlockchainOutboxEvent, error: BaseException) -> Blockchai
 
 
 def _mark_local(event: BlockchainOutboxEvent) -> BlockchainOutboxEvent:
-    """Settle without a chain round-trip. Honest LOCAL: no tx hash, no confirmed_at."""
+    """Settle without a chain round-trip.
+
+    Honest LOCAL metadata: clear claim/receipt fields so the row cannot look
+    chain-submitted or confirmed (no lease, submitted_at, tx hash, or confirmed_at).
+    """
     event.status = BlockchainOutboxEvent.Status.LOCAL
     event.lease_expires_at = None
     event.submitted_at = None
+    event.transaction_hash = ""
+    event.confirmed_at = None
     event.last_error = ""
     event.save(
         update_fields=[
             "status",
             "lease_expires_at",
             "submitted_at",
+            "transaction_hash",
+            "confirmed_at",
             "last_error",
             "updated_at",
         ]

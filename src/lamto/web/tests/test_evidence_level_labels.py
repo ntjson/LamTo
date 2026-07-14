@@ -156,6 +156,24 @@ class EvidenceLevelLabelTests(TestCase):
         self.assertNotEqual(label, ANCHORED_LABEL)
         self.assertNotEqual(label, LOCAL_SIGNED_LABEL)
 
+    def test_emergency_mismatch_beats_unsigned_overdue_pending(self):
+        # Authorization MISMATCH must surface even when ratification is unsigned OVERDUE
+        # (no outcome outbox) — pending must not mask the mismatch.
+        seed = seed_pilot_world(
+            building_name="Overdue Mismatch Building", create_sample_report=False
+        )
+        driver = PilotDomainDriver(seed)
+        driver.authorize_emergency_drill()
+        driver.mark_drill_overdue()
+        auth = driver._ctx["emergency_authorization"]
+        BlockchainOutboxEvent.objects.filter(pk=auth.outbox_event_id).update(
+            status=BlockchainOutboxEvent.Status.MISMATCH
+        )
+        work_order = WorkOrder.objects.get(pk=driver._ctx["drill_work_order"].pk)
+        label = emergency_verification_label(work_order)
+        self.assertEqual(label, EMERGENCY_MISMATCH_LABEL)
+        self.assertNotEqual(label, EMERGENCY_PENDING_ANCHORING_LABEL)
+
     def test_resident_detail_shows_offchain_label_for_local(self):
         BlockchainOutboxEvent.objects.filter(
             pk=self.entry.snapshot.outbox_event_id
