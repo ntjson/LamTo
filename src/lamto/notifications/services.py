@@ -381,6 +381,37 @@ def _recipient_can_receive_push(delivery) -> bool:
     return active_occupancies(user).filter(unit__building_id=delivery.building_id).exists()
 
 
+# Categories that collapse on-device and are daily-capped (spec 7.3).
+_AGGREGATED_PUSH_CODES = frozenset({EVENT_PUBLICATION})
+
+
+def _collapse_key(delivery):
+    code = delivery.event_code or _event_code_from_key(delivery.event_key)
+    if code == EVENT_PUBLICATION and delivery.building_id is not None:
+        return f"pub:{delivery.building_id}"
+    return None
+
+
+def _daily_push_cap_reached(delivery) -> bool:
+    from django.conf import settings
+
+    code = delivery.event_code or _event_code_from_key(delivery.event_key)
+    if code not in _AGGREGATED_PUSH_CODES:
+        return False
+    cap = getattr(settings, "PUSH_DAILY_CAP_PER_CATEGORY", 10)
+    today = timezone.localdate()  # Asia/Ho_Chi_Minh calendar day (settings.TIME_ZONE)
+    # Count only true FCM successes (empty last_error), not suppressions.
+    sent_today = NotificationDelivery.objects.filter(
+        recipient=delivery.recipient,
+        channel=NotificationDelivery.Channel.PUSH,
+        event_code=code,
+        status=NotificationDelivery.Status.SENT,
+        last_error="",
+        updated_at__date=today,
+    ).count()
+    return sent_today >= cap
+
+
 def _process_push_delivery(delivery):
     from lamto.notifications.models import Device
     from lamto.notifications.push import build_push_payload, classify_push_error
@@ -399,8 +430,14 @@ def _process_push_delivery(delivery):
         delivery.save(update_fields=["status", "last_error", "updated_at"])
         return delivery
 
+    if _daily_push_cap_reached(delivery):
+        delivery.status = NotificationDelivery.Status.SENT  # capped; in-app feed holds it
+        delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}daily_cap"
+        delivery.save(update_fields=["status", "last_error", "updated_at"])
+        return delivery
+
     title, body, data = build_push_payload(delivery)
-    collapse_key = None  # set for aggregated categories in Task 6
+    collapse_key = _collapse_key(delivery)
     any_transient = False
     last_error = ""
     for device in devices:

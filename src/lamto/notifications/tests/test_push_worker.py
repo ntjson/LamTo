@@ -61,3 +61,59 @@ class PushWorkerTests(TestCase):
         assert send.call_count == 0
         assert result.status == NotificationDelivery.Status.SENT  # non-retryable; in-app authoritative
         assert result.last_error.startswith("suppressed:")  # not a true FCM success
+
+    @override_settings(PUSH_ENABLED=True, PUSH_DAILY_CAP_PER_CATEGORY=2)
+    @patch("lamto.notifications.services.send_push", return_value="msg-1")
+    def test_publication_collapse_key_and_daily_cap(self, send):
+        from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX, _collapse_key
+
+        d1 = _push_delivery(self.resident, self.building)
+        process_delivery(d1)
+        assert send.call_args.kwargs["collapse_key"] == _collapse_key(d1)
+        assert _collapse_key(d1) == f"pub:{self.building.pk}"
+
+        # Suppressed SENT rows must not consume the daily cap.
+        NotificationDelivery.objects.create(
+            recipient=self.resident,
+            building=self.building,
+            channel=NotificationDelivery.Channel.PUSH,
+            status=NotificationDelivery.Status.SENT,
+            event_key=f"{EVENT_PUBLICATION}:entry:suppressed",
+            event_code=EVENT_PUBLICATION,
+            subject="s",
+            body="b",
+            last_error=f"{PUSH_SUPPRESSED_PREFIX}no_active_devices",
+        )
+
+        # One true success so far; second still allowed under cap=2.
+        send.reset_mock()
+        d2 = NotificationDelivery.objects.create(
+            recipient=self.resident,
+            building=self.building,
+            channel=NotificationDelivery.Channel.PUSH,
+            status=NotificationDelivery.Status.PENDING,
+            event_key=f"{EVENT_PUBLICATION}:entry:2",
+            event_code=EVENT_PUBLICATION,
+            subject="s",
+            body="b",
+        )
+        process_delivery(d2)
+        assert send.call_count == 1
+
+        # Two true FCM successes today (cap=2): the next is suppressed without a send.
+        send.reset_mock()
+        d3 = NotificationDelivery.objects.create(
+            recipient=self.resident,
+            building=self.building,
+            channel=NotificationDelivery.Channel.PUSH,
+            status=NotificationDelivery.Status.PENDING,
+            event_key=f"{EVENT_PUBLICATION}:entry:3",
+            event_code=EVENT_PUBLICATION,
+            subject="s",
+            body="b",
+        )
+        result = process_delivery(d3)
+        assert send.call_count == 0
+        assert result.status == NotificationDelivery.Status.SENT
+        assert result.last_error.startswith("suppressed:")
+        assert result.last_error == f"{PUSH_SUPPRESSED_PREFIX}daily_cap"
