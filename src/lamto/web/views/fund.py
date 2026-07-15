@@ -6,7 +6,6 @@ from datetime import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
@@ -18,18 +17,20 @@ from lamto.evidence.services import utc_rfc3339
 from lamto.finance.fund import (
     allocate_fund_entry_id,
     build_fund_source_evidence_typed_data,
+    build_fund_verification_evidence_typed_data,
     fund_balance,
     get_or_create_fund,
     record_fund_source,
+    verify_fund_source,
 )
-from lamto.finance.models import MaintenanceFund
+from lamto.finance.models import MaintenanceFund, MaintenanceFundEntry
 from lamto.finance.selectors import (
     fund_period_flows,
     pending_fund_verification_entries,
     pending_reconciliation_proposals,
     verified_fund_entries,
 )
-from lamto.web.forms.staff import RecordFundSourceForm, SignFundSourceForm
+from lamto.web.forms.staff import RecordFundSourceForm, SignFundSourceForm, SignedDecisionForm
 from lamto.web.staff import capabilities_for, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.staff_signing import new_event_id, upload_document_pair
 
@@ -194,5 +195,60 @@ def fund_record(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def fund_verify(request, pk):
-    """Placeholder route so fund_home template reverse works; Task 5 implements."""
-    raise Http404("Fund verify not implemented yet")
+    """Sign the verification of an unverified fund source (verifier != recorder,
+    enforced by the domain service)."""
+    membership, memberships = require_staff_capability(request, FUND_VERIFY)
+    building_id = membership.organization.building_id
+    entry = get_object_or_404(
+        MaintenanceFundEntry.objects.select_related("recorder", "outbox_event"),
+        pk=pk,
+        fund__building_id=building_id,
+    )
+    already_verified = hasattr(entry, "verification")
+    verify_form = SignedDecisionForm(request.POST or None) if not already_verified else None
+    typed_data = None
+    if not already_verified and entry.outbox_event is not None:
+        event_id = request.POST.get("event_id") or new_event_id()
+        typed_data = json.dumps(
+            build_fund_verification_evidence_typed_data(
+                entry, membership, event_id, timestamp=entry.recorded_at
+            )
+        )
+        if verify_form is not None and not request.POST:
+            verify_form = SignedDecisionForm(initial={"event_id": event_id})
+
+    if request.method == "POST" and verify_form is not None and verify_form.is_valid():
+        require_recent_auth(request)
+        try:
+            verify_fund_source(
+                entry,
+                membership,
+                verify_form.cleaned_data["signature"],
+                verify_form.cleaned_data["event_id"],
+                timestamp=entry.recorded_at,
+            )
+        except (ValidationError, PermissionDenied) as error:
+            if isinstance(error, ValidationError):
+                verify_form.add_error(None, error)
+            else:
+                raise
+        else:
+            messages.success(request, "Fund source verified.")
+            return redirect("web:fund-home")
+
+    return render(
+        request,
+        "web/staff/fund_detail.html",
+        staff_context(
+            request,
+            membership,
+            memberships,
+            nav_active="fund",
+            list_mode=False,
+            mode="verify",
+            entry=entry,
+            verify_form=verify_form,
+            typed_data=typed_data,
+            already_verified=already_verified,
+        ),
+    )

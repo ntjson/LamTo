@@ -1,1 +1,21 @@
-{# fund verify form — filled in Task 5 #}
+<h1>Verify fund source #{{ entry.pk }}</h1>
+<dl class="detail-list">
+  <div><dt>Type</dt><dd>{{ entry.get_entry_type_display }}</dd></div>
+  <div><dt>Amount</dt><dd>{{ entry.amount_vnd }} VND</dd></div>
+  <div><dt>Recorded</dt><dd>{{ entry.recorded_at }}</dd></div>
+</dl>
+{% if already_verified %}
+<p class="hint">This source is already verified.</p>
+{% elif verify_form %}
+<div class="signed-box">
+  <h2>Sign verification</h2>
+  <p class="hint">A source recorder cannot verify their own source.</p>
+  <form method="post" class="stack-form" data-signed-form>
+    {% csrf_token %}
+    {{ verify_form.as_p }}
+    <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+    <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+    <button type="submit" class="button">Verify source</button>
+  </form>
+</div>
+{% endif %}

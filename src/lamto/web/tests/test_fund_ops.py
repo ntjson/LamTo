@@ -212,3 +212,101 @@ class FundRecordTests(TestCase):
         seed = seed_pilot_world(building_name="Fund Rec Deny", email_prefix="frd")
         self._login(seed, "fund_verifier")  # verify-only cannot record
         self.assertEqual(self.client.get(reverse("web:fund-record")).status_code, 403)
+
+
+@override_settings(
+    ROOT_URLCONF="lamto.config.urls",
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "private": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+)
+class FundVerifyTests(TestCase):
+    def _login(self, seed, role_key):
+        membership = seed.roles[role_key]
+        self.client.force_login(membership.user)
+        device = TOTPDevice.objects.create(
+            user=membership.user, name="t", confirmed=True, key=random_hex()
+        )
+        session = self.client.session
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session[RECENT_REAUTH_KEY] = time.time()
+        session["active_membership_id"] = membership.pk
+        session.save()
+        return membership
+
+    def _unverified_entry(self, seed):
+        """Record an inflow via the recorder domain path (unverified)."""
+        from datetime import datetime
+        from lamto.finance.fund import (
+            allocate_fund_entry_id,
+            build_fund_source_evidence_typed_data,
+            get_or_create_fund,
+            record_fund_source,
+        )
+        from lamto.documents.models import Document
+
+        fund = get_or_create_fund(seed.building)
+        recorder = seed.roles["fund_recorder"]
+        original, redacted = seed.document_pair(Document.Kind.CONTRACT, recorder.user, "inflow")
+        entry_id = allocate_fund_entry_id()
+        ts = timezone.now()
+        event_id = "0x" + "22" * 32
+        typed = build_fund_source_evidence_typed_data(
+            fund, recorder, entry_id, MaintenanceFundEntry.EntryType.INFLOW,
+            1_000_000, original, redacted, event_id, timestamp=ts,
+        )
+        sig = seed.sign_typed(recorder, typed)
+        return record_fund_source(
+            fund, MaintenanceFundEntry.EntryType.INFLOW, 1_000_000, original, redacted,
+            recorder, sig, event_id, fund_entry_id=entry_id, timestamp=ts,
+        )
+
+    def test_verifier_signs_and_verifies(self):
+        from lamto.finance.fund import build_fund_verification_evidence_typed_data
+
+        seed = seed_pilot_world(building_name="Fund Ver B", email_prefix="fv")
+        entry = self._unverified_entry(seed)
+        verifier = self._login(seed, "fund_verifier")
+        account = seed.accounts[verifier.pk]
+        url = reverse("web:fund-verify", kwargs={"pk": entry.pk})
+
+        page = self.client.get(url)
+        self.assertEqual(page.status_code, 200)
+        event_id = page.context["verify_form"].initial["event_id"]
+        typed = build_fund_verification_evidence_typed_data(
+            entry, verifier, event_id, timestamp=entry.recorded_at
+        )
+        signature = Account.sign_message(
+            encode_typed_data(full_message=typed), account.key
+        ).signature.hex()
+        resp = self.client.post(url, {"event_id": event_id, "signature": signature})
+        self.assertRedirects(resp, reverse("web:fund-home"))
+        entry.refresh_from_db()
+        self.assertTrue(hasattr(entry, "verification"))
+
+    def test_recorder_cannot_verify_own_source(self):
+        from lamto.finance.fund import build_fund_verification_evidence_typed_data
+
+        seed = seed_pilot_world(building_name="Fund Ver Deny", email_prefix="fvd")
+        entry = self._unverified_entry(seed)
+        # Recorder also holds verify capability for this test.
+        from lamto.accounts.services import grant_capability
+        from lamto.accounts.capabilities import FUND_VERIFY
+
+        recorder = seed.roles["fund_recorder"]
+        grant_capability(recorder, FUND_VERIFY)
+        self._login(seed, "fund_recorder")
+        account = seed.accounts[recorder.pk]
+        url = reverse("web:fund-verify", kwargs={"pk": entry.pk})
+        page = self.client.get(url)
+        event_id = page.context["verify_form"].initial["event_id"]
+        typed = build_fund_verification_evidence_typed_data(
+            entry, recorder, event_id, timestamp=entry.recorded_at
+        )
+        signature = Account.sign_message(
+            encode_typed_data(full_message=typed), account.key
+        ).signature.hex()
+        resp = self.client.post(url, {"event_id": event_id, "signature": signature})
+        self.assertEqual(resp.status_code, 403)

@@ -28,6 +28,7 @@ from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import (
     AcceptanceRecord,
+    MaintenanceFundEntry,
     PaymentEvidence,
     Proposal,
     PublishedLedgerEntry,
@@ -53,6 +54,7 @@ STAFF_CASES = {
     "web:work-accept": ("work_pk", "board_approver", "POST"),
     "web:emergency-authorize": ("work_pk", "board_emergency_approver", "POST"),
     "web:emergency-decide": ("emergency_pk", "resident_representative", "POST"),
+    "web:fund-verify": ("fund_entry_pk", "fund_verifier", "POST"),
 }
 
 RESIDENT_CASES = {
@@ -180,6 +182,10 @@ class CrossBuildingAccessTests(TestCase):
             .first()
         )
 
+        b_fund_entry = MaintenanceFundEntry.objects.get(
+            fund__building=b_building,
+            entry_type=MaintenanceFundEntry.EntryType.OPENING_BALANCE,
+        )
         cls.b = {
             "report_pk": report.pk,
             "case_pk": case.pk,
@@ -189,6 +195,7 @@ class CrossBuildingAccessTests(TestCase):
             "payment_pk": payment.pk,
             "ledger_pk": ledger.pk,
             "emergency_pk": emergency.pk,
+            "fund_entry_pk": b_fund_entry.pk,
         }
 
     def _staff_login(self, role_key):
