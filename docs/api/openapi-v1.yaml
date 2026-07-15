@@ -51,8 +51,27 @@ paths:
   /api/v1/auth/logout:
     post:
       operationId: auth_logout_create
+      parameters:
+      - in: header
+        name: X-Install-Id
+        schema:
+          type: string
+        description: Stable per-install client id. When present on logout, deactivates
+          that install's FCM Device so push stops for the install. Also accepted as
+          JSON body field install_id.
       tags:
       - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutInstallIdRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutInstallIdRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutInstallIdRequest'
       security:
       - knoxApiToken: []
       responses:
@@ -424,6 +443,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+  /api/v1/me/notification-preferences:
+    patch:
+      operationId: me_notification_preferences_partial_update
+      description: PATCH resident email/push preferences per event code (Flutter Account).
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationPreferenceUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationPreferenceUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationPreferenceUpdateRequest'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationPreference'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
         '401':
           content:
             application/problem+json:
@@ -933,6 +999,15 @@ components:
       required:
       - identifier
       - password
+    LogoutInstallIdRequest:
+      type: object
+      description: Optional body field for logout Device deactivation (spec 7.2).
+      properties:
+        install_id:
+          type: string
+          description: Deactivate this install's FCM Device on logout (also accepted
+            via X-Install-Id).
+          maxLength: 64
     Me:
       type: object
       properties:
@@ -996,6 +1071,20 @@ components:
       - email_enabled
       - event_code
       - push_enabled
+    NotificationPreferenceUpdateItemRequest:
+      type: object
+      description: One preference row for PATCH /me/notification-preferences.
+      properties:
+        event_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+        email_enabled:
+          type: boolean
+        push_enabled:
+          type: boolean
+      required:
+      - event_code
     Occupancy:
       type: object
       properties:
@@ -1066,6 +1155,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReportSummary'
+    PatchedNotificationPreferenceUpdateRequest:
+      type: object
+      properties:
+        preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationPreferenceUpdateItemRequest'
     PlatformEnum:
       enum:
       - IOS

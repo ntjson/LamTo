@@ -74,6 +74,67 @@ class MeViewTests(TestCase):
         prefs = {p["event_code"]: p for p in response.json()["notification_preferences"]}
         assert prefs[EVENT_PUBLICATION]["push_enabled"] is False
 
+    def test_patch_notification_preferences_and_reflected_on_me(self):
+        from lamto.notifications.services import EVENT_PUBLICATION, EVENT_REPORT_RECEIPT
+
+        headers = self._auth()
+        resp = self.client.patch(
+            reverse("api:me-notification-preferences"),
+            data={
+                "preferences": [
+                    {
+                        "event_code": EVENT_PUBLICATION,
+                        "email_enabled": False,
+                        "push_enabled": False,
+                    },
+                    {"event_code": EVENT_REPORT_RECEIPT, "push_enabled": False},
+                ]
+            },
+            content_type="application/json",
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.content
+        by_code = {p["event_code"]: p for p in resp.json()}
+        assert by_code[EVENT_PUBLICATION]["email_enabled"] is False
+        assert by_code[EVENT_PUBLICATION]["push_enabled"] is False
+        assert by_code[EVENT_REPORT_RECEIPT]["push_enabled"] is False
+
+        me = self.client.get(reverse("api:me"), headers=headers)
+        assert me.status_code == 200
+        me_prefs = {p["event_code"]: p for p in me.json()["notification_preferences"]}
+        assert me_prefs[EVENT_PUBLICATION]["email_enabled"] is False
+        assert me_prefs[EVENT_PUBLICATION]["push_enabled"] is False
+        assert me_prefs[EVENT_REPORT_RECEIPT]["push_enabled"] is False
+
+        row = NotificationPreference.objects.get(
+            user=self.resident, event_code=EVENT_PUBLICATION
+        )
+        assert row.email_enabled is False and row.push_enabled is False
+
+    def test_patch_notification_preferences_rejects_unknown_event_code(self):
+        resp = self.client.patch(
+            reverse("api:me-notification-preferences"),
+            data={"preferences": [{"event_code": "not.a.real.event", "email_enabled": False}]},
+            content_type="application/json",
+            headers=self._auth(),
+        )
+        assert resp.status_code == 400
+
+    def test_patch_notification_preferences_rejects_push_on_non_resident_event(self):
+        from lamto.notifications.services import EVENT_PAYMENT_RECORDED
+
+        resp = self.client.patch(
+            reverse("api:me-notification-preferences"),
+            data={
+                "preferences": [
+                    {"event_code": EVENT_PAYMENT_RECORDED, "push_enabled": False}
+                ]
+            },
+            content_type="application/json",
+            headers=self._auth(),
+        )
+        assert resp.status_code == 400
+
     def test_me_requires_token(self):
         response = self.client.get(reverse("api:me"))
         assert response.status_code == 401

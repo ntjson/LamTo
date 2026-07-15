@@ -60,6 +60,36 @@ class NotificationPreferenceSerializer(serializers.Serializer):
     push_enabled = serializers.BooleanField()
 
 
+class NotificationPreferenceUpdateItemSerializer(serializers.Serializer):
+    """One preference row for PATCH /me/notification-preferences."""
+
+    event_code = serializers.CharField(max_length=64)
+    email_enabled = serializers.BooleanField(required=False)
+    push_enabled = serializers.BooleanField(required=False)
+
+    def validate(self, data):
+        if "email_enabled" not in data and "push_enabled" not in data:
+            raise serializers.ValidationError(
+                "At least one of email_enabled or push_enabled is required."
+            )
+        return data
+
+
+class NotificationPreferenceUpdateSerializer(serializers.Serializer):
+    preferences = NotificationPreferenceUpdateItemSerializer(many=True, allow_empty=False)
+
+
+class LogoutInstallIdSerializer(serializers.Serializer):
+    """Optional body field for logout Device deactivation (spec 7.2)."""
+
+    install_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=64,
+        help_text="Deactivate this install's FCM Device on logout (also accepted via X-Install-Id).",
+    )
+
+
 class MeSerializer(serializers.Serializer):
     display_name = serializers.CharField()
     email = serializers.EmailField()

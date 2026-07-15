@@ -37,6 +37,7 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/auth/logout",
             "/api/v1/auth/logout-all",
             "/api/v1/me",
+            "/api/v1/me/notification-preferences",
             "/api/v1/ledger",
             "/api/v1/fund/summary",
             "/api/v1/reports",

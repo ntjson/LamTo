@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponse
 from django.urls import reverse
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from knox.models import AuthToken
 from knox.views import LogoutAllView as KnoxLogoutAllView
 from knox.views import LogoutView as KnoxLogoutView
@@ -43,8 +43,11 @@ from lamto.api.serializers import (
     LedgerFilterSerializer,
     LocationSerializer,
     LoginSerializer,
+    LogoutInstallIdSerializer,
     MeSerializer,
     NotificationFeedSerializer,
+    NotificationPreferenceSerializer,
+    NotificationPreferenceUpdateSerializer,
     ReportCreateSerializer,
     ReportDetailSerializer,
     ReportPhotoSerializer,
@@ -55,8 +58,26 @@ from lamto.api.serializers import (
     WorkRatingSerializer,
 )
 from lamto.notifications.devices import deactivate_device, register_device
-from lamto.notifications.models import NotificationDelivery
-from lamto.notifications.services import mark_notification_read, resident_feed
+from lamto.notifications.models import NotificationDelivery, NotificationPreference
+from lamto.notifications.services import (
+    PREFERENCE_EVENT_CHOICES,
+    RESIDENT_PUSH_EVENT_CODES,
+    mark_notification_read,
+    resident_feed,
+)
+
+# Logout may deactivate the caller's FCM Device for this install (spec 7.2).
+INSTALL_ID_HEADER_PARAMETER = OpenApiParameter(
+    name="X-Install-Id",
+    type=OpenApiTypes.STR,
+    location=OpenApiParameter.HEADER,
+    required=False,
+    description=(
+        "Stable per-install client id. When present on logout, deactivates that "
+        "install's FCM Device so push stops for the install. Also accepted as "
+        "JSON body field install_id."
+    ),
+)
 from lamto.documents.access import DocumentIntegrityError, read_version_bytes
 from lamto.documents.models import DocumentVersion
 from lamto.documents.services import DocumentUploadQuarantined, DocumentUploadRejected
@@ -169,7 +190,8 @@ class LogoutView(KnoxLogoutView):
     authentication_classes = [ResidentTokenAuthentication]
 
     @extend_schema(
-        request=None,
+        parameters=[INSTALL_ID_HEADER_PARAMETER],
+        request=LogoutInstallIdSerializer,
         responses={204: None, **problem_responses(401)},
     )
     def post(self, request, format=None):
@@ -225,6 +247,54 @@ class MeView(APIView):
             "notification_preferences": preferences,
         }
         return Response(MeSerializer(data).data)
+
+
+class MeNotificationPreferencesView(APIView):
+    """PATCH resident email/push preferences per event code (Flutter Account)."""
+
+    @extend_schema(
+        request=NotificationPreferenceUpdateSerializer,
+        responses={
+            200: NotificationPreferenceSerializer(many=True),
+            **problem_responses(400, 401, 403),
+        },
+    )
+    def patch(self, request):
+        if not active_occupancies(request.user).exists():
+            raise exceptions.PermissionDenied(
+                "An active resident occupancy is required."
+            )
+        serializer = NotificationPreferenceUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        allowed_codes = {code for code, _label in PREFERENCE_EVENT_CHOICES}
+        for item in serializer.validated_data["preferences"]:
+            code = item["event_code"]
+            if code not in allowed_codes:
+                raise exceptions.ValidationError(
+                    {"preferences": [f"Unknown event_code: {code}"]}
+                )
+            defaults = {}
+            if "email_enabled" in item:
+                defaults["email_enabled"] = bool(item["email_enabled"])
+            if "push_enabled" in item:
+                if code not in RESIDENT_PUSH_EVENT_CODES:
+                    raise exceptions.ValidationError(
+                        {
+                            "preferences": [
+                                f"push_enabled is not supported for event_code: {code}"
+                            ]
+                        }
+                    )
+                defaults["push_enabled"] = bool(item["push_enabled"])
+            NotificationPreference.objects.update_or_create(
+                user=request.user, event_code=code, defaults=defaults
+            )
+        preferences = list(
+            request.user.notification_preferences.order_by("event_code").values(
+                "event_code", "email_enabled", "push_enabled"
+            )
+        )
+        return Response(NotificationPreferenceSerializer(preferences, many=True).data)
 
 
 class LedgerCursorPagination(pagination.CursorPagination):

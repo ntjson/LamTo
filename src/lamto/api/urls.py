@@ -11,6 +11,11 @@ urlpatterns = [
     path("auth/logout", views.LogoutView.as_view(), name="auth-logout"),
     path("auth/logout-all", views.LogoutAllView.as_view(), name="auth-logout-all"),
     path("me", views.MeView.as_view(), name="me"),
+    path(
+        "me/notification-preferences",
+        views.MeNotificationPreferencesView.as_view(),
+        name="me-notification-preferences",
+    ),
     path("ledger", views.LedgerListView.as_view(), name="ledger-list"),
     path("ledger/<int:pk>", views.LedgerDetailView.as_view(), name="ledger-detail"),
     path("fund/summary", views.FundSummaryView.as_view(), name="fund-summary"),

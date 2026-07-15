@@ -96,6 +96,7 @@ API_AUTHENTICATED_GLOBAL = {
     "api:auth-logout": "POST revoke current knox token",
     "api:auth-logout-all": "POST revoke all knox tokens for user",
     "api:me": "GET profile + occupancies",
+    "api:me-notification-preferences": "PATCH email/push notification preferences",
     "api:devices": "POST register/upsert FCM device",
     "api:device-delete": "DELETE deactivate this install's device",
 }
