@@ -40,6 +40,7 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/ledger",
             "/api/v1/fund/summary",
             "/api/v1/reports",
+            "/api/v1/locations",
         ):
             assert route in content, f"{route} missing from committed schema"
         # spectacular names the <int:pk> parameter {id} when it can infer a

@@ -214,3 +214,9 @@ class WorkRatingResultSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     work_order_id = serializers.IntegerField()
     score = serializers.IntegerField()
+
+
+class LocationSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    parent_id = serializers.IntegerField(allow_null=True)

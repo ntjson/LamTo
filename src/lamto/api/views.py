@@ -27,6 +27,7 @@ from lamto.api.serializers import (
     LedgerEntryDetailSerializer,
     LedgerEntryListSerializer,
     LedgerFilterSerializer,
+    LocationSerializer,
     LoginSerializer,
     MeSerializer,
     ReportCreateSerializer,
@@ -60,7 +61,11 @@ from lamto.maintenance.reporting import (
     attach_report_photo,
     submit_report_idempotent,
 )
-from lamto.maintenance.selectors import resident_report_timeline, resident_reports
+from lamto.maintenance.selectors import (
+    active_location_tree,
+    resident_report_timeline,
+    resident_reports,
+)
 
 TOKEN_CAP_PER_USER = 5  # spec 3.2: 5 concurrent tokens; oldest evicted at login
 
@@ -437,3 +442,14 @@ class WorkRatingView(APIView):
             ).data,
             status=201,
         )
+
+
+class LocationListView(APIView):
+    @extend_schema(
+        parameters=[OCCUPANCY_HEADER_PARAMETER],
+        responses={200: LocationSerializer(many=True), **problem_responses(401, 403, 404, 422)},
+    )
+    def get(self, request):
+        _occupancy, tenant = resolve_api_occupancy(request)
+        locations = active_location_tree(tenant.building_id)
+        return Response(LocationSerializer(locations, many=True).data)

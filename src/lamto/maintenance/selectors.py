@@ -1,6 +1,7 @@
 """Read selectors for resident-owned maintenance records (spec 2.3, layer 2)."""
 
 from lamto.maintenance.models import (
+    BuildingLocation,
     CaseReport,
     CompletionRating,
     IssueReport,
@@ -86,3 +87,11 @@ def resident_report_timeline(report):
         ],
         "cases": cases,
     }
+
+
+def active_location_tree(building_id):
+    """Active locations for one building, ordered so parents precede siblings (spec 3.3)."""
+    return (
+        BuildingLocation.objects.filter(building_id=building_id, active=True)
+        .order_by("parent_id", "name", "pk")
+    )

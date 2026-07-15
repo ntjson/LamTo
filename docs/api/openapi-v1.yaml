@@ -258,6 +258,56 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Occupancy selection required (code=occupancy_selection_required);
             send X-LamTo-Occupancy.
+  /api/v1/locations:
+    get:
+      operationId: locations_retrieve
+      parameters:
+      - in: header
+        name: X-LamTo-Occupancy
+        schema:
+          type: integer
+        description: Active occupancy id for the authenticated resident. Required
+          when the caller has multiple active occupancies; omitted when exactly one
+          is auto-selected. Invalid or foreign ids yield 404.
+      tags:
+      - locations
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Location'
+          description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Occupancy selection required (code=occupancy_selection_required);
+            send X-LamTo-Occupancy.
   /api/v1/me:
     get:
       operationId: me_retrieve
@@ -629,6 +679,20 @@ components:
       - id
       - integrity_status
       - published_at
+    Location:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        parent_id:
+          type: integer
+          nullable: true
+      required:
+      - id
+      - name
+      - parent_id
     LoginRequest:
       type: object
       properties:
