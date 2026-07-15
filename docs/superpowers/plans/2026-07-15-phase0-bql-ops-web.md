@@ -2389,3 +2389,4 @@ No `TBD`/`add validation`/`similar to Task N`. Every code step carries complete 
 
 ## Deviations
 
+- Ops/Work nav_active highlight polish post-review (health/metrics→ops; My work match).
