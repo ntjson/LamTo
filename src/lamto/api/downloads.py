@@ -18,6 +18,23 @@ DOWNLOAD_SALT = "lamto.api.download"
 DOWNLOAD_MAX_AGE = 300  # spec 3.6: TTL <= 5 minutes
 
 
+def sanitize_download_filename(filename: str | None) -> str:
+    """Make a stored filename safe for a Content-Disposition ``filename="…"`` value.
+
+    Strips path components, CR/LF, and double-quotes so a hostile or malformed
+    stored name cannot break or inject into the response header. Empty results
+    fall back to a neutral default.
+    """
+    if not filename:
+        return "download"
+    # Drop any directory components (POSIX or Windows separators).
+    name = str(filename).replace("\\", "/").rsplit("/", 1)[-1]
+    for ch in ("\r", "\n", '"'):
+        name = name.replace(ch, "")
+    name = name.strip()
+    return name or "download"
+
+
 def issue_download_token(user_id: int, version_id: int) -> str:
     """Signed, TTL-bound token binding a document version to one user."""
     return signing.dumps({"v": version_id, "u": user_id}, salt=DOWNLOAD_SALT)

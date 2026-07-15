@@ -52,10 +52,10 @@ PROPOSAL_PAYLOAD = {
 }
 
 # Anvil/Hardhat default account #0 — funded in qbft genesis alloc.
-OWNER_KEY = os.environ.get(
-    "BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY",
-    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-)
+# Empty string from a sourced `.env.example` must not override the default
+# (os.environ.get returns "" when the var is set but blank).
+_DEFAULT_OWNER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+OWNER_KEY = os.environ.get("BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY") or _DEFAULT_OWNER_KEY
 OWNER_ADDRESS = Account.from_key(OWNER_KEY).address
 RPC_URL = os.environ.get("BLOCKCHAIN_RPC_URL", os.environ.get("CHAIN_RPC_URL", "http://127.0.0.1:8545"))
 CONTRACT_ADDRESS = os.environ.get("EVIDENCE_CONTRACT_ADDRESS", "")

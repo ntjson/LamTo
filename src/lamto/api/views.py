@@ -24,7 +24,13 @@ from lamto.accounts.security import (
 from lamto.accounts.tenancy import active_occupancies
 from lamto.api import problems
 from lamto.api.authentication import ResidentTokenAuthentication
-from lamto.api.downloads import DOWNLOAD_MAX_AGE, DOWNLOAD_SALT, issue_download_token, resident_can_download
+from lamto.api.downloads import (
+    DOWNLOAD_MAX_AGE,
+    DOWNLOAD_SALT,
+    issue_download_token,
+    resident_can_download,
+    sanitize_download_filename,
+)
 from lamto.api.occupancy import OCCUPANCY_HEADER_PARAMETER, resolve_api_occupancy
 from lamto.api.problems import problem_responses
 from lamto.api.serializers import (
@@ -464,7 +470,8 @@ class DocumentDownloadView(APIView):
             raise exceptions.NotFound("Document not found.")
         response = HttpResponse(data, content_type=version.content_type)
         response["Cache-Control"] = "private, no-store"
-        response["Content-Disposition"] = f'inline; filename="{version.filename}"'
+        safe_name = sanitize_download_filename(version.filename)
+        response["Content-Disposition"] = f'inline; filename="{safe_name}"'
         return response
 
 
