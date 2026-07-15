@@ -42,6 +42,7 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/reports",
             "/api/v1/locations",
             "/api/v1/notifications",
+            "/api/v1/devices",
         ):
             assert route in content, f"{route} missing from committed schema"
         # spectacular names the <int:pk> parameter {id} when it can infer a
@@ -64,6 +65,9 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/notifications/{id}/read" in content
             or "/api/v1/notifications/{pk}/read" in content
         ), "notification mark-read route missing from committed schema"
+        assert "/api/v1/devices/{install_id}" in content, (
+            "device delete route missing from committed schema"
+        )
         assert "/api/v1/documents/" in content, (
             "document download route missing from committed schema"
         )

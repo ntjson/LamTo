@@ -230,3 +230,20 @@ class NotificationFeedSerializer(serializers.Serializer):
     body = serializers.CharField()
     created_at = serializers.DateTimeField()
     read_at = serializers.DateTimeField(allow_null=True)
+
+
+class DeviceRegisterSerializer(serializers.Serializer):
+    install_id = serializers.CharField(
+        max_length=64, help_text="Stable per-install client UUID (spec 7.2)."
+    )
+    fcm_token = serializers.CharField(max_length=512)
+    platform = serializers.ChoiceField(choices=["IOS", "ANDROID"])
+    app_version = serializers.CharField(
+        max_length=32, required=False, allow_blank=True, default=""
+    )
+
+
+class DeviceSerializer(serializers.Serializer):
+    install_id = serializers.CharField()
+    platform = serializers.CharField()
+    active = serializers.BooleanField()

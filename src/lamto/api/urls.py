@@ -25,5 +25,11 @@ urlpatterns = [
         views.NotificationReadView.as_view(),
         name="notification-read",
     ),
+    path("devices", views.DeviceRegisterView.as_view(), name="devices"),
+    path(
+        "devices/<str:install_id>",
+        views.DeviceDeleteView.as_view(),
+        name="device-delete",
+    ),
     path("documents/<str:token>", views.DocumentDownloadView.as_view(), name="document-download"),
 ]

@@ -85,6 +85,68 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Authentication required or failed (code=not_authenticated or
             authentication_failed).
+  /api/v1/devices:
+    post:
+      operationId: devices_create
+      tags:
+      - devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+  /api/v1/devices/{install_id}:
+    delete:
+      operationId: devices_destroy
+      parameters:
+      - in: path
+        name: install_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - devices
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
   /api/v1/documents/{token}:
     get:
       operationId: documents_retrieve
@@ -724,6 +786,41 @@ components:
       - id
       - reason
       - status
+    Device:
+      type: object
+      properties:
+        install_id:
+          type: string
+        platform:
+          type: string
+        active:
+          type: boolean
+      required:
+      - active
+      - install_id
+      - platform
+    DeviceRegisterRequest:
+      type: object
+      properties:
+        install_id:
+          type: string
+          minLength: 1
+          description: Stable per-install client UUID (spec 7.2).
+          maxLength: 64
+        fcm_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+        platform:
+          $ref: '#/components/schemas/PlatformEnum'
+        app_version:
+          type: string
+          default: ''
+          maxLength: 32
+      required:
+      - fcm_token
+      - install_id
+      - platform
     FundSummary:
       type: object
       properties:
@@ -966,6 +1063,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReportSummary'
+    PlatformEnum:
+      enum:
+      - IOS
+      - ANDROID
+      type: string
+      description: |-
+        * `IOS` - IOS
+        * `ANDROID` - ANDROID
     Problem:
       type: object
       description: |-

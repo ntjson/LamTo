@@ -12,6 +12,7 @@ from knox.models import AuthToken
 from knox.views import LogoutAllView as KnoxLogoutAllView
 from knox.views import LogoutView as KnoxLogoutView
 from rest_framework import exceptions, generics, pagination, parsers, permissions
+from rest_framework import status as drf_status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -34,6 +35,8 @@ from lamto.api.downloads import (
 from lamto.api.occupancy import OCCUPANCY_HEADER_PARAMETER, resolve_api_occupancy
 from lamto.api.problems import problem_responses
 from lamto.api.serializers import (
+    DeviceRegisterSerializer,
+    DeviceSerializer,
     FundSummarySerializer,
     LedgerEntryDetailSerializer,
     LedgerEntryListSerializer,
@@ -51,6 +54,7 @@ from lamto.api.serializers import (
     WorkRatingResultSerializer,
     WorkRatingSerializer,
 )
+from lamto.notifications.devices import deactivate_device, register_device
 from lamto.notifications.models import NotificationDelivery
 from lamto.notifications.services import mark_notification_read, resident_feed
 from lamto.documents.access import DocumentIntegrityError, read_version_bytes
@@ -169,7 +173,13 @@ class LogoutView(KnoxLogoutView):
         responses={204: None, **problem_responses(401)},
     )
     def post(self, request, format=None):
-        return super().post(request, format)
+        install_id = request.headers.get("X-Install-Id") or request.data.get(
+            "install_id"
+        )
+        response = super().post(request, format)
+        if install_id:
+            deactivate_device(request.user, str(install_id))
+        return response
 
 
 class LogoutAllView(KnoxLogoutAllView):
@@ -180,7 +190,11 @@ class LogoutAllView(KnoxLogoutAllView):
         responses={204: None, **problem_responses(401)},
     )
     def post(self, request, format=None):
-        return super().post(request, format)
+        response = super().post(request, format)
+        from lamto.notifications.devices import deactivate_user_devices
+
+        deactivate_user_devices(request.user)
+        return response
 
 
 class MeView(APIView):
@@ -552,3 +566,36 @@ class NotificationReadView(APIView):
             raise exceptions.NotFound("Notification not found.")
         mark_notification_read(request.user, pk)
         return Response(status=204)
+
+
+class DeviceRegisterView(APIView):
+    @extend_schema(
+        request=DeviceRegisterSerializer,
+        responses={200: DeviceSerializer, **problem_responses(400, 401)},
+    )
+    def post(self, request):
+        serializer = DeviceRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        device = register_device(
+            request.user,
+            serializer.validated_data["install_id"],
+            serializer.validated_data["fcm_token"],
+            serializer.validated_data["platform"],
+            serializer.validated_data.get("app_version", ""),
+        )
+        return Response(
+            DeviceSerializer(
+                {
+                    "install_id": device.install_id,
+                    "platform": device.platform,
+                    "active": device.active,
+                }
+            ).data
+        )
+
+
+class DeviceDeleteView(APIView):
+    @extend_schema(request=None, responses={204: None, **problem_responses(401)})
+    def delete(self, request, install_id):
+        deactivate_device(request.user, install_id)
+        return Response(status=drf_status.HTTP_204_NO_CONTENT)
