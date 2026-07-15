@@ -100,16 +100,19 @@ class EvidenceRegistryClient:
         self.chain_id = int(chain_id or settings.BLOCKCHAIN_CHAIN_ID)
         address = contract_address or settings.EVIDENCE_CONTRACT_ADDRESS
         self.contract_address = to_checksum_address(address)
-        self.relayer_private_key = (
+        raw_relayer = (
             relayer_private_key
             if relayer_private_key is not None
             else settings.BLOCKCHAIN_RELAYER_PRIVATE_KEY
         )
-        self.owner_private_key = (
+        raw_owner = (
             owner_private_key
             if owner_private_key is not None
             else settings.BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY
         )
+        # Whitespace-only is unset (same as empty); never feed it to Account.from_key.
+        self.relayer_private_key = (raw_relayer or "").strip()
+        self.owner_private_key = (raw_owner or "").strip()
         path = Path(abi_path) if abi_path is not None else _default_abi_path()
         self.abi = _load_abi(path)
         self.w3 = w3 or Web3(Web3.HTTPProvider(self.rpc_url))

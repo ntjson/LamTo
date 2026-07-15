@@ -14,6 +14,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from lamto.config.secrets import coalesce_secret
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -181,10 +183,12 @@ WALLET_REGISTRATION_TTL_SECONDS = int(os.getenv("WALLET_REGISTRATION_TTL_SECONDS
 BLOCKCHAIN_RPC_URL = os.getenv(
     "BLOCKCHAIN_RPC_URL", os.getenv("CHAIN_RPC_URL", "http://127.0.0.1:8545")
 )
-BLOCKCHAIN_RELAYER_PRIVATE_KEY = os.getenv(
-    "BLOCKCHAIN_RELAYER_PRIVATE_KEY", os.getenv("CHAIN_SIGNER_PRIVATE_KEY", "")
+BLOCKCHAIN_RELAYER_PRIVATE_KEY = coalesce_secret(
+    os.getenv("BLOCKCHAIN_RELAYER_PRIVATE_KEY") or os.getenv("CHAIN_SIGNER_PRIVATE_KEY")
 )
-BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY = os.getenv("BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY", "")
+BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY = coalesce_secret(
+    os.getenv("BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY")
+)
 # settings.BASE_DIR is src/lamto; project root is two parents up.
 _PROJECT_ROOT = BASE_DIR.parent.parent
 EVIDENCE_REGISTRY_ABI_PATH = os.getenv(
@@ -304,4 +308,45 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "COMPONENT_SPLIT_REQUEST": True,
+}
+
+# Access/error logs must never retain signed download tokens (spec 3.6).
+# DownloadTokenLogFilter redacts /api/v1/documents/<token> path segments.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "scrub_download_tokens": {
+            "()": "lamto.config.log_filters.DownloadTokenLogFilter",
+        },
+    },
+    "formatters": {
+        "simple": {
+            "format": "{levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["scrub_download_tokens"],
+            "formatter": "simple",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django.server": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
 }

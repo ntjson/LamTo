@@ -21,6 +21,7 @@ from lamto.accounts.models import (
     OrganizationMembership,
     SignerAuthorizationRequest,
 )
+from lamto.config.secrets import coalesce_secret
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.chain import EvidenceRegistryClient
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
@@ -52,10 +53,13 @@ PROPOSAL_PAYLOAD = {
 }
 
 # Anvil/Hardhat default account #0 — funded in qbft genesis alloc.
-# Empty string from a sourced `.env.example` must not override the default
-# (os.environ.get returns "" when the var is set but blank).
+# Empty or whitespace-only values from a sourced `.env.example` must not
+# override the default (os.environ.get returns "" / "   " when set but blank).
 _DEFAULT_OWNER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-OWNER_KEY = os.environ.get("BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY") or _DEFAULT_OWNER_KEY
+OWNER_KEY = coalesce_secret(
+    os.environ.get("BLOCKCHAIN_CONTRACT_OWNER_PRIVATE_KEY"),
+    default=_DEFAULT_OWNER_KEY,
+)
 OWNER_ADDRESS = Account.from_key(OWNER_KEY).address
 RPC_URL = os.environ.get("BLOCKCHAIN_RPC_URL", os.environ.get("CHAIN_RPC_URL", "http://127.0.0.1:8545"))
 CONTRACT_ADDRESS = os.environ.get("EVIDENCE_CONTRACT_ADDRESS", "")

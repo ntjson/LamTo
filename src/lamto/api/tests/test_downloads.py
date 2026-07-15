@@ -1,14 +1,22 @@
+import logging
 import tempfile
 import time
 import uuid
 from unittest.mock import patch
+from urllib.parse import quote, unquote
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from knox.models import AuthToken
 
-from lamto.api.downloads import DOWNLOAD_MAX_AGE, issue_download_token, sanitize_download_filename
+from lamto.api.downloads import (
+    DOWNLOAD_MAX_AGE,
+    content_disposition_inline,
+    issue_download_token,
+    sanitize_download_filename,
+)
+from lamto.config.log_filters import DownloadTokenLogFilter, scrub_download_token_in_text
 from lamto.maintenance.models import ReportPhoto
 from lamto.maintenance.reporting import submit_report_idempotent
 from lamto.testing.factories import seed_pilot_world
@@ -35,13 +43,35 @@ _FS_STORAGES = {
 
 
 class SanitizeDownloadFilenameTests(TestCase):
-    """Pure helper: drives the shipped sanitize_download_filename used by the view."""
+    """Pure helpers used by DocumentDownloadView disposition headers."""
 
     def test_strips_crlf_quotes_and_path_components(self):
         assert sanitize_download_filename('a/b\\c\r\n"x".png') == "cx.png"
         assert sanitize_download_filename("") == "download"
         assert sanitize_download_filename(None) == "download"
         assert sanitize_download_filename("  normal.pdf  ") == "normal.pdf"
+
+    def test_content_disposition_has_ascii_and_rfc5987_filename_star(self):
+        header = content_disposition_inline("report photo.png")
+        assert header.startswith("inline; ")
+        assert 'filename="report photo.png"' in header
+        assert "filename*=UTF-8''" in header
+        assert "report%20photo.png" in header
+        starred = header.split("filename*=UTF-8''", 1)[1]
+        assert unquote(starred) == sanitize_download_filename("report photo.png")
+
+    def test_content_disposition_encodes_non_ascii_in_filename_star(self):
+        name = "hóa đơn.pdf"
+        header = content_disposition_inline(name)
+        assert "filename*=UTF-8''" in header
+        assert "\r" not in header and "\n" not in header
+        starred = header.split("filename*=UTF-8''", 1)[1]
+        assert unquote(starred) == sanitize_download_filename(name)
+        # ASCII fallback must be pure ASCII.
+        ascii_part = header.split('filename="', 1)[1].split('"', 1)[0]
+        assert ascii_part.encode("ascii")
+        # Percent-encoding of non-ASCII is present.
+        assert quote(sanitize_download_filename(name), safe="") in header
 
 
 @override_settings(STORAGES=_FS_STORAGES)
@@ -75,8 +105,10 @@ class DownloadTests(TestCase):
         assert got.status_code == 200
         assert got["Cache-Control"] == "private, no-store"
         assert got.content == _PNG
-        # Happy-path filename still appears in Content-Disposition.
-        assert 'filename="p.png"' in got["Content-Disposition"]
+        # Happy-path disposition: ASCII filename + RFC 5987 filename*.
+        cd = got["Content-Disposition"]
+        assert 'filename="p.png"' in cd
+        assert "filename*=UTF-8''p.png" in cd
 
     def test_content_disposition_filename_is_sanitized(self):
         """CR/LF/quotes/path components must not appear raw in Content-Disposition.
@@ -119,12 +151,15 @@ class DownloadTests(TestCase):
         assert got.status_code == 200, got.content
         cd = got["Content-Disposition"]
         assert "\r" not in cd and "\n" not in cd
-        # Outer quotes only: no embedded " after sanitization.
-        assert cd.count('"') == 2
         assert ".." not in cd
         assert "Path" not in cd
         expected = sanitize_download_filename(hostile)
-        assert f'filename="{expected}"' in cd
+        # Real view uses content_disposition_inline (filename + filename*).
+        assert cd == content_disposition_inline(hostile)
+        assert f'filename="{expected}"' in cd or 'filename="' in cd
+        assert "filename*=UTF-8''" in cd
+        starred = cd.split("filename*=UTF-8''", 1)[1]
+        assert unquote(starred) == expected
         assert got.content == data
 
     def test_token_bound_to_user_and_expiry(self):
@@ -180,3 +215,32 @@ class DownloadTests(TestCase):
         token = issue_download_token(self.resident.pk, original.pk)
         resp = self.client.get(reverse("api:document-download", args=[token]), headers=self._auth())
         assert resp.status_code == 404
+
+
+class DownloadTokenLogScrubTests(TestCase):
+    """Signed download tokens must not appear in formatted log messages (spec 3.6)."""
+
+    def test_scrub_helper_redacts_token_path_segment(self):
+        raw = "GET /api/v1/documents/abc.def:ghi 200"
+        assert scrub_download_token_in_text(raw) == "GET /api/v1/documents/[redacted] 200"
+        assert "abc.def:ghi" not in scrub_download_token_in_text(raw)
+        # Non-download paths are unchanged.
+        other = "GET /api/v1/reports/12 200"
+        assert scrub_download_token_in_text(other) == other
+
+    def test_log_filter_removes_token_from_emitted_message(self):
+        token = "signed.token:value-with-parts"
+        record = logging.LogRecord(
+            name="django.server",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='"GET /api/v1/documents/%s HTTP/1.1" 200',
+            args=(token,),
+            exc_info=None,
+        )
+        assert token in record.getMessage()
+        assert DownloadTokenLogFilter().filter(record) is True
+        emitted = record.getMessage()
+        assert token not in emitted
+        assert "/api/v1/documents/[redacted]" in emitted
