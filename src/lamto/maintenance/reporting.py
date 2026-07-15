@@ -120,9 +120,12 @@ def submit_report_idempotent(resident, unit, text, location, photo_versions, cli
     try:
         report = submit_report(resident, unit, text, location, photo_versions, client_ref=client_ref)
     except IntegrityError:
-        # Concurrent duplicate: submit_report's atomic rolled back; re-fetch.
+        # Concurrent duplicate on the partial unique (reporter, client_ref): re-fetch.
+        # Unrelated integrity failures (no matching row) must not masquerade as 409.
         existing = IssueReport.objects.filter(reporter=resident, client_ref=client_ref).first()
-        if existing is not None and _content_matches(existing, text, unit, location):
+        if existing is None:
+            raise
+        if _content_matches(existing, text, unit, location):
             return existing, False
         raise ReportClientRefConflict("client_ref reused with different content.")
     return report, True

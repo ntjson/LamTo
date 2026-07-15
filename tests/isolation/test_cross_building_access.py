@@ -34,7 +34,7 @@ from lamto.finance.models import (
     PublishedLedgerEntry,
 )
 from lamto.finance.models.emergencies import EmergencyAuthorization
-from lamto.maintenance.models import IssueReport, MaintenanceCase, WorkOrder
+from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase, WorkOrder
 from lamto.notifications.models import NotificationDelivery
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
@@ -388,6 +388,25 @@ class CrossBuildingAccessTests(TestCase):
             assert fund_response.json()["balance_vnd"] != b_balance
         assert B_LEAK_MARKER.encode() not in fund_response.content
         assert B_BUILDING_NAME.encode() not in fund_response.content
+
+        locations_response = self.client.get(reverse("api:locations"), headers=auth)
+        assert locations_response.status_code == 200
+        assert B_LEAK_MARKER.encode() not in locations_response.content
+        assert B_BUILDING_NAME.encode() not in locations_response.content
+        location_ids = {row["id"] for row in locations_response.json()}
+        b_location_ids = set(
+            BuildingLocation.objects.filter(building=self.seed_b.building).values_list(
+                "pk", flat=True
+            )
+        )
+        assert location_ids.isdisjoint(b_location_ids)
+
+        notifications_response = self.client.get(reverse("api:notifications"), headers=auth)
+        assert notifications_response.status_code == 200
+        assert B_LEAK_MARKER.encode() not in notifications_response.content
+        assert B_BUILDING_NAME.encode() not in notifications_response.content
+        notice_ids = {row["id"] for row in notifications_response.json()["results"]}
+        assert self.b["notification_pk"] not in notice_ids
 
     def test_staff_lists_and_exports_never_leak_other_building(self):
         for role_key in ("operator", "board_approver", "auditor"):

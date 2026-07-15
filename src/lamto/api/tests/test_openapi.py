@@ -88,12 +88,15 @@ class OpenApiDriftTests(SimpleTestCase):
             if "/api/v1/ledger/{id}" in paths
             else "/api/v1/ledger/{pk}"
         )
-        tenant_gets = (
+        tenant_ops = (
             paths["/api/v1/ledger"]["get"],
             paths[detail_key]["get"],
             paths["/api/v1/fund/summary"]["get"],
+            paths["/api/v1/reports"]["post"],
+            paths["/api/v1/locations"]["get"],
+            paths["/api/v1/notifications"]["get"],
         )
-        for operation in tenant_gets:
+        for operation in tenant_ops:
             names = {
                 (param.get("name") if isinstance(param, dict) else None)
                 for param in operation.get("parameters", [])
