@@ -4,20 +4,7 @@
 {% if list_mode %}
 <section class="panel">
   <h1>{% if publish_only %}Pending publication{% else %}Proposals{% endif %}</h1>
-  <ul class="card-list">
-    {% for proposal in proposals %}
-    <li>
-      <a class="card-link" href="{% url 'web:proposal-detail' proposal.pk %}">
-        <p class="card-title">Proposal #{{ proposal.pk }} · {{ proposal.status }}</p>
-        <p class="card-meta">
-          {% if proposal.current_version %}{{ proposal.current_version.amount_vnd }} VND · {{ proposal.current_version.contractor_name }}{% endif %}
-        </p>
-      </a>
-    </li>
-    {% empty %}
-    <li><p>No proposals.</p></li>
-    {% endfor %}
-  </ul>
+  {% include "web/staff/_list.html" with items=proposal_items empty_label="No proposals." %}
 </section>
 {% else %}
 <section class="panel">

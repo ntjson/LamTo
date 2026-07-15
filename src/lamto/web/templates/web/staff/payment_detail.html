@@ -6,31 +6,11 @@
   <h1>Payments</h1>
   {% if can_record %}
   <h2>Record payment</h2>
-  <ul class="card-list">
-    {% for acceptance in pending_record %}
-    <li>
-      <a class="card-link" href="{% url 'web:payment-record-detail' acceptance.pk %}">
-        Acceptance #{{ acceptance.pk }} · {{ acceptance.actual_cost_vnd }} VND
-      </a>
-    </li>
-    {% empty %}
-    <li><p>No payments to record.</p></li>
-    {% endfor %}
-  </ul>
+  {% include "web/staff/_list.html" with items=record_items empty_label="No payments to record." %}
   {% endif %}
   {% if can_verify %}
   <h2>Payment verification</h2>
-  <ul class="card-list">
-    {% for payment in pending_verify %}
-    <li>
-      <a class="card-link" href="{% url 'web:payment-verify-detail' payment.pk %}">
-        Payment #{{ payment.pk }} · {{ payment.amount_vnd }} VND
-      </a>
-    </li>
-    {% empty %}
-    <li><p>No payments awaiting verification.</p></li>
-    {% endfor %}
-  </ul>
+  {% include "web/staff/_list.html" with items=verify_items empty_label="No payments awaiting verification." %}
   {% endif %}
 </section>
 {% else %}

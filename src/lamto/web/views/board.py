@@ -87,6 +87,24 @@ def payment_list(request):
         if PAYMENT_VERIFY in caps
         else []
     )
+    record_items = [
+        {
+            "url": f"/s/payments/record/{a.pk}/",
+            "title": f"Acceptance #{a.pk} · {a.actual_cost_vnd} VND",
+            "status": None,
+            "deadline": None,
+        }
+        for a in pending_record
+    ]
+    verify_items = [
+        {
+            "url": f"/s/payments/verify/{p.pk}/",
+            "title": f"Payment #{p.pk} · {p.amount_vnd} VND",
+            "status": p.get_external_status_display(),
+            "deadline": None,
+        }
+        for p in pending_verify
+    ]
     return render(
         request,
         "web/staff/payment_detail.html",
@@ -98,6 +116,8 @@ def payment_list(request):
             list_mode=True,
             pending_record=pending_record,
             pending_verify=pending_verify,
+            record_items=record_items,
+            verify_items=verify_items,
             can_record=PAYMENT_RECORD in caps,
             can_verify=PAYMENT_VERIFY in caps,
         ),

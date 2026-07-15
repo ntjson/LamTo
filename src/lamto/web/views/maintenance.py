@@ -38,7 +38,24 @@ def work_order_list(request):
     qs = WorkOrder.objects.filter(case__building_id=building_id)
     if membership.role == OrganizationMembership.Role.MAINTENANCE:
         qs = qs.filter(assignee=request.user)
+    status = request.GET.get("status") or ""
+    valid_status = status in WorkOrder.Status.values
+    if valid_status:
+        qs = qs.filter(status=status)
     work_orders = qs.order_by("-created_at")[:100]
+    items = [
+        {
+            "url": f"/s/work/{wo.pk}/",
+            "title": f"Work order #{wo.pk}",
+            "status": wo.status,
+            "deadline": wo.deadline_at,
+        }
+        for wo in work_orders
+    ]
+    filters = [
+        {"label": label, "value": value, "active": valid_status and value == status}
+        for value, label in WorkOrder.Status.choices
+    ]
     return render(
         request,
         "web/staff/work_order_detail.html",
@@ -48,7 +65,11 @@ def work_order_list(request):
             memberships,
             nav_active="work",
             list_mode=True,
-            work_orders=work_orders,
+            items=items,
+            filters=filters,
+            filters_active=valid_status,
+            filter_param="status",
+            empty_label="No work orders.",
         ),
     )
 

@@ -4,33 +4,11 @@
 {% if list_mode %}
 <section class="panel">
   <h1>Open reports</h1>
-  <ul class="card-list">
-    {% for report in open_reports %}
-    <li>
-      <a class="card-link" href="{% url 'web:staff-report-detail' report.pk %}">
-        <p class="card-title">{{ report.text }}</p>
-        <p class="card-meta">{{ report.location_path_snapshot }}</p>
-      </a>
-    </li>
-    {% empty %}
-    <li><p>No open reports.</p></li>
-    {% endfor %}
-  </ul>
+  {% include "web/staff/_list.html" with items=report_items empty_label="No open reports." %}
 </section>
 <section class="panel">
   <h2>Active cases</h2>
-  <ul class="card-list">
-    {% for case in cases %}
-    <li>
-      <a class="card-link" href="{% url 'web:case-detail' case.pk %}">
-        <p class="card-title">Case #{{ case.pk }} · {{ case.category }}</p>
-        <p class="card-meta">Deadline {{ case.deadline_at }} · {{ case.urgency }}</p>
-      </a>
-    </li>
-    {% empty %}
-    <li><p>No active cases.</p></li>
-    {% endfor %}
-  </ul>
+  {% include "web/staff/_list.html" with items=case_items empty_label="No active cases." %}
 </section>
 {% else %}
 <section class="panel">

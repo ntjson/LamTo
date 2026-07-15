@@ -78,6 +78,24 @@ def case_list(request):
         MaintenanceCase.objects.filter(building_id=building_id, active=True)
         .order_by("-created_at")[:100]
     )
+    report_items = [
+        {
+            "url": f"/s/reports/{r.pk}/",
+            "title": r.text,
+            "status": r.get_status_display(),
+            "deadline": None,
+        }
+        for r in open_reports
+    ]
+    case_items = [
+        {
+            "url": f"/s/cases/{c.pk}/",
+            "title": f"Case #{c.pk} · {c.category}",
+            "status": c.urgency,
+            "deadline": c.deadline_at,
+        }
+        for c in cases
+    ]
     return render(
         request,
         "web/staff/case_detail.html",
@@ -89,6 +107,8 @@ def case_list(request):
             list_mode=True,
             open_reports=open_reports,
             cases=cases,
+            report_items=report_items,
+            case_items=case_items,
         ),
     )
 
@@ -229,6 +249,16 @@ def proposal_list(request):
         .select_related("current_version", "work_order")
         .order_by("-created_at")[:100]
     )
+    proposal_items = [
+        {
+            "url": f"/s/proposals/{p.pk}/",
+            "title": f"Proposal #{p.pk}"
+            + (f" · {p.current_version.amount_vnd} VND" if p.current_version else ""),
+            "status": p.get_status_display(),
+            "deadline": None,
+        }
+        for p in proposals
+    ]
     return render(
         request,
         "web/staff/proposal_detail.html",
@@ -239,6 +269,7 @@ def proposal_list(request):
             nav_active="proposals",
             list_mode=True,
             proposals=proposals,
+            proposal_items=proposal_items,
             can_publish=LEDGER_PUBLISH in caps,
             publish_only=LEDGER_PUBLISH in caps
             and PROPOSAL_CREATE not in caps

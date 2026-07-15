@@ -1,0 +1,22 @@
+{% if filters %}
+<div class="filter-bar" role="group" aria-label="Filter by status">
+  {% for f in filters %}
+  <a class="chip {% if f.active %}chip-active{% endif %}"
+     href="?{{ filter_param }}={{ f.value }}">{{ f.label }}</a>
+  {% endfor %}
+  <a class="chip {% if not filters_active %}chip-active{% endif %}" href="?">All</a>
+</div>
+{% endif %}
+<ul class="card-list">
+  {% for item in items %}
+  <li>
+    <a class="card-link" href="{{ item.url }}">
+      <p class="card-title">{{ item.title }}
+        {% if item.status %}<span class="status-chip">{{ item.status }}</span>{% endif %}</p>
+      {% if item.deadline %}<p class="card-meta"><span class="deadline-badge">Deadline {{ item.deadline }}</span></p>{% endif %}
+    </a>
+  </li>
+  {% empty %}
+  <li><p>{{ empty_label|default:"Nothing to show." }}</p></li>
+  {% endfor %}
+</ul>

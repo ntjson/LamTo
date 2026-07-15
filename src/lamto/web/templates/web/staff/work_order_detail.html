@@ -4,18 +4,7 @@
 {% if list_mode %}
 <section class="panel">
   <h1>Work orders</h1>
-  <ul class="card-list">
-    {% for wo in work_orders %}
-    <li>
-      <a class="card-link" href="{% url 'web:work-order-detail' wo.pk %}">
-        <p class="card-title">Work order #{{ wo.pk }} · {{ wo.status }}</p>
-        <p class="card-meta">Deadline {{ wo.deadline_at }}</p>
-      </a>
-    </li>
-    {% empty %}
-    <li><p>No work orders.</p></li>
-    {% endfor %}
-  </ul>
+  {% include "web/staff/_list.html" %}
 </section>
 {% else %}
 <section class="panel">
