@@ -115,8 +115,9 @@ class LedgerApiTests(TestCase):
         assert body["verification"]["verified_by"]
         assert body["redacted_documents"], "redacted document hashes must be exposed"
         for doc in body["redacted_documents"]:
-            assert set(doc) == {"label", "filename", "sha256"}
+            assert set(doc) == {"label", "filename", "sha256", "download_url"}
             assert len(doc["sha256"]) == 64
+            assert doc["download_url"]
         assert body["corrections"] == []
         proof = body["proof"]
         assert proof["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED

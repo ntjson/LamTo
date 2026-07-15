@@ -425,3 +425,45 @@ class CrossBuildingAccessTests(TestCase):
                 assert B_BUILDING_NAME.encode() not in body
                 for event_id in b_event_ids:
                     assert event_id.encode() not in body
+
+    def test_api_reports_never_leak_other_users(self):
+        resident_a = self.seed_a.users["resident"]
+        _instance, token = AuthToken.objects.create(user=resident_a)
+        auth = {"authorization": f"Token {token}"}
+        listing = self.client.get(reverse("api:reports"), headers=auth)
+        assert listing.status_code == 200, listing.content
+        assert B_LEAK_MARKER.encode() not in listing.content
+        # B's report id is 404 for A's resident.
+        miss = self.client.get(
+            reverse("api:report-detail", kwargs={"pk": self.b["report_pk"]}),
+            headers=auth,
+        )
+        assert miss.status_code == 404
+
+    def test_api_download_reauthorizes_across_tenants(self):
+        from lamto.api.downloads import issue_download_token
+
+        resident_a = self.seed_a.users["resident"]
+        resident_b = self.seed_b.users["resident"]
+        _instance, token_a = AuthToken.objects.create(user=resident_a)
+        auth_a = {"authorization": f"Token {token_a}"}
+        # A redacted ledger document from B's published expenditure.
+        entry_b = PublishedLedgerEntry.objects.get(case__building=self.seed_b.building)
+        redacted = entry_b.work_order.acceptance.invoice_redacted
+        # A token bound to B's resident is not redeemable by A's resident.
+        forged = issue_download_token(resident_b.pk, redacted.pk)
+        assert (
+            self.client.get(
+                reverse("api:document-download", args=[forged]), headers=auth_a
+            ).status_code
+            == 404
+        )
+        # Even a token A could mint for that version fails resident_can_download
+        # (wrong building).
+        self_minted = issue_download_token(resident_a.pk, redacted.pk)
+        assert (
+            self.client.get(
+                reverse("api:document-download", args=[self_minted]), headers=auth_a
+            ).status_code
+            == 404
+        )
