@@ -49,7 +49,7 @@
 
   <nav class="staff-nav" role="navigation" aria-label="Staff">
     {% for item in nav_items %}
-    <a class="{% if nav_active == item.label|lower or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}is-active{% endif %}"
+    <a class="{% if nav_active == item.label|lower or nav_active == 'work' and item.url_name == 'web:work-order-list' or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}is-active{% endif %}"
        href="{% url item.url_name %}">{{ item.label }}</a>
     {% endfor %}
     <a href="{% url 'web:account' %}">Account</a>
