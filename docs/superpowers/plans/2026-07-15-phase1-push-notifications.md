@@ -97,7 +97,7 @@ The per-install device registry and the rotation/reassignment rules (spec §7.2)
   - `deactivate_device(user, install_id) -> int` (rows updated).
   - `deactivate_stale_devices(days=180) -> int`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lamto/notifications/tests/test_devices.py`:
 
@@ -185,12 +185,12 @@ class DeviceRegistryTests(TestCase):
         assert len(active) == 1
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_devices.py -q`
 Expected: FAIL — `ImportError: cannot import name 'register_device'`.
 
-- [ ] **Step 3: Add the model**
+- [x] **Step 3: Add the model**
 
 In `src/lamto/notifications/models.py`, append:
 
@@ -224,12 +224,12 @@ class Device(models.Model):
         indexes = [models.Index(fields=["user", "active"], name="device_user_active_idx")]
 ```
 
-- [ ] **Step 4: Generate the migration**
+- [x] **Step 4: Generate the migration**
 
 Run: `.venv/bin/python manage.py makemigrations notifications -n device`
 Expected: creates `src/lamto/notifications/migrations/0003_device.py`.
 
-- [ ] **Step 5: Add the registry service**
+- [x] **Step 5: Add the registry service**
 
 Create `src/lamto/notifications/devices.py`:
 
@@ -337,12 +337,12 @@ def process_stale_devices_batch(*, days: int = 180) -> ProcessorResult:
         return ProcessorResult(name=name, ok=False, detail=str(exc))
 ```
 
-- [ ] **Step 6: Run to verify it passes**
+- [x] **Step 6: Run to verify it passes**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_devices.py -q`
 Expected: PASS (4 passed, including race test on Postgres).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lamto/notifications/models.py src/lamto/notifications/devices.py \
@@ -371,7 +371,7 @@ Resident API endpoints to register/upsert and deactivate the calling install's d
   - `LogoutView.post`: after super, if `X-Install-Id` header or body `install_id` present → `deactivate_device(user, install_id)`.
   - `LogoutAllView.post`: after super → `deactivate_user_devices(user)`.
 
-- [ ] **Step 1: Add the serializers**
+- [x] **Step 1: Add the serializers**
 
 In `src/lamto/api/serializers.py`, append:
 
@@ -389,7 +389,7 @@ class DeviceSerializer(serializers.Serializer):
     active = serializers.BooleanField()
 ```
 
-- [ ] **Step 2: Add the views**
+- [x] **Step 2: Add the views**
 
 In `src/lamto/api/views.py`, add imports + the views:
 
@@ -427,7 +427,7 @@ class DeviceDeleteView(APIView):
         return Response(status=drf_status.HTTP_204_NO_CONTENT)
 ```
 
-- [ ] **Step 3: Add the routes**
+- [x] **Step 3: Add the routes**
 
 In `src/lamto/api/urls.py`, add:
 
@@ -436,7 +436,7 @@ In `src/lamto/api/urls.py`, add:
     path("devices/<str:install_id>", views.DeviceDeleteView.as_view(), name="device-delete"),
 ```
 
-- [ ] **Step 4: Write the failing tests**
+- [x] **Step 4: Write the failing tests**
 
 Create `src/lamto/api/tests/test_devices.py`:
 
@@ -549,12 +549,12 @@ class LogoutAllView(KnoxLogoutAllView):
         return response
 ```
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/api/tests/test_devices.py -q`
 Expected: PASS (4 passed).
 
-- [ ] **Step 6: Regenerate schema, classify the routes, run gates**
+- [x] **Step 6: Regenerate schema, classify the routes, run gates**
 
 - Regenerate: `.venv/bin/python manage.py spectacular --file docs/api/openapi-v1.yaml --validate --fail-on-warn`
 - In `tests/isolation/test_cross_building_access.py`, add to `API_AUTHENTICATED_GLOBAL` (device rows are user-scoped, not tenant-scoped):
@@ -567,7 +567,7 @@ Expected: PASS (4 passed).
 - In `src/lamto/api/tests/test_openapi.py::test_schema_covers_every_api_route`, add `"/api/v1/devices"` and (accepting `{install_id}`) `"/api/v1/devices/{install_id}"`.
 - Run: `.venv/bin/python -m pytest src/lamto/api/tests/test_openapi.py tests/isolation/test_cross_building_access.py -q` → PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lamto/api/serializers.py src/lamto/api/views.py src/lamto/api/urls.py \
@@ -594,7 +594,7 @@ Add the third channel, the per-category push preference, and the queue-time rule
   - `services.EVENT_WORK_COMPLETED = "work.completed"`, `services.RESIDENT_PUSH_EVENT_CODES`, `services.push_enabled_for(user, event_code) -> bool`.
   - `DEFAULT_CHANNELS` gains `PUSH`; `queue_notification` gates it per recipient.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lamto/notifications/tests/test_push_channel.py`:
 
@@ -643,12 +643,12 @@ class PushQueueGatingTests(TestCase):
         assert self._push_rows().count() == 0
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_channel.py -q`
 Expected: FAIL — `Channel.PUSH`/`push_enabled` do not exist.
 
-- [ ] **Step 3: Add the model changes**
+- [x] **Step 3: Add the model changes**
 
 In `src/lamto/notifications/models.py`, add `PUSH` to `NotificationDelivery.Channel`:
 
@@ -665,12 +665,12 @@ Add `push_enabled` to `NotificationPreference` (after `email_enabled`):
     push_enabled = models.BooleanField(default=True)
 ```
 
-- [ ] **Step 4: Generate the migration**
+- [x] **Step 4: Generate the migration**
 
 Run: `.venv/bin/python manage.py makemigrations notifications -n push_channel_and_preference`
 Expected: creates `0004_push_channel_and_preference.py` (AlterField channel choices + AddField push_enabled).
 
-- [ ] **Step 5: Add the queue gating**
+- [x] **Step 5: Add the queue gating**
 
 In `src/lamto/notifications/services.py`:
 
@@ -736,12 +736,12 @@ In `queue_notification`, add a `PUSH` gate inside the channel loop (mirroring th
                 continue
 ```
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_channel.py -q`
 Expected: PASS (3 passed).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lamto/notifications/models.py src/lamto/notifications/services.py \
@@ -769,7 +769,7 @@ The FCM dependency + config, the thin `send_push`, error classification, and the
   - `push.PUSH_COPY`, `push.DEEP_LINK_TYPES`.
 - Settings: `FIREBASE_CREDENTIALS`, `PUSH_ENABLED`, `PUSH_DAILY_CAP_PER_CATEGORY`.
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Add the dependency**
 
 In `pyproject.toml`, add to `dependencies` (a push provider — permitted; §5.3 forbids only payment providers):
 
@@ -779,7 +779,7 @@ In `pyproject.toml`, add to `dependencies` (a push provider — permitted; §5.3
 
 Install it: `.venv/bin/pip install "firebase-admin>=6,<8"`
 
-- [ ] **Step 2: Add settings + env**
+- [x] **Step 2: Add settings + env**
 
 In `src/lamto/config/settings.py`, after the notification/anchoring block, add:
 
@@ -802,7 +802,7 @@ PUSH_ENABLED=
 PUSH_DAILY_CAP_PER_CATEGORY=10
 ```
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 Create `src/lamto/notifications/tests/test_push_payload.py`:
 
@@ -834,12 +834,12 @@ class PushPayloadTests(TestCase):
         assert data["type"] == "notifications"  # payment is not an allowlisted resident deep link
 ```
 
-- [ ] **Step 4: Run to verify it fails**
+- [x] **Step 4: Run to verify it fails**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_payload.py -q`
 Expected: FAIL — no module `lamto.notifications.push`.
 
-- [ ] **Step 5: Add the push module**
+- [x] **Step 5: Add the push module**
 
 Create `src/lamto/notifications/push.py`:
 
@@ -950,12 +950,12 @@ def build_push_payload(delivery):
     return title, body, data
 ```
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_payload.py -q`
 Expected: PASS (2 passed).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add pyproject.toml src/lamto/config/settings.py .env.example \
@@ -977,7 +977,7 @@ The worker processes `PUSH` deliveries: revalidate the recipient, fan out to act
 - Consumes: `Device` (Task 1), `send_push`, `classify_push_error`, `build_push_payload` (Task 4), `active_occupancies`.
 - Produces: `MAX_PUSH_ATTEMPTS`; `process_delivery` routes `PUSH` to `_process_push_delivery`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lamto/notifications/tests/test_push_worker.py`:
 
@@ -1043,12 +1043,12 @@ class PushWorkerTests(TestCase):
         assert result.last_error.startswith("suppressed:")  # not a true FCM success
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_worker.py -q`
 Expected: FAIL — `process_delivery` has no PUSH branch (`send_push` not imported in services).
 
-- [ ] **Step 3: Add the worker branch**
+- [x] **Step 3: Add the worker branch**
 
 In `src/lamto/notifications/services.py`, add the constant near `MAX_EMAIL_ATTEMPTS`:
 
@@ -1132,16 +1132,16 @@ def _process_push_delivery(delivery):
     return delivery
 ```
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_worker.py -q`
 Expected: PASS (3 passed).
 
-- [ ] **Step 5: Update the worker command help text**
+- [x] **Step 5: Update the worker command help text**
 
 In `src/lamto/notifications/management/commands/process_notifications.py`, change the help string to `"Process due in-app, email, and push notification deliveries."` (behavior already covers PUSH via `process_due_notifications`).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lamto/notifications/services.py \
@@ -1164,7 +1164,7 @@ Ledger-publication pushes collapse on-device and are capped per user per day so 
 - Consumes: `PUSH_DAILY_CAP_PER_CATEGORY` (settings), `_process_push_delivery`.
 - Produces: `_collapse_key(delivery)`, `_daily_push_cap_reached(delivery)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/lamto/notifications/tests/test_push_worker.py`:
 
@@ -1192,12 +1192,12 @@ Append to `src/lamto/notifications/tests/test_push_worker.py`:
         assert result.status == NotificationDelivery.Status.SENT
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_worker.py::PushWorkerTests::test_publication_collapse_key_and_daily_cap -q`
 Expected: FAIL — `_collapse_key` does not exist / collapse_key is None.
 
-- [ ] **Step 3: Add collapse + cap**
+- [x] **Step 3: Add collapse + cap**
 
 In `src/lamto/notifications/services.py`, add the helpers before `_process_push_delivery`:
 
@@ -1272,12 +1272,12 @@ def _daily_push_cap_reached(delivery) -> bool:
 
 In the daily-cap test, assert `result.last_error.startswith("suppressed:")` and that true-success cap ignores suppressed rows.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_worker.py -q`
 Expected: PASS (4+ passed).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lamto/notifications/services.py src/lamto/notifications/tests/test_push_worker.py
@@ -1298,7 +1298,7 @@ Two of the five §7.4 resident events do not currently reach residents. Wire the
 - Consumes: `EVENT_WORK_COMPLETED`, `EVENT_CORRECTION_STATUS`, `notify_users`.
 - Produces: `hooks.notify_work_rateable(record)`; `notify_correction_status` includes building residents when the correction is resident-visible.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/lamto/notifications/tests/test_push_channel.py`:
 
@@ -1339,12 +1339,12 @@ Append to `src/lamto/notifications/tests/test_push_channel.py`:
             ).exists()
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `.venv/bin/python -m pytest "src/lamto/notifications/tests/test_push_channel.py::PushQueueGatingTests::test_work_rateable_notifies_reporting_resident" -q`
 Expected: FAIL — `notify_work_rateable` does not exist.
 
-- [ ] **Step 3: Add the rate-prompt hook**
+- [x] **Step 3: Add the rate-prompt hook**
 
 In `src/lamto/notifications/hooks.py`, extend the services import with `EVENT_WORK_COMPLETED` and append:
 
@@ -1369,7 +1369,7 @@ def notify_work_rateable(record):
     )
 ```
 
-- [ ] **Step 4: Call it from acceptance**
+- [x] **Step 4: Call it from acceptance**
 
 In `src/lamto/finance/acceptance.py`, at the existing `notify_work_accepted(record)` call site (inside the `transaction.on_commit`/post-commit block near line 286), add right after it:
 
@@ -1379,7 +1379,7 @@ In `src/lamto/finance/acceptance.py`, at the existing `notify_work_accepted(reco
         notify_work_rateable(record)
 ```
 
-- [ ] **Step 5: Include residents on published corrections**
+- [x] **Step 5: Include residents on published corrections**
 
 In `src/lamto/notifications/hooks.py`, update `notify_correction_status` to add building residents when the correction is resident-visible:
 
@@ -1410,17 +1410,17 @@ def notify_correction_status(correction, status_label: str):
     )
 ```
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_channel.py -q`
 Expected: PASS (4 passed).
 
-- [ ] **Step 7: Run the finance acceptance suite (guard the call-site change)**
+- [x] **Step 7: Run the finance acceptance suite (guard the call-site change)**
 
 Run: `.venv/bin/python -m pytest src/lamto/finance/tests/test_acceptance.py -q`
 Expected: PASS — the extra notification hook does not alter acceptance behavior.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/lamto/notifications/hooks.py src/lamto/finance/acceptance.py \
@@ -1444,7 +1444,7 @@ Resident push preferences on the Account page (§7.5), `push_enabled` surfaced i
 - Consumes: `RESIDENT_PUSH_EVENT_CODES`, `NotificationPreference.push_enabled`.
 - Produces: `NotificationPreferenceForm` push toggles; `/me` prefs include `push_enabled`; ops-health `push_failures`, `push_sent_success`, `push_suppressed`, `dead_devices`, `stale_device_max_inactive_days`.
 
-- [ ] **Step 1: Add push toggles to the preference form**
+- [x] **Step 1: Add push toggles to the preference form**
 
 In `src/lamto/web/forms/staff.py`, in `NotificationPreferenceForm.__init__`, after building the `email_{code}` fields, add push fields for the resident-push categories, and load their current values:
 
@@ -1477,7 +1477,7 @@ In `NotificationPreferenceForm.save`, persist `push_enabled` alongside `email_en
             )
 ```
 
-- [ ] **Step 2: Surface `push_enabled` in `/me`**
+- [x] **Step 2: Surface `push_enabled` in `/me`**
 
 In `src/lamto/api/serializers.py`, add `push_enabled` to `NotificationPreferenceSerializer`:
 
@@ -1498,7 +1498,7 @@ In `src/lamto/api/views.py`, in `MeView.get`, include `push_enabled` in the pref
         )
 ```
 
-- [ ] **Step 3: Add push metrics to ops health**
+- [x] **Step 3: Add push metrics to ops health**
 
 In `src/lamto/web/views/health.py`, where `notification_failures` is computed, add push-specific counts and a dead-device count:
 
@@ -1544,7 +1544,7 @@ Add `push_failures`, `push_sent_success`, `push_suppressed`, `dead_devices`, and
 
 (Find the ops-health template referenced by `ops_health` — it renders the existing `notification_failures` metric in a `<dl>`; add the rows there.)
 
-- [ ] **Step 4: Write the tests**
+- [x] **Step 4: Write the tests**
 
 Create `src/lamto/web/tests/test_push_preferences.py`:
 
@@ -1588,13 +1588,13 @@ Append to `src/lamto/api/tests/test_me.py` a check that `/me` prefs include `pus
 
 (Reuse the `test_me.py` class's existing `setUp`/`_auth`; if the resident attribute is named differently there, match it.)
 
-- [ ] **Step 5: Run the tests + regenerate schema (MeSerializer changed)**
+- [x] **Step 5: Run the tests + regenerate schema (MeSerializer changed)**
 
 - Regenerate: `.venv/bin/python manage.py spectacular --file docs/api/openapi-v1.yaml --validate --fail-on-warn`
 - Run: `.venv/bin/python -m pytest src/lamto/web/tests/test_push_preferences.py src/lamto/api/tests/test_me.py src/lamto/api/tests/test_openapi.py -q`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lamto/web/forms/staff.py src/lamto/api/serializers.py src/lamto/api/views.py \
@@ -1605,7 +1605,7 @@ git add src/lamto/web/templates/web/staff/
 git commit -m "feat: resident push preferences and ops-health push metrics"
 ```
 
-- [ ] **Step 7: Full regression gate (exit gate)**
+- [x] **Step 7: Full regression gate (exit gate)**
 
 Run: `.venv/bin/python -m pytest src/lamto tests -q`
 Expected: PASS — the six e2e journeys, the two-building adversarial walk (web + API), `tenant_integrity`, the disabled-mode job, and every new push test. (With `PUSH_ENABLED` unset in the default test env, no `PUSH` rows are created, so existing suites are unaffected.)
@@ -1657,4 +1657,8 @@ No `TBD`/`add validation`/`similar to Task N`. Task 5 leaves a `collapse_key = N
 
 ## Deviations
 
-(None yet; implementers append terse one-bullet notes here only when intentionally changing the plan.)
+- All-terminal FCM fan-out marks `suppressed:all_tokens_terminal` (not empty last_error SENT) so ops success/daily cap stay honest.
+- Correction residents notified from `finalize_correction_publication` (visibility only then), not only decide-time hook list change.
+- `InvalidArgumentError` imported from `firebase_admin.exceptions` (not messaging) for firebase-admin 7.5.
+- Race test uses TransactionTestCase (threads + append-only triggers).
+
