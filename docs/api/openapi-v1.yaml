@@ -473,6 +473,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Resource not found (code=not_found).
+  /api/v1/work/{id}/rating:
+    post:
+      operationId: work_rating_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - work
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkRatingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkRatingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkRatingRequest'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkRatingResult'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
 components:
   schemas:
     Correction:
@@ -935,6 +992,31 @@ components:
       - decision
       - verified_at
       - verified_by
+    WorkRatingRequest:
+      type: object
+      properties:
+        score:
+          type: integer
+          maximum: 5
+          minimum: 1
+        comment:
+          type: string
+          maxLength: 500
+      required:
+      - score
+    WorkRatingResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        work_order_id:
+          type: integer
+        score:
+          type: integer
+      required:
+      - id
+      - score
+      - work_order_id
   securitySchemes:
     knoxApiToken:
       type: apiKey

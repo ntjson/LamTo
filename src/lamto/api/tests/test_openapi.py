@@ -54,6 +54,11 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/reports/{id}/photos" in content
             or "/api/v1/reports/{pk}/photos" in content
         ), "report photos upload route missing from committed schema"
+        assert (
+            "/api/v1/work/{id}/rating" in content
+            or "/api/v1/work/{pk}/rating" in content
+        ), "work rating route missing from committed schema"
+
 
     def test_schema_includes_rfc9457_problem_component(self):
         content = SCHEMA_PATH.read_text()

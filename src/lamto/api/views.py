@@ -35,6 +35,8 @@ from lamto.api.serializers import (
     ReportPhotoUploadSerializer,
     ReportSummarySerializer,
     TokenResponseSerializer,
+    WorkRatingResultSerializer,
+    WorkRatingSerializer,
 )
 from lamto.documents.services import DocumentUploadQuarantined, DocumentUploadRejected
 from lamto.api.services import (
@@ -51,7 +53,8 @@ from lamto.finance.selectors import (
     published_ledger_entries,
     published_ledger_entry_for_proof,
 )
-from lamto.maintenance.models import BuildingLocation, IssueReport
+from lamto.maintenance.models import BuildingLocation, IssueReport, WorkOrder
+from lamto.maintenance.ratings import rate_completed_work
 from lamto.maintenance.reporting import (
     ReportClientRefConflict,
     attach_report_photo,
@@ -396,5 +399,41 @@ class ReportPhotoUploadView(APIView):
             raise exceptions.PermissionDenied("Active occupancy in the report building is required.")
         return Response(
             ReportPhotoSerializer({"id": version.pk, "filename": version.filename, "sha256": version.sha256}).data,
+            status=201,
+        )
+
+
+class WorkRatingView(APIView):
+    @extend_schema(
+        request=WorkRatingSerializer,
+        responses={201: WorkRatingResultSerializer, **problem_responses(400, 401, 403, 404)},
+    )
+    def post(self, request, pk):
+        # Scope to work orders on a case the caller reported: existence is not
+        # revealed for other tenants' work (spec 2.3 -> 404).
+        work_order = (
+            WorkOrder.objects.filter(pk=pk, case__case_reports__report__reporter=request.user)
+            .distinct()
+            .first()
+        )
+        if work_order is None:
+            raise exceptions.NotFound("Work order not found.")
+        serializer = WorkRatingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            rating = rate_completed_work(
+                request.user,
+                work_order,
+                serializer.validated_data["score"],
+                serializer.validated_data.get("comment", ""),
+            )
+        except DjangoValidationError as error:
+            raise exceptions.ValidationError(error.messages)
+        except DjangoPermissionDenied:
+            raise exceptions.PermissionDenied("Only residents who reported this case may rate the work.")
+        return Response(
+            WorkRatingResultSerializer(
+                {"id": rating.pk, "work_order_id": work_order.pk, "score": rating.score}
+            ).data,
             status=201,
         )

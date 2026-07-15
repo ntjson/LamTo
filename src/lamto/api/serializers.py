@@ -203,3 +203,14 @@ class ReportDetailSerializer(serializers.Serializer):
     category = serializers.CharField(allow_null=True)
     photos = ReportPhotoSerializer(many=True)
     cases = ReportCaseSerializer(many=True)
+
+
+class WorkRatingSerializer(serializers.Serializer):
+    score = serializers.IntegerField(min_value=1, max_value=5)
+    comment = serializers.CharField(required=False, allow_blank=True, max_length=500)
+
+
+class WorkRatingResultSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    work_order_id = serializers.IntegerField()
+    score = serializers.IntegerField()
