@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fill the three Phase-0 gaps in the staff `/s/` console — a create-proposal flow, fund-ops screens, and a shared list/detail pattern — plus the seven-area IA nav, all over the domain services that already exist.
+**Goal:** Fill the three Phase-0 gaps in the staff `/s/` console — a create-proposal flow, fund-ops screens, and a shared list/detail pattern — plus the six-area staff IA nav (Ledger deferred), all over the domain services that already exist.
 
 **Architecture:** Presentation-only. Every mutation still routes through the existing finance services (`create_proposal`, `submit_proposal_version`, `record_fund_source`, `verify_fund_source`) which already enforce capability, building scope, and maker-checker separation. New staff forms reuse `SignedDecisionForm` + the ClamAV document pipeline. Two staff flows sign a server-computed EIP-712 payload, so they are **two-phase** (prepare → sign): `prepare` uploads evidence and allocates identifiers, then re-renders a signed form carrying the exact typed data; `sign` submits the wallet signature. Fund-verify is single-phase (the entry is immutable).
 
@@ -40,9 +40,17 @@ export SECRET_KEY=test-secret EVIDENCE_WRITE_SECRET=test-evidence \
 
 4. **No new domain code.** All mutations go through existing services; `verifier ≠ recorder`, capability, and building scope are already enforced and unit-tested there. Plan 4 adds forms, views, templates, one read selector, and nav — nothing else.
 
-5. **`/s/fund/` reachability + IA.** Fund screens mount in a new `web/views/fund.py`; a Fund nav entry (gated on `fund.record`/`fund.verify`) makes them reachable (Task 4). The final task folds Proposals·Payments·Fund into one **Finance** area, relabels to the seven-area IA (Inbox · Cases · Work · Finance · Audit · Ops), and returns the membership switch to the Inbox (§4.2 tenancy-UX guard). The building name is **already** in the header chrome (`shell.html`), so no change is needed there.
+5. **`/s/fund/` reachability + IA.** Fund screens mount in a new `web/views/fund.py`; a Fund nav entry (gated on `fund.record`/`fund.verify`) makes them reachable (Task 4). The final task folds Proposals·Payments·Fund into one **Finance** area and presents the **six active staff areas** (Inbox · Cases · Work · Finance · Audit · Ops). Spec §4.2's seventh area (**Ledger**) is **explicitly deferred** — it is not part of the completed Phase-0 IA. Membership switch returns to the Inbox (§4.2 tenancy-UX guard). The building name is **already** in the header chrome (`shell.html`), so no change is needed there.
 
-6. **Deferred: a dedicated staff "Ledger" area.** Spec §4.2 lists a seventh staff area (published entries · corrections · integrity observations). §4.3's Phase-0 build work does **not** include it and no such view exists today — staff reach published entries through Proposals-publish and Audit. Building it is out of scope for Plan 4 (see the out-of-scope list).
+6. **Deferred: a dedicated staff "Ledger" area.** Spec §4.2 lists a seventh staff area (published entries · corrections · integrity observations). §4.3's Phase-0 build work does **not** include it and no such view exists today — staff reach published entries through Proposals-publish and Audit. Building it is out of scope for Plan 4 (see the out-of-scope list). Navigation copy, tests, and commits must say **six active areas with Ledger deferred**, never claim a completed seven-area IA.
+
+7. **Separate pending-fund-verification selector (not `verified_fund_entries`).** `verified_fund_entries` returns only rows held to the verified/finalized bar used by `fund_balance(verified_only=True)`. Entries awaiting verification are a different set (source entry types with no verification row yet). Task 3 adds `pending_fund_verification_entries(building_id)` and a distinct fund-home section. The verified list must never be the query source for "awaiting verification" rows or verify links.
+
+8. **Prepared-draft / partial-pair hygiene.** `upload_document_pair` must not leave a usable half-pair if the redacted upload fails: wrap both uploads in `transaction.atomic()`, and on any failure after the original succeeds the transaction rolls back so evidence validators cannot treat an unpaired original as a complete quotation/fund pair. Prepared-but-never-signed proposal DRAFTs and orphan staff document pairs older than **24 hours** are cleaned by `cleanup_stale_prepared_ops(older_than_hours=24)` (Task 1 helper; callable from a management command or ops job later). Cleanup removes: (a) unpaired/orphan staff-uploaded documents with no linked proposal document / fund entry evidence; (b) `Proposal` rows still without a `current_version` older than the threshold; (c) does **not** delete signed/submitted domain records.
+
+9. **Approved proposal purpose is immutably derived from the work order.** Domain `submit_proposal_version` already sets `purpose=work_order.case.category` and includes `purpose` in the proposal snapshot from `case.category`. The create-proposal form does **not** collect a free-text purpose field, and the signed payload does **not** add a separate operator-entered purpose — purpose is derived server-side from the case and is immutable once the version freezes. Templates may display the derived purpose as read-only context (`work_order.case.category`).
+
+10. **Pending reconciliation uses publication eligibility, not only `decision == VERIFIED`.** `pending_reconciliation_proposals` must approximate the same gates `prepare_publication` enforces for "ready to publish but not yet published": payment verification `VERIFIED`, payment `external_status == COMPLETED`, proposal has `current_version`, work order is not drill, no `PublishedLedgerEntry` / open publication snapshot yet, and the prerequisite outbox events (proposal version, approvals as required by mode, acceptance, payment, verification) are all in `SETTLED_STATUSES`. Rows that are merely `VERIFIED` but still unsettled or otherwise ineligible for publication must not appear as pending reconciliation.
 
 ## File Structure
 
@@ -58,7 +66,7 @@ export SECRET_KEY=test-secret EVIDENCE_WRITE_SECRET=test-evidence \
 - `src/lamto/web/forms/staff.py` — `+CreateProposalForm`, `+SignProposalForm`, `+RecordFundSourceForm`, `+SignFundSourceForm`.
 - `src/lamto/web/views/operator.py` — `+proposal_create`.
 - `src/lamto/web/urls.py` — `+4` routes.
-- `src/lamto/finance/selectors.py` — `+pending_reconciliation_proposals`.
+- `src/lamto/finance/selectors.py` — `+pending_reconciliation_proposals`, `+pending_fund_verification_entries`.
 - `src/lamto/web/staff.py` — `nav_items_for` restructure (Task 7).
 - `src/lamto/web/views/staff_common.py` — `switch_membership` → Inbox (Task 7).
 - `src/lamto/web/templates/web/staff/shell.html` — nav + switch form (Task 7).
@@ -81,7 +89,8 @@ Turns an uploaded (original, redacted) PDF pair into two linked clean `DocumentV
 - Consumes: `lamto.documents.services.create_document_version`, `add_redacted_copy`; `lamto.documents.scanner.scan_with_clamav`; `lamto.documents.models.{Document,DocumentVersion}`.
 - Produces:
   - `new_event_id() -> str` — `"0x" + secrets.token_hex(32)`.
-  - `upload_document_pair(building, kind, uploader, original_file, redacted_file) -> tuple[DocumentVersion, DocumentVersion]` — `(original, redacted)` where `redacted.redacts_id == original.pk`, both `ScanStatus.CLEAN`, same `document`. Raises `django.core.exceptions.ValidationError` on any rejection/quarantine/identical-bytes.
+  - `upload_document_pair(building, kind, uploader, original_file, redacted_file) -> tuple[DocumentVersion, DocumentVersion]` — `(original, redacted)` where `redacted.redacts_id == original.pk`, both `ScanStatus.CLEAN`, same `document`. Raises `django.core.exceptions.ValidationError` on any rejection/quarantine/identical-bytes. **Atomic:** both uploads run inside `transaction.atomic()`; if the redacted step fails after the original was created, the transaction rolls back so no unpaired original remains valid evidence.
+  - `cleanup_stale_prepared_ops(*, older_than_hours=24) -> dict` — deletes orphan staff document pairs (Document with only upload rows, not linked to a ProposalDocument / fund entry evidence FK) and proposals with no `current_version` older than the threshold; returns counts. Does not touch signed/submitted records.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -159,6 +168,43 @@ class UploadDocumentPairTests(TestCase):
                 _pdf("q.pdf", b"same"),
                 _pdf("q.pdf", b"same"),
             )
+
+    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    def test_redacted_failure_leaves_no_partial_pair(self):
+        from unittest.mock import patch as _patch
+        with _patch(
+            "lamto.web.staff_signing.add_redacted_copy",
+            side_effect=ValueError("redacted scan failed"),
+        ):
+            with self.assertRaises(ValidationError):
+                upload_document_pair(
+                    self.building,
+                    Document.Kind.QUOTATION,
+                    self.user,
+                    _pdf("q.pdf", b"original bytes"),
+                    _pdf("q-red.pdf", b"redacted bytes differ"),
+                )
+        self.assertEqual(Document.objects.count(), 0)
+        self.assertEqual(DocumentVersion.objects.count(), 0)
+
+    def test_cleanup_stale_prepared_ops_removes_old_orphans(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from lamto.web.staff_signing import cleanup_stale_prepared_ops
+        with patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True):
+            upload_document_pair(
+                self.building,
+                Document.Kind.QUOTATION,
+                self.user,
+                _pdf("old.pdf", b"old original"),
+                _pdf("old-r.pdf", b"old redacted"),
+            )
+        DocumentVersion.objects.all().update(
+            created_at=timezone.now() - timedelta(hours=48)
+        )
+        result = cleanup_stale_prepared_ops(older_than_hours=24)
+        self.assertGreaterEqual(result.get("documents_deleted", 0), 1)
+        self.assertEqual(Document.objects.count(), 0)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -199,26 +245,88 @@ def upload_document_pair(building, kind, uploader, original_file, redacted_file)
     the exact shape the proposal/fund evidence validators require. Raises
     ValidationError on any rejection, quarantine, or identical bytes so views
     surface one uniform error.
+
+    Both steps run inside transaction.atomic(). If the redacted upload fails
+    after the original was written, the transaction rolls back so no unpaired
+    original remains valid as proposal/fund evidence.
     """
-    document = Document.objects.create(building=building, kind=kind)
+    from django.db import transaction
+
     try:
-        original = create_document_version(
-            document,
-            original_file,
-            DocumentVersion.Variant.ORIGINAL,
-            uploader,
-            scan_with_clamav,
-        )
-        redacted = add_redacted_copy(original, redacted_file, uploader, scan_with_clamav)
+        with transaction.atomic():
+            document = Document.objects.create(building=building, kind=kind)
+            original = create_document_version(
+                document,
+                original_file,
+                DocumentVersion.Variant.ORIGINAL,
+                uploader,
+                scan_with_clamav,
+            )
+            redacted = add_redacted_copy(original, redacted_file, uploader, scan_with_clamav)
     except ValueError as error:  # DocumentUploadRejected/Quarantined + identical-bytes all subclass ValueError
         raise ValidationError(f"Evidence upload failed: {error}") from error
     return original, redacted
+
+
+def cleanup_stale_prepared_ops(*, older_than_hours=24):
+    """Expire prepared-but-never-signed staff drafts and orphan document pairs.
+
+    Removes:
+    - Document rows whose versions are all older than the threshold and that
+      are not referenced by ProposalDocument or as fund entry evidence.
+    - Proposal rows still without a current_version older than threshold.
+
+    Does not delete signed/submitted proposal versions, verified fund entries,
+    or any outbox-linked evidence. Returns a dict of deletion counts.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from lamto.finance.models import MaintenanceFundEntry, Proposal, ProposalDocument
+
+    cutoff = timezone.now() - timedelta(hours=older_than_hours)
+    documents_deleted = 0
+
+    linked_doc_ids = set(
+        ProposalDocument.objects.values_list("document_version__document_id", flat=True)
+    )
+    fund_doc_ids = set(
+        MaintenanceFundEntry.objects.exclude(evidence_original_id=None).values_list(
+            "evidence_original__document_id", flat=True
+        )
+    ) | set(
+        MaintenanceFundEntry.objects.exclude(evidence_redacted_id=None).values_list(
+            "evidence_redacted__document_id", flat=True
+        )
+    )
+    protected = linked_doc_ids | fund_doc_ids
+
+    stale_docs = (
+        Document.objects.exclude(pk__in=protected)
+        .filter(versions__created_at__lt=cutoff)
+        .distinct()
+    )
+    for doc in stale_docs:
+        if not doc.versions.filter(created_at__gte=cutoff).exists():
+            doc.delete()
+            documents_deleted += 1
+
+    proposals_deleted, _ = Proposal.objects.filter(
+        current_version__isnull=True,
+        created_at__lt=cutoff,
+    ).delete()
+
+    return {
+        "documents_deleted": documents_deleted,
+        "proposals_deleted": proposals_deleted,
+    }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `.venv/bin/python -m pytest src/lamto/web/tests/test_staff_signing.py -q`
-Expected: PASS (3 passed).
+Expected: PASS (5 passed).
 
 - [ ] **Step 5: Commit**
 
@@ -232,6 +340,8 @@ git commit -m "feat: staff document-pair upload helper for signed ops forms"
 ### Task 2: Create-proposal flow
 
 Operator, from a spending-required work-order detail page: enter amount (integer VND) + contractor + upload a quotation pair → `prepare` freezes the draft and shows the signed form → operator signs → `submit_proposal_version` freezes the immutable version and routes it to the Board inbox. Reuses `SignedDecisionForm` and the document pipeline (§4.3.1).
+
+**Purpose field (immutable derivation):** Do **not** add a purpose input to `CreateProposalForm` / `SignProposalForm`. Domain code already sets `purpose=work_order.case.category` on the frozen version and embeds `purpose: case.category` in the proposal snapshot / evidence payload. The operator cannot override it. The create page may show a read-only line: purpose = `{{ work_order.case.category }}`.
 
 **Files:**
 - Modify: `src/lamto/web/forms/staff.py`
@@ -432,6 +542,7 @@ Create `src/lamto/web/templates/web/staff/proposal_create.html`:
 {% block content %}
 <section class="panel">
   <h1>Create proposal · Work order #{{ work_order.pk }}</h1>
+  <p class="hint">Purpose (from case, immutable): {{ work_order.case.category }}</p>
 
   {% if sign_form %}
   <div class="signed-box">
@@ -639,9 +750,9 @@ git commit -m "feat: operator create-proposal flow from work-order detail"
 
 ---
 
-### Task 3: Fund home — entries list, derived balance, pending-reconciliation
+### Task 3: Fund home — entries list, derived balance, pending verification, pending-reconciliation
 
-Read-only `/s/fund/` for fund-recorder/verifier: verified entries + derived balance + period flows + a staff-only "paid but unpublished" reconciliation block (§4.3.2). No mutations yet.
+Read-only `/s/fund/` for fund-recorder/verifier: verified entries + **separate pending-fund-verification list** + derived balance + period flows + a staff-only reconciliation block for proposals that pass the same publication-eligibility gates as the domain publish path but are not yet published (§4.3.2). No mutations yet.
 
 **Files:**
 - Modify: `src/lamto/finance/selectors.py`
@@ -651,9 +762,10 @@ Read-only `/s/fund/` for fund-recorder/verifier: verified entries + derived bala
 - Test: `src/lamto/web/tests/test_fund_ops.py`
 
 **Interfaces:**
-- Consumes: `lamto.finance.selectors.{verified_fund_entries, fund_period_flows}`; `lamto.finance.fund.fund_balance`; `lamto.finance.models.{MaintenanceFund, Proposal, PaymentVerification, PublishedLedgerEntry}`.
+- Consumes: `lamto.finance.selectors.{verified_fund_entries, fund_period_flows}`; `lamto.finance.fund.fund_balance`; `lamto.finance.models.{MaintenanceFund, MaintenanceFundEntry, Proposal, PaymentVerification, PaymentEvidence, PublishedLedgerEntry, PublicationSnapshot}`; `lamto.evidence.models.SETTLED_STATUSES`.
 - Produces:
-  - `selectors.pending_reconciliation_proposals(building_id)` — proposals in the building whose payment is `VERIFIED` but with no `PublishedLedgerEntry` yet, newest first.
+  - `selectors.pending_fund_verification_entries(building_id)` — source-type fund entries (`OPENING_BALANCE`/`INFLOW`) in the building with **no** `verification` row yet, newest first. **Must not** reuse `verified_fund_entries` (that selector is verified/finalized only).
+  - `selectors.pending_reconciliation_proposals(building_id)` — proposals eligible for publication under the same settled-gate rules as `prepare_publication` but not yet published (see Step 3 implementation). **Not** "any payment with `decision == VERIFIED`."
   - `fund.fund_home(request)` at `web:fund-home` = `s/fund/`.
 
 - [ ] **Step 1: Write the failing selector test**
@@ -713,10 +825,30 @@ def _full_publish(seed):
 class FundSelectorTests(TestCase):
     def test_pending_reconciliation_lists_paid_but_unpublished(self):
         seed = seed_pilot_world(building_name="Fund Sel B", email_prefix="fs")
-        _full_publish(seed)  # verified payment, no publication yet
+        _full_publish(seed)  # verified payment, settled chain, no publication yet
         pending = list(pending_reconciliation_proposals(seed.building.pk))
         self.assertEqual(len(pending), 1)
         self.assertEqual(pending[0], seed.proposal)
+
+    def test_pending_reconciliation_excludes_unsettled_verification(self):
+        """Eligibility matches domain gates: settled prerequisites required, not only VERIFIED."""
+        from lamto.evidence.models import OutboxEvent
+        seed = seed_pilot_world(building_name="Fund Sel Unsettled", email_prefix="fsu")
+        _full_publish(seed)
+        v_event = seed.proposal.work_order.acceptance.payment.verification.outbox_event
+        OutboxEvent.objects.filter(pk=v_event.pk).update(status=OutboxEvent.Status.QUEUED)
+        pending = list(pending_reconciliation_proposals(seed.building.pk))
+        self.assertEqual(pending, [])
+
+    def test_pending_fund_verification_is_not_verified_fund_entries(self):
+        from lamto.finance.selectors import (
+            pending_fund_verification_entries,
+            verified_fund_entries,
+        )
+        seed = seed_pilot_world(building_name="Fund Sel Pend", email_prefix="fsp")
+        verified_ids = {e.pk for e in verified_fund_entries(seed.building.pk)}
+        pending_ids = {e.pk for e in pending_fund_verification_entries(seed.building.pk)}
+        self.assertTrue(verified_ids.isdisjoint(pending_ids))
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -726,35 +858,107 @@ Expected: FAIL — `ImportError: cannot import name 'pending_reconciliation_prop
 
 - [ ] **Step 3: Add the selector**
 
-In `src/lamto/finance/selectors.py`, add to the imports:
+In `src/lamto/finance/selectors.py`, append both selectors (import models inside functions where that keeps the top-level import surface small, or expand the module imports as needed):
 
 ```python
-from lamto.finance.models import (
-    MaintenanceFundEntry,
-    PaymentVerification,
-    Proposal,
-    PublishedLedgerEntry,
-)
-```
+def pending_fund_verification_entries(building_id):
+    """Source fund entries still awaiting verification (spec 4.3.2).
 
-(Replace the existing `from lamto.finance.models import MaintenanceFundEntry, PublishedLedgerEntry` line with the four-name import above.) Then append:
+    Distinct from verified_fund_entries — never reuse that selector here.
+    Source types only; rows with a verification relation are excluded.
+    """
+    from lamto.finance.fund import SOURCE_ENTRY_TYPES
 
-```python
+    return (
+        MaintenanceFundEntry.objects.filter(
+            fund__building_id=building_id,
+            entry_type__in=SOURCE_ENTRY_TYPES,
+            verification__isnull=True,
+        )
+        .select_related("recorder", "outbox_event")
+        .order_by("-recorded_at", "-pk")
+    )
+
+
 def pending_reconciliation_proposals(building_id):
-    """Staff reconciliation aid: proposals whose payment is verified but that
-    have not yet been published to the resident ledger (spec 4.3.2)."""
+    """Staff reconciliation aid: publication-eligible but not yet published.
+
+    Mirrors settled verification/publication eligibility used by
+    prepare_publication — not merely payment.decision == VERIFIED:
+    - payment verification decision VERIFIED
+    - payment external_status COMPLETED
+    - proposal has current_version; work order not drill
+    - no PublishedLedgerEntry and no PublicationSnapshot yet
+    - prerequisite outbox events settled (proposal version, board+rep
+      approvals for NORMAL mode, acceptance, payment, verification)
+    """
+    from lamto.accounts.models import Organization
+    from lamto.evidence.models import SETTLED_STATUSES
+    from lamto.finance.models import (
+        ApprovalDecision,
+        PaymentEvidence,
+        PaymentVerification,
+        Proposal,
+        PublicationSnapshot,
+        PublishedLedgerEntry,
+    )
+
     published_proposal_ids = PublishedLedgerEntry.objects.filter(
         case__building_id=building_id, proposal__isnull=False
     ).values("proposal_id")
-    return (
+    snapshotted_ids = PublicationSnapshot.objects.filter(
+        proposal__work_order__case__building_id=building_id
+    ).values("proposal_id")
+
+    qs = (
         Proposal.objects.filter(
             work_order__case__building_id=building_id,
+            work_order__drill=False,
+            current_version__isnull=False,
             work_order__acceptance__payment__verification__decision=PaymentVerification.Decision.VERIFIED,
+            work_order__acceptance__payment__external_status=PaymentEvidence.ExternalStatus.COMPLETED,
+            current_version__outbox_event__status__in=SETTLED_STATUSES,
+            work_order__acceptance__outbox_event__status__in=SETTLED_STATUSES,
+            work_order__acceptance__payment__outbox_event__status__in=SETTLED_STATUSES,
+            work_order__acceptance__payment__verification__outbox_event__status__in=SETTLED_STATUSES,
         )
         .exclude(pk__in=published_proposal_ids)
+        .exclude(pk__in=snapshotted_ids)
         .select_related("current_version", "work_order")
+        .prefetch_related("current_version__approvals__outbox_event", "current_version__approvals__membership__organization")
         .order_by("-created_at")
     )
+    eligible = []
+    for proposal in qs:
+        if proposal.mode == Proposal.Mode.NORMAL:
+            approvals = list(proposal.current_version.approvals.all())
+            board = next(
+                (
+                    a
+                    for a in approvals
+                    if a.decision == ApprovalDecision.Decision.APPROVED
+                    and a.membership.organization.kind == Organization.Kind.BOARD
+                    and a.outbox_event_id
+                    and a.outbox_event.status in SETTLED_STATUSES
+                ),
+                None,
+            )
+            rep = next(
+                (
+                    a
+                    for a in approvals
+                    if a.decision == ApprovalDecision.Decision.APPROVED
+                    and a.membership.organization.kind
+                    == Organization.Kind.RESIDENT_REPRESENTATIVE
+                    and a.outbox_event_id
+                    and a.outbox_event.status in SETTLED_STATUSES
+                ),
+                None,
+            )
+            if board is None or rep is None:
+                continue
+        eligible.append(proposal)
+    return eligible
 ```
 
 - [ ] **Step 4: Run to verify the selector passes**
@@ -779,6 +983,7 @@ from lamto.finance.fund import fund_balance
 from lamto.finance.models import MaintenanceFund
 from lamto.finance.selectors import (
     fund_period_flows,
+    pending_fund_verification_entries,
     pending_reconciliation_proposals,
     verified_fund_entries,
 )
@@ -806,7 +1011,9 @@ def fund_home(request):
         .select_related("recorder", "verification")
         .order_by("-recorded_at", "-pk")[:100]
     )
+    pending_verification = list(pending_fund_verification_entries(building_id)[:50])
     inflows, outflows = fund_period_flows(building_id, days=30)
+    pending = pending_reconciliation_proposals(building_id)[:50]
     return render(
         request,
         "web/staff/fund_detail.html",
@@ -817,10 +1024,11 @@ def fund_home(request):
             nav_active="fund",
             list_mode=True,
             entries=entries,
+            pending_verification=pending_verification,
             balance_vnd=fund_balance(building_id, verified_only=True),
             period_inflows=inflows,
             period_outflows=outflows,
-            pending=pending_reconciliation_proposals(building_id)[:50],
+            pending=pending,
             fund_exists=MaintenanceFund.objects.filter(building_id=building_id).exists(),
             can_record=FUND_RECORD in caps,
             can_verify=FUND_VERIFY in caps,
@@ -878,12 +1086,7 @@ Create `src/lamto/web/templates/web/staff/fund_detail.html`:
     {% for entry in entries %}
     <li>
       <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
-      <p class="card-meta">
-        Recorded {{ entry.recorded_at }}
-        {% if can_verify and entry.verification is None %}
-        · <a href="{% url 'web:fund-verify' entry.pk %}">Verify</a>
-        {% endif %}
-      </p>
+      <p class="card-meta">Recorded {{ entry.recorded_at }}</p>
     </li>
     {% empty %}
     <li><p>No verified entries.</p></li>
@@ -892,8 +1095,28 @@ Create `src/lamto/web/templates/web/staff/fund_detail.html`:
 </section>
 
 <section class="panel">
+  <h2>Pending fund verification</h2>
+  <p class="hint">Source entries recorded but not yet verified. Separate from verified entries.</p>
+  <ul class="card-list">
+    {% for entry in pending_verification %}
+    <li>
+      <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
+      <p class="card-meta">
+        Recorded {{ entry.recorded_at }}
+        {% if can_verify %}
+        · <a href="{% url 'web:fund-verify' entry.pk %}">Verify</a>
+        {% endif %}
+      </p>
+    </li>
+    {% empty %}
+    <li><p>No entries awaiting verification.</p></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
   <h2>Pending reconciliation</h2>
-  <p class="hint">Paid and verified, not yet published to the resident ledger.</p>
+  <p class="hint">Publication-eligible (settled verified payment chain) but not yet published to the resident ledger.</p>
   <ul class="card-list">
     {% for proposal in pending %}
     <li>
@@ -946,6 +1169,7 @@ class FundHomeTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Maintenance fund")
         self.assertContains(resp, "Verified entries")
+        self.assertContains(resp, "Pending fund verification")
         self.assertContains(resp, "Pending reconciliation")
         # The seeded opening balance is a verified entry.
         self.assertContains(resp, "Opening balance")
@@ -961,7 +1185,7 @@ class FundHomeTests(TestCase):
 - [ ] **Step 9: Run the fund tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/web/tests/test_fund_ops.py -q`
-Expected: PASS (3 passed: 1 selector + 2 home).
+Expected: PASS (5 passed: 3 selector + 2 home).
 
 - [ ] **Step 10: Commit**
 
@@ -1914,9 +2138,9 @@ git commit -m "feat: shared staff list pattern with filter chips, status chips, 
 
 ---
 
-### Task 7: IA — seven-area nav + switch-returns-to-inbox
+### Task 7: IA — six active areas (Ledger deferred) + switch-returns-to-inbox
 
-Fold Proposals·Payments·Fund into a single **Finance** area; relabel to the seven-area IA (Inbox · Cases · Work · Finance · Audit · Ops); return the membership switch to the Inbox (§4.2). (Building name is already in the header.)
+Fold Proposals·Payments·Fund into a single **Finance** area; present the **six active** staff areas (Inbox · Cases · Work · Finance · Audit · Ops). Spec §4.2's seventh area (**Ledger**) remains **deferred** — do not claim a completed seven-area IA. Return the membership switch to the Inbox (§4.2). (Building name is already in the header.)
 
 **Files:**
 - Modify: `src/lamto/web/staff.py`
@@ -1927,7 +2151,7 @@ Fold Proposals·Payments·Fund into a single **Finance** area; relabel to the se
 
 **Interfaces:**
 - Consumes: `capabilities_for`, `OrganizationMembership`.
-- Produces: `nav_items_for(membership)` returning the seven-area list; `switch_membership` always redirects to `web:action-inbox`.
+- Produces: `nav_items_for(membership)` returning the six active areas (Ledger deferred); `switch_membership` always redirects to `web:action-inbox`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1979,6 +2203,14 @@ class NavStructureTests(TestCase):
         finance = [i for i in nav_items_for(membership) if i["label"] == "Finance"]
         self.assertEqual(finance[0]["url_name"], "web:fund-home")
 
+    def test_ledger_area_not_present_phase0(self):
+        """Six active areas only; Ledger is deferred (no nav entry)."""
+        membership = self._board(PROPOSAL_APPROVE, PAYMENT_VERIFY, FUND_RECORD)
+        labels = [i["label"] for i in nav_items_for(membership)]
+        self.assertNotIn("Ledger", labels)
+        for label in ("Inbox", "Finance"):
+            self.assertIn(label, labels)
+
 
 @override_settings(ROOT_URLCONF="lamto.config.urls")
 class SwitchReturnsToInboxTests(TestCase):
@@ -2017,9 +2249,9 @@ In `src/lamto/web/staff.py`, replace the entire `NAV_BY_CAPABILITY` tuple and `n
 
 ```python
 def nav_items_for(membership) -> list[dict]:
-    """Seven-area capability-filtered nav (spec 4.2): Inbox · Cases · Work ·
-    Finance (proposals · payments · fund) · Audit · Ops. The staff 'Ledger'
-    area is deferred (no view yet)."""
+    """Six active capability-filtered areas (spec 4.2 Phase-0): Inbox · Cases ·
+    Work · Finance (proposals · payments · fund) · Audit · Ops.
+    Ledger (seventh area) is deferred — not in this nav."""
     caps = capabilities_for(membership)
     role = membership.role
     Role = OrganizationMembership.Role
@@ -2092,7 +2324,7 @@ In `src/lamto/web/templates/web/staff/shell.html`, remove the `<input type="hidd
 - [ ] **Step 6: Run the nav tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/web/tests/test_staff_nav.py -q`
-Expected: PASS (3 passed).
+Expected: PASS (4 passed).
 
 - [ ] **Step 7: Run the staff web suite for regressions**
 
@@ -2105,7 +2337,7 @@ Expected: PASS — role-workspace, occupancy-switch, and evidence-label tests st
 git add src/lamto/web/staff.py src/lamto/web/views/staff_common.py \
         src/lamto/web/views/operator.py src/lamto/web/views/board.py src/lamto/web/views/fund.py \
         src/lamto/web/templates/web/staff/shell.html src/lamto/web/tests/test_staff_nav.py
-git commit -m "feat: seven-area staff nav and membership switch returns to inbox"
+git commit -m "feat: six-area staff nav (Ledger deferred) and switch returns to inbox"
 ```
 
 - [ ] **Step 9: Full regression gate (exit gate)**
@@ -2124,11 +2356,11 @@ Expected: PASS — no regressions; new `proposal-create` and `fund-verify` route
 | Spec | Requirement | Task |
 |---|---|---|
 | §4.3.1 | Create-proposal from spending work order: amount VND · contractor · quotation upload → freeze version → operator signs → Board inbox; reuses `SignedDecisionForm` + document pipeline | Task 2 (+ Task 1 upload) |
-| §4.3.2 | Fund entries list + derived balance + pending-reconciliation (paid-but-unpublished) block | Task 3 |
+| §4.3.2 | Fund entries list + derived balance + pending-fund-verification (separate selector) + pending-reconciliation (publication-eligible, settled chain) | Task 3 |
 | §4.3.2 | Record opening balance / inflow with evidence upload (fund-recorder) | Task 4 |
 | §4.3.2 | Verification screen (fund-verifier; verifier ≠ recorder server-enforced) | Task 5 |
 | §4.3.3 | One shared list-page pattern (filter chips · status chips · deadline badges) on cases/work/proposals/payments | Task 6 |
-| §4.2 | Seven-area IA nav, capability-filtered; Finance groups proposals · payments · fund | Task 7 |
+| §4.2 | Six active IA areas (Ledger deferred), capability-filtered; Finance groups proposals · payments · fund | Task 7 |
 | §4.2 | Building name in header chrome | Already present in `shell.html` — no change |
 | §4.2 | Switching membership returns to Inbox | Task 7 |
 | §4.4 | MFA / reauth / wallet signing / maker-checker / publication gates / auditor exports / break-glass unchanged; no SPA, no staff API | Preserved — new forms reuse `require_staff_capability` (MFA) + `require_recent_auth` + `SignedDecisionForm`; all mutations via existing services |
@@ -2148,9 +2380,12 @@ No `TBD`/`add validation`/`similar to Task N`. Every code step carries complete 
 
 ## Out of scope (Plan 4)
 
-- **Staff "Ledger" area** (published entries · corrections · integrity observations as a dedicated nav area) — §4.2's seventh area; no view exists and §4.3 does not build it. Deferred to a later plan.
+- **Staff "Ledger" area** (published entries · corrections · integrity observations as a dedicated nav area) — §4.2's seventh area; no view exists and §4.3 does not build it. Deferred to a later plan. Phase-0 ships **six active areas only**; do not describe the nav as a completed seven-area IA.
 - Resident API and Flutter app (Plans 3 done / Phase 1).
 - New domain behavior — none; all services pre-exist.
 - Emergency-mode proposal nuances beyond `submit_proposal_version`'s existing handling (the create flow guards on `requires_spending` and delegates mode to the service).
 - Rich list filtering beyond a single `?status=` exact-match chip row (no date-range/search DSL — YAGNI).
 - Payment recording/verification UI redesign — untouched beyond the shared list partial.
+
+## Deviations
+
