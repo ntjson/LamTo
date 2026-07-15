@@ -80,43 +80,90 @@ def _hard_delete_document(document_id: int) -> None:
     Document.objects.filter(pk=document_id).delete()
 
 
+def _referenced_document_ids():
+    """Document pks whose versions are linked from domain evidence FKs."""
+    from lamto.finance.models import (
+        AcceptanceRecord,
+        CorrectionDocument,
+        MaintenanceFundEntry,
+        PaymentEvidence,
+        ProposalDocument,
+    )
+    from lamto.maintenance.models import ReportPhoto, WorkUpdateEvidence
+
+    def _docs_from_version_ids(qs_values):
+        version_ids = [vid for vid in qs_values if vid is not None]
+        if not version_ids:
+            return set()
+        return set(
+            DocumentVersion.objects.filter(pk__in=version_ids).values_list(
+                "document_id", flat=True
+            )
+        )
+
+    protected = set(
+        ProposalDocument.objects.values_list("document_version__document_id", flat=True)
+    )
+    for field in ("evidence_original_id", "evidence_redacted_id"):
+        protected |= _docs_from_version_ids(
+            MaintenanceFundEntry.objects.exclude(**{field: None}).values_list(
+                field, flat=True
+            )
+        )
+    for model, fields in (
+        (
+            AcceptanceRecord,
+            (
+                "invoice_original_id",
+                "invoice_redacted_id",
+                "acceptance_original_id",
+                "acceptance_redacted_id",
+            ),
+        ),
+        (PaymentEvidence, ("proof_original_id", "proof_redacted_id")),
+    ):
+        for field in fields:
+            protected |= _docs_from_version_ids(
+                model.objects.exclude(**{field: None}).values_list(field, flat=True)
+            )
+    protected |= _docs_from_version_ids(
+        CorrectionDocument.objects.values_list("version_id", flat=True)
+    )
+    protected |= _docs_from_version_ids(
+        ReportPhoto.objects.values_list("version_id", flat=True)
+    )
+    protected |= _docs_from_version_ids(
+        WorkUpdateEvidence.objects.values_list("version_id", flat=True)
+    )
+    return protected
+
+
 def cleanup_stale_prepared_ops(*, older_than_hours=24):
     """Expire prepared-but-never-signed staff drafts and orphan document pairs.
 
     Removes:
     - Document rows whose versions are all older than the threshold and that
-      are not referenced by ProposalDocument or as fund entry evidence.
+      are not referenced by any domain evidence FK (proposal docs, fund,
+      acceptance, payment, corrections, report photos, work-update evidence).
     - Proposal rows still without a current_version older than threshold.
 
     Does not delete signed/submitted proposal versions, verified fund entries,
     or any outbox-linked evidence. Returns a dict of deletion counts.
 
     Document tables are DB append-only; this function briefly disables their
-    user triggers as table owner. Run from an owner-role ops job, not the
+    user triggers as table owner inside a single transaction so a crash
+    re-enables them on rollback. Run from an owner-role ops job, not the
     restricted web writer role.
     """
     from datetime import timedelta
 
     from django.utils import timezone
 
-    from lamto.finance.models import MaintenanceFundEntry, Proposal, ProposalDocument
+    from lamto.finance.models import Proposal
 
     cutoff = timezone.now() - timedelta(hours=older_than_hours)
     documents_deleted = 0
-
-    linked_doc_ids = set(
-        ProposalDocument.objects.values_list("document_version__document_id", flat=True)
-    )
-    fund_doc_ids = set(
-        MaintenanceFundEntry.objects.exclude(evidence_original_id=None).values_list(
-            "evidence_original__document_id", flat=True
-        )
-    ) | set(
-        MaintenanceFundEntry.objects.exclude(evidence_redacted_id=None).values_list(
-            "evidence_redacted__document_id", flat=True
-        )
-    )
-    protected = linked_doc_ids | fund_doc_ids
+    protected = _referenced_document_ids()
 
     stale_docs = (
         Document.objects.exclude(pk__in=protected)
@@ -130,13 +177,16 @@ def cleanup_stale_prepared_ops(*, older_than_hours=24):
     ]
 
     if orphan_ids:
-        _disable_document_append_only_triggers()
-        try:
-            for document_id in orphan_ids:
-                _hard_delete_document(document_id)
-                documents_deleted += 1
-        finally:
-            _enable_document_append_only_triggers()
+        # ALTER TABLE is transactional in Postgres: wrap disable+delete+enable
+        # so a mid-flight crash rolls triggers back to ENABLED.
+        with transaction.atomic():
+            _disable_document_append_only_triggers()
+            try:
+                for document_id in orphan_ids:
+                    _hard_delete_document(document_id)
+                    documents_deleted += 1
+            finally:
+                _enable_document_append_only_triggers()
 
     proposals_deleted, _ = Proposal.objects.filter(
         current_version__isnull=True,
