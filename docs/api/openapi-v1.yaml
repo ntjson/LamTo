@@ -990,9 +990,12 @@ components:
           type: string
         email_enabled:
           type: boolean
+        push_enabled:
+          type: boolean
       required:
       - email_enabled
       - event_code
+      - push_enabled
     Occupancy:
       type: object
       properties:

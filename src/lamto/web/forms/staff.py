@@ -262,32 +262,43 @@ class EmergencyDecideForm(SignedDecisionForm):
 
 
 class NotificationPreferenceForm(forms.Form):
-    """Email opt-in flags per material event; in-app remains required."""
+    """Email/push opt-in flags per material event; in-app remains required."""
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        prefs = {
-            p.event_code: p.email_enabled
-            for p in NotificationPreference.objects.filter(user=user)
-        }
+        from lamto.notifications.services import RESIDENT_PUSH_EVENT_CODES
+
+        existing = list(NotificationPreference.objects.filter(user=user))
+        email_prefs = {p.event_code: p.email_enabled for p in existing}
+        push_prefs = {p.event_code: p.push_enabled for p in existing}
         for code, label in PREFERENCE_EVENT_CHOICES:
             self.fields[f"email_{code}"] = forms.BooleanField(
                 label=f"Email: {label}",
                 required=False,
-                initial=prefs.get(code, True),
+                initial=email_prefs.get(code, True),
+            )
+            if code not in RESIDENT_PUSH_EVENT_CODES:
+                continue
+            self.fields[f"push_{code}"] = forms.BooleanField(
+                label=f"Push: {label}",
+                required=False,
+                initial=push_prefs.get(code, True),
             )
 
     def save(self):
         if self.user is None:
             raise ValidationError("User is required.")
+        from lamto.notifications.services import RESIDENT_PUSH_EVENT_CODES
+
         for code, _label in PREFERENCE_EVENT_CHOICES:
-            field = f"email_{code}"
-            enabled = bool(self.cleaned_data.get(field))
+            defaults = {"email_enabled": bool(self.cleaned_data.get(f"email_{code}"))}
+            if code in RESIDENT_PUSH_EVENT_CODES and f"push_{code}" in self.fields:
+                defaults["push_enabled"] = bool(self.cleaned_data.get(f"push_{code}"))
             NotificationPreference.objects.update_or_create(
                 user=self.user,
                 event_code=code,
-                defaults={"email_enabled": enabled},
+                defaults=defaults,
             )
 
 

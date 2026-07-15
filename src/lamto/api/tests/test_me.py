@@ -53,8 +53,26 @@ class MeViewTests(TestCase):
         assert occupancies[self.occupancy_a.pk]["unit_label"] == "A-101"
         assert occupancies[self.occupancy_a.pk]["building_name"] == "Building Alpha"
         assert body["notification_preferences"] == [
-            {"event_code": "ledger.published", "email_enabled": False}
+            {
+                "event_code": "ledger.published",
+                "email_enabled": False,
+                "push_enabled": True,
+            }
         ]
+
+    def test_me_preferences_include_push_enabled(self):
+        from lamto.notifications.services import EVENT_PUBLICATION
+
+        NotificationPreference.objects.create(
+            user=self.resident,
+            event_code=EVENT_PUBLICATION,
+            email_enabled=True,
+            push_enabled=False,
+        )
+        response = self.client.get(reverse("api:me"), headers=self._auth())
+        assert response.status_code == 200
+        prefs = {p["event_code"]: p for p in response.json()["notification_preferences"]}
+        assert prefs[EVENT_PUBLICATION]["push_enabled"] is False
 
     def test_me_requires_token(self):
         response = self.client.get(reverse("api:me"))

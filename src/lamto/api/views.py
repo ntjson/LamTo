@@ -207,7 +207,7 @@ class MeView(APIView):
             )
         preferences = list(
             request.user.notification_preferences.order_by("event_code").values(
-                "event_code", "email_enabled"
+                "event_code", "email_enabled", "push_enabled"
             )
         )
         data = {

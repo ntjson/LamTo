@@ -57,6 +57,7 @@ class OccupancySerializer(serializers.Serializer):
 class NotificationPreferenceSerializer(serializers.Serializer):
     event_code = serializers.CharField()
     email_enabled = serializers.BooleanField()
+    push_enabled = serializers.BooleanField()
 
 
 class MeSerializer(serializers.Serializer):

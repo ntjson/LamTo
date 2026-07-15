@@ -28,7 +28,8 @@ from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import VerificationObservation
 from lamto.maintenance.models import TriageDecision, TriageJob, TriageSuggestion, WorkOrder
-from lamto.notifications.models import NotificationDelivery
+from lamto.notifications.models import Device, NotificationDelivery
+from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
 from lamto.web.staff import resolve_active_membership, staff_context
 
 
@@ -79,6 +80,34 @@ def collect_health_snapshot() -> dict:
             NotificationDelivery.Status.DEAD,
         ]
     ).count()
+    push_qs = NotificationDelivery.objects.filter(
+        channel=NotificationDelivery.Channel.PUSH
+    )
+    push_failures = push_qs.filter(
+        status__in=[
+            NotificationDelivery.Status.FAILED,
+            NotificationDelivery.Status.DEAD,
+        ],
+    ).count()
+    push_sent_success = push_qs.filter(
+        status=NotificationDelivery.Status.SENT, last_error=""
+    ).count()
+    push_suppressed = push_qs.filter(
+        status=NotificationDelivery.Status.SENT,
+        last_error__startswith=PUSH_SUPPRESSED_PREFIX,
+    ).count()
+    dead_devices = Device.objects.filter(active=False).count()
+    # Max whole days since last_seen_at among inactive devices (age signal, not only count).
+    oldest_inactive = (
+        Device.objects.filter(active=False)
+        .order_by("last_seen_at")
+        .values_list("last_seen_at", flat=True)
+        .first()
+    )
+    if oldest_inactive is None:
+        stale_device_max_inactive_days = 0
+    else:
+        stale_device_max_inactive_days = max(0, (now - oldest_inactive).days)
     quarantined = QuarantinedUpload.objects.count()
 
     return {
@@ -88,6 +117,11 @@ def collect_health_snapshot() -> dict:
         "anchoring_backend": settings.EVIDENCE_ANCHORING_BACKEND,
         "quarantined_files": quarantined,
         "notification_failures": notification_failures,
+        "push_failures": push_failures,
+        "push_sent_success": push_sent_success,
+        "push_suppressed": push_suppressed,
+        "dead_devices": dead_devices,
+        "stale_device_max_inactive_days": stale_device_max_inactive_days,
         "last_confirmed_block": (last_confirmed or {}).get("chain_confirmed_block"),
         "last_confirmed_at": (
             last_confirmed["confirmed_at"].isoformat()
@@ -184,7 +218,7 @@ def ops_health(request):
         return JsonResponse(snapshot)
     return render(
         request,
-        "web/staff/shell.html",
+        "web/staff/ops_health.html",
         staff_context(
             request,
             membership,
