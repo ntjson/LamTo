@@ -108,6 +108,7 @@ API_TENANT_LIST = {
 API_TENANT_OBJECT = {
     "api:ledger-detail": ("ledger_pk", "GET", 404),
     "api:report-detail": ("report_pk", "GET", 404),
+    "api:report-photos": ("report_pk", "POST", 404),
 }
 
 # Ownership-scoped lists/writes (the caller's own rows; never building-tenant).
@@ -310,8 +311,11 @@ class CrossBuildingAccessTests(TestCase):
         for route, (pk_attr, method, expected) in API_TENANT_OBJECT.items():
             with self.subTest(route=route):
                 url = reverse(route, args=[self.b[pk_attr]])
-                assert method == "GET"
-                response = self.client.get(url, headers=auth)
+                response = (
+                    self.client.post(url, {}, headers=auth)
+                    if method == "POST"
+                    else self.client.get(url, headers=auth)
+                )
                 # Design §2.3: cross-tenant object access is 404, never data.
                 assert response.status_code == expected, (route, response.status_code)
                 assert B_LEAK_MARKER.encode() not in response.content
@@ -333,14 +337,17 @@ class CrossBuildingAccessTests(TestCase):
                 assert B_LEAK_MARKER.encode() not in response.content
                 assert B_BUILDING_NAME.encode() not in response.content
 
-        # Tenant-object routes use the same occupancy resolver; foreign header
-        # must 404 before any object payload is considered.
+        # Tenant-object routes: foreign occupancy header must not leak B data.
+        # Ownership-scoped writes (report-photos) 404 on foreign pk before upload;
+        # occupancy-scoped GETs 404 via the occupancy resolver.
         for route, (pk_attr, method, _expected) in API_TENANT_OBJECT.items():
             with self.subTest(route=route, kind="tenant-object"):
-                assert method == "GET"
-                response = self.client.get(
-                    reverse(route, args=[self.b[pk_attr]]),
-                    headers={**auth, "x-lamto-occupancy": str(b_occupancy.pk)},
+                url = reverse(route, args=[self.b[pk_attr]])
+                headers = {**auth, "x-lamto-occupancy": str(b_occupancy.pk)}
+                response = (
+                    self.client.post(url, {}, headers=headers)
+                    if method == "POST"
+                    else self.client.get(url, headers=headers)
                 )
                 assert response.status_code == 404, (route, response.status_code)
                 assert B_LEAK_MARKER.encode() not in response.content

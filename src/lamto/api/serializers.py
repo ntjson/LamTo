@@ -170,6 +170,10 @@ class ReportPhotoSerializer(serializers.Serializer):
     # download_url added in Task 8.
 
 
+class ReportPhotoUploadSerializer(serializers.Serializer):
+    photo = serializers.FileField(help_text="JPEG/PNG image; scanned by ClamAV before storage.")
+
+
 class ReportWorkOrderSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()

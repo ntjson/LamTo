@@ -7,7 +7,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from knox.models import AuthToken
 from knox.views import LogoutAllView as KnoxLogoutAllView
 from knox.views import LogoutView as KnoxLogoutView
-from rest_framework import exceptions, generics, pagination, permissions
+from rest_framework import exceptions, generics, pagination, parsers, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -31,9 +31,12 @@ from lamto.api.serializers import (
     MeSerializer,
     ReportCreateSerializer,
     ReportDetailSerializer,
+    ReportPhotoSerializer,
+    ReportPhotoUploadSerializer,
     ReportSummarySerializer,
     TokenResponseSerializer,
 )
+from lamto.documents.services import DocumentUploadQuarantined, DocumentUploadRejected
 from lamto.api.services import (
     INVALID_CREDENTIALS_DETAIL,
     canonicalize_login_identifier,
@@ -49,7 +52,11 @@ from lamto.finance.selectors import (
     published_ledger_entry_for_proof,
 )
 from lamto.maintenance.models import BuildingLocation, IssueReport
-from lamto.maintenance.reporting import ReportClientRefConflict, submit_report_idempotent
+from lamto.maintenance.reporting import (
+    ReportClientRefConflict,
+    attach_report_photo,
+    submit_report_idempotent,
+)
 from lamto.maintenance.selectors import resident_report_timeline, resident_reports
 
 TOKEN_CAP_PER_USER = 5  # spec 3.2: 5 concurrent tokens; oldest evicted at login
@@ -364,3 +371,30 @@ class ReportDetailView(APIView):
         if report is None:
             raise exceptions.NotFound("Report not found.")
         return Response(ReportDetailSerializer(resident_report_timeline(report)).data)
+
+
+class ReportPhotoUploadView(APIView):
+    parser_classes = [parsers.MultiPartParser]
+
+    @extend_schema(
+        request=ReportPhotoUploadSerializer,
+        responses={201: ReportPhotoSerializer, **problem_responses(400, 401, 403, 404)},
+    )
+    def post(self, request, pk):
+        report = IssueReport.objects.filter(pk=pk, reporter=request.user).first()
+        if report is None:
+            raise exceptions.NotFound("Report not found.")
+        serializer = ReportPhotoUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            version = attach_report_photo(request.user, report, serializer.validated_data["photo"])
+        except (DocumentUploadRejected, DocumentUploadQuarantined) as error:
+            raise exceptions.ValidationError({"photo": str(error)})
+        except DjangoValidationError as error:
+            raise exceptions.ValidationError(error.messages)
+        except DjangoPermissionDenied:
+            raise exceptions.PermissionDenied("Active occupancy in the report building is required.")
+        return Response(
+            ReportPhotoSerializer({"id": version.pk, "filename": version.filename, "sha256": version.sha256}).data,
+            status=201,
+        )

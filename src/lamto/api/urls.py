@@ -16,4 +16,5 @@ urlpatterns = [
     path("fund/summary", views.FundSummaryView.as_view(), name="fund-summary"),
     path("reports", views.ReportListCreateView.as_view(), name="reports"),
     path("reports/<int:pk>", views.ReportDetailView.as_view(), name="report-detail"),
+    path("reports/<int:pk>/photos", views.ReportPhotoUploadView.as_view(), name="report-photos"),
 ]

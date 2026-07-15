@@ -4,6 +4,8 @@ from django.db import IntegrityError, transaction
 from lamto.accounts.models import ResidentOccupancy, Unit
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
+from lamto.documents.scanner import scan_with_clamav
+from lamto.documents.services import create_resident_report_photo
 
 from .models import BuildingLocation, IssueReport, ReportPhoto, TriageJob
 
@@ -124,3 +126,23 @@ def submit_report_idempotent(resident, unit, text, location, photo_versions, cli
             return existing, False
         raise ReportClientRefConflict("client_ref reused with different content.")
     return report, True
+
+
+def attach_report_photo(resident, report, uploaded_file, scanner=None) -> DocumentVersion:
+    """Upload one report photo through the ClamAV pipeline and link it to the report.
+
+    The caller must own the report (checked by the view). Requires an active
+    occupancy in the report's building. Preserves the P1 upload-after-commit rule.
+    """
+    # Resolve the scanner at call time (not as a default arg) so tests can patch
+    # lamto.maintenance.reporting.scan_with_clamav.
+    if scanner is None:
+        scanner = scan_with_clamav
+    occupancy = ResidentOccupancy.objects.filter(
+        user=resident, active=True, unit__building_id=report.building_id
+    ).first()
+    if occupancy is None:
+        raise PermissionDenied("Active occupancy in the report building is required.")
+    version = create_resident_report_photo(resident, report.building, uploaded_file, scanner)
+    ReportPhoto.objects.create(report=report, version=version)
+    return version
