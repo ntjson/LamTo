@@ -27,6 +27,7 @@ EVENT_PROPOSAL_REJECTION = "proposal.rejection"
 EVENT_EMERGENCY_DEADLINE = "emergency.deadline"
 EVENT_EMERGENCY_OUTCOME = "emergency.outcome"
 EVENT_WORK_ACCEPTED = "work.accepted"
+EVENT_WORK_COMPLETED = "work.completed"
 EVENT_PAYMENT_RECORDED = "payment.recorded"
 EVENT_PAYMENT_VERIFIED = "payment.verified"
 EVENT_PAYMENT_REJECTED = "payment.rejected"
@@ -63,6 +64,7 @@ REQUIRED_IN_APP_EVENT_CODES = frozenset(
 PREFERENCE_EVENT_CHOICES = (
     (EVENT_REPORT_RECEIPT, "Report receipt"),
     (EVENT_TRIAGE_STATUS, "Triage / case status"),
+    (EVENT_WORK_COMPLETED, "Work completed (rate prompt)"),
     (EVENT_WORK_ASSIGNED, "Work assignment"),
     (EVENT_DEADLINE_RISK, "Deadline risk"),
     (EVENT_PROPOSAL_APPROVAL, "Proposal approval / rejection"),
@@ -73,9 +75,21 @@ PREFERENCE_EVENT_CHOICES = (
     (EVENT_INTEGRITY_MISMATCH, "Integrity mismatch"),
 )
 
+# Resident-relevant push events only (spec 7.4). No staff push in Phase 1.
+RESIDENT_PUSH_EVENT_CODES = frozenset(
+    {
+        EVENT_REPORT_RECEIPT,
+        EVENT_TRIAGE_STATUS,
+        EVENT_WORK_COMPLETED,
+        EVENT_PUBLICATION,
+        EVENT_CORRECTION_STATUS,
+    }
+)
+
 DEFAULT_CHANNELS = (
     NotificationDelivery.Channel.IN_APP,
     NotificationDelivery.Channel.EMAIL,
+    NotificationDelivery.Channel.PUSH,
 )
 
 MAX_EMAIL_ATTEMPTS = 8
@@ -89,6 +103,13 @@ def email_enabled_for(user, event_code: str) -> bool:
     if pref is None:
         return True
     return bool(pref.email_enabled)
+
+
+def push_enabled_for(user, event_code: str) -> bool:
+    pref = NotificationPreference.objects.filter(user=user, event_code=event_code).first()
+    if pref is None:
+        return True  # default on once OS permission exists (spec 7.5)
+    return bool(pref.push_enabled)
 
 
 def queue_notification(
@@ -113,6 +134,19 @@ def queue_notification(
         if channel == NotificationDelivery.Channel.EMAIL:
             code = event_code or _event_code_from_key(event_key)
             if not email_enabled_for(recipient, code):
+                continue
+        if channel == NotificationDelivery.Channel.PUSH:
+            from django.conf import settings
+            from lamto.notifications.models import Device
+
+            code = event_code or _event_code_from_key(event_key)
+            if not getattr(settings, "PUSH_ENABLED", False):
+                continue
+            if code not in RESIDENT_PUSH_EVENT_CODES:
+                continue
+            if not push_enabled_for(recipient, code):
+                continue
+            if not Device.objects.filter(user=recipient, active=True).exists():
                 continue
         delivery, _ = NotificationDelivery.objects.get_or_create(
             recipient=recipient,

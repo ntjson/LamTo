@@ -3,9 +3,9 @@ from django.db import models
 
 
 class NotificationPreference(models.Model):
-    """Per-user email preference for a material event code.
+    """Per-user channel preferences for a material event code.
 
-    Required in-app notices cannot be disabled; only email may be opted out.
+    Required in-app notices cannot be disabled; email and push may be opted out.
     """
 
     user = models.ForeignKey(
@@ -15,6 +15,7 @@ class NotificationPreference(models.Model):
     )
     event_code = models.CharField(max_length=64)
     email_enabled = models.BooleanField(default=True)
+    push_enabled = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
@@ -29,6 +30,7 @@ class NotificationDelivery(models.Model):
     class Channel(models.TextChoices):
         IN_APP = "IN_APP", "In-app"
         EMAIL = "EMAIL", "Email"
+        PUSH = "PUSH", "Push"
 
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
