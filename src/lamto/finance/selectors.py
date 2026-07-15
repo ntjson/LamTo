@@ -183,11 +183,18 @@ def pending_reconciliation_proposals(building_id):
     - payment external_status COMPLETED
     - proposal has current_version; work order not drill
     - no PublishedLedgerEntry and no PublicationSnapshot yet
-    - prerequisite outbox events settled (proposal version, board+rep
-      approvals for NORMAL mode, acceptance, payment, verification)
+    - prerequisite outbox events settled (proposal version, mode-specific
+      prerequisites, acceptance, payment, verification)
+    - NORMAL: settled board + resident-rep approvals
+    - EMERGENCY: same gates as prepare_publication._emergency_context
+      (authorization + terminal ratification outcome, 24h window passed)
+      plus settled authorization (and ratification outbox when present)
     """
+    from django.core.exceptions import ValidationError
+    from django.utils import timezone
+
     from lamto.accounts.models import Organization
-    from lamto.evidence.models import SETTLED_STATUSES
+    from lamto.evidence.models import SETTLED_STATUSES, is_settled
     from lamto.finance.models import (
         ApprovalDecision,
         PaymentEvidence,
@@ -196,6 +203,7 @@ def pending_reconciliation_proposals(building_id):
         PublicationSnapshot,
         PublishedLedgerEntry,
     )
+    from lamto.finance.publication import _emergency_context
 
     published_proposal_ids = PublishedLedgerEntry.objects.filter(
         case__building_id=building_id, proposal__isnull=False
@@ -218,13 +226,21 @@ def pending_reconciliation_proposals(building_id):
         )
         .exclude(pk__in=published_proposal_ids)
         .exclude(pk__in=snapshotted_ids)
-        .select_related("current_version", "work_order")
+        .select_related(
+            "current_version",
+            "work_order",
+            "work_order__emergency_authorization",
+            "work_order__emergency_authorization__outbox_event",
+            "work_order__emergency_authorization__ratification",
+            "work_order__emergency_authorization__ratification__outbox_event",
+        )
         .prefetch_related(
             "current_version__approval_decisions__outbox_event",
             "current_version__approval_decisions__membership__organization",
         )
         .order_by("-created_at")
     )
+    now = timezone.now()
     eligible = []
     for proposal in qs:
         if proposal.mode == Proposal.Mode.NORMAL:
@@ -253,6 +269,20 @@ def pending_reconciliation_proposals(building_id):
             )
             if board is None or rep is None:
                 continue
+        elif proposal.mode == Proposal.Mode.EMERGENCY:
+            # Match prepare_publication: authorization + terminal outcome + 24h window.
+            try:
+                authorization, ratification = _emergency_context(proposal, now)
+            except ValidationError:
+                continue
+            if not is_settled(authorization.outbox_event.status):
+                continue
+            if ratification.outbox_event_id and not is_settled(
+                ratification.outbox_event.status
+            ):
+                continue
+        else:
+            continue
         eligible.append(proposal)
     return eligible
 
