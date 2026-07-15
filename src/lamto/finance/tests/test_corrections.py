@@ -24,7 +24,13 @@ from lamto.accounts.capabilities import (
     WORK_ACCEPT,
     WORK_ASSIGN,
 )
-from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
+from lamto.accounts.models import (
+    Building,
+    Organization,
+    OrganizationMembership,
+    ResidentOccupancy,
+    Unit,
+)
 from lamto.accounts.services import grant_capability
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -886,6 +892,174 @@ class CorrectionTests(TestCase):
             entry.actual_cost_vnd = 1
             entry.save()
 
+    def test_finalize_notifies_residents_when_correction_becomes_visible(self):
+        """Residents get correction.status delivery only after finalize (PUBLISHED)."""
+        from lamto.notifications.models import NotificationDelivery
+        from lamto.notifications.services import EVENT_CORRECTION_STATUS
+
+        ctx = self.make_published_context()
+        building = ctx["building"]
+        unit = Unit.objects.get(building=building)
+        resident = get_user_model().objects.create_user(
+            email=f"resident-notify-{self._unique('rn')}@example.test",
+            password="secret",
+            display_name="Resident Notify",
+        )
+        ResidentOccupancy.objects.create(user=resident, unit=unit, active=True)
+
+        # Create/decide notify staff only while not resident-visible; no resident rows yet.
+        entry = ctx["entry"]
+        operator = ctx["operator"]
+        evidence = self.correction_evidence_doc(building, operator.user)
+        correction_id = allocate_correction_id()
+        create_ts = timezone.now()
+        replacement_hashes = [evidence.sha256]
+        new_amount = 16_000_000
+        sig, event_id = self.sign_correction(
+            operator,
+            ctx["accounts"][operator.pk],
+            correction_id=correction_id,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason="Notify residents after publish",
+            decision="APPROVE",
+            publisher_snapshot_hash=ZERO_BARE,
+            timestamp=create_ts,
+            previous_hash="0x" + entry.snapshot.outbox_event.payload_hash,
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            correction = create_correction(
+                entry,
+                operator,
+                "Notify residents after publish",
+                {"actual_cost_vnd": new_amount, "contractor_name": "Company X"},
+                [evidence],
+                sig,
+                event_id,
+                correction_id=correction_id,
+                timestamp=create_ts,
+            )
+        self.confirm(correction.outbox_event)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(
+                recipient=resident, event_code=EVENT_CORRECTION_STATUS
+            ).exists()
+        )
+
+        board = ctx["corr_board"]
+        board_ts = timezone.now()
+        board_sig, board_event = self.sign_correction(
+            board,
+            ctx["accounts"][board.pk],
+            correction_id=correction.pk,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason="Board accepts",
+            decision="APPROVE",
+            publisher_snapshot_hash=ZERO_BARE,
+            timestamp=board_ts,
+            previous_hash="0x" + correction.outbox_event.payload_hash,
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            board_decision = decide_correction(
+                correction,
+                board,
+                CorrectionDecision.Stage.BOARD,
+                "APPROVE",
+                "Board accepts",
+                board_sig,
+                board_event,
+                timestamp=board_ts,
+            )
+        self.confirm(board_decision.outbox_event)
+
+        rep = ctx["corr_rep"]
+        rep_ts = timezone.now()
+        rep_sig, rep_event = self.sign_correction(
+            rep,
+            ctx["accounts"][rep.pk],
+            correction_id=correction.pk,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason="Rep co-approves",
+            decision="APPROVE",
+            publisher_snapshot_hash=ZERO_BARE,
+            timestamp=rep_ts,
+            previous_hash="0x" + board_decision.outbox_event.payload_hash,
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            rep_decision = decide_correction(
+                correction,
+                rep,
+                CorrectionDecision.Stage.RESIDENT_REP,
+                "APPROVE",
+                "Rep co-approves",
+                rep_sig,
+                rep_event,
+                timestamp=rep_ts,
+            )
+        self.confirm(rep_decision.outbox_event)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(
+                recipient=resident, event_code=EVENT_CORRECTION_STATUS
+            ).exists()
+        )
+
+        from lamto.finance.corrections import _correction_resident_payload
+
+        publisher = ctx["corr_publisher"]
+        snapshot_id = allocate_correction_publication_id()
+        pub_ts = timezone.now()
+        resident_payload_hash = payload_hash(_correction_resident_payload(correction))
+        pub_sig, pub_event = self.sign_correction(
+            publisher,
+            ctx["accounts"][publisher.pk],
+            correction_id=correction.pk,
+            original_event_id=entry.snapshot.outbox_event.event_id,
+            original_hash=entry.snapshot.outbox_event.payload_hash,
+            replacement_hashes=replacement_hashes,
+            reason=correction.reason,
+            decision="APPROVE",
+            publisher_snapshot_hash=resident_payload_hash,
+            timestamp=pub_ts,
+            previous_hash="0x" + rep_decision.outbox_event.payload_hash,
+        )
+        snapshot = prepare_correction_publication(
+            correction,
+            publisher,
+            pub_sig,
+            pub_event,
+            snapshot_id=snapshot_id,
+            timestamp=pub_ts,
+        )
+        self.confirm(snapshot.outbox_event)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            finalized = finalize_correction_publication(snapshot.pk)
+        self.assertTrue(finalized.is_resident_visible)
+
+        published_rows = NotificationDelivery.objects.filter(
+            recipient=resident,
+            event_code=EVENT_CORRECTION_STATUS,
+            event_key=f"{EVENT_CORRECTION_STATUS}:correction:{finalized.pk}:PUBLISHED",
+        )
+        self.assertTrue(published_rows.exists())
+
+        # Idempotent re-finalize must not double-notify.
+        before = published_rows.count()
+        with self.captureOnCommitCallbacks(execute=True):
+            finalize_correction_publication(snapshot.pk)
+        self.assertEqual(
+            NotificationDelivery.objects.filter(
+                recipient=resident,
+                event_code=EVENT_CORRECTION_STATUS,
+                event_key=f"{EVENT_CORRECTION_STATUS}:correction:{finalized.pk}:PUBLISHED",
+            ).count(),
+            before,
+        )
 
     def test_successive_amount_corrections_chain_effective_balance(self):
         """Second amount correction reverses prior effective amount, not original."""

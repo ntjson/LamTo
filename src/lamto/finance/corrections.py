@@ -700,12 +700,13 @@ def finalize_correction_publication(snapshot_id) -> Correction:
     # Idempotent: fund entries use unique source_key; no mutation of original records.
     from lamto.audit.models import AuditEvent
 
-    if not AuditEvent.objects.filter(
+    first_finalize = not AuditEvent.objects.filter(
         action="correction.publication.finalize",
         target_type="Correction",
         target_id=str(correction.pk),
         result="accepted",
-    ).exists():
+    ).exists()
+    if first_finalize:
         record_audit(
             snapshot.publisher.user,
             snapshot.publisher,
@@ -720,4 +721,14 @@ def finalize_correction_publication(snapshot_id) -> Correction:
                 "original_entry_id": correction.original_entry_id,
             },
         )
+        # Resident visibility is true only after settle + finalize (fund entries when
+        # amount changed). Create/decide already notified staff while still invisible;
+        # this PUBLISHED event is the resident-facing publication notification.
+        if correction.is_resident_visible:
+            try:
+                from lamto.notifications.hooks import notify_correction_status
+
+                notify_correction_status(correction, "PUBLISHED")
+            except Exception:
+                pass
     return correction
