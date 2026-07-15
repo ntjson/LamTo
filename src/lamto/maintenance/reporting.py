@@ -1,5 +1,5 @@
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from lamto.accounts.models import ResidentOccupancy, Unit
 from lamto.audit.services import record_audit
@@ -8,8 +8,12 @@ from lamto.documents.models import Document, DocumentVersion
 from .models import BuildingLocation, IssueReport, ReportPhoto, TriageJob
 
 
+class ReportClientRefConflict(Exception):
+    """Same (reporter, client_ref) submitted with materially different content (spec 3.5)."""
+
+
 @transaction.atomic
-def submit_report(resident, unit, text, location, photo_versions) -> IssueReport:
+def submit_report(resident, unit, text, location, photo_versions, client_ref=None) -> IssueReport:
     unit = Unit.objects.select_for_update().select_related("building").filter(
         pk=getattr(unit, "pk", None)
     ).first()
@@ -72,6 +76,7 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
         text=text,
         selected_location=location,
         location_path_snapshot=location_path_snapshot,
+        client_ref=client_ref,
     )
     ReportPhoto.objects.bulk_create(
         [ReportPhoto(report=report, version=version) for version in photo_versions]
@@ -93,3 +98,29 @@ def submit_report(resident, unit, text, location, photo_versions) -> IssueReport
     except Exception:
         pass
     return report
+
+
+def _content_matches(existing, text, unit, location) -> bool:
+    return (
+        existing.text == (text or "").strip()
+        and existing.unit_id == getattr(unit, "pk", unit)
+        and existing.selected_location_id == getattr(location, "pk", location)
+    )
+
+
+def submit_report_idempotent(resident, unit, text, location, photo_versions, client_ref):
+    """Idempotent POST /reports entry point (spec 3.5). Returns (report, created)."""
+    existing = IssueReport.objects.filter(reporter=resident, client_ref=client_ref).first()
+    if existing is not None:
+        if _content_matches(existing, text, unit, location):
+            return existing, False
+        raise ReportClientRefConflict("client_ref reused with different content.")
+    try:
+        report = submit_report(resident, unit, text, location, photo_versions, client_ref=client_ref)
+    except IntegrityError:
+        # Concurrent duplicate: submit_report's atomic rolled back; re-fetch.
+        existing = IssueReport.objects.filter(reporter=resident, client_ref=client_ref).first()
+        if existing is not None and _content_matches(existing, text, unit, location):
+            return existing, False
+        raise ReportClientRefConflict("client_ref reused with different content.")
+    return report, True

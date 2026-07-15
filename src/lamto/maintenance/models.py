@@ -58,7 +58,17 @@ class IssueReport(models.Model):
     selected_location = models.ForeignKey(BuildingLocation, on_delete=models.PROTECT)
     location_path_snapshot = models.CharField(max_length=1000)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
+    client_ref = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["reporter", "client_ref"],
+                condition=models.Q(client_ref__isnull=False),
+                name="report_client_ref_once",
+            )
+        ]
 
     def save(self, *args, **kwargs):
         # Always stamp building from unit so ORM creates (and composite FKs)
