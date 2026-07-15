@@ -143,3 +143,21 @@ class FundSummarySerializer(serializers.Serializer):
     period_days = serializers.IntegerField()
     period_inflows_vnd = serializers.IntegerField()
     period_outflows_vnd = serializers.IntegerField()
+
+
+class ReportCreateSerializer(serializers.Serializer):
+    client_ref = serializers.UUIDField(
+        help_text="Client-generated UUID, unique per user (spec 3.5)."
+    )
+    text = serializers.CharField(max_length=5000)
+    location_id = serializers.IntegerField(
+        help_text="Active BuildingLocation id in the resolved occupancy building."
+    )
+
+
+class ReportSummarySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    text = serializers.CharField()
+    status = serializers.CharField()
+    location_path_snapshot = serializers.CharField()
+    created_at = serializers.DateTimeField()

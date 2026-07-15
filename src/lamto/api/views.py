@@ -2,6 +2,7 @@
 
 from django.contrib.auth import authenticate
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from knox.models import AuthToken
 from knox.views import LogoutAllView as KnoxLogoutAllView
@@ -17,6 +18,7 @@ from lamto.accounts.security import (
     reset_auth_throttle,
 )
 from lamto.accounts.tenancy import active_occupancies
+from lamto.api import problems
 from lamto.api.authentication import ResidentTokenAuthentication
 from lamto.api.occupancy import OCCUPANCY_HEADER_PARAMETER, resolve_api_occupancy
 from lamto.api.problems import problem_responses
@@ -27,6 +29,8 @@ from lamto.api.serializers import (
     LedgerFilterSerializer,
     LoginSerializer,
     MeSerializer,
+    ReportCreateSerializer,
+    ReportSummarySerializer,
     TokenResponseSerializer,
 )
 from lamto.api.services import (
@@ -43,6 +47,9 @@ from lamto.finance.selectors import (
     published_ledger_entries,
     published_ledger_entry_for_proof,
 )
+from lamto.maintenance.models import BuildingLocation
+from lamto.maintenance.reporting import ReportClientRefConflict, submit_report_idempotent
+from lamto.maintenance.selectors import resident_reports
 
 TOKEN_CAP_PER_USER = 5  # spec 3.2: 5 concurrent tokens; oldest evicted at login
 
@@ -284,3 +291,62 @@ class FundSummaryView(APIView):
             "period_outflows_vnd": outflows,
         }
         return Response(FundSummarySerializer(data).data)
+
+
+class ReportCursorPagination(pagination.CursorPagination):
+    page_size = 20
+    ordering = ("-created_at", "-pk")
+
+
+@extend_schema_view(
+    post=extend_schema(
+        parameters=[OCCUPANCY_HEADER_PARAMETER],
+        request=ReportCreateSerializer,
+        responses={
+            201: ReportSummarySerializer,
+            200: ReportSummarySerializer,
+            **problem_responses(400, 401, 403, 404, 409, 422),
+        },
+    ),
+)
+class ReportListCreateView(generics.ListCreateAPIView):
+    serializer_class = ReportSummarySerializer
+    pagination_class = ReportCursorPagination
+
+    def get_queryset(self):
+        return resident_reports(self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = ReportCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        occupancy, tenant = resolve_api_occupancy(request)
+        location = BuildingLocation.objects.filter(
+            pk=serializer.validated_data["location_id"],
+            building_id=tenant.building_id,
+            active=True,
+        ).first()
+        if location is None:
+            raise exceptions.ValidationError(
+                {"location_id": "Unknown active location for this building."}
+            )
+        try:
+            report, created = submit_report_idempotent(
+                request.user,
+                occupancy.unit,
+                serializer.validated_data["text"],
+                location,
+                [],
+                serializer.validated_data["client_ref"],
+            )
+        except ReportClientRefConflict:
+            raise problems.ClientRefConflict()
+        except DjangoValidationError as error:
+            raise exceptions.ValidationError(error.messages)
+        except DjangoPermissionDenied:
+            raise exceptions.PermissionDenied(
+                "An active resident occupancy is required."
+            )
+        return Response(
+            ReportSummarySerializer(report).data,
+            status=201 if created else 200,
+        )

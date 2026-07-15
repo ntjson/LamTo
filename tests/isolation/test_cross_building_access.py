@@ -109,6 +109,11 @@ API_TENANT_OBJECT = {
     "api:ledger-detail": ("ledger_pk", "GET", 404),
 }
 
+# Ownership-scoped lists/writes (the caller's own rows; never building-tenant).
+API_OWNERSHIP_LIST = {
+    "api:reports": "GET mine + POST create",
+}
+
 # Explicitly non-tenant / non-walked routes (none in Phase 0).
 API_EXEMPT = {}
 
@@ -238,6 +243,7 @@ class CrossBuildingAccessTests(TestCase):
             | set(API_AUTHENTICATED_GLOBAL)
             | set(API_TENANT_LIST)
             | set(API_TENANT_OBJECT)
+            | set(API_OWNERSHIP_LIST)
             | set(API_EXEMPT)
         )
         missing_api = api_routes - api_classified
@@ -245,7 +251,7 @@ class CrossBuildingAccessTests(TestCase):
         assert not missing_api, (
             f"New API routes must be classified in the isolation suite "
             f"(public-auth / authenticated-global / tenant-list / "
-            f"tenant-object / explicitly exempt): {missing_api}"
+            f"tenant-object / ownership-list / explicitly exempt): {missing_api}"
         )
         assert not extra_api, (
             f"Isolation suite classifies unknown API routes: {extra_api}"
@@ -257,6 +263,7 @@ class CrossBuildingAccessTests(TestCase):
             set(API_AUTHENTICATED_GLOBAL),
             set(API_TENANT_LIST),
             set(API_TENANT_OBJECT),
+            set(API_OWNERSHIP_LIST),
             set(API_EXEMPT),
         ]
         seen: set[str] = set()

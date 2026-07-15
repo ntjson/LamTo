@@ -26,6 +26,7 @@ _PROBLEM_DESCRIPTIONS = {
     ),
     403: "Permission denied (code=permission_denied).",
     404: "Resource not found (code=not_found).",
+    409: "client_ref reused with different content (code=client_ref_conflict).",
     422: (
         "Occupancy selection required "
         "(code=occupancy_selection_required); send X-LamTo-Occupancy."
@@ -63,9 +64,18 @@ class OccupancySelectionRequired(exceptions.APIException):
     default_code = "occupancy_selection_required"
 
 
+class ClientRefConflict(exceptions.APIException):
+    """POST /reports retried with the same client_ref but different content (spec 3.5)."""
+
+    status_code = 409
+    default_detail = "client_ref reused with different content."
+    default_code = "client_ref_conflict"
+
+
 # Most specific classes first: the first isinstance() match wins.
 _EXCEPTION_CODES = (
     (OccupancySelectionRequired, "occupancy_selection_required"),
+    (ClientRefConflict, "client_ref_conflict"),
     (exceptions.NotAuthenticated, "not_authenticated"),
     (exceptions.AuthenticationFailed, "authentication_failed"),
     (exceptions.PermissionDenied, "permission_denied"),
