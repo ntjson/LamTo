@@ -177,6 +177,92 @@ class ExportsAndHealthTests(TestCase):
         self.assertIsNotNone(data["latest_backup_marker"])
         self.assertEqual(data["latest_backup_marker"]["marker_id"], "m1")
 
+    def test_health_push_metric_values_from_seeded_rows(self):
+        """Ops push metrics reflect real delivery/device state, not key presence alone."""
+        from datetime import timedelta
+
+        from django.contrib.auth import get_user_model
+
+        from lamto.notifications.models import Device, NotificationDelivery
+        from lamto.notifications.services import EVENT_PUBLICATION, PUSH_SUPPRESSED_PREFIX
+        from lamto.web.views.health import collect_health_snapshot
+
+        user = get_user_model().objects.create_user(
+            email=self._unique("push-ops") + "@example.test",
+            password="x",
+            display_name="Push Ops",
+        )
+        now = timezone.now()
+        # True FCM success
+        NotificationDelivery.objects.create(
+            recipient=user,
+            channel=NotificationDelivery.Channel.PUSH,
+            status=NotificationDelivery.Status.SENT,
+            event_key=f"{EVENT_PUBLICATION}:entry:ok",
+            event_code=EVENT_PUBLICATION,
+            subject="s",
+            body="b",
+            last_error="",
+        )
+        # Suppressed (not FCM success)
+        NotificationDelivery.objects.create(
+            recipient=user,
+            channel=NotificationDelivery.Channel.PUSH,
+            status=NotificationDelivery.Status.SENT,
+            event_key=f"{EVENT_PUBLICATION}:entry:cap",
+            event_code=EVENT_PUBLICATION,
+            subject="s",
+            body="b",
+            last_error=f"{PUSH_SUPPRESSED_PREFIX}daily_cap",
+        )
+        # Failure
+        NotificationDelivery.objects.create(
+            recipient=user,
+            channel=NotificationDelivery.Channel.PUSH,
+            status=NotificationDelivery.Status.FAILED,
+            event_key=f"{EVENT_PUBLICATION}:entry:fail",
+            event_code=EVENT_PUBLICATION,
+            subject="s",
+            body="b",
+            last_error="transient",
+        )
+        # Inactive device unseen for 40 days → max inactive age ≥ 40
+        Device.objects.create(
+            user=user,
+            install_id="stale-install",
+            fcm_token="stale-tok",
+            platform=Device.Platform.ANDROID,
+            active=False,
+            last_seen_at=now - timedelta(days=40),
+        )
+        # Active device must not inflate dead_devices
+        Device.objects.create(
+            user=user,
+            install_id="live-install",
+            fcm_token="live-tok",
+            platform=Device.Platform.IOS,
+            active=True,
+            last_seen_at=now,
+        )
+
+        snap = collect_health_snapshot()
+        self.assertEqual(snap["push_sent_success"], 1)
+        self.assertEqual(snap["push_suppressed"], 1)
+        self.assertEqual(snap["push_failures"], 1)
+        self.assertEqual(snap["dead_devices"], 1)
+        self.assertGreaterEqual(snap["stale_device_max_inactive_days"], 40)
+
+        self.client.force_login(self.tech.user)
+        self.enroll_and_bind(self.tech.user)
+        data = self.client.get(reverse("web:ops-health") + "?format=json").json()
+        self.assertEqual(data["push_sent_success"], snap["push_sent_success"])
+        self.assertEqual(data["push_suppressed"], snap["push_suppressed"])
+        self.assertEqual(data["push_failures"], snap["push_failures"])
+        self.assertEqual(data["dead_devices"], snap["dead_devices"])
+        self.assertEqual(
+            data["stale_device_max_inactive_days"], snap["stale_device_max_inactive_days"]
+        )
+
     def test_pilot_metrics_non_authoritative(self):
         self.client.force_login(self.tech.user)
         self.enroll_and_bind(self.tech.user)
