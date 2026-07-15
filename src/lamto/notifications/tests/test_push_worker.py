@@ -48,10 +48,15 @@ class PushWorkerTests(TestCase):
     def test_terminal_error_deactivates_device(self, send):
         from firebase_admin import messaging
 
+        from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
+
         send.side_effect = messaging.UnregisteredError("gone")
         delivery = _push_delivery(self.resident, self.building)
-        process_delivery(delivery)
+        result = process_delivery(delivery)
         assert Device.objects.filter(user=self.resident, active=True).count() == 0
+        # All-terminal fan-out is not true FCM success (metrics / daily cap).
+        assert result.status == NotificationDelivery.Status.SENT
+        assert result.last_error == f"{PUSH_SUPPRESSED_PREFIX}all_tokens_terminal"
 
     @patch("lamto.notifications.services.send_push", return_value="msg-1")
     def test_revalidation_suppresses_when_occupancy_gone(self, send):

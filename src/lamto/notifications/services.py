@@ -438,6 +438,7 @@ def _process_push_delivery(delivery):
 
     title, body, data = build_push_payload(delivery)
     collapse_key = _collapse_key(delivery)
+    any_success = False
     any_transient = False
     last_error = ""
     for device in devices:
@@ -450,6 +451,7 @@ def _process_push_delivery(delivery):
                 data=data,
                 collapse_key=collapse_key,
             )
+            any_success = True
         except Exception as exc:  # noqa: BLE001 - provider errors are classified below
             if classify_push_error(exc) == "terminal":
                 Device.objects.filter(pk=device.pk).update(active=False)
@@ -467,9 +469,14 @@ def _process_push_delivery(delivery):
             delivery.status = NotificationDelivery.Status.FAILED
             backoff = BASE_BACKOFF_SECONDS * (2 ** min(delivery.attempts - 1, 6))
             delivery.next_retry_at = now + timedelta(seconds=backoff)
-    else:
+    elif any_success:
         delivery.status = NotificationDelivery.Status.SENT
         delivery.last_error = ""
+        delivery.next_retry_at = None
+    else:
+        # All tokens terminal / dead — not a true FCM success (ops metrics + daily cap).
+        delivery.status = NotificationDelivery.Status.SENT
+        delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}all_tokens_terminal"
         delivery.next_retry_at = None
     delivery.save(update_fields=["status", "attempts", "last_error", "next_retry_at", "updated_at"])
     return delivery
