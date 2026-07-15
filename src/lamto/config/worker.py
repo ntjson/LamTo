@@ -217,6 +217,18 @@ def process_notifications_batch(*, limit: int = 50) -> ProcessorResult:
         return ProcessorResult(name=name, ok=False, detail=str(exc))
 
 
+def process_stale_devices_batch(*, days: int = 180) -> ProcessorResult:
+    name = "stale_devices"
+    try:
+        from lamto.notifications.devices import deactivate_stale_devices
+
+        n = deactivate_stale_devices(days=days)
+        return ProcessorResult(name=name, ok=True, count=n, detail=f"deactivated={n}")
+    except Exception as exc:
+        logger.exception("worker processor %s failed", name)
+        return ProcessorResult(name=name, ok=False, detail=str(exc))
+
+
 PROCESSORS = (
     process_triage_batch,
     process_emergency_outcomes_batch,
@@ -225,6 +237,7 @@ PROCESSORS = (
     process_integrity_batch,
     process_deadline_risk_batch,
     process_notifications_batch,
+    process_stale_devices_batch,
 )
 
 
@@ -258,6 +271,11 @@ def _kwargs_for(processor, kwargs: dict) -> dict:
         out["limit"] = specific
     # process_emergency_outcomes_batch takes no limit
     if name == "process_emergency_outcomes_batch":
+        return {}
+    # process_stale_devices_batch takes days, not limit
+    if name == "process_stale_devices_batch":
+        if "days" in kwargs:
+            return {"days": kwargs["days"]}
         return {}
     return out
 

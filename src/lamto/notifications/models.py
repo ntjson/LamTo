@@ -77,3 +77,39 @@ class NotificationDelivery(models.Model):
                 name="notif_delivery_claim_idx",
             ),
         ]
+
+
+class Device(models.Model):
+    """A resident's push-capable install (spec 7.2). fcm_token is unique among
+    active rows; possession of a token proves control (see register_device)."""
+
+    class Platform(models.TextChoices):
+        IOS = "IOS", "iOS"
+        ANDROID = "ANDROID", "Android"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="devices"
+    )
+    install_id = models.CharField(max_length=64)
+    fcm_token = models.CharField(max_length=512)
+    platform = models.CharField(max_length=16, choices=Platform.choices)
+    app_version = models.CharField(max_length=32, blank=True)
+    active = models.BooleanField(default=True)
+    last_seen_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "install_id"], name="device_user_install_once"
+            ),
+            models.UniqueConstraint(
+                fields=["fcm_token"],
+                condition=models.Q(active=True),
+                name="device_active_fcm_token_once",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "active"], name="device_user_active_idx")
+        ]
+
