@@ -172,6 +172,79 @@ class UploadDocumentPairTests(TestCase):
         self.assertRegex(text, r"documents_deleted=[1-9]")
         self.assertEqual(Document.objects.count(), 0)
 
+    def test_cleanup_management_command_removes_aged_draft_proposal(self):
+        """call_command must delete draft Proposals with no current_version past threshold."""
+        from lamto.accounts.models import Unit
+        from lamto.finance.models import Proposal
+        from lamto.maintenance.models import (
+            BuildingLocation,
+            IssueReport,
+            MaintenanceCase,
+            TriageDecision,
+            WorkOrder,
+        )
+
+        location = BuildingLocation.objects.create(
+            building=self.building, name="Lobby", active=True
+        )
+        unit = Unit.objects.create(building=self.building, label="C-1")
+        resident = get_user_model().objects.create_user(
+            email="draft-r@example.test", password="secret", display_name="R"
+        )
+        report = IssueReport.objects.create(
+            reporter=resident,
+            unit=unit,
+            text="draft cleanup",
+            selected_location=location,
+            location_path_snapshot="Lobby",
+        )
+        decision = TriageDecision.objects.create(
+            report=report,
+            operator=self.user,
+            category="c",
+            urgency="HIGH",
+            location=location,
+            department="Ops",
+            deadline_minutes=60,
+            differences={},
+        )
+        case = MaintenanceCase.objects.create(
+            decision=decision,
+            building=self.building,
+            category="c",
+            urgency="HIGH",
+            location=location,
+            department="Ops",
+            deadline_at=timezone.now(),
+            active=True,
+        )
+        work = WorkOrder.objects.create(
+            case=case,
+            assignee=self.user,
+            priority="HIGH",
+            deadline_at=timezone.now(),
+            requires_spending=True,
+            authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
+            status=WorkOrder.Status.ASSIGNED,
+        )
+        membership = OrganizationMembership.objects.get(user=self.user)
+        proposal = Proposal.objects.create(
+            work_order=work,
+            creator_membership=membership,
+            mode=Proposal.Mode.NORMAL,
+            status=Proposal.Status.DRAFT,
+        )
+        self.assertIsNone(proposal.current_version_id)
+        # Age draft past threshold (Proposal.created_at is updatable via QuerySet).
+        Proposal.objects.filter(pk=proposal.pk).update(
+            created_at=timezone.now() - timedelta(hours=48)
+        )
+        out = StringIO()
+        call_command("cleanup_stale_prepared_ops", "--older-than-hours", "24", stdout=out)
+        text = out.getvalue()
+        self.assertRegex(text, r"proposals_deleted=[1-9]")
+        self.assertFalse(Proposal.objects.filter(pk=proposal.pk).exists())
+
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
     def test_cleanup_management_command_dry_run_does_not_delete(self):
         upload_document_pair(
