@@ -267,6 +267,8 @@ class MeNotificationPreferencesView(APIView):
         serializer = NotificationPreferenceUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         allowed_codes = {code for code, _label in PREFERENCE_EVENT_CHOICES}
+        # Validate all items before writing so a bad row cannot partially apply.
+        updates = []
         for item in serializer.validated_data["preferences"]:
             code = item["event_code"]
             if code not in allowed_codes:
@@ -286,9 +288,14 @@ class MeNotificationPreferencesView(APIView):
                         }
                     )
                 defaults["push_enabled"] = bool(item["push_enabled"])
-            NotificationPreference.objects.update_or_create(
-                user=request.user, event_code=code, defaults=defaults
-            )
+            updates.append((code, defaults))
+        from django.db import transaction
+
+        with transaction.atomic():
+            for code, defaults in updates:
+                NotificationPreference.objects.update_or_create(
+                    user=request.user, event_code=code, defaults=defaults
+                )
         preferences = list(
             request.user.notification_preferences.order_by("event_code").values(
                 "event_code", "email_enabled", "push_enabled"
