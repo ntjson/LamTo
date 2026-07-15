@@ -49,6 +49,7 @@ urlpatterns = [
     # Maintenance / work
     path("s/work/", maintenance.work_order_list, name="work-order-list"),
     path("s/work/<int:pk>/", maintenance.work_order_detail, name="work-order-detail"),
+    path("s/work/<int:pk>/propose/", operator.proposal_create, name="proposal-create"),
     path("s/work/<int:pk>/accept/", board.accept_work, name="work-accept"),
     path("s/work/<int:pk>/emergency/authorize/", board.emergency_authorize, name="emergency-authorize"),
     path(

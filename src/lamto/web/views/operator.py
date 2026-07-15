@@ -1,5 +1,7 @@
 """Operator workspace: triage, cases, work orders, proposals."""
 
+import json
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -13,22 +15,35 @@ from lamto.accounts.capabilities import (
     REPORT_TRIAGE,
     WORK_ASSIGN,
 )
+from lamto.accounts.security import require_recent_auth
 from lamto.audit.services import record_audit
+from lamto.documents.models import Document, DocumentVersion
+from lamto.evidence.canonical import payload_hash
+from lamto.evidence.models import EvidenceType
+from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import (
     PaymentVerification,
     Proposal,
     PublicationSnapshot,
     PublishedLedgerEntry,
 )
+from lamto.finance.proposals import (
+    ZERO_HASH,
+    build_proposal_evidence_payload,
+    create_proposal,
+    submit_proposal_version,
+)
 from lamto.maintenance.models import IssueReport, MaintenanceCase, WorkOrder
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
+    CreateProposalForm,
     CreateWorkOrderForm,
     PreparePublicationForm,
     ProposalDecisionForm,
+    SignProposalForm,
 )
-from lamto.accounts.security import require_recent_auth
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff_signing import new_event_id, upload_document_pair
 
 
 def _proposal_publishable(proposal) -> bool:
@@ -301,5 +316,122 @@ def proposal_detail(request, pk):
             can_approve=PROPOSAL_APPROVE in caps,
             publish_form=publish_form if can_publish else None,
             can_publish=can_publish,
+        ),
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def proposal_create(request, pk):
+    """Two-phase create-proposal from a spending work order (spec 4.3.1).
+
+    action=prepare: upload quotation pair + create the DRAFT proposal, then
+    render the signed form with the exact typed data. action=submit: freeze
+    the immutable version via the domain service.
+    """
+    membership, memberships = require_staff_capability(request, PROPOSAL_CREATE)
+    building_id = membership.organization.building_id
+    work_order = get_object_or_404(
+        WorkOrder.objects.select_related("case"),
+        pk=pk,
+        case__building_id=building_id,
+    )
+    if request.method == "POST":
+        require_recent_auth(request)
+    if not work_order.requires_spending:
+        messages.error(request, "This work order does not require spending.")
+        return redirect("web:work-order-detail", pk=work_order.pk)
+
+    existing = (
+        Proposal.objects.filter(work_order=work_order)
+        .select_related("current_version")
+        .first()
+    )
+    if existing is not None and existing.current_version_id is not None:
+        messages.info(request, "A proposal has already been submitted for this work order.")
+        return redirect("web:proposal-detail", pk=existing.pk)
+
+    create_form = CreateProposalForm(request.POST or None, request.FILES or None)
+    sign_form = None
+    typed_data = None
+    action = request.POST.get("action") if request.method == "POST" else None
+
+    if action == "prepare" and create_form.is_valid():
+        try:
+            original, _redacted = upload_document_pair(
+                work_order.case.building,
+                Document.Kind.QUOTATION,
+                request.user,
+                create_form.cleaned_data["quotation_original"],
+                create_form.cleaned_data["quotation_redacted"],
+            )
+            proposal = existing or create_proposal(work_order, membership)
+            amount = create_form.cleaned_data["amount_vnd"]
+            contractor = create_form.cleaned_data["contractor_name"]
+            payload = build_proposal_evidence_payload(proposal, amount, contractor, [original])
+        except (ValidationError, PermissionDenied) as error:
+            if isinstance(error, ValidationError):
+                create_form.add_error(None, error)
+            else:
+                raise
+        else:
+            event_id = new_event_id()
+            typed_data = json.dumps(
+                build_evidence_typed_data(
+                    event_id, EvidenceType.PROPOSAL_CREATED, "0x" + payload_hash(payload), ZERO_HASH
+                )
+            )
+            sign_form = SignProposalForm(
+                initial={
+                    "event_id": event_id,
+                    "amount_vnd": amount,
+                    "contractor_name": contractor,
+                    "quotation_original_id": original.pk,
+                    "proposal_id": proposal.pk,
+                }
+            )
+    elif action == "submit":
+        sign_form = SignProposalForm(request.POST)
+        if sign_form.is_valid():
+            proposal = get_object_or_404(
+                Proposal,
+                pk=sign_form.cleaned_data["proposal_id"],
+                work_order__case__building_id=building_id,
+            )
+            original = get_object_or_404(
+                DocumentVersion,
+                pk=sign_form.cleaned_data["quotation_original_id"],
+                document__building_id=building_id,
+            )
+            try:
+                submit_proposal_version(
+                    proposal,
+                    sign_form.cleaned_data["amount_vnd"],
+                    sign_form.cleaned_data["contractor_name"],
+                    [original],
+                    sign_form.cleaned_data["signature"],
+                    sign_form.cleaned_data["event_id"],
+                )
+            except (ValidationError, PermissionDenied) as error:
+                if isinstance(error, ValidationError):
+                    sign_form.add_error(None, error)
+                else:
+                    raise
+            else:
+                messages.success(request, "Proposal submitted for Board review.")
+                return redirect("web:proposal-detail", pk=proposal.pk)
+
+    return render(
+        request,
+        "web/staff/proposal_create.html",
+        staff_context(
+            request,
+            membership,
+            memberships,
+            nav_active="proposals",
+            work_order=work_order,
+            create_form=create_form,
+            sign_form=sign_form,
+            typed_data=typed_data,
         ),
     )

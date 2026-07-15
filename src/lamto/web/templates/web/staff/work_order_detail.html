@@ -31,6 +31,10 @@
     {% endif %}
   </dl>
 
+  {% if "proposal.create" in capabilities and work_order.requires_spending %}
+  <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.pk %}">Create proposal</a></p>
+  {% endif %}
+
   {% if is_assignee and work_order.status == "ASSIGNED" %}
   <form method="post" class="stack-form">
     {% csrf_token %}

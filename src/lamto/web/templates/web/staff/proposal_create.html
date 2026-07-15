@@ -1,0 +1,32 @@
+{% extends "web/staff/shell.html" %}
+{% block title %}Create proposal · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Create proposal · Work order #{{ work_order.pk }}</h1>
+  <p class="hint">Purpose (from case, immutable): {{ work_order.case.category }}</p>
+
+  {% if sign_form %}
+  <div class="signed-box">
+    <h2>Review and sign</h2>
+    <p class="hint">Amount {{ sign_form.amount_vnd.value }} VND · {{ sign_form.contractor_name.value }}</p>
+    <p class="hint">The quotation is uploaded and frozen. Sign with your wallet to submit for Board review.</p>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit">
+      {{ sign_form.as_p }}
+      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+      <button type="submit" class="button">Submit proposal</button>
+    </form>
+  </div>
+  {% else %}
+  <form method="post" class="stack-form" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="prepare">
+    {{ create_form.as_p }}
+    <p class="hint">Upload the quotation original and a redacted copy (PDF). Amounts are integer VND.</p>
+    <button type="submit" class="button">Prepare proposal</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

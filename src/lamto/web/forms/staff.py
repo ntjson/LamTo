@@ -309,3 +309,22 @@ class PreparePublicationForm(SignedDecisionForm):
             publication_id=self.cleaned_data.get("publication_id") or None,
         )
 
+
+class CreateProposalForm(forms.Form):
+    """Operator-entered proposal draft; the quotation pair uploads on prepare."""
+
+    amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
+    contractor_name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": "input"}))
+    quotation_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    quotation_redacted = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+
+
+class SignProposalForm(SignedDecisionForm):
+    """Signed submit of the frozen proposal version. Hidden fields carry the
+    prepared draft so the posted signature matches the exact payload."""
+
+    amount_vnd = forms.IntegerField(min_value=1, widget=forms.HiddenInput())
+    contractor_name = forms.CharField(max_length=255, widget=forms.HiddenInput())
+    quotation_original_id = forms.IntegerField(widget=forms.HiddenInput())
+    proposal_id = forms.IntegerField(widget=forms.HiddenInput())
+

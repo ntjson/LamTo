@@ -47,6 +47,7 @@ STAFF_CASES = {
     "web:case-detail": ("case_pk", "operator", "GET"),
     "web:proposal-detail": ("proposal_pk", "operator", "GET"),
     "web:work-order-detail": ("work_pk", "maintenance", "GET"),
+    "web:proposal-create": ("work_pk", "operator", "POST"),
     "web:payment-record-detail": ("acceptance_pk", "board_payment_recorder", "GET"),
     "web:payment-verify-detail": ("payment_pk", "board_payment_verifier", "GET"),
     "web:work-accept": ("work_pk", "board_approver", "POST"),
