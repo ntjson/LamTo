@@ -438,10 +438,14 @@ def _process_push_delivery(delivery):
 
     title, body, data = build_push_payload(delivery)
     collapse_key = _collapse_key(delivery)
-    any_success = False
+    already_sent = set(delivery.push_sent_device_ids or [])
+    any_success = bool(already_sent)
     any_transient = False
     last_error = ""
     for device in devices:
+        if device.pk in already_sent:
+            # Prior attempt already delivered to this device — do not re-send.
+            continue
         try:
             # Module-level send_push so tests can patch lamto.notifications.services.send_push
             send_push(
@@ -451,6 +455,7 @@ def _process_push_delivery(delivery):
                 data=data,
                 collapse_key=collapse_key,
             )
+            already_sent.add(device.pk)
             any_success = True
         except Exception as exc:  # noqa: BLE001 - provider errors are classified below
             if classify_push_error(exc) == "terminal":
@@ -460,6 +465,7 @@ def _process_push_delivery(delivery):
                 last_error = str(exc)[:2000]
 
     delivery.attempts += 1
+    delivery.push_sent_device_ids = list(already_sent)
     if any_transient:
         delivery.last_error = last_error
         if delivery.attempts >= MAX_PUSH_ATTEMPTS:
@@ -478,7 +484,16 @@ def _process_push_delivery(delivery):
         delivery.status = NotificationDelivery.Status.SENT
         delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}all_tokens_terminal"
         delivery.next_retry_at = None
-    delivery.save(update_fields=["status", "attempts", "last_error", "next_retry_at", "updated_at"])
+    delivery.save(
+        update_fields=[
+            "status",
+            "attempts",
+            "last_error",
+            "next_retry_at",
+            "push_sent_device_ids",
+            "updated_at",
+        ]
+    )
     return delivery
 
 

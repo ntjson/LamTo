@@ -67,6 +67,45 @@ class PushWorkerTests(TestCase):
         assert result.status == NotificationDelivery.Status.SENT  # non-retryable; in-app authoritative
         assert result.last_error.startswith("suppressed:")  # not a true FCM success
 
+    @patch("lamto.notifications.services.send_push")
+    def test_partial_success_retry_skips_already_sent_devices(self, send):
+        """On retry after multi-device partial success, do not re-send successful tokens."""
+        d1 = Device.objects.get(user=self.resident, active=True)
+        d2 = register_device(
+            self.resident, str(uuid.uuid4()), "tok-2", Device.Platform.IOS
+        )
+
+        def _side_effect(token, **kwargs):
+            if token == d1.fcm_token:
+                return "msg-ok"
+            raise RuntimeError("transient-unavailable")
+
+        send.side_effect = _side_effect
+        delivery = _push_delivery(self.resident, self.building)
+        result = process_delivery(delivery)
+        assert result.status == NotificationDelivery.Status.FAILED
+        assert d1.pk in result.push_sent_device_ids
+        assert d2.pk not in result.push_sent_device_ids
+        first_calls = send.call_count
+        assert first_calls == 2
+
+        # Retry: only the failed device should be attempted again.
+        send.reset_mock()
+        send.side_effect = lambda token, **kwargs: "msg-retry"
+        # Reset for claimable retry path
+        NotificationDelivery.objects.filter(pk=delivery.pk).update(
+            status=NotificationDelivery.Status.FAILED,
+            next_retry_at=None,
+        )
+        delivery.refresh_from_db()
+        delivery.status = NotificationDelivery.Status.FAILED
+        result2 = process_delivery(delivery)
+        assert result2.status == NotificationDelivery.Status.SENT
+        # Only tok-2 (the previously failed device) is sent again.
+        assert send.call_count == 1
+        assert send.call_args.args[0] == d2.fcm_token
+        assert set(result2.push_sent_device_ids) == {d1.pk, d2.pk}
+
     @override_settings(PUSH_ENABLED=True, PUSH_DAILY_CAP_PER_CATEGORY=2)
     @patch("lamto.notifications.services.send_push", return_value="msg-1")
     def test_publication_collapse_key_and_daily_cap(self, send):

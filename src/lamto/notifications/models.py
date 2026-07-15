@@ -62,6 +62,9 @@ class NotificationDelivery(models.Model):
     attempts = models.PositiveIntegerField(default=0)
     next_retry_at = models.DateTimeField(null=True, blank=True)
     last_error = models.TextField(blank=True)
+    # Durable fan-out progress: device pks that already received this PUSH delivery
+    # so retries skip them (partial multi-device success).
+    push_sent_device_ids = models.JSONField(default=list, blank=True)
     read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
