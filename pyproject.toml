@@ -20,6 +20,7 @@ dependencies = [
   "django-rest-knox>=5.0,<6",
   "drf-spectacular>=0.28,<1",
   "gunicorn>=23,<24",
+  "firebase-admin>=6,<8",
 ]
 
 [project.optional-dependencies]

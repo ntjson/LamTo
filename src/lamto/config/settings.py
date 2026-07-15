@@ -249,6 +249,14 @@ EMAIL_BACKEND = os.getenv(
 )
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@lamto.local")
 
+# --- Push notifications (spec 7): FCM via firebase-admin ---
+# Path to a service-account JSON; never committed. Push is off unless both are set.
+FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "")
+PUSH_ENABLED = (
+    os.getenv("PUSH_ENABLED", "").lower() in {"1", "true", "yes"} and bool(FIREBASE_CREDENTIALS)
+)
+PUSH_DAILY_CAP_PER_CATEGORY = int(os.getenv("PUSH_DAILY_CAP_PER_CATEGORY", "10"))
+
 
 # --- Security: password hashing, sessions, MFA-related defaults ---
 PASSWORD_HASHERS = [
