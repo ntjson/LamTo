@@ -47,6 +47,9 @@ class OpenApiDriftTests(SimpleTestCase):
         assert (
             "/api/v1/ledger/{id}" in content or "/api/v1/ledger/{pk}" in content
         ), "ledger detail route missing from committed schema"
+        assert (
+            "/api/v1/reports/{id}" in content or "/api/v1/reports/{pk}" in content
+        ), "report detail route missing from committed schema"
 
     def test_schema_includes_rfc9457_problem_component(self):
         content = SCHEMA_PATH.read_text()

@@ -107,6 +107,7 @@ API_TENANT_LIST = {
 # route -> (attribute on cls.b with the B-side pk, method, expected status)
 API_TENANT_OBJECT = {
     "api:ledger-detail": ("ledger_pk", "GET", 404),
+    "api:report-detail": ("report_pk", "GET", 404),
 }
 
 # Ownership-scoped lists/writes (the caller's own rows; never building-tenant).

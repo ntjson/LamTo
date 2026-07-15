@@ -28,3 +28,61 @@ def rateable_work_orders(user, report):
         case_id__in=case_ids,
         status__in=ELIGIBLE_STATUSES,
     ).exclude(pk__in=rated)
+
+
+def resident_report_timeline(report):
+    """Ownership timeline for one report (spec 3.3): triage -> case -> work -> acceptance."""
+    triage_job = getattr(report, "triage_job", None)
+    decision = getattr(report, "triage_decision", None)
+    rated_ids = set(
+        CompletionRating.objects.filter(resident_id=report.reporter_id).values_list(
+            "work_order_id", flat=True
+        )
+    )
+    cases = []
+    for link in CaseReport.objects.filter(report=report).select_related("case").order_by(
+        "case_id"
+    ):
+        case = link.case
+        work_orders = []
+        for wo in case.work_orders.select_related("acceptance").order_by("pk"):
+            acceptance = getattr(wo, "acceptance", None)
+            work_orders.append(
+                {
+                    "id": wo.pk,
+                    "status": wo.status,
+                    "deadline_at": wo.deadline_at,
+                    "completed_at": wo.completed_at,
+                    "accepted_at": getattr(acceptance, "accepted_at", None),
+                    "can_rate": wo.status in ELIGIBLE_STATUSES and wo.pk not in rated_ids,
+                }
+            )
+        cases.append(
+            {
+                "id": case.pk,
+                "category": case.category,
+                "urgency": case.urgency,
+                "deadline_at": case.deadline_at,
+                "active": case.active,
+                "work_orders": work_orders,
+            }
+        )
+    return {
+        "id": report.pk,
+        "text": report.text,
+        "status": report.status,
+        "location_path_snapshot": report.location_path_snapshot,
+        "unit_label": report.unit.label,
+        "created_at": report.created_at,
+        "triage_status": triage_job.status if triage_job is not None else None,
+        "category": decision.category if decision is not None else None,
+        "photos": [
+            {
+                "id": rp.version.pk,
+                "filename": rp.version.filename,
+                "sha256": rp.version.sha256,
+            }
+            for rp in report.photos.select_related("version").order_by("pk")
+        ],
+        "cases": cases,
+    }

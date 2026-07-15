@@ -161,3 +161,41 @@ class ReportSummarySerializer(serializers.Serializer):
     status = serializers.CharField()
     location_path_snapshot = serializers.CharField()
     created_at = serializers.DateTimeField()
+
+
+class ReportPhotoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    filename = serializers.CharField()
+    sha256 = serializers.CharField()
+    # download_url added in Task 8.
+
+
+class ReportWorkOrderSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    deadline_at = serializers.DateTimeField()
+    completed_at = serializers.DateTimeField(allow_null=True)
+    accepted_at = serializers.DateTimeField(allow_null=True)
+    can_rate = serializers.BooleanField()
+
+
+class ReportCaseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    category = serializers.CharField()
+    urgency = serializers.CharField()
+    deadline_at = serializers.DateTimeField()
+    active = serializers.BooleanField()
+    work_orders = ReportWorkOrderSerializer(many=True)
+
+
+class ReportDetailSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    text = serializers.CharField()
+    status = serializers.CharField()
+    location_path_snapshot = serializers.CharField()
+    unit_label = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    triage_status = serializers.CharField(allow_null=True)
+    category = serializers.CharField(allow_null=True)
+    photos = ReportPhotoSerializer(many=True)
+    cases = ReportCaseSerializer(many=True)

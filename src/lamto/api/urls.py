@@ -15,4 +15,5 @@ urlpatterns = [
     path("ledger/<int:pk>", views.LedgerDetailView.as_view(), name="ledger-detail"),
     path("fund/summary", views.FundSummaryView.as_view(), name="fund-summary"),
     path("reports", views.ReportListCreateView.as_view(), name="reports"),
+    path("reports/<int:pk>", views.ReportDetailView.as_view(), name="report-detail"),
 ]

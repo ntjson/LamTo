@@ -30,6 +30,7 @@ from lamto.api.serializers import (
     LoginSerializer,
     MeSerializer,
     ReportCreateSerializer,
+    ReportDetailSerializer,
     ReportSummarySerializer,
     TokenResponseSerializer,
 )
@@ -47,9 +48,9 @@ from lamto.finance.selectors import (
     published_ledger_entries,
     published_ledger_entry_for_proof,
 )
-from lamto.maintenance.models import BuildingLocation
+from lamto.maintenance.models import BuildingLocation, IssueReport
 from lamto.maintenance.reporting import ReportClientRefConflict, submit_report_idempotent
-from lamto.maintenance.selectors import resident_reports
+from lamto.maintenance.selectors import resident_report_timeline, resident_reports
 
 TOKEN_CAP_PER_USER = 5  # spec 3.2: 5 concurrent tokens; oldest evicted at login
 
@@ -350,3 +351,16 @@ class ReportListCreateView(generics.ListCreateAPIView):
             ReportSummarySerializer(report).data,
             status=201 if created else 200,
         )
+
+
+class ReportDetailView(APIView):
+    @extend_schema(responses={200: ReportDetailSerializer, **problem_responses(401, 403, 404)})
+    def get(self, request, pk):
+        report = (
+            IssueReport.objects.select_related("unit", "triage_job", "triage_decision")
+            .filter(pk=pk, reporter=request.user)
+            .first()
+        )
+        if report is None:
+            raise exceptions.NotFound("Report not found.")
+        return Response(ReportDetailSerializer(resident_report_timeline(report)).data)

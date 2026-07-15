@@ -118,3 +118,39 @@ class ReportCreateTests(TestCase):
         results = resp.json()["results"]
         assert len(results) == 1
         assert results[0]["text"] == "Lift jerks"
+
+    def test_detail_timeline_and_foreign_report_404(self):
+        create = self.client.post(
+            reverse("api:reports"),
+            data=self._body(),
+            content_type="application/json",
+            headers=self._auth(),
+        )
+        report_id = create.json()["id"]
+        detail = self.client.get(
+            reverse("api:report-detail", kwargs={"pk": report_id}),
+            headers=self._auth(),
+        )
+        assert detail.status_code == 200
+        body = detail.json()
+        assert body["triage_status"] == "PENDING"
+        assert body["cases"] == []
+        # A stranger's report id is 404 for this resident.
+        from django.contrib.auth import get_user_model
+
+        stranger = get_user_model().objects.create_user(
+            email="apir-x@example.com", password="x", display_name="X"
+        )
+        ResidentOccupancy.objects.create(user=stranger, unit=self.seed.unit, active=True)
+        other = IssueReport.objects.create(
+            reporter=stranger,
+            unit=self.seed.unit,
+            text="theirs",
+            selected_location=self.seed.location,
+            location_path_snapshot="x",
+        )
+        miss = self.client.get(
+            reverse("api:report-detail", kwargs={"pk": other.pk}),
+            headers=self._auth(),
+        )
+        assert miss.status_code == 404
