@@ -4,13 +4,22 @@
 {% if list_mode %}
 <section class="panel">
   <h1>Payments</h1>
+  {% if filters %}
+  <div class="filter-bar" role="group" aria-label="Filter by status">
+    {% for f in filters %}
+    <a class="chip {% if f.active %}chip-active{% endif %}"
+       href="?{{ filter_param }}={{ f.value }}">{{ f.label }}</a>
+    {% endfor %}
+    <a class="chip {% if not filters_active %}chip-active{% endif %}" href="?">All</a>
+  </div>
+  {% endif %}
   {% if can_record %}
   <h2>Record payment</h2>
-  {% include "web/staff/_list.html" with items=record_items empty_label="No payments to record." %}
+  {% include "web/staff/_list.html" with items=record_items empty_label="No payments to record." filters=None filters_active=False only %}
   {% endif %}
   {% if can_verify %}
   <h2>Payment verification</h2>
-  {% include "web/staff/_list.html" with items=verify_items empty_label="No payments awaiting verification." %}
+  {% include "web/staff/_list.html" with items=verify_items empty_label="No payments awaiting verification." filters=None filters_active=False only %}
   {% endif %}
 </section>
 {% else %}

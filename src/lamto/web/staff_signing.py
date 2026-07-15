@@ -5,19 +5,43 @@ so they upload evidence + allocate a record id first, then sign. This module
 holds the pieces both flows share; all domain mutations stay in finance.*.
 """
 
+import logging
 import secrets
 
 from django.core.exceptions import ValidationError
+from django.core.files.storage import storages
 from django.db import connection, transaction
 
 from lamto.documents.models import Document, DocumentVersion
 from lamto.documents.scanner import scan_with_clamav
 from lamto.documents.services import add_redacted_copy, create_document_version
 
+logger = logging.getLogger(__name__)
+
 
 def new_event_id() -> str:
     """Server-generated random bytes32 event id (spec 2.2 opacity)."""
     return "0x" + secrets.token_hex(32)
+
+
+def _delete_storage_blob(storage_key, provider_version_id=""):
+    """Best-effort remove a private-storage object written during upload/cleanup."""
+    if not storage_key:
+        return False
+    storage = storages["private"]
+    try:
+        if hasattr(storage, "bucket_name") and hasattr(storage, "connection"):
+            version_id = provider_version_id
+            kwargs = {"Bucket": storage.bucket_name, "Key": storage_key}
+            if isinstance(version_id, str) and version_id and version_id.lower() != "null":
+                kwargs["VersionId"] = version_id
+            storage.connection.meta.client.delete_object(**kwargs)
+        else:
+            storage.delete(storage_key)
+        return True
+    except Exception:
+        logger.exception("Failed to purge storage blob key=%s", storage_key)
+        return False
 
 
 def upload_document_pair(building, kind, uploader, original_file, redacted_file):
@@ -30,8 +54,10 @@ def upload_document_pair(building, kind, uploader, original_file, redacted_file)
 
     Both steps run inside transaction.atomic(). If the redacted upload fails
     after the original was written, the transaction rolls back so no unpaired
-    original remains valid as proposal/fund evidence.
+    original remains valid as proposal/fund evidence, and any blobs already
+    written to private storage are purged (storage is not transactional).
     """
+    written_blobs = []  # (storage_key, provider_version_id)
     try:
         with transaction.atomic():
             document = Document.objects.create(building=building, kind=kind)
@@ -42,8 +68,12 @@ def upload_document_pair(building, kind, uploader, original_file, redacted_file)
                 uploader,
                 scan_with_clamav,
             )
+            written_blobs.append((original.storage_key, original.provider_version_id or ""))
             redacted = add_redacted_copy(original, redacted_file, uploader, scan_with_clamav)
+            written_blobs.append((redacted.storage_key, redacted.provider_version_id or ""))
     except ValueError as error:  # DocumentUploadRejected/Quarantined + identical-bytes all subclass ValueError
+        for key, pvid in written_blobs:
+            _delete_storage_blob(key, pvid)
         raise ValidationError(f"Evidence upload failed: {error}") from error
     return original, redacted
 
@@ -69,15 +99,26 @@ def _enable_document_append_only_triggers():
         cursor.execute("ALTER TABLE documents_document ENABLE TRIGGER USER")
 
 
-def _hard_delete_document(document_id: int) -> None:
-    """Delete a Document and its versions, bypassing instance-level InsertOnly guards.
+def _hard_delete_document(document_id: int) -> int:
+    """Delete a Document and its versions, then purge storage blobs.
 
     Redacted versions reference originals via PROTECT self-FK, so delete redacted
     rows first. Uses QuerySet.delete() (instance .delete() raises append-only).
+    Returns the number of storage blobs successfully purged.
     """
+    versions = list(
+        DocumentVersion.objects.filter(document_id=document_id).values_list(
+            "storage_key", "provider_version_id"
+        )
+    )
     DocumentVersion.objects.filter(document_id=document_id, redacts__isnull=False).delete()
     DocumentVersion.objects.filter(document_id=document_id).delete()
     Document.objects.filter(pk=document_id).delete()
+    purged = 0
+    for key, pvid in versions:
+        if _delete_storage_blob(key, pvid or ""):
+            purged += 1
+    return purged
 
 
 def _referenced_document_ids():
@@ -138,7 +179,34 @@ def _referenced_document_ids():
     return protected
 
 
-def cleanup_stale_prepared_ops(*, older_than_hours=24):
+def stale_prepared_ops_candidates(*, older_than_hours=24):
+    """Return (orphan_document_ids, draft_proposal_count) older than threshold."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from lamto.finance.models import Proposal
+
+    cutoff = timezone.now() - timedelta(hours=older_than_hours)
+    protected = _referenced_document_ids()
+    stale_docs = (
+        Document.objects.exclude(pk__in=protected)
+        .filter(versions__created_at__lt=cutoff)
+        .distinct()
+    )
+    orphan_ids = [
+        doc.pk
+        for doc in stale_docs
+        if not doc.versions.filter(created_at__gte=cutoff).exists()
+    ]
+    draft_count = Proposal.objects.filter(
+        current_version__isnull=True,
+        created_at__lt=cutoff,
+    ).count()
+    return orphan_ids, draft_count
+
+
+def cleanup_stale_prepared_ops(*, older_than_hours=24, dry_run=False):
     """Expire prepared-but-never-signed staff drafts and orphan document pairs.
 
     Removes:
@@ -146,6 +214,8 @@ def cleanup_stale_prepared_ops(*, older_than_hours=24):
       are not referenced by any domain evidence FK (proposal docs, fund,
       acceptance, payment, corrections, report photos, work-update evidence).
     - Proposal rows still without a current_version older than threshold.
+
+    Also purges private-storage blobs for deleted document versions.
 
     Does not delete signed/submitted proposal versions, verified fund entries,
     or any outbox-linked evidence. Returns a dict of deletion counts.
@@ -161,21 +231,22 @@ def cleanup_stale_prepared_ops(*, older_than_hours=24):
 
     from lamto.finance.models import Proposal
 
-    cutoff = timezone.now() - timedelta(hours=older_than_hours)
-    documents_deleted = 0
-    protected = _referenced_document_ids()
-
-    stale_docs = (
-        Document.objects.exclude(pk__in=protected)
-        .filter(versions__created_at__lt=cutoff)
-        .distinct()
+    orphan_ids, draft_count = stale_prepared_ops_candidates(
+        older_than_hours=older_than_hours
     )
-    orphan_ids = [
-        doc.pk
-        for doc in stale_docs
-        if not doc.versions.filter(created_at__gte=cutoff).exists()
-    ]
 
+    if dry_run:
+        return {
+            "documents_deleted": 0,
+            "proposals_deleted": 0,
+            "storage_purged": 0,
+            "documents_candidate": len(orphan_ids),
+            "proposals_candidate": draft_count,
+            "dry_run": True,
+        }
+
+    documents_deleted = 0
+    storage_purged = 0
     if orphan_ids:
         # ALTER TABLE is transactional in Postgres: wrap disable+delete+enable
         # so a mid-flight crash rolls triggers back to ENABLED.
@@ -183,11 +254,12 @@ def cleanup_stale_prepared_ops(*, older_than_hours=24):
             _disable_document_append_only_triggers()
             try:
                 for document_id in orphan_ids:
-                    _hard_delete_document(document_id)
+                    storage_purged += _hard_delete_document(document_id)
                     documents_deleted += 1
             finally:
                 _enable_document_append_only_triggers()
 
+    cutoff = timezone.now() - timedelta(hours=older_than_hours)
     proposals_deleted, _ = Proposal.objects.filter(
         current_version__isnull=True,
         created_at__lt=cutoff,
@@ -196,4 +268,6 @@ def cleanup_stale_prepared_ops(*, older_than_hours=24):
     return {
         "documents_deleted": documents_deleted,
         "proposals_deleted": proposals_deleted,
+        "storage_purged": storage_purged,
+        "dry_run": False,
     }

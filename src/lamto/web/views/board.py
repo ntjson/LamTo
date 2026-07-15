@@ -71,6 +71,8 @@ def payment_list(request):
     if PAYMENT_RECORD not in caps and PAYMENT_VERIFY not in caps:
         raise PermissionDenied("payment access")
     building_id = membership.organization.building_id
+    status = request.GET.get("status") or ""
+    valid_status = status in PaymentEvidence.ExternalStatus.values
     pending_record = (
         AcceptanceRecord.objects.filter(
             work_order__case__building_id=building_id,
@@ -79,13 +81,14 @@ def payment_list(request):
         if PAYMENT_RECORD in caps
         else []
     )
+    verify_qs = PaymentEvidence.objects.filter(
+        acceptance__work_order__case__building_id=building_id,
+        verification__isnull=True,
+    )
+    if valid_status:
+        verify_qs = verify_qs.filter(external_status=status)
     pending_verify = (
-        PaymentEvidence.objects.filter(
-            acceptance__work_order__case__building_id=building_id,
-            verification__isnull=True,
-        ).order_by("-recorded_at")[:50]
-        if PAYMENT_VERIFY in caps
-        else []
+        verify_qs.order_by("-recorded_at")[:50] if PAYMENT_VERIFY in caps else []
     )
     record_items = [
         {
@@ -105,6 +108,10 @@ def payment_list(request):
         }
         for p in pending_verify
     ]
+    filters = [
+        {"label": label, "value": value, "active": valid_status and value == status}
+        for value, label in PaymentEvidence.ExternalStatus.choices
+    ]
     return render(
         request,
         "web/staff/payment_detail.html",
@@ -118,6 +125,9 @@ def payment_list(request):
             pending_verify=pending_verify,
             record_items=record_items,
             verify_items=verify_items,
+            filters=filters,
+            filters_active=valid_status,
+            filter_param="status",
             can_record=PAYMENT_RECORD in caps,
             can_verify=PAYMENT_VERIFY in caps,
         ),

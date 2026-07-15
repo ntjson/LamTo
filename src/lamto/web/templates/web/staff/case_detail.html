@@ -3,12 +3,20 @@
 {% block content %}
 {% if list_mode %}
 <section class="panel">
-  <h1>Open reports</h1>
-  {% include "web/staff/_list.html" with items=report_items empty_label="No open reports." %}
-</section>
-<section class="panel">
+  <h1>Cases</h1>
+  {% if filters %}
+  <div class="filter-bar" role="group" aria-label="Filter by urgency">
+    {% for f in filters %}
+    <a class="chip {% if f.active %}chip-active{% endif %}"
+       href="?{{ filter_param }}={{ f.value }}">{{ f.label }}</a>
+    {% endfor %}
+    <a class="chip {% if not filters_active %}chip-active{% endif %}" href="?">All</a>
+  </div>
+  {% endif %}
+  <h2>Open reports</h2>
+  {% include "web/staff/_list.html" with items=report_items empty_label="No open reports." filters=None filters_active=False only %}
   <h2>Active cases</h2>
-  {% include "web/staff/_list.html" with items=case_items empty_label="No active cases." %}
+  {% include "web/staff/_list.html" with items=case_items empty_label="No active cases." filters=None filters_active=False only %}
 </section>
 {% else %}
 <section class="panel">

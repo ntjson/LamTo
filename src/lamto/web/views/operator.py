@@ -70,14 +70,19 @@ def _proposal_publishable(proposal) -> bool:
 def case_list(request):
     membership, memberships = require_staff_capability(request, REPORT_TRIAGE)
     building_id = membership.organization.building_id
+    # Active cases filter by urgency (same ?status= chip pattern as work list).
+    from lamto.maintenance.ai import URGENCIES
+
+    status = request.GET.get("status") or ""
+    valid_status = status in URGENCIES
     open_reports = (
         IssueReport.objects.filter(unit__building_id=building_id, status=IssueReport.Status.OPEN)
         .order_by("-created_at")[:100]
     )
-    cases = (
-        MaintenanceCase.objects.filter(building_id=building_id, active=True)
-        .order_by("-created_at")[:100]
-    )
+    cases_qs = MaintenanceCase.objects.filter(building_id=building_id, active=True)
+    if valid_status:
+        cases_qs = cases_qs.filter(urgency=status)
+    cases = cases_qs.order_by("-created_at")[:100]
     report_items = [
         {
             "url": f"/s/reports/{r.pk}/",
@@ -96,6 +101,10 @@ def case_list(request):
         }
         for c in cases
     ]
+    filters = [
+        {"label": u, "value": u, "active": valid_status and u == status}
+        for u in ("LOW", "MEDIUM", "HIGH", "EMERGENCY")
+    ]
     return render(
         request,
         "web/staff/case_detail.html",
@@ -109,6 +118,9 @@ def case_list(request):
             cases=cases,
             report_items=report_items,
             case_items=case_items,
+            filters=filters,
+            filters_active=valid_status,
+            filter_param="status",
         ),
     )
 
@@ -244,9 +256,13 @@ def proposal_list(request):
         raise PermissionDenied("proposal access")
 
     building_id = membership.organization.building_id
+    status = request.GET.get("status") or ""
+    valid_status = status in Proposal.Status.values
+    proposals_qs = Proposal.objects.filter(work_order__case__building_id=building_id)
+    if valid_status:
+        proposals_qs = proposals_qs.filter(status=status)
     proposals = (
-        Proposal.objects.filter(work_order__case__building_id=building_id)
-        .select_related("current_version", "work_order")
+        proposals_qs.select_related("current_version", "work_order")
         .order_by("-created_at")[:100]
     )
     proposal_items = [
@@ -259,6 +275,10 @@ def proposal_list(request):
         }
         for p in proposals
     ]
+    filters = [
+        {"label": label, "value": value, "active": valid_status and value == status}
+        for value, label in Proposal.Status.choices
+    ]
     return render(
         request,
         "web/staff/proposal_detail.html",
@@ -270,6 +290,9 @@ def proposal_list(request):
             list_mode=True,
             proposals=proposals,
             proposal_items=proposal_items,
+            filters=filters,
+            filters_active=valid_status,
+            filter_param="status",
             can_publish=LEDGER_PUBLISH in caps,
             publish_only=LEDGER_PUBLISH in caps
             and PROPOSAL_CREATE not in caps

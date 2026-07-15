@@ -1,20 +1,44 @@
+import os
 import tempfile
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.files.storage import storages
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.utils import timezone
+from io import StringIO
 
 from lamto.accounts.models import Building, Organization, OrganizationMembership
 from lamto.documents.models import Document, DocumentVersion
-from lamto.web.staff_signing import new_event_id, upload_document_pair
+from lamto.web.staff_signing import (
+    cleanup_stale_prepared_ops,
+    new_event_id,
+    upload_document_pair,
+)
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-staffsign-")
 
 
 def _pdf(name, body):
     return SimpleUploadedFile(name, b"%PDF-1.4\n" + body, content_type="application/pdf")
+
+
+def _age_all_versions(hours=48):
+    with connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        cursor.execute("ALTER TABLE documents_documentversion DISABLE TRIGGER USER")
+    try:
+        DocumentVersion.objects.all().update(
+            created_at=timezone.now() - timedelta(hours=hours)
+        )
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute("ALTER TABLE documents_documentversion ENABLE TRIGGER USER")
 
 
 @override_settings(
@@ -58,6 +82,10 @@ class UploadDocumentPairTests(TestCase):
         assert original.scan_status == DocumentVersion.ScanStatus.CLEAN
         assert redacted.scan_status == DocumentVersion.ScanStatus.CLEAN
         assert original.sha256 != redacted.sha256
+        # Blobs exist on private storage for both versions.
+        storage = storages["private"]
+        self.assertTrue(storage.exists(original.storage_key))
+        self.assertTrue(storage.exists(redacted.storage_key))
 
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
     def test_identical_bytes_rejected_as_validation_error(self):
@@ -71,51 +99,98 @@ class UploadDocumentPairTests(TestCase):
             )
 
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
-    def test_redacted_failure_leaves_no_partial_pair(self):
-        from unittest.mock import patch as _patch
-        with _patch(
-            "lamto.web.staff_signing.add_redacted_copy",
-            side_effect=ValueError("redacted scan failed"),
+    def test_redacted_failure_leaves_no_partial_pair_or_blob(self):
+        """Redacted failure rolls back DB and purges original storage blob."""
+        from lamto.documents.services import create_document_version as real_create
+        from lamto.web import staff_signing as signing
+
+        captured_keys = []
+
+        def _create_and_capture(*args, **kwargs):
+            version = real_create(*args, **kwargs)
+            captured_keys.append(version.storage_key)
+            return version
+
+        # Use the real create but record keys; fail redacted after original is stored.
+        with patch.object(
+            signing, "create_document_version", side_effect=_create_and_capture
         ):
-            with self.assertRaises(ValidationError):
-                upload_document_pair(
-                    self.building,
-                    Document.Kind.QUOTATION,
-                    self.user,
-                    _pdf("q.pdf", b"original bytes"),
-                    _pdf("q-red.pdf", b"redacted bytes differ"),
-                )
+            with patch.object(
+                signing, "add_redacted_copy", side_effect=ValueError("redacted scan failed")
+            ):
+                with self.assertRaises(ValidationError):
+                    signing.upload_document_pair(
+                        self.building,
+                        Document.Kind.QUOTATION,
+                        self.user,
+                        _pdf("q.pdf", b"original bytes"),
+                        _pdf("q-red.pdf", b"redacted bytes differ"),
+                    )
         self.assertEqual(Document.objects.count(), 0)
         self.assertEqual(DocumentVersion.objects.count(), 0)
+        self.assertEqual(len(captured_keys), 1)
+        storage = storages["private"]
+        self.assertFalse(
+            storage.exists(captured_keys[0]),
+            f"original blob still present: {captured_keys[0]}",
+        )
 
-    def test_cleanup_stale_prepared_ops_removes_old_orphans(self):
-        from datetime import timedelta
-
-        from django.db import connection
-        from django.utils import timezone
-
-        from lamto.web.staff_signing import cleanup_stale_prepared_ops
-
-        with patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True):
-            upload_document_pair(
-                self.building,
-                Document.Kind.QUOTATION,
-                self.user,
-                _pdf("old.pdf", b"old original"),
-                _pdf("old-r.pdf", b"old redacted"),
-            )
-        # DocumentVersion is DB append-only (BEFORE UPDATE trigger). Age rows as
-        # table owner by briefly disabling user triggers (same privilege cleanup uses).
-        with connection.cursor() as cursor:
-            cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
-            cursor.execute("ALTER TABLE documents_documentversion DISABLE TRIGGER USER")
-        try:
-            DocumentVersion.objects.all().update(
-                created_at=timezone.now() - timedelta(hours=48)
-            )
-        finally:
-            with connection.cursor() as cursor:
-                cursor.execute("ALTER TABLE documents_documentversion ENABLE TRIGGER USER")
+    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    def test_cleanup_stale_prepared_ops_removes_old_orphans_and_blobs(self):
+        original, redacted = upload_document_pair(
+            self.building,
+            Document.Kind.QUOTATION,
+            self.user,
+            _pdf("old.pdf", b"old original"),
+            _pdf("old-r.pdf", b"old redacted"),
+        )
+        o_key, r_key = original.storage_key, redacted.storage_key
+        storage = storages["private"]
+        self.assertTrue(storage.exists(o_key))
+        self.assertTrue(storage.exists(r_key))
+        _age_all_versions(48)
         result = cleanup_stale_prepared_ops(older_than_hours=24)
         self.assertGreaterEqual(result.get("documents_deleted", 0), 1)
+        self.assertGreaterEqual(result.get("storage_purged", 0), 2)
         self.assertEqual(Document.objects.count(), 0)
+        self.assertFalse(storage.exists(o_key))
+        self.assertFalse(storage.exists(r_key))
+
+    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    def test_cleanup_management_command_removes_aged_orphan(self):
+        upload_document_pair(
+            self.building,
+            Document.Kind.QUOTATION,
+            self.user,
+            _pdf("cmd.pdf", b"cmd original"),
+            _pdf("cmd-r.pdf", b"cmd redacted"),
+        )
+        _age_all_versions(48)
+        out = StringIO()
+        call_command("cleanup_stale_prepared_ops", "--older-than-hours", "24", stdout=out)
+        text = out.getvalue()
+        self.assertRegex(text, r"documents_deleted=[1-9]")
+        self.assertEqual(Document.objects.count(), 0)
+
+    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    def test_cleanup_management_command_dry_run_does_not_delete(self):
+        upload_document_pair(
+            self.building,
+            Document.Kind.QUOTATION,
+            self.user,
+            _pdf("dry.pdf", b"dry original"),
+            _pdf("dry-r.pdf", b"dry redacted"),
+        )
+        _age_all_versions(48)
+        out = StringIO()
+        call_command(
+            "cleanup_stale_prepared_ops",
+            "--older-than-hours",
+            "24",
+            "--dry-run",
+            stdout=out,
+        )
+        text = out.getvalue()
+        self.assertIn("dry_run", text)
+        self.assertIn("documents_candidate=", text)
+        self.assertEqual(Document.objects.count(), 1)
