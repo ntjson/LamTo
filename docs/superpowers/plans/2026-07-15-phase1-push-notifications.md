@@ -1651,12 +1651,13 @@ No `TBD`/`add validation`/`similar to Task N`. Task 5 leaves a `collapse_key = N
 ## Out of scope (documented deferrals)
 
 - **The Flutter client** (§6): OS permission prompt, `flutter_secure_storage`, FCM token-refresh re-registration, deep-link routing, duplicate-tolerant navigation. This plan delivers only the backend + `/devices` API the app will call. Flutter logout MUST send `X-Install-Id` (see design decision 8).
-- **Resident API endpoint to *write* push/email preferences (required Flutter/API follow-up).** `/me` returns `push_enabled` (read-only) and the web Account page can set it (§7.5), but the **Flutter Account screen still requires a resident API write endpoint** — do **not** leave this as a silent web-only gap. Follow-up (same Flutter Account work package): add e.g. `PATCH /api/v1/me/notification-preferences` (or equivalent) so the app can set `email_enabled` / `push_enabled` per event code without the staff web UI. Track as explicit Flutter + resident-API follow-up; not implemented in this plan's Tasks 1–8.
+- **Resident API endpoint to *write* push/email preferences.** **Shipped:** `PATCH /api/v1/me/notification-preferences` updates `email_enabled` / `push_enabled` per event code (Flutter Account can call it). `/me` remains the read surface; web Account form still works. Flutter client UI wiring remains out of scope.
 - **Windowed "N new" summary copy.** Aggregation uses `collapse_key` (device shows one) + a daily cap, per §7.3; counting exact "3 khoản chi mới" is deferred (YAGNI beyond the spec's collapse + cap).
 - **Zalo ZNS / a second provider** (§7.1 explicitly not built).
 
 ## Deviations
 
+- Follow-up: shipped `PATCH /me/notification-preferences`, OpenAPI X-Install-Id, seeded ops metric tests, durable `push_sent_device_ids` partial-retry.
 - All-terminal FCM fan-out marks `suppressed:all_tokens_terminal` (not empty last_error SENT) so ops success/daily cap stay honest.
 - Correction residents notified from `finalize_correction_publication` (visibility only then), not only decide-time hook list change.
 - `InvalidArgumentError` imported from `firebase_admin.exceptions` (not messaging) for firebase-admin 7.5.
