@@ -47,27 +47,35 @@ Push is off unless `PUSH_ENABLED` is truthy **and** `FIREBASE_CREDENTIALS` is se
 3. **Payload minimization is server-owned copy (§7.4), the one exception to "server sends no display strings."** The OS renders a push before the app runs, so the server sends a fixed generic Vietnamese title/body per event code (`PUSH_COPY`) — never the delivery's sensitive `subject`/`body`. The deep link is `{type, id}` from an allowlist; unknown entities fall back to the notifications feed.
 4. **Token reassignment is deliberate cross-user write (§7.2).** `register_device` deactivates any *other* active `Device` holding the incoming `fcm_token` before upserting the caller's `(user, install_id)` — possession of the token proves control. `fcm_token` is unique **among active rows** (partial constraint) so a deactivated row may retain its stale token.
 5. **Aggregation via `collapse_key` + a daily cap (§7.3).** Publication pushes share a per-building `collapse_key` (the device shows one) and are suppressed past `PUSH_DAILY_CAP_PER_CATEGORY` sends per user per category per day. No windowed "N new" counting — YAGNI beyond the collapse + cap the spec names.
+6. **Daily-cap calendar day uses project `TIME_ZONE` (`Asia/Ho_Chi_Minh`).** `_daily_push_cap_reached` bounds "today" with `timezone.localdate()` (Django `USE_TZ=True` + `TIME_ZONE`), not UTC `timezone.now().date()`. Documented in Task 6.
+7. **Suppressed deliveries are not true FCM successes.** Worker still marks non-retryable suppressions as `SENT` (queue must not retry; in-app remains authoritative) but sets a structured `last_error` prefix `suppressed:<reason>` (`recipient_ineligible`, `no_active_devices`, `daily_cap`). Ops/metrics count **true FCM success** only as `PUSH`+`SENT` with empty/`last_error` not starting with `suppressed:`; suppressed counts are exposed separately (`push_suppressed`).
+8. **Logout ↔ Device deactivation coupling (§7.2).** `DELETE /devices/{install_id}` remains the explicit deactivation primitive. Additionally: (a) `POST /api/v1/auth/logout` accepts optional header `X-Install-Id` (or JSON body `install_id`); when present for the authenticated user, deactivates that install's Device in the same request as knox token revocation — so a successful mobile logout cannot silently leave that install push-active if the client sends the install id; (b) `POST /api/v1/auth/logout-all` deactivates **all** of the user's active Devices; (c) **Flutter client contract (follow-up):** push-capable installs MUST send `X-Install-Id` on logout (and SHOULD also call `DELETE /devices/{install_id}` as defense-in-depth). Web logout without install_id does not touch Devices (no FCM install). Tests cover logout-with-header deactivates; logout-without leaves device active.
+9. **Stale-device cleanup is invocable, not dead code.** Management command `deactivate_stale_devices` (`--days`, default 180) plus a worker processor batch that calls `deactivate_stale_devices` on the regular worker cycle (same pattern as other ops processors). Ops health exposes `dead_devices` count **and** `stale_device_max_inactive_days` (max whole days since `last_seen_at` among inactive devices, or 0 if none) so ops can see age, not only total inactive count.
+10. **Concurrent token reassignment is race-hardened.** `register_device` deactivates other holders under `transaction.atomic` + `select_for_update()` on conflicting active token rows, then upserts; on partial-unique `IntegrityError` for `device_active_fcm_token_once`, retry once after re-deactivating. Race-oriented test exercises concurrent registrations of the same token (Postgres) or forces the constraint path so two active rows with the same token cannot remain.
+11. **Terminal FCM classification covers all invalid/unregistered/mismatched cases in pinned `firebase-admin>=6,<8`.** `classify_push_error` treats as terminal: `messaging.UnregisteredError`, `messaging.SenderIdMismatchError`, and `messaging.InvalidArgumentError` when the message indicates an invalid/unregistered registration token (plus any `code`/`http_response` patterns the pinned version surfaces for dead tokens). Transient: quota, unavailable, internal, third-party auth, network. Unknown exceptions default to transient (retry then fail).
 
 ## File Structure
 
 **Create:**
-- `src/lamto/notifications/devices.py` — `register_device`, `deactivate_device`, `deactivate_stale_devices`.
+- `src/lamto/notifications/devices.py` — `register_device`, `deactivate_device`, `deactivate_stale_devices` (race-hardened).
 - `src/lamto/notifications/push.py` — `send_push`, `classify_push_error`, `build_push_payload`, `PUSH_COPY`, `DEEP_LINK_TYPES`.
+- `src/lamto/notifications/management/commands/deactivate_stale_devices.py` — scheduled/ops entry for inactivity cleanup.
 - `src/lamto/notifications/tests/test_devices.py`, `test_push_channel.py`, `test_push_worker.py`, `test_push_payload.py`.
 - `src/lamto/api/tests/test_devices.py`.
 - Migrations: `0003_device.py` (Task 1), `0004_push_channel_and_preference.py` (Task 3).
 
 **Modify:**
 - `src/lamto/notifications/models.py` — `Device`, `Channel.PUSH`, `NotificationPreference.push_enabled`.
-- `src/lamto/notifications/services.py` — `DEFAULT_CHANNELS`, `push_enabled_for`, `RESIDENT_PUSH_EVENT_CODES`, `EVENT_WORK_COMPLETED`, queue gating, `_process_push_delivery`, `MAX_PUSH_ATTEMPTS`.
+- `src/lamto/notifications/services.py` — `DEFAULT_CHANNELS`, `push_enabled_for`, `RESIDENT_PUSH_EVENT_CODES`, `EVENT_WORK_COMPLETED`, queue gating, `_process_push_delivery` (suppressed: prefixes), `MAX_PUSH_ATTEMPTS`, daily cap via `localdate()`.
 - `src/lamto/notifications/hooks.py` — `notify_work_rateable`, residents on `notify_correction_status`.
 - `src/lamto/finance/acceptance.py` — call `notify_work_rateable`.
 - `src/lamto/config/settings.py`, `.env.example` — FCM config.
+- `src/lamto/config/worker.py` — processor for `deactivate_stale_devices`.
 - `pyproject.toml` — `firebase-admin`.
-- `src/lamto/api/{serializers,views,urls}.py` — `/devices`.
+- `src/lamto/api/{serializers,views,urls}.py` — `/devices`; logout/logout-all Device coupling.
 - `src/lamto/web/forms/staff.py` — push preference toggles.
 - `src/lamto/api/views.py` (`MeView`), `src/lamto/api/serializers.py` — `push_enabled` in `/me` prefs.
-- `src/lamto/web/views/health.py`, the ops-health template — push metrics.
+- `src/lamto/web/views/health.py`, the ops-health template — push metrics (success vs suppressed, dead count + max inactive age).
 - `src/lamto/api/tests/test_openapi.py`, `tests/isolation/test_cross_building_access.py` — classify `/devices`.
 
 ---
@@ -85,7 +93,7 @@ The per-install device registry and the rotation/reassignment rules (spec §7.2)
 **Interfaces:**
 - Produces:
   - `Device(user, install_id, fcm_token, platform, app_version, active, last_seen_at, created_at)`; `Device.Platform` = `IOS`/`ANDROID`. Unique `(user, install_id)`; unique `fcm_token` among active rows.
-  - `register_device(user, install_id, fcm_token, platform, app_version="") -> Device` — reassigns a token away from other active devices, then upserts `(user, install_id)` active.
+  - `register_device(user, install_id, fcm_token, platform, app_version="") -> Device` — race-hardened reassignment (select_for_update + IntegrityError retry) then upserts `(user, install_id)` active.
   - `deactivate_device(user, install_id) -> int` (rows updated).
   - `deactivate_stale_devices(days=180) -> int`.
 
@@ -147,6 +155,34 @@ class DeviceRegistryTests(TestCase):
         Device.objects.filter(pk=d.pk).update(last_seen_at=timezone.now() - timedelta(days=200))
         assert deactivate_stale_devices(days=180) == 1
         assert Device.objects.get(pk=d.pk).active is False
+
+    def test_concurrent_token_reassignment_leaves_one_active(self):
+        """Race around active-token partial unique: only one active holder remains."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from django.db import connection
+
+        install_a = str(uuid.uuid4())
+        install_b = str(uuid.uuid4())
+        token = f"race-tok-{uuid.uuid4()}"
+
+        def _register(user, install):
+            # Fresh connection per thread (Django TestCase).
+            connection.close()
+            try:
+                return register_device(user, install, token, Device.Platform.ANDROID)
+            finally:
+                connection.close()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(_register, self.user_a, install_a),
+                pool.submit(_register, self.user_b, install_b),
+            ]
+            for f in as_completed(futures):
+                f.result()  # must not raise IntegrityError to the caller
+
+        active = list(Device.objects.filter(fcm_token=token, active=True))
+        assert len(active) == 1
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -211,27 +247,54 @@ from .models import Device
 @transaction.atomic
 def register_device(user, install_id, fcm_token, platform, app_version="") -> Device:
     """Upsert the caller's (user, install_id) device, reassigning the token away
-    from any other active device that currently holds it."""
-    Device.objects.filter(fcm_token=fcm_token, active=True).exclude(
-        user=user, install_id=install_id
-    ).update(active=False)
-    device, _ = Device.objects.update_or_create(
-        user=user,
-        install_id=install_id,
-        defaults={
-            "fcm_token": fcm_token,
-            "platform": platform,
-            "app_version": app_version,
-            "active": True,
-            "last_seen_at": timezone.now(),
-        },
-    )
-    return device
+    from any other active device that currently holds it.
+
+    Race-hardened: locks conflicting active token holders with select_for_update,
+    then upserts. On partial-unique IntegrityError (device_active_fcm_token_once),
+    re-deactivates and retries once.
+    """
+    from django.db import IntegrityError
+
+    def _deactivate_other_holders():
+        list(
+            Device.objects.select_for_update()
+            .filter(fcm_token=fcm_token, active=True)
+            .exclude(user=user, install_id=install_id)
+        )
+        Device.objects.filter(fcm_token=fcm_token, active=True).exclude(
+            user=user, install_id=install_id
+        ).update(active=False)
+
+    def _upsert():
+        device, _ = Device.objects.update_or_create(
+            user=user,
+            install_id=install_id,
+            defaults={
+                "fcm_token": fcm_token,
+                "platform": platform,
+                "app_version": app_version,
+                "active": True,
+                "last_seen_at": timezone.now(),
+            },
+        )
+        return device
+
+    _deactivate_other_holders()
+    try:
+        return _upsert()
+    except IntegrityError:
+        _deactivate_other_holders()
+        return _upsert()
 
 
 def deactivate_device(user, install_id) -> int:
-    """Deactivate one install's device (logout). Returns rows updated."""
+    """Deactivate one install's device (logout / explicit DELETE). Returns rows updated."""
     return Device.objects.filter(user=user, install_id=install_id, active=True).update(active=False)
+
+
+def deactivate_user_devices(user) -> int:
+    """Deactivate all active devices for a user (logout-all). Returns rows updated."""
+    return Device.objects.filter(user=user, active=True).update(active=False)
 
 
 def deactivate_stale_devices(days: int = 180) -> int:
@@ -240,35 +303,73 @@ def deactivate_stale_devices(days: int = 180) -> int:
     return Device.objects.filter(active=True, last_seen_at__lt=cutoff).update(active=False)
 ```
 
+Also create `src/lamto/notifications/management/commands/deactivate_stale_devices.py`:
+
+```python
+from django.core.management.base import BaseCommand
+
+from lamto.notifications.devices import deactivate_stale_devices
+
+
+class Command(BaseCommand):
+    help = "Deactivate push devices unseen for N days (default 180; spec 7.2)."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--days", type=int, default=180)
+
+    def handle(self, *args, **options):
+        n = deactivate_stale_devices(days=options["days"])
+        self.stdout.write(self.style.SUCCESS(f"deactivated={n}"))
+```
+
+Wire a worker processor in `src/lamto/config/worker.py` (append to PROCESSORS):
+
+```python
+def process_stale_devices_batch(*, days: int = 180) -> ProcessorResult:
+    name = "stale_devices"
+    try:
+        from lamto.notifications.devices import deactivate_stale_devices
+
+        n = deactivate_stale_devices(days=days)
+        return ProcessorResult(name=name, ok=True, count=n, detail=f"deactivated={n}")
+    except Exception as exc:
+        logger.exception("worker processor %s failed", name)
+        return ProcessorResult(name=name, ok=False, detail=str(exc))
+```
+
 - [ ] **Step 6: Run to verify it passes**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_devices.py -q`
-Expected: PASS (3 passed).
+Expected: PASS (4 passed, including race test on Postgres).
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add src/lamto/notifications/models.py src/lamto/notifications/devices.py \
-        src/lamto/notifications/migrations/0003_device.py src/lamto/notifications/tests/test_devices.py
+        src/lamto/notifications/migrations/0003_device.py src/lamto/notifications/tests/test_devices.py \
+        src/lamto/notifications/management/commands/deactivate_stale_devices.py \
+        src/lamto/config/worker.py
 git commit -m "feat: push device registry with token rotation and reassignment"
 ```
 
 ---
 
-### Task 2: `POST /devices` + `DELETE /devices/{install_id}`
+### Task 2: `POST /devices` + `DELETE /devices/{install_id}` + logout coupling
 
-Resident API endpoints to register/upsert and deactivate the calling install's device (spec §7.2). User-scoped (knox auth); no tenant context.
+Resident API endpoints to register/upsert and deactivate the calling install's device (spec §7.2). User-scoped (knox auth); no tenant context. Also couple knox logout to Device deactivation so a successful mobile logout cannot silently leave the install push-active.
 
 **Files:**
 - Modify: `src/lamto/api/serializers.py`, `src/lamto/api/views.py`, `src/lamto/api/urls.py`
 - Modify: `src/lamto/api/tests/test_openapi.py`, `tests/isolation/test_cross_building_access.py`
-- Test: `src/lamto/api/tests/test_devices.py`
+- Test: `src/lamto/api/tests/test_devices.py` (and logout coverage in same file or `test_auth.py`)
 
 **Interfaces:**
-- Consumes: `register_device`, `deactivate_device` (Task 1).
+- Consumes: `register_device`, `deactivate_device`, `deactivate_user_devices` (Task 1).
 - Produces:
   - `serializers.DeviceRegisterSerializer` (`install_id`, `fcm_token`, `platform`, `app_version`), `DeviceSerializer` (`install_id`, `platform`, `active`).
   - `views.DeviceRegisterView` at `api:devices` = `devices` (POST); `DeviceDeleteView` at `api:device-delete` = `devices/<str:install_id>` (DELETE).
+  - `LogoutView.post`: after super, if `X-Install-Id` header or body `install_id` present → `deactivate_device(user, install_id)`.
+  - `LogoutAllView.post`: after super → `deactivate_user_devices(user)`.
 
 - [ ] **Step 1: Add the serializers**
 
@@ -388,12 +489,70 @@ class DeviceApiTests(TestCase):
         )
         assert resp.status_code == 200
         assert Device.objects.get(user=other, install_id="o-install").active is False
+
+    def test_logout_with_install_id_deactivates_device(self):
+        install = str(uuid.uuid4())
+        Device.objects.create(
+            user=self.user, install_id=install, fcm_token="logout-tok",
+            platform="ANDROID", active=True, last_seen_at=timezone.now(),
+        )
+        resp = self.client.post(
+            reverse("api:auth-logout"),
+            headers={**self._auth(), "x-install-id": install},
+        )
+        assert resp.status_code == 204
+        assert Device.objects.get(user=self.user, install_id=install).active is False
+
+    def test_logout_without_install_id_leaves_device_active(self):
+        install = str(uuid.uuid4())
+        Device.objects.create(
+            user=self.user, install_id=install, fcm_token="keep-tok",
+            platform="ANDROID", active=True, last_seen_at=timezone.now(),
+        )
+        resp = self.client.post(reverse("api:auth-logout"), headers=self._auth())
+        assert resp.status_code == 204
+        assert Device.objects.get(user=self.user, install_id=install).active is True
+```
+
+Also update `LogoutView` / `LogoutAllView` in `src/lamto/api/views.py`:
+
+```python
+class LogoutView(KnoxLogoutView):
+    authentication_classes = [ResidentTokenAuthentication]
+
+    @extend_schema(
+        request=None,
+        responses={204: None, **problem_responses(401)},
+    )
+    def post(self, request, format=None):
+        install_id = request.headers.get("X-Install-Id") or request.data.get("install_id")
+        response = super().post(request, format)
+        if install_id:
+            from lamto.notifications.devices import deactivate_device
+
+            deactivate_device(request.user, str(install_id))
+        return response
+
+
+class LogoutAllView(KnoxLogoutAllView):
+    authentication_classes = [ResidentTokenAuthentication]
+
+    @extend_schema(
+        request=None,
+        responses={204: None, **problem_responses(401)},
+    )
+    def post(self, request, format=None):
+        response = super().post(request, format)
+        from lamto.notifications.devices import deactivate_user_devices
+
+        deactivate_user_devices(request.user)
+        return response
 ```
 
 - [ ] **Step 5: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/api/tests/test_devices.py -q`
-Expected: PASS (2 passed).
+Expected: PASS (4 passed).
 
 - [ ] **Step 6: Regenerate schema, classify the routes, run gates**
 
@@ -749,11 +908,28 @@ def send_push(token, *, title, body, data, collapse_key=None) -> str:
 
 
 def classify_push_error(exc) -> str:
-    """Terminal (dead token -> deactivate device) vs transient (retry) (spec 7.3)."""
+    """Terminal (dead token -> deactivate device) vs transient (retry) (spec 7.3).
+
+    Terminal covers all invalid/unregistered/mismatched-token cases exposed by
+    pinned firebase-admin>=6,<8: UnregisteredError, SenderIdMismatchError, and
+    InvalidArgumentError for bad registration tokens. Everything else is transient.
+    """
     from firebase_admin import messaging
 
     if isinstance(exc, (messaging.UnregisteredError, messaging.SenderIdMismatchError)):
         return "terminal"
+    if isinstance(exc, messaging.InvalidArgumentError):
+        msg = str(exc).lower()
+        if any(
+            needle in msg
+            for needle in (
+                "registration token",
+                "not a valid fcm",
+                "invalid registration",
+                "requested entity was not found",
+            )
+        ):
+            return "terminal"
     return "transient"
 
 
@@ -863,7 +1039,8 @@ class PushWorkerTests(TestCase):
         delivery = _push_delivery(self.resident, self.building)
         result = process_delivery(delivery)
         assert send.call_count == 0
-        assert result.status == NotificationDelivery.Status.SENT  # suppressed; in-app authoritative
+        assert result.status == NotificationDelivery.Status.SENT  # non-retryable; in-app authoritative
+        assert result.last_error.startswith("suppressed:")  # not a true FCM success
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -901,21 +1078,25 @@ def _recipient_can_receive_push(delivery) -> bool:
     return active_occupancies(user).filter(unit__building_id=delivery.building_id).exists()
 
 
+# Structured suppress markers: do not count as true FCM success in ops metrics.
+PUSH_SUPPRESSED_PREFIX = "suppressed:"
+
+
 def _process_push_delivery(delivery):
     from lamto.notifications.models import Device
     from lamto.notifications.push import build_push_payload, classify_push_error, send_push
 
     now = timezone.now()
     if not _recipient_can_receive_push(delivery):
-        delivery.status = NotificationDelivery.Status.SENT  # suppressed; in-app feed holds it
-        delivery.last_error = "recipient ineligible at send time"
+        delivery.status = NotificationDelivery.Status.SENT  # non-retryable; in-app feed holds it
+        delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}recipient_ineligible"
         delivery.save(update_fields=["status", "last_error", "updated_at"])
         return delivery
 
     devices = list(Device.objects.filter(user=delivery.recipient, active=True))
     if not devices:
         delivery.status = NotificationDelivery.Status.SENT
-        delivery.last_error = "no active devices"
+        delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}no_active_devices"
         delivery.save(update_fields=["status", "last_error", "updated_at"])
         return delivery
 
@@ -1039,12 +1220,14 @@ def _daily_push_cap_reached(delivery) -> bool:
     if code not in _AGGREGATED_PUSH_CODES:
         return False
     cap = getattr(settings, "PUSH_DAILY_CAP_PER_CATEGORY", 10)
+    today = timezone.localdate()  # settings.TIME_ZONE = Asia/Ho_Chi_Minh
     sent_today = NotificationDelivery.objects.filter(
         recipient=delivery.recipient,
         channel=NotificationDelivery.Channel.PUSH,
         event_code=code,
         status=NotificationDelivery.Status.SENT,
-        updated_at__date=timezone.now().date(),
+        last_error="",  # true FCM success only; suppressions do not consume cap
+        updated_at__date=today,
     ).count()
     return sent_today >= cap
 ```
@@ -1054,7 +1237,7 @@ In `_process_push_delivery`, replace `collapse_key = None  # set for aggregated 
 ```python
     if _daily_push_cap_reached(delivery):
         delivery.status = NotificationDelivery.Status.SENT  # capped; in-app feed holds it
-        delivery.last_error = "daily push cap reached"
+        delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}daily_cap"
         delivery.save(update_fields=["status", "last_error", "updated_at"])
         return delivery
 
@@ -1064,10 +1247,35 @@ In `_process_push_delivery`, replace `collapse_key = None  # set for aggregated 
 
 (Remove the now-duplicate `title, body, data = build_push_payload(delivery)` / `collapse_key = None` lines that preceded the loop.)
 
+Daily-cap "today" uses project timezone (`TIME_ZONE = Asia/Ho_Chi_Minh`); replace the date filter:
+
+```python
+def _daily_push_cap_reached(delivery) -> bool:
+    from django.conf import settings
+
+    code = delivery.event_code or _event_code_from_key(delivery.event_key)
+    if code not in _AGGREGATED_PUSH_CODES:
+        return False
+    cap = getattr(settings, "PUSH_DAILY_CAP_PER_CATEGORY", 10)
+    today = timezone.localdate()  # Asia/Ho_Chi_Minh calendar day (settings.TIME_ZONE)
+    # Count only true FCM successes (empty last_error), not suppressions.
+    sent_today = NotificationDelivery.objects.filter(
+        recipient=delivery.recipient,
+        channel=NotificationDelivery.Channel.PUSH,
+        event_code=code,
+        status=NotificationDelivery.Status.SENT,
+        last_error="",
+        updated_at__date=today,
+    ).count()
+    return sent_today >= cap
+```
+
+In the daily-cap test, assert `result.last_error.startswith("suppressed:")` and that true-success cap ignores suppressed rows.
+
 - [ ] **Step 4: Run the tests**
 
 Run: `.venv/bin/python -m pytest src/lamto/notifications/tests/test_push_worker.py -q`
-Expected: PASS (4 passed).
+Expected: PASS (4+ passed).
 
 - [ ] **Step 5: Commit**
 
@@ -1234,7 +1442,7 @@ Resident push preferences on the Account page (§7.5), `push_enabled` surfaced i
 
 **Interfaces:**
 - Consumes: `RESIDENT_PUSH_EVENT_CODES`, `NotificationPreference.push_enabled`.
-- Produces: `NotificationPreferenceForm` push toggles; `/me` prefs include `push_enabled`; ops-health `push_failures`, `dead_devices`.
+- Produces: `NotificationPreferenceForm` push toggles; `/me` prefs include `push_enabled`; ops-health `push_failures`, `push_sent_success`, `push_suppressed`, `dead_devices`, `stale_device_max_inactive_days`.
 
 - [ ] **Step 1: Add push toggles to the preference form**
 
@@ -1295,23 +1503,46 @@ In `src/lamto/api/views.py`, in `MeView.get`, include `push_enabled` in the pref
 In `src/lamto/web/views/health.py`, where `notification_failures` is computed, add push-specific counts and a dead-device count:
 
 ```python
-    push_failures = NotificationDelivery.objects.filter(
-        channel=NotificationDelivery.Channel.PUSH,
+    from django.db.models import Max
+    from django.db.models.functions import Now
+    from lamto.notifications.models import Device
+    from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
+
+    push_qs = NotificationDelivery.objects.filter(channel=NotificationDelivery.Channel.PUSH)
+    push_failures = push_qs.filter(
         status__in=[NotificationDelivery.Status.FAILED, NotificationDelivery.Status.DEAD],
     ).count()
-    from lamto.notifications.models import Device
-
+    push_sent_success = push_qs.filter(
+        status=NotificationDelivery.Status.SENT, last_error=""
+    ).count()
+    push_suppressed = push_qs.filter(
+        status=NotificationDelivery.Status.SENT, last_error__startswith=PUSH_SUPPRESSED_PREFIX
+    ).count()
     dead_devices = Device.objects.filter(active=False).count()
+    # Max whole days since last_seen_at among inactive devices (age signal, not only count).
+    oldest = (
+        Device.objects.filter(active=False)
+        .order_by("last_seen_at")
+        .values_list("last_seen_at", flat=True)
+        .first()
+    )
+    if oldest is None:
+        stale_device_max_inactive_days = 0
+    else:
+        stale_device_max_inactive_days = max(0, (timezone.now() - oldest).days)
 ```
 
-Add `push_failures` and `dead_devices` to the `ops_health` render context, and render them in the ops-health template (add two rows next to the existing notification-failure metric):
+Add `push_failures`, `push_sent_success`, `push_suppressed`, `dead_devices`, and `stale_device_max_inactive_days` to the ops-health context/template:
 
 ```html
       <div><dt>Push failures</dt><dd>{{ push_failures }}</dd></div>
+      <div><dt>Push sent (FCM success)</dt><dd>{{ push_sent_success }}</dd></div>
+      <div><dt>Push suppressed (not FCM success)</dt><dd>{{ push_suppressed }}</dd></div>
       <div><dt>Inactive devices (dead tokens)</dt><dd>{{ dead_devices }}</dd></div>
+      <div><dt>Stale device max inactive age (days)</dt><dd>{{ stale_device_max_inactive_days }}</dd></div>
 ```
 
-(Find the ops-health template referenced by `ops_health` — it renders the existing `notification_failures` metric in a `<dl>`; add the two rows there.)
+(Find the ops-health template referenced by `ops_health` — it renders the existing `notification_failures` metric in a `<dl>`; add the rows there.)
 
 - [ ] **Step 4: Write the tests**
 
@@ -1419,7 +1650,11 @@ No `TBD`/`add validation`/`similar to Task N`. Task 5 leaves a `collapse_key = N
 
 ## Out of scope (documented deferrals)
 
-- **The Flutter client** (§6): OS permission prompt, `flutter_secure_storage`, FCM token-refresh re-registration, deep-link routing, duplicate-tolerant navigation. This plan delivers only the backend + `/devices` API the app will call.
-- **An API endpoint to *write* push/email preferences.** `/me` now returns `push_enabled` (read); the web Account page sets it (§7.5). A resident-API preferences-write endpoint is not in §3.3's endpoint list and lands with the Flutter Account screen.
+- **The Flutter client** (§6): OS permission prompt, `flutter_secure_storage`, FCM token-refresh re-registration, deep-link routing, duplicate-tolerant navigation. This plan delivers only the backend + `/devices` API the app will call. Flutter logout MUST send `X-Install-Id` (see design decision 8).
+- **Resident API endpoint to *write* push/email preferences (required Flutter/API follow-up).** `/me` returns `push_enabled` (read-only) and the web Account page can set it (§7.5), but the **Flutter Account screen still requires a resident API write endpoint** — do **not** leave this as a silent web-only gap. Follow-up (same Flutter Account work package): add e.g. `PATCH /api/v1/me/notification-preferences` (or equivalent) so the app can set `email_enabled` / `push_enabled` per event code without the staff web UI. Track as explicit Flutter + resident-API follow-up; not implemented in this plan's Tasks 1–8.
 - **Windowed "N new" summary copy.** Aggregation uses `collapse_key` (device shows one) + a daily cap, per §7.3; counting exact "3 khoản chi mới" is deferred (YAGNI beyond the spec's collapse + cap).
 - **Zalo ZNS / a second provider** (§7.1 explicitly not built).
+
+## Deviations
+
+(None yet; implementers append terse one-bullet notes here only when intentionally changing the plan.)
