@@ -1,6 +1,6 @@
 from django.urls import path
 
-from lamto.web.views import auditor, board, maintenance, operator, representative, resident
+from lamto.web.views import auditor, board, fund, maintenance, operator, representative, resident
 from lamto.web.views import exports, health, security, staff_common
 
 app_name = "web"
@@ -73,6 +73,11 @@ urlpatterns = [
     # Auditor
     path("s/audit/", auditor.audit_search, name="audit-search"),
     path("s/audit/export/", exports.audit_export, name="audit-export"),
+    # Fund ops (record/verify handlers filled in Tasks 4–5)
+    path("s/fund/", fund.fund_home, name="fund-home"),
+    path("s/fund/record/", fund.fund_record, name="fund-record"),
+    path("s/fund/verify/<int:pk>/", fund.fund_verify, name="fund-verify"),
+
     # Ops health / pilot metrics (tech admin)
     path("s/ops/health/", health.ops_health, name="ops-health"),
     path("s/ops/metrics/", health.pilot_metrics, name="pilot-metrics"),

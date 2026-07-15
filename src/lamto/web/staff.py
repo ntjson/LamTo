@@ -167,6 +167,9 @@ def nav_items_for(membership) -> list[dict]:
                 "capability": "audit.export",
             }
         )
+    fund_caps = {"fund.record", "fund.verify"}
+    if caps & fund_caps and "web:fund-home" not in seen_urls:
+        items.append({"label": "Fund", "url_name": "web:fund-home", "capability": "fund.record"})
     return items
 
 

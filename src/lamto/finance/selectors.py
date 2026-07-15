@@ -153,3 +153,106 @@ def ledger_entry_proof(entry):
         "emergency": payload.get("emergency"),
         "evidence_level": evidence_level(entry.snapshot.outbox_event.status),
     }
+
+
+def pending_fund_verification_entries(building_id):
+    """Source fund entries still awaiting verification (spec 4.3.2).
+
+    Distinct from verified_fund_entries — never reuse that selector here.
+    Source types only; rows with a verification relation are excluded.
+    """
+    from lamto.finance.fund import SOURCE_ENTRY_TYPES
+
+    return (
+        MaintenanceFundEntry.objects.filter(
+            fund__building_id=building_id,
+            entry_type__in=SOURCE_ENTRY_TYPES,
+            verification__isnull=True,
+        )
+        .select_related("recorder", "outbox_event")
+        .order_by("-recorded_at", "-pk")
+    )
+
+
+def pending_reconciliation_proposals(building_id):
+    """Staff reconciliation aid: publication-eligible but not yet published.
+
+    Mirrors settled verification/publication eligibility used by
+    prepare_publication — not merely payment.decision == VERIFIED:
+    - payment verification decision VERIFIED
+    - payment external_status COMPLETED
+    - proposal has current_version; work order not drill
+    - no PublishedLedgerEntry and no PublicationSnapshot yet
+    - prerequisite outbox events settled (proposal version, board+rep
+      approvals for NORMAL mode, acceptance, payment, verification)
+    """
+    from lamto.accounts.models import Organization
+    from lamto.evidence.models import SETTLED_STATUSES
+    from lamto.finance.models import (
+        ApprovalDecision,
+        PaymentEvidence,
+        PaymentVerification,
+        Proposal,
+        PublicationSnapshot,
+        PublishedLedgerEntry,
+    )
+
+    published_proposal_ids = PublishedLedgerEntry.objects.filter(
+        case__building_id=building_id, proposal__isnull=False
+    ).values("proposal_id")
+    snapshotted_ids = PublicationSnapshot.objects.filter(
+        proposal__work_order__case__building_id=building_id
+    ).values("proposal_id")
+
+    qs = (
+        Proposal.objects.filter(
+            work_order__case__building_id=building_id,
+            work_order__drill=False,
+            current_version__isnull=False,
+            work_order__acceptance__payment__verification__decision=PaymentVerification.Decision.VERIFIED,
+            work_order__acceptance__payment__external_status=PaymentEvidence.ExternalStatus.COMPLETED,
+            current_version__outbox_event__status__in=SETTLED_STATUSES,
+            work_order__acceptance__outbox_event__status__in=SETTLED_STATUSES,
+            work_order__acceptance__payment__outbox_event__status__in=SETTLED_STATUSES,
+            work_order__acceptance__payment__verification__outbox_event__status__in=SETTLED_STATUSES,
+        )
+        .exclude(pk__in=published_proposal_ids)
+        .exclude(pk__in=snapshotted_ids)
+        .select_related("current_version", "work_order")
+        .prefetch_related(
+            "current_version__approval_decisions__outbox_event",
+            "current_version__approval_decisions__membership__organization",
+        )
+        .order_by("-created_at")
+    )
+    eligible = []
+    for proposal in qs:
+        if proposal.mode == Proposal.Mode.NORMAL:
+            approvals = list(proposal.current_version.approval_decisions.all())
+            board = next(
+                (
+                    a
+                    for a in approvals
+                    if a.decision == ApprovalDecision.Decision.APPROVE
+                    and a.membership.organization.kind == Organization.Kind.BOARD
+                    and a.outbox_event_id
+                    and a.outbox_event.status in SETTLED_STATUSES
+                ),
+                None,
+            )
+            rep = next(
+                (
+                    a
+                    for a in approvals
+                    if a.decision == ApprovalDecision.Decision.APPROVE
+                    and a.membership.organization.kind == Organization.Kind.RESIDENT_REP
+                    and a.outbox_event_id
+                    and a.outbox_event.status in SETTLED_STATUSES
+                ),
+                None,
+            )
+            if board is None or rep is None:
+                continue
+        eligible.append(proposal)
+    return eligible
+
