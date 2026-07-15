@@ -40,3 +40,38 @@ class PushQueueGatingTests(TestCase):
         NotificationPreference.objects.create(user=self.resident, event_code=EVENT_PUBLICATION, push_enabled=False)
         queue_notification(self.resident, f"{EVENT_PUBLICATION}:entry:3", "s", "b", event_code=EVENT_PUBLICATION, building=self.building)
         assert self._push_rows().count() == 0
+
+    def test_work_rateable_notifies_reporting_resident(self):
+        from lamto.notifications.hooks import notify_work_rateable
+        from lamto.notifications.services import EVENT_WORK_COMPLETED
+        from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
+        from lamto.maintenance.models import WorkOrder
+        import tempfile
+        from django.test import override_settings
+
+        with override_settings(
+            STORAGES={
+                "default": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": tempfile.mkdtemp()}},
+                "private": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": tempfile.mkdtemp()}},
+                "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+            }
+        ):
+            seed = seed_pilot_world(building_name="Rate B", email_prefix="rate", create_sample_report=False)
+            d = PilotDomainDriver(seed)
+            d.login(None, "resident").submit_report("Lift noise", "Lift 2")
+            d.login(None, "operator").confirm_triage_and_create_paid_work_order()
+            d.login(None, "operator").submit_signed_proposal()
+            d.login(None, "board_approver").approve_proposal()
+            d.login(None, "resident_representative").coapprove_proposal()
+            d.login(None, "maintenance").complete_assigned_work()
+            d.login(None, "board_payment_recorder").accept_and_record_payment()
+            d.confirm_all_chain_events()
+            work = WorkOrder.objects.get(case__building=seed.building)
+            from lamto.finance.models import AcceptanceRecord
+            record = AcceptanceRecord.objects.get(work_order=work)
+            # notify_users queues via transaction.on_commit; fire it in-test.
+            with self.captureOnCommitCallbacks(execute=True):
+                notify_work_rateable(record)
+            assert NotificationDelivery.objects.filter(
+                recipient=seed.users["resident"], event_code=EVENT_WORK_COMPLETED,
+            ).exists()

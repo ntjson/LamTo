@@ -21,6 +21,7 @@ from lamto.notifications.services import (
     EVENT_TRIAGE_STATUS,
     EVENT_WORK_ACCEPTED,
     EVENT_WORK_ASSIGNED,
+    EVENT_WORK_COMPLETED,
     notify_users,
 )
 
@@ -184,6 +185,26 @@ def notify_work_accepted(record):
     )
 
 
+def notify_work_rateable(record):
+    """Prompt the reporting residents to rate completed work (spec 7.4)."""
+    from lamto.maintenance.models import CaseReport
+
+    work_order = record.work_order
+    building_id = work_order.case.building_id
+    residents = [
+        link.report.reporter
+        for link in CaseReport.objects.filter(case=work_order.case).select_related("report__reporter")
+    ]
+    notify_users(
+        residents,
+        event_key=f"{EVENT_WORK_COMPLETED}:work:{work_order.pk}",
+        subject="Work completed",
+        body=f"Work order #{work_order.pk} is complete — please rate it.",
+        event_code=EVENT_WORK_COMPLETED,
+        building=building_id,
+    )
+
+
 def notify_payment_recorded(payment):
     building_id = payment.acceptance.work_order.case.building_id
     recipients = _users_with_capability(building_id, "payment.verify") + [
@@ -254,6 +275,15 @@ def notify_correction_status(correction, status_label: str):
         + _users_with_capability(building_id, "correction.approve")
         + _users_with_capability(building_id, "correction.create")
     )
+    if getattr(correction, "is_resident_visible", False):
+        from lamto.accounts.models import ResidentOccupancy
+
+        recipients += [
+            o.user
+            for o in ResidentOccupancy.objects.filter(
+                unit__building_id=building_id, active=True
+            ).select_related("user")
+        ]
     notify_users(
         recipients,
         event_key=f"{EVENT_CORRECTION_STATUS}:correction:{correction.pk}:{status_label}",

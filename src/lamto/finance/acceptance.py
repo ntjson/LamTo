@@ -281,9 +281,10 @@ def accept_work(
         },
     )
     try:
-        from lamto.notifications.hooks import notify_work_accepted
+        from lamto.notifications.hooks import notify_work_accepted, notify_work_rateable
 
         notify_work_accepted(record)
+        notify_work_rateable(record)
     except Exception:
         pass
     return record
