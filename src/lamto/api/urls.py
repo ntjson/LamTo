@@ -25,4 +25,5 @@ urlpatterns = [
         views.NotificationReadView.as_view(),
         name="notification-read",
     ),
+    path("documents/<str:token>", views.DocumentDownloadView.as_view(), name="document-download"),
 ]

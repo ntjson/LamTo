@@ -58,6 +58,22 @@ def _read_stored_version(version):
     return storage.open(version.storage_key, "rb").chunks()
 
 
+def read_version_bytes(version) -> bytes:
+    """Read a stored version and verify its sha256. Raises DocumentIntegrityError.
+
+    Used by the resident API download path after its own authorization; the staff
+    ``authorize_download`` keeps its distinct 'unavailable' vs 'integrity_mismatch'
+    audit branches and is not routed through this reader.
+    """
+    try:
+        data = b"".join(_read_stored_version(version))
+    except Exception as error:
+        raise DocumentIntegrityError("Document storage is unavailable.") from error
+    if hashlib.sha256(data).hexdigest() != version.sha256:
+        raise DocumentIntegrityError("Document integrity check failed.")
+    return data
+
+
 def authorize_download(user, membership_id, version) -> bytes:
     membership = (
         OrganizationMembership.objects.select_related("organization")

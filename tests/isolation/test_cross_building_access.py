@@ -122,7 +122,9 @@ API_OWNERSHIP_LIST = {
 }
 
 # Explicitly non-tenant / non-walked routes (none in Phase 0).
-API_EXEMPT = {}
+API_EXEMPT = {
+    "api:document-download": "signed-token download; authorization re-runs at redemption (see test_downloads)",
+}
 
 # Back-compat aliases used by walk helpers (brief Step 1 names).
 API_RESIDENT_CASES = API_TENANT_OBJECT

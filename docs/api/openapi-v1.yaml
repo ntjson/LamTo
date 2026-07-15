@@ -85,6 +85,46 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Authentication required or failed (code=not_authenticated or
             authentication_failed).
+  /api/v1/documents/{token}:
+    get:
+      operationId: documents_retrieve
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - documents
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
   /api/v1/fund/summary:
     get:
       operationId: fund_summary_retrieve
@@ -1007,7 +1047,10 @@ components:
           type: string
         sha256:
           type: string
+        download_url:
+          type: string
       required:
+      - download_url
       - filename
       - label
       - sha256
@@ -1104,7 +1147,10 @@ components:
           type: string
         sha256:
           type: string
+        download_url:
+          type: string
       required:
+      - download_url
       - filename
       - id
       - sha256

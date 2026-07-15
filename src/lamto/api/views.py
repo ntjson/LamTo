@@ -1,8 +1,12 @@
 """Resident API views (spec 3). Resident-only; staff stay on the /s/ web surface."""
 
 from django.contrib.auth import authenticate
+from django.core import signing
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import HttpResponse
+from django.urls import reverse
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from knox.models import AuthToken
 from knox.views import LogoutAllView as KnoxLogoutAllView
@@ -20,6 +24,7 @@ from lamto.accounts.security import (
 from lamto.accounts.tenancy import active_occupancies
 from lamto.api import problems
 from lamto.api.authentication import ResidentTokenAuthentication
+from lamto.api.downloads import DOWNLOAD_MAX_AGE, DOWNLOAD_SALT, issue_download_token, resident_can_download
 from lamto.api.occupancy import OCCUPANCY_HEADER_PARAMETER, resolve_api_occupancy
 from lamto.api.problems import problem_responses
 from lamto.api.serializers import (
@@ -42,6 +47,8 @@ from lamto.api.serializers import (
 )
 from lamto.notifications.models import NotificationDelivery
 from lamto.notifications.services import mark_notification_read, resident_feed
+from lamto.documents.access import DocumentIntegrityError, read_version_bytes
+from lamto.documents.models import DocumentVersion
 from lamto.documents.services import DocumentUploadQuarantined, DocumentUploadRejected
 from lamto.api.services import (
     INVALID_CREDENTIALS_DETAIL,
@@ -264,7 +271,16 @@ class LedgerDetailView(APIView):
                 if verification is not None
                 else None
             ),
-            "redacted_documents": detail["redacted_docs"],
+            "redacted_documents": [
+                {
+                    **doc,
+                    "download_url": reverse(
+                        "api:document-download",
+                        args=[issue_download_token(request.user.pk, doc["version_id"])],
+                    ),
+                }
+                for doc in detail["redacted_docs"]
+            ],
             "corrections": [
                 {
                     "id": correction.pk,
@@ -381,7 +397,13 @@ class ReportDetailView(APIView):
         )
         if report is None:
             raise exceptions.NotFound("Report not found.")
-        return Response(ReportDetailSerializer(resident_report_timeline(report)).data)
+        timeline = resident_report_timeline(report)
+        for photo in timeline["photos"]:
+            photo["download_url"] = reverse(
+                "api:document-download",
+                args=[issue_download_token(request.user.pk, photo["id"])],
+            )
+        return Response(ReportDetailSerializer(timeline).data)
 
 
 class ReportPhotoUploadView(APIView):
@@ -405,10 +427,45 @@ class ReportPhotoUploadView(APIView):
             raise exceptions.ValidationError(error.messages)
         except DjangoPermissionDenied:
             raise exceptions.PermissionDenied("Active occupancy in the report building is required.")
+        download_url = reverse(
+            "api:document-download",
+            args=[issue_download_token(request.user.pk, version.pk)],
+        )
         return Response(
-            ReportPhotoSerializer({"id": version.pk, "filename": version.filename, "sha256": version.sha256}).data,
+            ReportPhotoSerializer(
+                {
+                    "id": version.pk,
+                    "filename": version.filename,
+                    "sha256": version.sha256,
+                    "download_url": download_url,
+                }
+            ).data,
             status=201,
         )
+
+
+class DocumentDownloadView(APIView):
+    @extend_schema(responses={200: OpenApiTypes.BINARY, **problem_responses(401, 403, 404)})
+    def get(self, request, token):
+        try:
+            payload = signing.loads(token, salt=DOWNLOAD_SALT, max_age=DOWNLOAD_MAX_AGE)
+        except signing.BadSignature:
+            raise exceptions.NotFound("Document not found.")
+        if payload.get("u") != request.user.pk:
+            raise exceptions.NotFound("Document not found.")
+        version = (
+            DocumentVersion.objects.select_related("document").filter(pk=payload.get("v")).first()
+        )
+        if version is None or not resident_can_download(request.user, version):
+            raise exceptions.NotFound("Document not found.")
+        try:
+            data = read_version_bytes(version)
+        except DocumentIntegrityError:
+            raise exceptions.NotFound("Document not found.")
+        response = HttpResponse(data, content_type=version.content_type)
+        response["Cache-Control"] = "private, no-store"
+        response["Content-Disposition"] = f'inline; filename="{version.filename}"'
+        return response
 
 
 class WorkRatingView(APIView):

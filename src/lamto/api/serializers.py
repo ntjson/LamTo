@@ -101,6 +101,7 @@ class RedactedDocumentSerializer(serializers.Serializer):
     label = serializers.CharField()
     filename = serializers.CharField()
     sha256 = serializers.CharField()
+    download_url = serializers.CharField()
 
 
 class CorrectionSerializer(serializers.Serializer):
@@ -167,7 +168,7 @@ class ReportPhotoSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     filename = serializers.CharField()
     sha256 = serializers.CharField()
-    # download_url added in Task 8.
+    download_url = serializers.CharField()
 
 
 class ReportPhotoUploadSerializer(serializers.Serializer):

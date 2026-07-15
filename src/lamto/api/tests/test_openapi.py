@@ -64,6 +64,9 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/notifications/{id}/read" in content
             or "/api/v1/notifications/{pk}/read" in content
         ), "notification mark-read route missing from committed schema"
+        assert "/api/v1/documents/" in content, (
+            "document download route missing from committed schema"
+        )
 
 
     def test_schema_includes_rfc9457_problem_component(self):

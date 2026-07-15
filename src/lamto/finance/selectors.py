@@ -112,6 +112,7 @@ def ledger_entry_proof(entry):
                         "label": label,
                         "filename": version_obj.filename,
                         "sha256": version_obj.sha256,
+                        "version_id": version_obj.pk,
                     }
                 )
     proof_redacted = entry.payment.proof_redacted
@@ -121,6 +122,7 @@ def ledger_entry_proof(entry):
                 "label": "Payment proof (redacted)",
                 "filename": proof_redacted.filename,
                 "sha256": proof_redacted.sha256,
+                "version_id": proof_redacted.pk,
             }
         )
     events = [
