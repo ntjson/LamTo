@@ -7,7 +7,7 @@ from lamto.accounts.models import OrganizationMembership
 from lamto.finance.acceptance import accept_work
 from lamto.finance.approvals import decide_proposal
 from lamto.finance.emergencies import authorize_emergency, decide_emergency
-from lamto.finance.models import ApprovalDecision, PaymentVerification
+from lamto.finance.models import ApprovalDecision, MaintenanceFundEntry, PaymentVerification
 from lamto.finance.payments import record_payment, verify_payment
 from lamto.maintenance.models import BuildingLocation
 from lamto.maintenance.triage import confirm_triage
@@ -327,4 +327,31 @@ class SignProposalForm(SignedDecisionForm):
     contractor_name = forms.CharField(max_length=255, widget=forms.HiddenInput())
     quotation_original_id = forms.IntegerField(widget=forms.HiddenInput())
     proposal_id = forms.IntegerField(widget=forms.HiddenInput())
+
+
+class RecordFundSourceForm(forms.Form):
+    """Fund source draft; the evidence pair uploads on prepare."""
+
+    entry_type = forms.ChoiceField(
+        choices=[
+            (MaintenanceFundEntry.EntryType.OPENING_BALANCE, "Opening balance"),
+            (MaintenanceFundEntry.EntryType.INFLOW, "Inflow"),
+        ],
+        widget=forms.Select(attrs={"class": "input"}),
+    )
+    amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
+    evidence_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    evidence_redacted = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+
+
+class SignFundSourceForm(SignedDecisionForm):
+    """Signed submit of a prepared fund source. Hidden fields pin the exact
+    signed payload (id, amount, evidence hashes, timestamp)."""
+
+    entry_type = forms.CharField(max_length=32, widget=forms.HiddenInput())
+    amount_vnd = forms.IntegerField(min_value=1, widget=forms.HiddenInput())
+    evidence_original_id = forms.IntegerField(widget=forms.HiddenInput())
+    evidence_redacted_id = forms.IntegerField(widget=forms.HiddenInput())
+    fund_entry_id = forms.IntegerField(widget=forms.HiddenInput())
+    entry_timestamp = forms.CharField(max_length=40, widget=forms.HiddenInput())
 

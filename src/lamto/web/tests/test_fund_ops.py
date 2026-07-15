@@ -13,6 +13,7 @@ from eth_account import Account
 from eth_account.messages import encode_typed_data
 
 from lamto.accounts.security import RECENT_REAUTH_KEY
+from lamto.documents.models import DocumentVersion
 from lamto.finance.models import MaintenanceFundEntry
 from lamto.finance.selectors import pending_reconciliation_proposals
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
@@ -119,3 +120,95 @@ class FundHomeTests(TestCase):
         seed = seed_pilot_world(building_name="Fund Home Deny", email_prefix="fhd")
         self._login(seed, "maintenance")
         self.assertEqual(self.client.get(reverse("web:fund-home")).status_code, 403)
+
+
+@override_settings(
+    ROOT_URLCONF="lamto.config.urls",
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "private": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+)
+class FundRecordTests(TestCase):
+    def _login(self, seed, role_key):
+        membership = seed.roles[role_key]
+        self.client.force_login(membership.user)
+        device = TOTPDevice.objects.create(
+            user=membership.user, name="t", confirmed=True, key=random_hex()
+        )
+        session = self.client.session
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session[RECENT_REAUTH_KEY] = time.time()
+        session["active_membership_id"] = membership.pk
+        session.save()
+        return membership
+
+    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    def test_prepare_then_sign_records_inflow(self):
+        from datetime import datetime
+
+        from lamto.finance.fund import build_fund_source_evidence_typed_data, get_or_create_fund
+
+        seed = seed_pilot_world(building_name="Fund Rec B", email_prefix="fr")
+        recorder = self._login(seed, "fund_recorder")
+        account = seed.accounts[recorder.pk]
+        url = reverse("web:fund-record")
+
+        prepare = self.client.post(
+            url,
+            {
+                "action": "prepare",
+                "entry_type": MaintenanceFundEntry.EntryType.INFLOW,
+                "amount_vnd": 2_000_000,
+                "evidence_original": _pdf("e.pdf", b"orig"),
+                "evidence_redacted": _pdf("er.pdf", b"redacted differs"),
+            },
+        )
+        self.assertEqual(prepare.status_code, 200)
+        self.assertContains(prepare, "data-signed-form")
+        sign = prepare.context["sign_form"].initial
+
+        fund = get_or_create_fund(seed.building)
+        original = DocumentVersion.objects.get(pk=sign["evidence_original_id"])
+        redacted = DocumentVersion.objects.get(pk=sign["evidence_redacted_id"])
+        ts = datetime.fromisoformat(sign["entry_timestamp"])
+        typed = build_fund_source_evidence_typed_data(
+            fund,
+            recorder,
+            sign["fund_entry_id"],
+            MaintenanceFundEntry.EntryType.INFLOW,
+            2_000_000,
+            original,
+            redacted,
+            sign["event_id"],
+            timestamp=ts,
+        )
+        signature = Account.sign_message(
+            encode_typed_data(full_message=typed), account.key
+        ).signature.hex()
+
+        submit = self.client.post(
+            url,
+            {
+                "action": "submit",
+                "entry_type": MaintenanceFundEntry.EntryType.INFLOW,
+                "amount_vnd": 2_000_000,
+                "evidence_original_id": original.pk,
+                "evidence_redacted_id": redacted.pk,
+                "fund_entry_id": sign["fund_entry_id"],
+                "entry_timestamp": sign["entry_timestamp"],
+                "event_id": sign["event_id"],
+                "signature": signature,
+            },
+        )
+        self.assertRedirects(submit, reverse("web:fund-home"))
+        entry = MaintenanceFundEntry.objects.get(pk=sign["fund_entry_id"])
+        self.assertEqual(entry.entry_type, MaintenanceFundEntry.EntryType.INFLOW)
+        self.assertEqual(entry.amount_vnd, 2_000_000)
+        self.assertFalse(hasattr(entry, "verification"))
+
+    def test_non_recorder_forbidden(self):
+        seed = seed_pilot_world(building_name="Fund Rec Deny", email_prefix="frd")
+        self._login(seed, "fund_verifier")  # verify-only cannot record
+        self.assertEqual(self.client.get(reverse("web:fund-record")).status_code, 403)

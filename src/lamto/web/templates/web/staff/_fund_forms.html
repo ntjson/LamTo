@@ -1,1 +1,28 @@
-{# fund record/verify forms — filled in Task 4/5 #}
+<section class="panel">
+  {% if mode == "record" %}
+  <h1>Record fund source</h1>
+  {% if sign_form %}
+  <div class="signed-box">
+    <h2>Review and sign</h2>
+    <p class="hint">{{ sign_form.entry_type.value }} · {{ sign_form.amount_vnd.value }} VND</p>
+    <form method="post" class="stack-form" data-signed-form>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit">
+      {{ sign_form.as_p }}
+      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+      <button type="submit" class="button">Record source</button>
+    </form>
+  </div>
+  {% else %}
+  <form method="post" class="stack-form" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="prepare">
+    {{ record_form.as_p }}
+    <p class="hint">Upload the source evidence original and a redacted copy (PDF). Amounts are integer VND.</p>
+    <button type="submit" class="button">Prepare source</button>
+  </form>
+  {% endif %}
+  {% endif %}
+  {% if mode == "verify" %}{% include "web/staff/_fund_verify.html" %}{% endif %}
+</section>
