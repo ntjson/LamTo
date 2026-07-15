@@ -45,10 +45,13 @@ def register_device(user, install_id, fcm_token, platform, app_version="") -> De
 
     _deactivate_other_holders()
     try:
-        return _upsert()
+        with transaction.atomic():
+            return _upsert()
     except IntegrityError:
+        # Nested savepoint so the outer atomic is not poisoned after a partial-unique conflict.
         _deactivate_other_holders()
-        return _upsert()
+        with transaction.atomic():
+            return _upsert()
 
 
 def deactivate_device(user, install_id) -> int:
