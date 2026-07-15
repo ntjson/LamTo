@@ -300,3 +300,29 @@ def notify_users(
             event_code=event_code,
             building=building,
         )
+
+
+def resident_feed(user, building_id):
+    """Resident in-app feed for one building (spec 3.3): available IN_APP notices,
+    plus legacy null-building rows, newest first."""
+    return (
+        NotificationDelivery.objects.filter(
+            recipient=user,
+            channel=NotificationDelivery.Channel.IN_APP,
+            status=NotificationDelivery.Status.AVAILABLE,
+        )
+        .filter(Q(building_id=building_id) | Q(building_id__isnull=True))
+        .order_by("-created_at", "-pk")
+    )
+
+
+def mark_notification_read(user, delivery_id) -> int:
+    """Mark one of the caller's IN_APP notices read. Returns rows updated (0/1)."""
+    return (
+        NotificationDelivery.objects.filter(
+            pk=delivery_id,
+            recipient=user,
+            channel=NotificationDelivery.Channel.IN_APP,
+            read_at__isnull=True,
+        ).update(read_at=timezone.now())
+    )

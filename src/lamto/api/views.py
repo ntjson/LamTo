@@ -30,6 +30,7 @@ from lamto.api.serializers import (
     LocationSerializer,
     LoginSerializer,
     MeSerializer,
+    NotificationFeedSerializer,
     ReportCreateSerializer,
     ReportDetailSerializer,
     ReportPhotoSerializer,
@@ -39,6 +40,8 @@ from lamto.api.serializers import (
     WorkRatingResultSerializer,
     WorkRatingSerializer,
 )
+from lamto.notifications.models import NotificationDelivery
+from lamto.notifications.services import mark_notification_read, resident_feed
 from lamto.documents.services import DocumentUploadQuarantined, DocumentUploadRejected
 from lamto.api.services import (
     INVALID_CREDENTIALS_DETAIL,
@@ -453,3 +456,36 @@ class LocationListView(APIView):
         _occupancy, tenant = resolve_api_occupancy(request)
         locations = active_location_tree(tenant.building_id)
         return Response(LocationSerializer(locations, many=True).data)
+
+
+class NotificationCursorPagination(pagination.CursorPagination):
+    page_size = 20
+    ordering = ("-created_at", "-pk")
+
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationFeedSerializer
+    pagination_class = NotificationCursorPagination
+
+    @extend_schema(
+        parameters=[OCCUPANCY_HEADER_PARAMETER],
+        responses={200: NotificationFeedSerializer(many=True), **problem_responses(401, 403, 404, 422)},
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        _occupancy, tenant = resolve_api_occupancy(self.request)
+        return resident_feed(self.request.user, tenant.building_id)
+
+
+class NotificationReadView(APIView):
+    @extend_schema(request=None, responses={204: None, **problem_responses(401, 403, 404)})
+    def post(self, request, pk):
+        delivery = NotificationDelivery.objects.filter(
+            pk=pk, recipient=request.user, channel=NotificationDelivery.Channel.IN_APP
+        ).first()
+        if delivery is None:
+            raise exceptions.NotFound("Notification not found.")
+        mark_notification_read(request.user, pk)
+        return Response(status=204)

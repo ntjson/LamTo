@@ -19,4 +19,10 @@ urlpatterns = [
     path("reports/<int:pk>/photos", views.ReportPhotoUploadView.as_view(), name="report-photos"),
     path("work/<int:pk>/rating", views.WorkRatingView.as_view(), name="work-rating"),
     path("locations", views.LocationListView.as_view(), name="locations"),
+    path("notifications", views.NotificationListView.as_view(), name="notifications"),
+    path(
+        "notifications/<int:pk>/read",
+        views.NotificationReadView.as_view(),
+        name="notification-read",
+    ),
 ]

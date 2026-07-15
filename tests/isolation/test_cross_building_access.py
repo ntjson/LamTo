@@ -35,6 +35,7 @@ from lamto.finance.models import (
 )
 from lamto.finance.models.emergencies import EmergencyAuthorization
 from lamto.maintenance.models import IssueReport, MaintenanceCase, WorkOrder
+from lamto.notifications.models import NotificationDelivery
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-isolation-")
@@ -102,6 +103,7 @@ API_TENANT_LIST = {
     "api:ledger-list": "GET",
     "api:fund-summary": "GET",
     "api:locations": "GET",
+    "api:notifications": "GET",
 }
 
 # Tenant-scoped object access by primary key.
@@ -111,6 +113,7 @@ API_TENANT_OBJECT = {
     "api:report-detail": ("report_pk", "GET", 404),
     "api:report-photos": ("report_pk", "POST", 404),
     "api:work-rating": ("work_pk", "POST", 404),
+    "api:notification-read": ("notification_pk", "POST", 404),
 }
 
 # Ownership-scoped lists/writes (the caller's own rows; never building-tenant).
@@ -206,6 +209,13 @@ class CrossBuildingAccessTests(TestCase):
             "emergency_pk": emergency.pk,
             "fund_entry_pk": b_fund_entry.pk,
         }
+        b_notice = NotificationDelivery.objects.create(
+            recipient=cls.seed_b.users["resident"], building=b_building,
+            channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
+            event_key="ledger.publication:iso:1", event_code="ledger.publication",
+            subject="B notice", body=B_LEAK_MARKER,
+        )
+        cls.b["notification_pk"] = b_notice.pk
 
     def _staff_login(self, role_key):
         membership = self.seed_a.roles[role_key]

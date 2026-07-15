@@ -220,3 +220,12 @@ class LocationSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
     parent_id = serializers.IntegerField(allow_null=True)
+
+
+class NotificationFeedSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    event_code = serializers.CharField()
+    subject = serializers.CharField()
+    body = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    read_at = serializers.DateTimeField(allow_null=True)
