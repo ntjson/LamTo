@@ -4,7 +4,7 @@ from lamto.notifications.services import process_due_notifications
 
 
 class Command(BaseCommand):
-    help = "Process due in-app and email notification deliveries."
+    help = "Process due in-app, email, and push notification deliveries."
 
     def add_arguments(self, parser):
         parser.add_argument(

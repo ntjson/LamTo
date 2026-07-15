@@ -1,0 +1,63 @@
+import uuid
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
+
+from lamto.accounts.models import Building, ResidentOccupancy, Unit
+from lamto.notifications.devices import register_device
+from lamto.notifications.models import Device, NotificationDelivery
+from lamto.notifications.services import EVENT_PUBLICATION, process_delivery
+
+
+def _make_resident(building, unit, email):
+    user = get_user_model().objects.create_user(email=email, password="x", display_name="R")
+    ResidentOccupancy.objects.create(user=user, unit=unit, active=True)
+    return user
+
+
+def _push_delivery(user, building):
+    return NotificationDelivery.objects.create(
+        recipient=user,
+        building=building,
+        channel=NotificationDelivery.Channel.PUSH,
+        status=NotificationDelivery.Status.PENDING,
+        event_key=f"{EVENT_PUBLICATION}:entry:1",
+        event_code=EVENT_PUBLICATION,
+        subject="s",
+        body="b",
+    )
+
+
+@override_settings(PUSH_ENABLED=True)
+class PushWorkerTests(TestCase):
+    def setUp(self):
+        self.building = Building.objects.create(name="Worker B")
+        self.unit = Unit.objects.create(building=self.building, label="A-1")
+        self.resident = _make_resident(self.building, self.unit, "wr@example.test")
+        register_device(self.resident, str(uuid.uuid4()), "tok-1", Device.Platform.ANDROID)
+
+    @patch("lamto.notifications.services.send_push", return_value="msg-1")
+    def test_sends_and_marks_sent(self, send):
+        delivery = _push_delivery(self.resident, self.building)
+        result = process_delivery(delivery)
+        assert result.status == NotificationDelivery.Status.SENT
+        assert send.call_count == 1
+
+    @patch("lamto.notifications.services.send_push")
+    def test_terminal_error_deactivates_device(self, send):
+        from firebase_admin import messaging
+
+        send.side_effect = messaging.UnregisteredError("gone")
+        delivery = _push_delivery(self.resident, self.building)
+        process_delivery(delivery)
+        assert Device.objects.filter(user=self.resident, active=True).count() == 0
+
+    @patch("lamto.notifications.services.send_push", return_value="msg-1")
+    def test_revalidation_suppresses_when_occupancy_gone(self, send):
+        ResidentOccupancy.objects.filter(user=self.resident).update(active=False)
+        delivery = _push_delivery(self.resident, self.building)
+        result = process_delivery(delivery)
+        assert send.call_count == 0
+        assert result.status == NotificationDelivery.Status.SENT  # non-retryable; in-app authoritative
+        assert result.last_error.startswith("suppressed:")  # not a true FCM success

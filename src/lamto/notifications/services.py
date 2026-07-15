@@ -93,7 +93,11 @@ DEFAULT_CHANNELS = (
 )
 
 MAX_EMAIL_ATTEMPTS = 8
+MAX_PUSH_ATTEMPTS = 5
 BASE_BACKOFF_SECONDS = 30
+
+# Structured suppress markers: do not count as true FCM success in ops metrics.
+PUSH_SUPPRESSED_PREFIX = "suppressed:"
 
 
 def email_enabled_for(user, event_code: str) -> bool:
@@ -255,6 +259,9 @@ def process_delivery(delivery: NotificationDelivery) -> NotificationDelivery:
             )
             return locked
 
+        if locked.channel == NotificationDelivery.Channel.PUSH:
+            return _process_push_delivery(locked)
+
         # EMAIL
         locked.attempts += 1
         try:
@@ -360,3 +367,76 @@ def mark_notification_read(user, delivery_id) -> int:
             read_at__isnull=True,
         ).update(read_at=timezone.now())
     )
+
+
+def _recipient_can_receive_push(delivery) -> bool:
+    """Send-time revalidation (spec 7.3): user active + active occupancy in building."""
+    from lamto.accounts.tenancy import active_occupancies
+
+    user = delivery.recipient
+    if not getattr(user, "is_active", False):
+        return False
+    if delivery.building_id is None:
+        return True
+    return active_occupancies(user).filter(unit__building_id=delivery.building_id).exists()
+
+
+def _process_push_delivery(delivery):
+    from lamto.notifications.models import Device
+    from lamto.notifications.push import build_push_payload, classify_push_error
+
+    now = timezone.now()
+    if not _recipient_can_receive_push(delivery):
+        delivery.status = NotificationDelivery.Status.SENT  # non-retryable; in-app feed holds it
+        delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}recipient_ineligible"
+        delivery.save(update_fields=["status", "last_error", "updated_at"])
+        return delivery
+
+    devices = list(Device.objects.filter(user=delivery.recipient, active=True))
+    if not devices:
+        delivery.status = NotificationDelivery.Status.SENT
+        delivery.last_error = f"{PUSH_SUPPRESSED_PREFIX}no_active_devices"
+        delivery.save(update_fields=["status", "last_error", "updated_at"])
+        return delivery
+
+    title, body, data = build_push_payload(delivery)
+    collapse_key = None  # set for aggregated categories in Task 6
+    any_transient = False
+    last_error = ""
+    for device in devices:
+        try:
+            # Module-level send_push so tests can patch lamto.notifications.services.send_push
+            send_push(
+                device.fcm_token,
+                title=title,
+                body=body,
+                data=data,
+                collapse_key=collapse_key,
+            )
+        except Exception as exc:  # noqa: BLE001 - provider errors are classified below
+            if classify_push_error(exc) == "terminal":
+                Device.objects.filter(pk=device.pk).update(active=False)
+            else:
+                any_transient = True
+                last_error = str(exc)[:2000]
+
+    delivery.attempts += 1
+    if any_transient:
+        delivery.last_error = last_error
+        if delivery.attempts >= MAX_PUSH_ATTEMPTS:
+            delivery.status = NotificationDelivery.Status.FAILED
+            delivery.next_retry_at = None
+        else:
+            delivery.status = NotificationDelivery.Status.FAILED
+            backoff = BASE_BACKOFF_SECONDS * (2 ** min(delivery.attempts - 1, 6))
+            delivery.next_retry_at = now + timedelta(seconds=backoff)
+    else:
+        delivery.status = NotificationDelivery.Status.SENT
+        delivery.last_error = ""
+        delivery.next_retry_at = None
+    delivery.save(update_fields=["status", "attempts", "last_error", "next_retry_at", "updated_at"])
+    return delivery
+
+
+# Re-export for worker call sites and test patches (avoids circular import at top).
+from lamto.notifications.push import send_push  # noqa: E402
