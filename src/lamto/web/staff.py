@@ -19,20 +19,6 @@ from lamto.audit.services import record_audit
 
 SESSION_MEMBERSHIP_KEY = "active_membership_id"
 
-# Navigation entries keyed by capability code.
-NAV_BY_CAPABILITY = (
-    (None, "Action inbox", "web:action-inbox"),
-    ("report.triage", "Cases", "web:case-list"),
-    ("work.assign", "Work orders", "web:work-order-list"),
-    ("proposal.create", "Proposals", "web:proposal-list"),
-    ("proposal.approve", "Proposals", "web:proposal-list"),
-    ("payment.record", "Payments", "web:payment-list"),
-    ("payment.verify", "Payments", "web:payment-list"),
-    ("work.accept", "Work orders", "web:work-order-list"),
-    ("ledger.publish", "Proposals", "web:proposal-list"),
-    ("audit.export", "Audit search", "web:audit-search"),
-)
-
 
 def user_memberships(user):
     return (
@@ -112,64 +98,46 @@ def require_staff_capability(request, code: str, *, membership_id=None):
 
 
 def nav_items_for(membership) -> list[dict]:
+    """Six active capability-filtered areas (spec 4.2 Phase-0): Inbox · Cases ·
+    Work · Finance (proposals · payments · fund) · Audit · Ops.
+    Ledger (seventh area) is deferred — not in this nav."""
     caps = capabilities_for(membership)
-    # Maintenance role gets work-order nav even without WORK_ASSIGN.
-    items = []
-    seen_urls = set()
-    for cap, label, url_name in NAV_BY_CAPABILITY:
-        if cap is not None and cap not in caps:
-            continue
-        if url_name in seen_urls:
-            continue
-        seen_urls.add(url_name)
-        items.append({"label": label, "url_name": url_name, "capability": cap})
-    if (
-        membership.role == OrganizationMembership.Role.MAINTENANCE
-        and "web:work-order-list" not in seen_urls
-    ):
+    role = membership.role
+    Role = OrganizationMembership.Role
+    items: list[dict] = [{"label": "Inbox", "url_name": "web:action-inbox", "capability": None}]
+
+    if "report.triage" in caps:
+        items.append({"label": "Cases", "url_name": "web:case-list", "capability": "report.triage"})
+
+    # Work: operators (assign), board acceptors (accept), and maintenance.
+    # Preserves the pre-Plan-4 behavior where work.accept also surfaced Work.
+    if caps & {"work.assign", "work.accept"} or role == Role.MAINTENANCE:
+        maintenance_only = role == Role.MAINTENANCE and not (caps & {"work.assign", "work.accept"})
         items.append(
-            {
-                "label": "My work",
-                "url_name": "web:work-order-list",
-                "capability": None,
-            }
+            {"label": "My work" if maintenance_only else "Work", "url_name": "web:work-order-list", "capability": None}
         )
-    if membership.role == OrganizationMembership.Role.AUDITOR and "web:audit-search" not in seen_urls:
-        items.append(
-            {
-                "label": "Audit search",
-                "url_name": "web:audit-search",
-                "capability": "audit.export",
-            }
-        )
-    if membership.role == OrganizationMembership.Role.TECH_ADMIN:
-        if "web:ops-health" not in seen_urls:
-            items.append(
-                {
-                    "label": "Ops health",
-                    "url_name": "web:ops-health",
-                    "capability": "tech.admin",
-                }
-            )
-        if "web:pilot-metrics" not in seen_urls:
-            items.append(
-                {
-                    "label": "Pilot metrics",
-                    "url_name": "web:pilot-metrics",
-                    "capability": "tech.admin",
-                }
-            )
-    if membership.role == OrganizationMembership.Role.AUDITOR and "web:audit-export" not in seen_urls:
-        items.append(
-            {
-                "label": "Audit export",
-                "url_name": "web:audit-export",
-                "capability": "audit.export",
-            }
-        )
-    fund_caps = {"fund.record", "fund.verify"}
-    if caps & fund_caps and "web:fund-home" not in seen_urls:
-        items.append({"label": "Fund", "url_name": "web:fund-home", "capability": "fund.record"})
+
+    # Finance groups proposals · payments · fund; appears once, landing on the
+    # first sub-area the membership can open.
+    finance_caps = {
+        "proposal.create", "proposal.approve", "ledger.publish",
+        "payment.record", "payment.verify", "fund.record", "fund.verify",
+    }
+    if caps & finance_caps:
+        if caps & {"proposal.create", "proposal.approve", "ledger.publish"}:
+            finance_url = "web:proposal-list"
+        elif caps & {"payment.record", "payment.verify"}:
+            finance_url = "web:payment-list"
+        else:
+            finance_url = "web:fund-home"
+        items.append({"label": "Finance", "url_name": finance_url, "capability": None})
+
+    if role == Role.AUDITOR or "audit.export" in caps:
+        items.append({"label": "Audit", "url_name": "web:audit-search", "capability": "audit.export"})
+
+    if role == Role.TECH_ADMIN:
+        items.append({"label": "Ops", "url_name": "web:ops-health", "capability": "tech.admin"})
+
     return items
 
 
@@ -187,5 +155,5 @@ def staff_context(request, membership, memberships, *, nav_active=None, **extra)
 def switch_membership_redirect(request):
     membership_id = request.POST.get("membership") or request.GET.get("membership")
     membership, _ = resolve_active_membership(request, membership_id=membership_id)
-    next_url = request.POST.get("next") or request.GET.get("next") or "/s/"
-    return redirect(next_url)
+    request.session[SESSION_MEMBERSHIP_KEY] = membership.pk
+    return redirect("web:action-inbox")

@@ -44,8 +44,7 @@ def switch_membership(request):
         raise PermissionDenied("membership is required")
     membership, _ = resolve_active_membership(request, membership_id=membership_id)
     request.session[SESSION_MEMBERSHIP_KEY] = membership.pk
-    next_url = request.POST.get("next") or request.GET.get("next") or "/s/"
-    return redirect(next_url)
+    return redirect("web:action-inbox")
 
 
 @login_required
