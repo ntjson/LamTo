@@ -51,38 +51,67 @@ Generated API surface this plan consumes (from `app/packages/lamto_api`, regener
 5. **Photos render through the authenticated client.** `downloadUrl` is a short-TTL signed relative URL; `Image.network` can't attach the knox header, so an `AuthenticatedImage` widget fetches bytes via the shared `Dio` and shows `Image.memory` (placeholder/error states included).
 6. **Failed photo uploads are retryable in-session only.** After the text commits, the draft is cleared (the report can never be lost); failed photos keep retry buttons until the user leaves the result screen. A later "add photos from detail" flow is out of scope — §6.3 asks for per-photo retry at submission.
 
+### Amendments (Plan 8 clarifications — 2026-07-17)
+
+These bind Tasks 1–7. Implement and test them; do not treat the older draft code samples as superseding these rules.
+
+7. **Draft privacy boundary.** Report drafts may hold resident issue text, location labels, and photo paths. **Clear all drafts on logout / logout-all** (`SessionController.signOut` and any bulk session wipe). Persistence uses app-private `SharedPreferences` (iOS/Android sandbox — not world-readable by other apps). **Do not rely on encryption for this slice;** document the boundary in `ReportDraftStore` dartdoc and **test** (a) clear-on-logout hooks wipe every `lamto_report_draft_*` key, and (b) the store only writes under the `lamto_report_draft_` prefix (privacy-boundary structural test). Full-disk encryption of prefs is out of scope.
+
+8. **App-owned photo copies for kill-safe drafts.** Picker/cache paths alone do **not** satisfy app-kill persistence. Before adding a path to the draft, **copy** the selected image into app-owned durable storage (`path_provider` application documents dir under `report_draft_photos/<occupancyId>/`). Store only those owned paths. **Delete** owned files when: photo removed from draft, draft cleared after text commit, conflict remints a draft that drops photos, draft abandoned/cleared on logout, or form reset after success. `ReportPhotoFileStore` (or methods on the draft store) owns copy + delete; unit-test copy + cleanup.
+
+9. **Serialized / debounced draft writes.** Per-keystroke autosave must not complete out of order. `ReportDraftStore.write` (or a thin `ReportDraftAutosave` wrapper) **serializes writes per occupancy** (chain `Future`s: each write awaits the previous) and may debounce UI-triggered saves (~300ms). Tests: concurrent/out-of-order write calls leave the store with the **last** intended draft, not a stale intermediate.
+
+10. **Photo retry idempotency (checksum-based backend dedup + client attachment id).** OpenAPI photo upload has no client attachment field today. **Choice: checksum-based backend deduplication** — `attach_report_photo` / `ReportPhotoUploadView` compute content SHA-256; if the report already has a photo with that hash, return the existing row with **HTTP 200** (no second `ReportPhoto` row). Client also stamps each local photo with a stable `clientAttachmentId` (uuid) for in-session identity and skips re-upload when status is already `uploaded`. A lost successful upload response must not create duplicate rows on retry. Small backend + OpenAPI response doc update allowed; avoid regenerating `lamto_api` if the generated client already accepts 2xx. Tests: backend/API test for same-bytes replay → 200 + count stays 1; Flutter submitter test for double `retryPhoto` without double `uploadPhoto` when first succeeded; optional adapter mock if path stays in client.
+
+11. **Committed-result form state.** Once `createReport` succeeds and a `reportId` exists, the form **must not** allow whole-report resubmission. Transition to a **committed-result** UI: success/partial-photo copy, per-failed-photo retry only, and navigation to issue detail. Disable/hide the primary Send control. Draft is already cleared on text commit (Task 3). Widget test: after successful create, tapping Send again (if still visible) must not call `createReport` a second time — prefer asserting Send is absent/disabled and only photo-retry / view-detail remain.
+
+12. **My Issues scope = user-global.** Backend `resident_reports(user)` lists all reports the authenticated user submitted (not filtered by selected occupancy). **Decision: user-global.** Align:
+    - **API:** list endpoint remains reporter-scoped (no occupancy filter).
+    - **Provider:** `myReportsProvider` rebuilds on auth/session identity; may still `ref.watch(occupancyScopedProviders)` only if harmless refresh is desired — **do not** present the list as unit-scoped. Invalidate/refresh after a successful report create so the new issue appears.
+    - **UI wording:** keep "My issues" / "Việc của tôi" (user-framed). Empty state already user-global. Do not add "this unit only" copy.
+    - Document in `my_issues_screen.dart` dartdoc.
+
+13. **Adapter-level HTTP 200 idempotent create replay.** In `reports_repository_test.dart` (real `DioReportsRepository` + mock `HttpClientAdapter`), assert: first `createReport` → 201; second call with the **same** `client_ref`/text/location and adapter returning **HTTP 200** with the same summary body → parsed `ReportSummary` with the same `id`. Do **not** rely only on a fake repository returning the same model.
+
 ## File Structure
 
 **Create:**
 - `app/lib/core/uuid.dart` — `uuidV4()`.
-- `app/lib/features/reports/report_draft.dart` — `ReportDraft` + `ReportDraftStore`.
+- `app/lib/features/reports/report_draft.dart` — `ReportDraft` + `ReportDraftStore` (serialized writes, clearAll, privacy docs).
+- `app/lib/features/reports/report_photo_files.dart` — app-owned photo copy/cleanup.
 - `app/lib/features/reports/reports_repository.dart` — repos + Riverpod providers.
-- `app/lib/features/reports/report_submitter.dart` — submit choreography + photo statuses.
+- `app/lib/features/reports/report_submitter.dart` — submit choreography + photo statuses + attachment ids.
 - `app/lib/features/reports/location_picker_screen.dart`
-- `app/lib/features/reports/report_form_screen.dart`
-- `app/lib/features/reports/my_issues_screen.dart`
+- `app/lib/features/reports/report_form_screen.dart` — includes committed-result state machine.
+- `app/lib/features/reports/my_issues_screen.dart` — user-global list (documented).
 - `app/lib/features/reports/issue_detail_screen.dart` (includes the rate-work sheet)
 - `app/lib/core/authenticated_image.dart`
-- Tests: `app/test/uuid_test.dart`, `report_draft_test.dart`, `reports_repository_contract_test.dart`, `reports_repository_test.dart`, `report_submitter_test.dart`, `location_picker_test.dart`, `report_form_test.dart`, `my_issues_test.dart`, `issue_detail_test.dart`.
+- Backend (amendment 10): small change in `src/lamto/maintenance/reporting.py` + `ReportPhotoUploadView` for sha256 dedup → 200; OpenAPI response note; API test.
+- Tests: `app/test/uuid_test.dart`, `report_draft_test.dart`, `reports_repository_contract_test.dart`, `reports_repository_test.dart` (incl. HTTP 200 create replay), `report_submitter_test.dart`, `location_picker_test.dart`, `report_form_test.dart` (incl. committed-result), `my_issues_test.dart`, `issue_detail_test.dart`.
 
 **Modify:**
 - `app/lib/features/shell/home_shell.dart` — Report + Issues tab bodies.
+- `app/lib/features/auth/session_controller.dart` — clear report drafts (+ photo files) on `signOut`.
 - `app/lib/l10n/app_en.arb`, `app_vi.arb` — each screen task adds its keys.
-- `app/pubspec.yaml` — `image_picker` (Task 5, the task that needs it).
+- `app/pubspec.yaml` — `image_picker` + `path_provider` (Task 5 / Task 1 photo store as needed).
 
 ---
 
 ### Task 1: UUID v4 + persistent report draft
 
 **Files:**
-- Create: `app/lib/core/uuid.dart`, `app/lib/features/reports/report_draft.dart`
+- Create: `app/lib/core/uuid.dart`, `app/lib/features/reports/report_draft.dart`, `app/lib/features/reports/report_photo_files.dart`
+- Modify (logout hook may land here or Task 5): `app/lib/features/auth/session_controller.dart` — call `ReportDraftStore.clearAll` + photo cleanup on `signOut`
 - Test: `app/test/uuid_test.dart`, `app/test/report_draft_test.dart`
+- Deps: add `path_provider` if not present (for app-owned photo dir).
 
 **Interfaces:**
 - Produces:
   - `uuidV4() -> String` — RFC 4122 v4 from `Random.secure()`.
-  - `ReportDraft(clientRef, text, locationId, locationLabel, photoPaths)` — immutable-ish data class with `copyWith`, `toJson`/`fromJson`; `ReportDraft.fresh()` mints a new `clientRef`.
-  - `ReportDraftStore` — `Future<ReportDraft?> read(int occupancyId)`, `Future<void> write(int occupancyId, ReportDraft draft)`, `Future<void> clear(int occupancyId)`.
+  - `ReportDraft(clientRef, text, locationId, locationLabel, photoPaths)` — immutable-ish data class with `copyWith`, `toJson`/`fromJson`; `ReportDraft.fresh()` mints a new `clientRef`. Photo paths are **app-owned** paths only (amendment 8).
+  - `ReportDraftStore` — `Future<ReportDraft?> read(int occupancyId)`, `Future<void> write(int occupancyId, ReportDraft draft)` (**serialized per occupancy**, amendment 9), `Future<void> clear(int occupancyId)`, `Future<void> clearAll()` (amendment 7 — logout).
+  - `ReportPhotoFileStore` — `Future<String> importPickerPath({required int occupancyId, required String sourcePath})` copies into app documents; `Future<void> deletePaths(Iterable<String> paths)`; `Future<void> clearOccupancy(int occupancyId)`; `Future<void> clearAll()`.
+- Privacy (amendment 7): document app-private SharedPreferences boundary in dartdoc; clearAll on logout.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -106,7 +135,7 @@ void main() {
 }
 ```
 
-Create `app/test/report_draft_test.dart`:
+Create `app/test/report_draft_test.dart` covering round-trip, clearAll privacy, and write serialization:
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
@@ -145,8 +174,33 @@ void main() {
     expect(ReportDraft.fresh().clientRef,
         isNot(ReportDraft.fresh().clientRef));
   });
+
+  test('clearAll removes every occupancy draft (logout privacy)', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = ReportDraftStore();
+    await store.write(1, ReportDraft.fresh().copyWith(text: 'a'));
+    await store.write(2, ReportDraft.fresh().copyWith(text: 'b'));
+    await store.clearAll();
+    expect(await store.read(1), isNull);
+    expect(await store.read(2), isNull);
+  });
+
+  test('serialized writes preserve last draft under concurrent autosave',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = ReportDraftStore();
+    final base = ReportDraft.fresh();
+    // Fire writes without awaiting between starts; store must serialize.
+    final f1 = store.write(7, base.copyWith(text: 'one'));
+    final f2 = store.write(7, base.copyWith(text: 'two'));
+    final f3 = store.write(7, base.copyWith(text: 'three'));
+    await Future.wait([f1, f2, f3]);
+    expect((await store.read(7))!.text, 'three');
+  });
 }
 ```
+
+Also add unit tests for `ReportPhotoFileStore` (temp dir injection): copy creates a file under the owned root; deletePaths removes it; clearOccupancy removes only that occupancy's copies.
 
 - [ ] **Step 2: Run to verify they fail**
 
@@ -450,6 +504,31 @@ void main() {
       cursorFromNext('http://x/api/v1/reports?cursor=cD0yMDI2'),
       'cD0yMDI2',
     );
+  });
+
+  // Amendment 13: adapter-level HTTP 200 idempotent create replay (not a fake repo).
+  test('createReport accepts HTTP 200 idempotent replay of same client_ref',
+      () async {
+    var calls = 0;
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((inv) async {
+      lastRequest = inv.positionalArguments[0] as RequestOptions;
+      calls++;
+      final body = {
+        'id': 5,
+        'text': 'Leak',
+        'status': 'OPEN',
+        'location_path_snapshot': 'B / Hall',
+        'created_at': '2026-07-17T00:00:00Z',
+      };
+      return _json(calls == 1 ? 201 : 200, body);
+    });
+    final first = await repo.createReport(
+        clientRef: 'ref-1', text: 'Leak', locationId: 3);
+    final second = await repo.createReport(
+        clientRef: 'ref-1', text: 'Leak', locationId: 3);
+    expect(first.id, 5);
+    expect(second.id, 5);
+    expect(calls, 2);
   });
 }
 
@@ -809,8 +888,25 @@ void main() {
         await submitter.retryPhoto(reportId: 42, photo: failed);
     expect(retried.status, PhotoUploadStatus.uploaded);
   });
+
+  // Amendment 10: photo retry must not re-upload when already uploaded (client
+  // attachment id / status). Backend sha256 dedup covers lost-response; client
+  // must not double-call when status is already uploaded.
+  test('retryPhoto is idempotent when photo already uploaded', () async {
+    final draft = _draft(photos: ['/tmp/a.jpg']);
+    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    final photo = outcome.photos.single;
+    expect(photo.status, PhotoUploadStatus.uploaded);
+    final before = repo.uploaded.length;
+    final again =
+        await submitter.retryPhoto(reportId: 42, photo: photo);
+    expect(again.status, PhotoUploadStatus.uploaded);
+    expect(repo.uploaded.length, before); // no second upload
+  });
 }
 ```
+
+**Backend (same task or tiny follow-up commit):** implement amendment 10 checksum dedup in `attach_report_photo` / `ReportPhotoUploadView` (same bytes → existing photo, HTTP 200) + API test in `src/lamto/api/tests/test_report_photos.py`.
 
 - [ ] **Step 2: Run to verify they fail**
 
@@ -1365,10 +1461,30 @@ void main() {
     expect(repo.refs, hasLength(2));
     expect(repo.refs[0], isNot(repo.refs[1])); // new ref after conflict
   });
+
+  // Amendment 11: committed-result — no whole-report resubmit after create.
+  testWidgets('after success, form is committed-result (no second create)',
+      (tester) async {
+    final repo = _FakeRepo();
+    final draft = ReportDraft.fresh().copyWith(
+      text: 'Thang máy kêu to',
+      locationId: 3,
+      locationLabel: 'Tòa A / Thang máy 2',
+    );
+    await _pump(tester, repo, existingDraft: draft);
+    await tester.tap(find.text('Gửi phản ánh'));
+    await tester.pumpAndSettle();
+    expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
+    // Primary send must not fire create again.
+    expect(find.text('Gửi phản ánh'), findsNothing);
+    expect(repo.refs, hasLength(1));
+  });
 }
 ```
 
 The fake throws `ReportConflictException` directly from the repo, exercising the screen's handling; the DioException→409 mapping is covered by Task 3's submitter tests.
+
+**Also (amendments 8–11):** form must import picker images via `ReportPhotoFileStore` before persisting paths; delete owned files on remove/submit clear/conflict drop; use serialized/debounced autosave; enter committed-result after create (`_outcome != null` / `_committed`) with photo-retry + "view issue" only.
 
 - [ ] **Step 3: Run to verify it fails, then implement**
 
@@ -1706,6 +1822,8 @@ git commit -m "feat(app): report form with draft persistence, photos, and idempo
 
 Cursor-paginated list of the caller's reports with semantic status chips, pull-to-refresh, and load-more (§6.3(5) list half).
 
+**Scope (amendment 12): user-global** — API `resident_reports(user)` returns all reports this user submitted across units; UI title "My issues" / "Việc của tôi"; do not imply selected-occupancy-only. Invalidate/refresh after successful report create (from form/submitter callers). Dartdoc on `MyIssuesScreen` / `MyReportsController` must state user-global scope.
+
 **Files:**
 - Create: `app/lib/features/reports/my_issues_screen.dart`
 - Modify: `app/lib/features/shell/home_shell.dart` (Issues tab body)
@@ -1713,7 +1831,7 @@ Cursor-paginated list of the caller's reports with semantic status chips, pull-t
 - Test: `app/test/my_issues_test.dart`
 
 **Interfaces:**
-- Consumes: `reportsRepositoryProvider`, `cursorFromNext`, `occupancyScopedProviders`, `ReportSummary`.
+- Consumes: `reportsRepositoryProvider`, `cursorFromNext`, `ReportSummary` (session-level list; occupancy watch optional for harmless refresh only).
 - Produces: `MyIssuesScreen`; `myReportsProvider` (`AsyncNotifierProvider<MyReportsController, List<ReportSummary>>`) with `loadMore()` and `hasMore`; `reportStatusLabel(String, AppLocalizations)`.
 
 - [ ] **Step 1: Add the l10n keys**
