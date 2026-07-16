@@ -10,7 +10,7 @@ adaptive
 
 ## Users
 
-**Primary:** Residents. They report maintenance issues, follow cases and work, and verify how published Maintenance Fund spending connects to original reports and evidence. Design trade-offs favor them first: mobile-native clarity, plain language, and low cognitive load.
+**Primary:** Residents, who are Vietnamese-speaking. They report maintenance issues, follow cases and work, and verify how published Maintenance Fund spending connects to original reports and evidence. Design trade-offs favor them first: mobile-native clarity, plain language in Vietnamese, and low cognitive load.
 
 **Secondary (operational and governance):** Property-management operator, maintenance staff, Management Board, resident representative, and auditor. They coordinate work, review evidence, authorize distinct steps, publish verified outcomes, and audit the accountability chain. Their surface is a **desktop-first web** product (tablet acceptable), denser and task-oriented, without lowering the clarity bar set by the resident experience.
 
@@ -59,4 +59,6 @@ WCAG 2.2 AA is the baseline for both the resident mobile app and the staff web p
 - Keyboard and screen-reader support (web) and platform accessibility APIs (mobile) are required.
 - Reduced-motion preferences are respected; essential meaning never depends on animation.
 - Contrast meets AA for body text, large text, and interactive states.
+- The resident app is Vietnamese-first: all resident-facing copy is Vietnamese, keyed off machine codes so the server never sends display strings, and type and layout accommodate Vietnamese diacritics without clipping.
+- Resident screens are inclusive by default: generous, system-scalable type; one primary action per screen; and no gesture-only affordances—every action has a visible, labeled control.
 - Error and status messages explain what happened, whether data was saved, and the next safe action.

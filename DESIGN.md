@@ -101,6 +101,16 @@ components:
     rounded: "{rounded.pill}"
     padding: "0.2rem 0.65rem"
     typography: "{typography.label}"
+  filter-chip:
+    backgroundColor: "{colors.surface-muted}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.pill}"
+    padding: "0.25rem 0.75rem"
+  filter-chip-active:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    rounded: "{rounded.pill}"
+    padding: "0.25rem 0.75rem"
   staff-nav-link:
     backgroundColor: "{colors.staff-nav}"
     textColor: "{colors.on-primary}"
@@ -199,6 +209,8 @@ Omit a decorative secondary brand color. Integrity and feedback use independent 
 
 **The Platform Type Rule.** Resident mobile uses system text styles (Dynamic Type / Material roles). Do not hard-code web rem sizes into native UI.
 
+**The Vietnamese-First Rule.** Resident copy is Vietnamese. The type system must render Vietnamese diacritics—stacked tone and vowel marks—without clipping: the system faces (SF Pro, Roboto, Segoe UI) all cover Vietnamese, and body leading stays ≥1.5 so marks never collide with the line above. Never tighten resident line-height for density.
+
 ## 4. Elevation
 
 LamTo is flat by default. Evidence at rest has no decorative lift. Depth comes from surface changes, spacing, grouping, and borders. Content panels may use a soft ambient lift; staff and native chrome use platform-appropriate materials sparingly.
@@ -233,6 +245,12 @@ Restrained and institutional. Familiar product controls; clear primary actions; 
 - **Style:** Pill radius, small bold label, icon + text, semantic bg/ink pairs from the integrity palette.
 - **Roles:** Open/info, verified/resolved, warning, mismatch/error.
 - **Rule:** Always pair color with text (and icon when present).
+
+### Filter chips (staff)
+
+- **Style:** Pill radius, Quiet Surface (`#eef1f8`) fill, Record Ink label; used in staff list filter bars.
+- **Active:** Accountability Indigo (`#2f3a8f`) fill, white label—the selected filter.
+- **Rule:** Distinct from integrity status chips: filter chips carry navigation/query state, not evidence state. Never style a filter chip in a semantic integrity color.
 
 ### Cards / containers
 
