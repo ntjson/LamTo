@@ -4,6 +4,7 @@ import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/providers.dart';
 import 'report_draft.dart';
+import 'report_photo_files.dart';
 
 /// Paths used by the reporting APIs — must exist in OpenAPI (contract tests).
 abstract final class ReportsApiPaths {
@@ -131,6 +132,9 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
 
 final reportDraftStoreProvider =
     Provider<ReportDraftStore>((ref) => ReportDraftStore());
+
+final reportPhotoFileStoreProvider =
+    Provider<ReportPhotoFileStore>((ref) => ReportPhotoFileStore());
 
 /// Building-scoped caches rebuild on occupancy change (providers.dart contract).
 final locationsProvider =

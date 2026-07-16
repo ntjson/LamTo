@@ -3,9 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../reports/report_form_screen.dart';
 
 /// Platform-adaptive tab shell: Material NavigationBar on Android,
-/// CupertinoTabBar on iOS; same five placeholder bodies (clarification #7).
+/// CupertinoTabBar on iOS; same five tab slots (clarification #7).
 ///
 /// iOS uses [CupertinoTabController] as the single source of truth for the
 /// selected tab so bar and body cannot diverge.
@@ -35,14 +36,11 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   List<Widget> _bodies(AppLocalizations l10n) => [
-        for (final label in [
-          l10n.tabHome,
-          l10n.tabReport,
-          l10n.tabIssues,
-          l10n.tabLedger,
-          l10n.tabAccount,
-        ])
-          Center(child: Text(label)),
+        Center(child: Text(l10n.tabHome)),
+        const ReportFormScreen(),
+        Center(child: Text(l10n.tabIssues)),
+        Center(child: Text(l10n.tabLedger)),
+        Center(child: Text(l10n.tabAccount)),
       ];
 
   @override

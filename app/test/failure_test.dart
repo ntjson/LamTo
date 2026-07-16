@@ -39,4 +39,19 @@ void main() {
     );
     expect(net.code, 'network_error');
   });
+
+  test('fromObject coerces DioException, Failure, and unknowns', () {
+    final dio = Failure.fromObject(
+      DioException(
+        requestOptions: RequestOptions(path: '/x'),
+        type: DioExceptionType.connectionTimeout,
+      ),
+    );
+    expect(dio.code, 'network_error');
+
+    final existing = Failure(code: 'throttled', detail: 'slow');
+    expect(identical(Failure.fromObject(existing), existing), isTrue);
+
+    expect(Failure.fromObject(StateError('x')).code, 'server_error');
+  });
 }

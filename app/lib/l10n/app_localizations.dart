@@ -241,6 +241,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get commonRetry;
+
+  /// No description provided for @reportFormTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report an issue'**
+  String get reportFormTitle;
+
+  /// No description provided for @reportTextLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened?'**
+  String get reportTextLabel;
+
+  /// No description provided for @reportLocationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get reportLocationLabel;
+
+  /// No description provided for @reportLocationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a location'**
+  String get reportLocationEmpty;
+
+  /// No description provided for @reportPhotosLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos (up to {max})'**
+  String reportPhotosLabel(int max);
+
+  /// No description provided for @reportAddPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photo'**
+  String get reportAddPhoto;
+
+  /// No description provided for @reportPhotoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get reportPhotoCamera;
+
+  /// No description provided for @reportPhotoGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get reportPhotoGallery;
+
+  /// No description provided for @reportSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Send report'**
+  String get reportSubmit;
+
+  /// No description provided for @reportSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your report was received.'**
+  String get reportSubmitted;
+
+  /// No description provided for @reportPhotosPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Some photos did not upload. Your report text is saved — retry each photo below.'**
+  String get reportPhotosPending;
+
+  /// No description provided for @reportPhotoRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get reportPhotoRetry;
+
+  /// No description provided for @reportConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This report was already sent. Your edits will be sent as a new report — tap Send again.'**
+  String get reportConflict;
+
+  /// No description provided for @reportMissingFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Please describe the issue and choose a location. Nothing was sent yet.'**
+  String get reportMissingFields;
+
+  /// No description provided for @reportViewIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'View this issue'**
+  String get reportViewIssue;
 }
 
 class _AppLocalizationsDelegate

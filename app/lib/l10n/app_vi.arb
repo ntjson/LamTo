@@ -23,5 +23,21 @@
   "tabAccount": "Tài khoản",
   "locationPickerTitle": "Sự cố ở đâu?",
   "locationChooseHere": "Chọn khu vực này",
-  "commonRetry": "Thử lại"
+  "commonRetry": "Thử lại",
+  "reportFormTitle": "Gửi phản ánh",
+  "reportTextLabel": "Đã xảy ra chuyện gì?",
+  "reportLocationLabel": "Vị trí",
+  "reportLocationEmpty": "Chọn vị trí",
+  "reportPhotosLabel": "Ảnh (tối đa {max})",
+  "@reportPhotosLabel": {"placeholders": {"max": {"type": "int"}}},
+  "reportAddPhoto": "Thêm ảnh",
+  "reportPhotoCamera": "Chụp ảnh",
+  "reportPhotoGallery": "Chọn từ thư viện",
+  "reportSubmit": "Gửi phản ánh",
+  "reportSubmitted": "Phản ánh của bạn đã được ghi nhận.",
+  "reportPhotosPending": "Một số ảnh chưa tải lên được. Nội dung phản ánh đã được lưu — thử lại từng ảnh bên dưới.",
+  "reportPhotoRetry": "Thử lại",
+  "reportConflict": "Phản ánh này đã được gửi trước đó. Nội dung bạn vừa sửa sẽ được gửi thành phản ánh mới — bấm Gửi lần nữa.",
+  "reportMissingFields": "Vui lòng mô tả sự cố và chọn vị trí. Chưa có gì được gửi đi.",
+  "reportViewIssue": "Xem phản ánh này"
 }

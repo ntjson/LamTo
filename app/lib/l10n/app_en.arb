@@ -22,5 +22,21 @@
   "tabAccount": "Account",
   "locationPickerTitle": "Where is the issue?",
   "locationChooseHere": "Choose this area",
-  "commonRetry": "Try again"
+  "commonRetry": "Try again",
+  "reportFormTitle": "Report an issue",
+  "reportTextLabel": "What happened?",
+  "reportLocationLabel": "Location",
+  "reportLocationEmpty": "Choose a location",
+  "reportPhotosLabel": "Photos (up to {max})",
+  "@reportPhotosLabel": {"placeholders": {"max": {"type": "int"}}},
+  "reportAddPhoto": "Add photo",
+  "reportPhotoCamera": "Take a photo",
+  "reportPhotoGallery": "Choose from gallery",
+  "reportSubmit": "Send report",
+  "reportSubmitted": "Your report was received.",
+  "reportPhotosPending": "Some photos did not upload. Your report text is saved — retry each photo below.",
+  "reportPhotoRetry": "Retry",
+  "reportConflict": "This report was already sent. Your edits will be sent as a new report — tap Send again.",
+  "reportMissingFields": "Please describe the issue and choose a location. Nothing was sent yet.",
+  "reportViewIssue": "View this issue"
 }

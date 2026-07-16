@@ -62,6 +62,13 @@ class Failure {
         return Failure(code: 'server_error');
     }
   }
+
+  /// Coerce any thrown object (DioException or otherwise) into a Failure.
+  factory Failure.fromObject(Object error) => error is Failure
+      ? error
+      : error is DioException
+          ? Failure.fromDio(error)
+          : Failure(code: 'server_error');
 }
 
 /// Resident-facing copy per failure code (spec 6.4 doctrine). Never shows raw

@@ -85,4 +85,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonRetry => 'Try again';
+
+  @override
+  String get reportFormTitle => 'Report an issue';
+
+  @override
+  String get reportTextLabel => 'What happened?';
+
+  @override
+  String get reportLocationLabel => 'Location';
+
+  @override
+  String get reportLocationEmpty => 'Choose a location';
+
+  @override
+  String reportPhotosLabel(int max) {
+    return 'Photos (up to $max)';
+  }
+
+  @override
+  String get reportAddPhoto => 'Add photo';
+
+  @override
+  String get reportPhotoCamera => 'Take a photo';
+
+  @override
+  String get reportPhotoGallery => 'Choose from gallery';
+
+  @override
+  String get reportSubmit => 'Send report';
+
+  @override
+  String get reportSubmitted => 'Your report was received.';
+
+  @override
+  String get reportPhotosPending =>
+      'Some photos did not upload. Your report text is saved — retry each photo below.';
+
+  @override
+  String get reportPhotoRetry => 'Retry';
+
+  @override
+  String get reportConflict =>
+      'This report was already sent. Your edits will be sent as a new report — tap Send again.';
+
+  @override
+  String get reportMissingFields =>
+      'Please describe the issue and choose a location. Nothing was sent yet.';
+
+  @override
+  String get reportViewIssue => 'View this issue';
 }

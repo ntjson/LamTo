@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/uuid.dart';
@@ -87,6 +88,12 @@ class ReportDraftStore {
   /// so [clearAll] on a fresh instance (logout uses `ReportDraftStore()`)
   /// still awaits in-flight writes from any other instance.
   static final Map<int, Future<void>> _writeChains = {};
+
+  /// Drops static write chains between widget tests (fake-async + unawaited
+  /// debounce can otherwise leave a non-completing head that stalls later
+  /// tests sharing the same occupancy id).
+  @visibleForTesting
+  static void debugResetWriteChains() => _writeChains.clear();
 
   Future<SharedPreferences> get _prefs async =>
       _prefsOverride ?? await SharedPreferences.getInstance();

@@ -84,4 +84,54 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get commonRetry => 'Thử lại';
+
+  @override
+  String get reportFormTitle => 'Gửi phản ánh';
+
+  @override
+  String get reportTextLabel => 'Đã xảy ra chuyện gì?';
+
+  @override
+  String get reportLocationLabel => 'Vị trí';
+
+  @override
+  String get reportLocationEmpty => 'Chọn vị trí';
+
+  @override
+  String reportPhotosLabel(int max) {
+    return 'Ảnh (tối đa $max)';
+  }
+
+  @override
+  String get reportAddPhoto => 'Thêm ảnh';
+
+  @override
+  String get reportPhotoCamera => 'Chụp ảnh';
+
+  @override
+  String get reportPhotoGallery => 'Chọn từ thư viện';
+
+  @override
+  String get reportSubmit => 'Gửi phản ánh';
+
+  @override
+  String get reportSubmitted => 'Phản ánh của bạn đã được ghi nhận.';
+
+  @override
+  String get reportPhotosPending =>
+      'Một số ảnh chưa tải lên được. Nội dung phản ánh đã được lưu — thử lại từng ảnh bên dưới.';
+
+  @override
+  String get reportPhotoRetry => 'Thử lại';
+
+  @override
+  String get reportConflict =>
+      'Phản ánh này đã được gửi trước đó. Nội dung bạn vừa sửa sẽ được gửi thành phản ánh mới — bấm Gửi lần nữa.';
+
+  @override
+  String get reportMissingFields =>
+      'Vui lòng mô tả sự cố và chọn vị trí. Chưa có gì được gửi đi.';
+
+  @override
+  String get reportViewIssue => 'Xem phản ánh này';
 }
