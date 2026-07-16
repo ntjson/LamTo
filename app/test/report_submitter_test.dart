@@ -1,0 +1,166 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lamto/features/reports/report_draft.dart';
+import 'package:lamto/features/reports/report_submitter.dart';
+import 'package:lamto/features/reports/reports_repository.dart';
+import 'package:lamto_api/lamto_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+ReportSummary _summary(int id) => ReportSummary(
+      (b) => b
+        ..id = id
+        ..text = 'Leak'
+        ..status = 'OPEN'
+        ..locationPathSnapshot = 'B / Hall'
+        ..createdAt = DateTime.utc(2026, 7, 17),
+    );
+
+DioException _problem(int status, String code) {
+  final req = RequestOptions(path: '/api/v1/reports');
+  return DioException(
+    requestOptions: req,
+    response: Response(
+      requestOptions: req,
+      statusCode: status,
+      data: {'code': code, 'status': status, 'title': 'x', 'type': 'about:blank'},
+    ),
+    type: DioExceptionType.badResponse,
+  );
+}
+
+class _FakeRepo implements ReportsRepository {
+  final createdRefs = <String>[];
+  final uploaded = <String>[];
+  Object? createError;
+  Set<String> failPhotoPaths = {};
+
+  @override
+  Future<ReportSummary> createReport({
+    required String clientRef,
+    required String text,
+    required int locationId,
+  }) async {
+    createdRefs.add(clientRef);
+    final error = createError;
+    if (error != null) throw error;
+    return _summary(42);
+  }
+
+  @override
+  Future<ReportPhoto> uploadPhoto({
+    required int reportId,
+    required String path,
+    required String filename,
+  }) async {
+    if (failPhotoPaths.contains(path)) {
+      throw _problem(500, 'server_error');
+    }
+    uploaded.add(path);
+    return ReportPhoto(
+      (b) => b
+        ..id = uploaded.length
+        ..filename = filename
+        ..sha256 = 'aa'
+        ..downloadUrl = '/api/v1/documents/tok',
+    );
+  }
+
+  @override
+  Future<PaginatedReportSummaryList> listReports({String? cursor}) =>
+      throw UnimplementedError();
+  @override
+  Future<ReportDetail> fetchReport(int id) => throw UnimplementedError();
+  @override
+  Future<WorkRatingResult> rateWork(
+          {required int workOrderId, required int score, String comment = ''}) =>
+      throw UnimplementedError();
+  @override
+  Future<List<Location>> fetchLocations() => throw UnimplementedError();
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late _FakeRepo repo;
+  late ReportDraftStore drafts;
+  late ReportSubmitter submitter;
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    repo = _FakeRepo();
+    drafts = ReportDraftStore();
+    submitter = ReportSubmitter(repository: repo, draftStore: drafts);
+  });
+
+  ReportDraft _draft({List<String> photos = const []}) =>
+      ReportDraft.fresh().copyWith(
+        text: 'Leak',
+        locationId: 3,
+        photoPaths: photos,
+      );
+
+  test('submit commits text, clears draft, uploads photos in order', () async {
+    final draft = _draft(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
+    await drafts.write(7, draft);
+    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    expect(outcome.reportId, 42);
+    expect(outcome.allPhotosUploaded, isTrue);
+    expect(repo.uploaded, ['/tmp/a.jpg', '/tmp/b.jpg']);
+    expect(await drafts.read(7), isNull); // text committed -> draft gone
+  });
+
+  test('retry after network failure reuses the SAME client_ref (spec 3.5)',
+      () async {
+    final draft = _draft();
+    repo.createError = DioException(
+      requestOptions: RequestOptions(path: '/api/v1/reports'),
+      type: DioExceptionType.connectionTimeout,
+    );
+    await expectLater(
+        submitter.submit(draft: draft, occupancyId: 7), throwsA(anything));
+    repo.createError = null;
+    await submitter.submit(draft: draft, occupancyId: 7); // server replays 200
+    expect(repo.createdRefs, hasLength(2));
+    expect(repo.createdRefs[0], repo.createdRefs[1]);
+  });
+
+  test('409 client_ref_conflict surfaces ReportConflictException', () async {
+    repo.createError = _problem(409, 'client_ref_conflict');
+    await expectLater(
+      submitter.submit(draft: _draft(), occupancyId: 7),
+      throwsA(isA<ReportConflictException>()),
+    );
+  });
+
+  test('failed photo never loses the report; retryPhoto recovers it', () async {
+    repo.failPhotoPaths = {'/tmp/b.jpg'};
+    final draft = _draft(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
+    await drafts.write(7, draft);
+    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    expect(outcome.reportId, 42);
+    expect(outcome.allPhotosUploaded, isFalse);
+    expect(await drafts.read(7), isNull); // report text is safe regardless
+    final failed =
+        outcome.photos.singleWhere((p) => p.status == PhotoUploadStatus.failed);
+
+    repo.failPhotoPaths = {};
+    final retried =
+        await submitter.retryPhoto(reportId: 42, photo: failed);
+    expect(retried.status, PhotoUploadStatus.uploaded);
+  });
+
+  // Amendment 10: photo retry must not re-upload when already uploaded (client
+  // attachment id / status). Backend sha256 dedup covers lost-response; client
+  // must not double-call when status is already uploaded.
+  test('retryPhoto is idempotent when photo already uploaded', () async {
+    final draft = _draft(photos: ['/tmp/a.jpg']);
+    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    final photo = outcome.photos.single;
+    expect(photo.status, PhotoUploadStatus.uploaded);
+    final before = repo.uploaded.length;
+    final again =
+        await submitter.retryPhoto(reportId: 42, photo: photo);
+    expect(again.status, PhotoUploadStatus.uploaded);
+    expect(repo.uploaded.length, before); // no second upload
+  });
+}
