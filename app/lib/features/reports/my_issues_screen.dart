@@ -6,6 +6,7 @@ import '../../core/failure.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../auth/session_controller.dart';
 import 'issue_detail_screen.dart';
 import 'reports_repository.dart';
 
@@ -18,14 +19,16 @@ String reportStatusLabel(String status, AppLocalizations l10n) =>
 
 /// Cursor-paginated list of **all** reports submitted by the authenticated
 /// user across units (user-global; amendment 12). Not filtered to the
-/// selected occupancy — `ref.watch(occupancyScopedProviders)` only triggers
-/// a harmless refresh when occupancy changes.
+/// selected occupancy. Rebuilds when session identity changes so a later
+/// sign-in cannot show the previous user's cached list.
 class MyReportsController extends AsyncNotifier<List<ReportSummary>> {
   String? _nextCursor;
   bool get hasMore => _nextCursor != null;
 
   @override
   Future<List<ReportSummary>> build() async {
+    // Session identity: drop cross-user cache on logout / re-login.
+    ref.watch(sessionControllerProvider);
     ref.watch(occupancyScopedProviders);
     final page = await ref.read(reportsRepositoryProvider).listReports();
     _nextCursor = cursorFromNext(page.next);

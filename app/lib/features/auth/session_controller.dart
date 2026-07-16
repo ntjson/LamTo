@@ -130,6 +130,7 @@ class SessionController extends AsyncNotifier<SessionState> {
     unawaited(
       ReportPhotoFileStore().clearAll().catchError((Object _) {}),
     );
+    // My Issues watches sessionControllerProvider and rebuilds on this state.
     state = const AsyncData(SessionUnauthenticated());
   }
 

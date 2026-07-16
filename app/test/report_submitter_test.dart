@@ -33,6 +33,8 @@ class _FakeRepo implements ReportsRepository {
   final uploaded = <String>[];
   Object? createError;
   Set<String> failPhotoPaths = {};
+  /// Paths that throw a non-Dio error (e.g. missing local file).
+  Set<String> throwLocalPaths = {};
 
   @override
   Future<ReportSummary> createReport({
@@ -52,6 +54,9 @@ class _FakeRepo implements ReportsRepository {
     required String path,
     required String filename,
   }) async {
+    if (throwLocalPaths.contains(path)) {
+      throw StateError('missing local file');
+    }
     if (failPhotoPaths.contains(path)) {
       throw _problem(500, 'server_error');
     }
@@ -162,5 +167,16 @@ void main() {
         await submitter.retryPhoto(reportId: 42, photo: photo);
     expect(again.status, PhotoUploadStatus.uploaded);
     expect(repo.uploaded.length, before); // no second upload
+  });
+
+  // Soft-fail non-Dio photo errors so form always reaches committed-result.
+  test('non-Dio photo error marks failed and still returns reportId', () async {
+    repo.throwLocalPaths = {'/tmp/a.jpg'};
+    final draft = _draft(photos: ['/tmp/a.jpg']);
+    await drafts.write(7, draft);
+    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    expect(outcome.reportId, 42);
+    expect(outcome.photos.single.status, PhotoUploadStatus.failed);
+    expect(await drafts.read(7), isNull);
   });
 }

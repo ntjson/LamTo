@@ -98,7 +98,9 @@ class ReportSubmitter {
         filename: photo.filename,
       );
       photo.status = PhotoUploadStatus.uploaded;
-    } on DioException {
+    } catch (_) {
+      // Soft-fail any photo error (Dio or local) so committed-result always
+      // lands after text create; draft is already cleared (amendment 11).
       photo.status = PhotoUploadStatus.failed;
     }
   }
