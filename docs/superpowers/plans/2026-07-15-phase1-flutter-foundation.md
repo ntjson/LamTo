@@ -4,9 +4,33 @@
 
 **Goal:** Stand up the Flutter resident app's foundation (spec §6): a platform-adaptive Material 3 scaffold, a Dart API client generated from the committed OpenAPI schema, the single auth/occupancy HTTP interceptor, problem-json failure mapping, Vietnamese-first l10n, the `GET /me`-driven app-start routing, and the Login + Occupancy-picker screens.
 
-**Architecture:** A new `app/` Flutter project in this monorepo. The `dart-dio` generator turns `docs/api/openapi-v1.yaml` into a committed, CI-diffed typed model + serializer package (`app/packages/lamto_api`); thin repositories issue requests through one interceptor-configured `Dio` (attach knox token, inject `X-LamTo-Occupancy`, map `application/problem+json`, clear the token on 401) and deserialize responses with the generated `standardSerializers`. Riverpod 3 holds session/occupancy state; a root `ConsumerWidget` routes on the async session state. This plan delivers login → occupancy pick → an empty tab shell; the feature screens land in the two follow-on plans (see Scope Check).
+**Architecture:** A new `app/` Flutter project in this monorepo (see **Repository decision** below). The `dart-dio` generator turns `docs/api/openapi-v1.yaml` into a committed, CI-diffed typed model + serializer package (`app/packages/lamto_api`); thin repositories issue requests through one interceptor-configured `Dio` (attach knox token, inject `X-LamTo-Occupancy` **only on building-scoped endpoints**, map `application/problem+json`, clear the token on 401) and deserialize responses with the generated `standardSerializers` (preferred: use generated dart-dio API classes with that Dio; any manual path must have a contract test). Riverpod 3 holds session/occupancy state; a root `ConsumerWidget` routes on the async session state. Bootstrap reads secure storage first and distinguishes no-token/401 (Login) from network/timeout/server/schema (retryable error). Occupancy is persisted per user/install, validated against `/me`, and clears occupancy-scoped providers/caches on change. This plan delivers login → occupancy pick → an empty platform-adaptive tab shell; the feature screens land in the two follow-on plans (see Scope Check).
 
-**Tech Stack:** Flutter (Material 3 + `.adaptive`), Dart 3, `flutter_riverpod` ^3, `dio` ^5, `flutter_secure_storage` ^9, `built_value`/`built_collection` (generated client), `openapi-generator-cli` v7 (dart-dio), Flutter `gen-l10n` (ARB), `flutter_test` + `mocktail`.
+**Tech Stack:** Flutter (Material 3 + `.adaptive`), Dart 3, `flutter_riverpod` ^3, `dio` ^5, `flutter_secure_storage` ^9, `shared_preferences` (occupancy id only — never the auth token), `built_value`/`built_collection` (generated client), `openapi-generator-cli` v7 (dart-dio), Flutter `gen-l10n` (ARB), `flutter_test` + `mocktail`.
+
+## Repository decision (required before scaffold)
+
+**Decision (2026-07-16): monorepo — Flutter app lives at `app/` in this repository.**
+
+Rationale:
+- The OpenAPI schema at `docs/api/openapi-v1.yaml` is the single source of truth; co-locating the app with the schema and backend lets the CI drift gate (`check_api_generated.sh`) run in the same workflow as backend checks without cross-repo sync.
+- Foundation plan, DESIGN.md, and product docs already assume monorepo `app/`.
+- Separate-repo would force schema publishing/version pinning for Phase 1 with no compensating multi-team benefit yet.
+
+**Do not run `flutter create` until this decision is recorded (this section). Scaffold path is `app/` under the monorepo root.**
+
+## Plan amendments (eight clarifications)
+
+These bind every task below (supersede conflicting original snippets):
+
+1. **Bootstrap error taxonomy.** On start: read secure storage first. No token → `SessionUnauthenticated` (Login). With token: call `GET /me`. Only confirmed auth failure (HTTP 401 / `not_authenticated` / `authentication_failed`) routes to Login and clears the token. Transient failures — network, timeout, connection error, 5xx server, schema/deserialization errors — must surface as a **retryable bootstrap error state** (not Login). Do **not** treat bare `AsyncError` as Login.
+2. **Occupancy persist / validate / clear.** Persist the selected occupancy id per user/install (keyed by user identity when available, else install-scoped). On each successful `/me`, validate the stored id is still in `me.occupancies`; if missing, clear it and force re-pick when multi-occupancy. When the selected occupancy changes, clear all occupancy-scoped providers and caches (invalidate occupancy-scoped Riverpod providers; reset holder/caches).
+3. **Building-scoped occupancy header only.** Inject `X-LamTo-Occupancy` **only** on endpoints explicitly marked building-scoped (OpenAPI paths that declare the `X-LamTo-Occupancy` parameter, or an allowlist of path prefixes derived from the schema — e.g. locations, reports, ledger, notifications, fund). Do **not** attach the header to every request after selection (not on `/auth/*`, `/me`, `/devices` unless the schema marks them building-scoped).
+4. **Generated client or contract tests.** Prefer generated dart-dio API classes wired to the interceptor-configured Dio. If any endpoint path is hand-written (string path on Dio), add a **contract test** that asserts that exact path string matches the OpenAPI path (one test per manual path).
+5. **CI job.** Wire `check_api_generated.sh`, `flutter analyze`, and `flutter test` into an **actual** CI workflow job under `.github/workflows/` (not only local scripts).
+6. **Theme completeness.** Implement **real tabular numeral styles** for VND (e.g. `FontFeature.tabularFigures()` on money text styles / `ThemeData` text theme where money is shown). Resolve incomplete dark-theme tokens: dark `ColorScheme` must set surface, onSurface, background/scaffold, primary, error, and border/outline-equivalent values — no critical null/default-only dark tokens.
+7. **Platform-adaptive tab shell.** Material `NavigationBar` on Android; iOS-appropriate tab bar (`CupertinoTabBar` / adaptive chrome) while **reusing the same five screen bodies**. Branch chrome by platform (`Theme.of(context).platform` or `defaultTargetPlatform`); do not maintain two full product UI trees.
+8. **Repo location.** See **Repository decision** above — decided and documented before scaffold.
 
 ## Scope Check (spec §6 is three plans)
 
@@ -150,32 +174,71 @@ class LamToColors {
   static const info = Color(0xFF175CD3);
 }
 
+/// Dark-theme tokens (complete — clarification #6; no critical null tokens).
+class LamToColorsDark {
+  static const bg = Color(0xFF12141C);
+  static const surface = Color(0xFF1C2030);
+  static const ink = Color(0xFFE8EAF2);
+  static const muted = Color(0xFFA0A8B8);
+  static const border = Color(0xFF3A4158);
+  static const onPrimary = Color(0xFFFFFFFF);
+}
+
+/// Money / VND text style with real tabular figures (DESIGN.md + clarification #6).
+TextStyle moneyTextStyle(TextTheme base, {Color? color}) {
+  return (base.titleMedium ?? const TextStyle()).copyWith(
+    fontFeatures: const [FontFeature.tabularFigures()],
+    color: color,
+    fontWeight: FontWeight.w600,
+  );
+}
+
 ThemeData lamToTheme(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  final surface = isDark ? LamToColorsDark.surface : LamToColors.surface;
+  final bg = isDark ? LamToColorsDark.bg : LamToColors.bg;
+  final onSurface = isDark ? LamToColorsDark.ink : LamToColors.ink;
+  final outline = isDark ? LamToColorsDark.border : LamToColors.border;
   final scheme = ColorScheme.fromSeed(
     seedColor: LamToColors.primary,
     brightness: brightness,
     primary: LamToColors.primary,
     onPrimary: LamToColors.onPrimary,
     error: LamToColors.error,
-    surface: LamToColors.surface,
+    surface: surface,
+    onSurface: onSurface,
+    outline: outline,
+  );
+  final baseText = Typography.material2021(platform: TargetPlatform.android)
+      .black
+      .apply(
+        bodyColor: onSurface,
+        displayColor: onSurface,
+        fontFamilyFallback: const ['Roboto'],
+      );
+  // Apply tabular figures to titleMedium used for money (VND).
+  final textTheme = baseText.copyWith(
+    titleMedium: moneyTextStyle(baseText, color: onSurface),
   );
   return ThemeData(
     useMaterial3: true,
+    brightness: brightness,
     colorScheme: scheme,
-    scaffoldBackgroundColor: brightness == Brightness.light ? LamToColors.bg : null,
-    // Money uses tabular figures (DESIGN.md); enable app-wide feature.
-    textTheme: const TextTheme().apply(fontFamilyFallback: const ['Roboto']),
+    scaffoldBackgroundColor: bg,
+    textTheme: textTheme,
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
     ),
-    inputDecorationTheme: const InputDecorationTheme(
-      border: OutlineInputBorder(),
+    inputDecorationTheme: InputDecorationTheme(
+      border: const OutlineInputBorder(),
       filled: true,
-      fillColor: LamToColors.surface,
+      fillColor: surface,
     ),
   );
 }
 ```
+
+Theme tests must assert: light primary indigo; dark scheme has non-default surface/onSurface/outline/scaffoldBackgroundColor; `moneyTextStyle` includes `FontFeature.tabularFigures()`.
 
 - [ ] **Step 3: Minimal app entrypoint**
 
@@ -650,8 +713,13 @@ Hold the selected occupancy id and inject `X-LamTo-Occupancy` on building-scoped
 
 **Interfaces:**
 - Produces:
-  - `OccupancyHolder` — mutable `int? occupancyId` (a plain object the interceptor reads).
-  - `buildDio(...)` gains a `required OccupancyHolder occupancy` param; the interceptor adds `X-LamTo-Occupancy` when set.
+  - `OccupancyHolder` — mutable `int? occupancyId` (a plain object the interceptor reads); persist/load/validate helpers.
+  - `isBuildingScopedPath(String path)` — true only for endpoints that require occupancy (clarification #3).
+  - `buildDio(...)` gains `required OccupancyHolder occupancy`; interceptor adds `X-LamTo-Occupancy` **only when set AND path is building-scoped**.
+  - On occupancy change: clear occupancy-scoped providers/caches (clarification #2).
+
+**Building-scoped path prefixes** (from OpenAPI paths declaring `X-LamTo-Occupancy`):
+`/api/v1/locations`, `/api/v1/reports`, `/api/v1/ledger`, `/api/v1/notifications`, `/api/v1/fund` (and nested). Non-scoped: `/api/v1/auth/*`, `/api/v1/me`, `/api/v1/devices` (unless schema later marks them).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -679,8 +747,8 @@ class _MockAdapter extends Mock implements HttpClientAdapter {}
 void main() {
   setUpAll(() => registerFallbackValue(RequestOptions(path: '/')));
 
-  test('injects X-LamTo-Occupancy only when set', () async {
-    final holder = OccupancyHolder();
+  test('injects X-LamTo-Occupancy only on building-scoped paths when set', () async {
+    final holder = OccupancyHolder()..occupancyId = 42;
     final adapter = _MockAdapter();
     final dio = buildDio(
       store: _FakeStore(), occupancy: holder, onUnauthorized: () {}, baseUrl: 'http://x');
@@ -693,11 +761,26 @@ void main() {
           headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
     });
 
-    await dio.get<dynamic>('/ledger');
+    // Non-scoped: /me must NOT get the header even when occupancy is set.
+    await dio.get<dynamic>('/api/v1/me');
     expect(seen, isNull);
-    holder.occupancyId = 42;
-    await dio.get<dynamic>('/ledger');
+
+    // Building-scoped: /ledger gets the header.
+    await dio.get<dynamic>('/api/v1/ledger');
     expect(seen, '42');
+
+    // When unset, building-scoped also omits header.
+    holder.occupancyId = null;
+    seen = 'sentinel';
+    await dio.get<dynamic>('/api/v1/ledger');
+    expect(seen, isNull);
+  });
+
+  test('isBuildingScopedPath allowlist', () {
+    expect(isBuildingScopedPath('/api/v1/ledger'), isTrue);
+    expect(isBuildingScopedPath('/api/v1/reports'), isTrue);
+    expect(isBuildingScopedPath('/api/v1/me'), isFalse);
+    expect(isBuildingScopedPath('/api/v1/auth/login'), isFalse);
   });
 }
 ```
@@ -712,29 +795,37 @@ Expected: FAIL — `occupancy.dart` missing / `buildDio` has no `occupancy` para
 Create `app/lib/core/occupancy.dart`:
 
 ```dart
-/// The resident's selected active occupancy id, injected as X-LamTo-Occupancy
-/// (spec 3.4). Only the occupancy id is ever sent; never a building id.
+/// Path prefixes that declare X-LamTo-Occupancy in the OpenAPI schema.
+const buildingScopedPathPrefixes = [
+  '/api/v1/locations',
+  '/api/v1/reports',
+  '/api/v1/ledger',
+  '/api/v1/notifications',
+  '/api/v1/fund',
+];
+
+bool isBuildingScopedPath(String path) {
+  final p = path.startsWith('http') ? Uri.parse(path).path : path;
+  return buildingScopedPathPrefixes.any((prefix) => p == prefix || p.startsWith('$prefix/'));
+}
+
+/// Selected active occupancy id (spec 3.4). Only the occupancy id is ever sent.
+/// Persist/load/validate against /me; clear scoped state on change (clarification #2).
 class OccupancyHolder {
   int? occupancyId;
 }
 ```
 
-In `app/lib/core/api_client.dart`, add the import and the `occupancy` parameter, and set the header in `onRequest`:
-
-```dart
-import 'occupancy.dart';
-```
-
-Change the signature to `Dio buildDio({required TokenStore store, required OccupancyHolder occupancy, required void Function() onUnauthorized, String? baseUrl})` and inside `onRequest`, after attaching the token:
+In `app/lib/core/api_client.dart`, add import and `occupancy` parameter; in `onRequest` after token:
 
 ```dart
       final occ = occupancy.occupancyId;
-      if (occ != null) {
+      if (occ != null && isBuildingScopedPath(options.path)) {
         options.headers['X-LamTo-Occupancy'] = occ;
       }
 ```
 
-Update the Task-3 test's `buildDio(...)` call to pass `occupancy: OccupancyHolder()`.
+Update Task-3 test's `buildDio(...)` to pass `occupancy: OccupancyHolder()`.
 
 - [ ] **Step 4: Run the tests**
 
@@ -747,7 +838,7 @@ Expected: PASS.
 cd /home/nts/src/LamTo
 git add app/lib/core/occupancy.dart app/lib/core/api_client.dart \
         app/test/occupancy_header_test.dart app/test/auth_interceptor_test.dart
-git commit -m "feat(app): inject X-LamTo-Occupancy header from occupancy state"
+git commit -m "feat(app): inject X-LamTo-Occupancy only on building-scoped paths"
 ```
 
 ---
@@ -917,72 +1008,31 @@ git commit -m "feat(app): Vietnamese-first l10n and failure-doctrine copy"
 
 ### Task 7: Session controller + app-start routing
 
-The Riverpod session state, the `GET /me`-driven bootstrap, and the root router (spec §6.4).
+The Riverpod session state, the `GET /me`-driven bootstrap with error taxonomy (clarification #1), occupancy persist/validate (clarification #2), and the root router (spec §6.4).
 
 **Files:**
-- Create: `app/lib/features/auth/auth_repository.dart`, `app/lib/features/auth/session_controller.dart`, `app/lib/core/providers.dart`
+- Create: `app/lib/features/auth/auth_repository.dart`, `app/lib/features/auth/session_controller.dart`, `app/lib/core/providers.dart`, `app/lib/core/occupancy_store.dart`
 - Modify: `app/lib/app.dart`
-- Test: `app/test/session_controller_test.dart`
+- Test: `app/test/session_controller_test.dart`, `app/test/auth_repository_contract_test.dart` (manual paths)
 
 **Interfaces:**
 - Consumes: `buildDio`, `TokenStore`, `OccupancyHolder`, `Failure`, generated `Me`/`TokenResponse`.
 - Produces:
-  - `AuthRepository` — `Future<String> login(String identifier, String password)` (returns token), `Future<Me> fetchMe()`.
-  - `SessionState` sealed: `SessionUnauthenticated`, `SessionAuthenticated(Me me)`.
-  - `sessionControllerProvider` (`AsyncNotifierProvider<SessionController, SessionState>`) with `bootstrap()`, `signIn(id,pw)`, `signOut()`.
-  - `providers.dart`: `tokenStoreProvider`, `occupancyHolderProvider`, `dioProvider`, `authRepositoryProvider`.
+  - `AuthRepository` — `login`, `fetchMe`.
+  - `SessionState` sealed: `SessionUnauthenticated`, `SessionAuthenticated(Me me)`, `SessionBootstrapError(Failure failure)` (retryable).
+  - Bootstrap: **read secure storage first**; no token → unauthenticated; with token → `GET /me`; only 401/auth codes → unauthenticated (+ clear token); network/timeout/server/schema → `SessionBootstrapError`.
+  - Occupancy: load persisted id, validate against `me.occupancies`, clear invalid; on change clear occupancy-scoped providers.
+  - Contract tests for every hand-written Dio path (clarification #4) if not using generated API classes for requests.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `app/test/session_controller_test.dart`:
-
-```dart
-import 'package:built_collection/built_collection.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lamto/core/providers.dart';
-import 'package:lamto/features/auth/auth_repository.dart';
-import 'package:lamto/features/auth/session_controller.dart';
-import 'package:lamto_api/lamto_api.dart';
-
-class _FakeRepo implements AuthRepository {
-  _FakeRepo({this.me});
-  Me? me;
-  @override
-  Future<String> login(String identifier, String password) async => 'tok';
-  @override
-  Future<Me> fetchMe() async {
-    if (me == null) throw StateError('no session');
-    return me!;
-  }
-}
-
-Me _me() => Me((b) => b
-  ..displayName = 'Resident'
-  ..email = 'r@example.com'
-  ..occupancies = ListBuilder<Occupancy>()
-  ..notificationPreferences = ListBuilder<NotificationPreference>());
-
-void main() {
-  test('bootstrap with no session -> unauthenticated', () async {
-    final container = ProviderContainer(overrides: [
-      authRepositoryProvider.overrideWithValue(_FakeRepo()),
-    ]);
-    addTearDown(container.dispose);
-    final state = await container.read(sessionControllerProvider.future);
-    expect(state, isA<SessionUnauthenticated>());
-  });
-
-  test('bootstrap with a session -> authenticated', () async {
-    final container = ProviderContainer(overrides: [
-      authRepositoryProvider.overrideWithValue(_FakeRepo(me: _me())),
-    ]);
-    addTearDown(container.dispose);
-    final state = await container.read(sessionControllerProvider.future);
-    expect(state, isA<SessionAuthenticated>());
-  });
-}
-```
+Create `app/test/session_controller_test.dart` covering:
+- no token in store → `SessionUnauthenticated` (must not call fetchMe)
+- token + successful me → `SessionAuthenticated`
+- token + 401 → `SessionUnauthenticated` and token cleared
+- token + network/timeout DioException → `SessionBootstrapError` with network_error (NOT unauthenticated)
+- token + schema/deserialize failure → `SessionBootstrapError`
+- persisted occupancy validated: id not in me.occupancies is cleared
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -991,136 +1041,36 @@ Expected: FAIL — the providers/controller don't exist.
 
 - [ ] **Step 3: Implement the repository**
 
-Create `app/lib/features/auth/auth_repository.dart`:
+Create `app/lib/features/auth/auth_repository.dart` using Dio + generated `standardSerializers` for deserialize. Document manual paths and add `app/test/auth_repository_contract_test.dart` asserting paths equal OpenAPI:
+- `POST /api/v1/auth/login`
+- `GET /api/v1/me`
 
-```dart
-import 'package:dio/dio.dart';
-import 'package:lamto_api/lamto_api.dart';
+(Or wire generated dart-dio API classes to the same interceptor Dio — prefer that if generation exposes usable services.)
 
-abstract class AuthRepository {
-  Future<String> login(String identifier, String password);
-  Future<Me> fetchMe();
-}
+- [ ] **Step 4: Implement providers + controller + occupancy store**
 
-class DioAuthRepository implements AuthRepository {
-  DioAuthRepository(this._dio);
-  final Dio _dio;
-
-  @override
-  Future<String> login(String identifier, String password) async {
-    final res = await _dio.post<Map<String, dynamic>>(
-      '/api/v1/auth/login',
-      data: {'identifier': identifier, 'password': password},
-    );
-    final token = standardSerializers.deserializeWith(TokenResponse.serializer, res.data!)!;
-    return token.token;
-  }
-
-  @override
-  Future<Me> fetchMe() async {
-    final res = await _dio.get<Map<String, dynamic>>('/api/v1/me');
-    return standardSerializers.deserializeWith(Me.serializer, res.data!)!;
-  }
-}
-```
-
-- [ ] **Step 4: Implement the providers + controller**
-
-Create `app/lib/core/providers.dart`:
-
-```dart
-import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'api_client.dart';
-import 'occupancy.dart';
-import 'token_store.dart';
-import '../features/auth/auth_repository.dart';
-import '../features/auth/session_controller.dart';
-
-final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
-final occupancyHolderProvider = Provider<OccupancyHolder>((ref) => OccupancyHolder());
-
-final dioProvider = Provider<Dio>((ref) {
-  return buildDio(
-    store: ref.watch(tokenStoreProvider),
-    occupancy: ref.watch(occupancyHolderProvider),
-    // A 401 on a token-carrying request means the session expired: re-bootstrap
-    // so the router falls back to Login (the interceptor already cleared the token).
-    onUnauthorized: () => ref.invalidate(sessionControllerProvider),
-  );
-});
-
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => DioAuthRepository(ref.watch(dioProvider)),
-);
-```
-
-Create `app/lib/features/auth/session_controller.dart`:
-
-```dart
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lamto_api/lamto_api.dart';
-import '../../core/providers.dart';
-import '../../core/token_store.dart';
-import 'auth_repository.dart';
-
-sealed class SessionState {
-  const SessionState();
-}
-
-class SessionUnauthenticated extends SessionState {
-  const SessionUnauthenticated();
-}
-
-class SessionAuthenticated extends SessionState {
-  const SessionAuthenticated(this.me);
-  final Me me;
-}
-
-class SessionController extends AsyncNotifier<SessionState> {
-  AuthRepository get _repo => ref.read(authRepositoryProvider);
-  TokenStore get _store => ref.read(tokenStoreProvider);
-
-  @override
-  Future<SessionState> build() => _bootstrap();
-
-  Future<SessionState> _bootstrap() async {
-    try {
-      final me = await _repo.fetchMe();
-      return SessionAuthenticated(me);
-    } catch (_) {
-      return const SessionUnauthenticated();
-    }
-  }
-
-  Future<void> signIn(String identifier, String password) async {
-    final token = await _repo.login(identifier, password);
-    await _store.write(token);
-    state = AsyncData(SessionAuthenticated(await _repo.fetchMe()));
-  }
-
-  Future<void> signOut() async {
-    await _store.clear();
-    state = const AsyncData(SessionUnauthenticated());
-  }
-}
-
-final sessionControllerProvider =
-    AsyncNotifierProvider<SessionController, SessionState>(SessionController.new);
-```
+- `OccupancyStore` (shared_preferences): `read(userKey)`, `write(userKey, id)`, `clear(userKey)`.
+- `SessionController._bootstrap()`:
+  1. `token = await store.read()`; if null/empty → `SessionUnauthenticated`.
+  2. try `fetchMe()`; on success validate occupancy, return `SessionAuthenticated`.
+  3. on DioException: if 401 or auth failure codes → clear token → `SessionUnauthenticated`; else map `Failure.fromDio` → `SessionBootstrapError`.
+  4. on other errors (e.g. TypeError/deserialize) → `SessionBootstrapError(code: schema_error)`.
+- `selectOccupancy(id)`: persist, set holder, **invalidate occupancy-scoped providers**.
+- Do not map bare catch-all to unauthenticated.
 
 - [ ] **Step 5: Run the test**
 
-Run: `cd app && flutter test test/session_controller_test.dart`
-Expected: PASS (2 tests).
+Run: `cd app && flutter test test/session_controller_test.dart test/auth_repository_contract_test.dart`
+Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 cd /home/nts/src/LamTo
-git add app/lib/core/providers.dart app/lib/features/auth/auth_repository.dart \
-        app/lib/features/auth/session_controller.dart app/test/session_controller_test.dart
-git commit -m "feat(app): session controller and GET /me bootstrap"
+git add app/lib/core/providers.dart app/lib/core/occupancy_store.dart \
+        app/lib/features/auth/ app/test/session_controller_test.dart \
+        app/test/auth_repository_contract_test.dart
+git commit -m "feat(app): session bootstrap taxonomy and occupancy persist/validate"
 ```
 
 ---
@@ -1305,9 +1255,11 @@ class OccupancyPickerScreen extends ConsumerWidget {
 }
 ```
 
-Create `app/lib/features/shell/home_shell.dart` (adaptive tab scaffold; tab bodies are placeholders filled by the follow-on plans):
+Create `app/lib/features/shell/home_shell.dart` — **platform-adaptive chrome** (clarification #7): Material `NavigationBar` on Android; `CupertinoTabScaffold`/`CupertinoTabBar` on iOS; **same five placeholder bodies**.
 
 ```dart
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -1319,12 +1271,38 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  List<Widget> _bodies(AppLocalizations l10n) => [
+        for (final label in [l10n.tabHome, l10n.tabReport, l10n.tabIssues, l10n.tabLedger, l10n.tabAccount])
+          Center(child: Text(label)),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tabs = [l10n.tabHome, l10n.tabReport, l10n.tabIssues, l10n.tabLedger, l10n.tabAccount];
+    final bodies = _bodies(l10n);
+    final isIos = Theme.of(context).platform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    if (isIos) {
+      return CupertinoTabScaffold(
+        tabBar: CupertinoTabBar(
+          currentIndex: _index,
+          onTap: (i) => setState(() => _index = i),
+          items: [
+            BottomNavigationBarItem(icon: const Icon(CupertinoIcons.home), label: l10n.tabHome),
+            BottomNavigationBarItem(icon: const Icon(CupertinoIcons.add_circ), label: l10n.tabReport),
+            BottomNavigationBarItem(icon: const Icon(CupertinoIcons.list_bullet), label: l10n.tabIssues),
+            BottomNavigationBarItem(icon: const Icon(CupertinoIcons.money_dollar), label: l10n.tabLedger),
+            BottomNavigationBarItem(icon: const Icon(CupertinoIcons.person), label: l10n.tabAccount),
+          ],
+        ),
+        tabBuilder: (context, index) => CupertinoPageScaffold(
+          child: SafeArea(child: bodies[index]),
+        ),
+      );
+    }
     return Scaffold(
-      body: Center(child: Text(tabs[_index])),
+      body: bodies[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -1341,21 +1319,23 @@ class _HomeShellState extends State<HomeShell> {
 }
 ```
 
+Add a widget/unit test (or platform override in routing test) that with `debugDefaultTargetPlatformOverride = TargetPlatform.iOS` the shell builds `CupertinoTabBar`, and with Android builds `NavigationBar`.
+
 - [ ] **Step 4: Add the root router**
 
-In `app/lib/app.dart`, replace the `home:` with an `AppRouter` that watches session state. Add the imports and the widget:
+In `app/lib/app.dart`, replace `home:` with `AppRouter` watching session state. **Do not route AsyncError or SessionBootstrapError to Login** (clarification #1).
 
 ```dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
+import 'core/failure.dart';
 import 'core/providers.dart';
 import 'features/auth/session_controller.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/occupancy_picker_screen.dart';
 import 'features/shell/home_shell.dart';
+import 'l10n/app_localizations.dart';
 ```
-
-Set `home: const AppRouter()` and append:
 
 ```dart
 class AppRouter extends ConsumerWidget {
@@ -1368,9 +1348,16 @@ class AppRouter extends ConsumerWidget {
       AsyncData(:final value) => switch (value) {
           SessionUnauthenticated() => const LoginScreen(),
           SessionAuthenticated(:final me) => _routeAuthenticated(ref, me),
-          _ => const LoginScreen(),
+          SessionBootstrapError(:final failure) => BootstrapErrorScreen(
+              failure: failure,
+              onRetry: () => ref.invalidate(sessionControllerProvider),
+            ),
         },
-      AsyncError() => const LoginScreen(),
+      // Transient provider errors also show retry — never Login.
+      AsyncError(:final error) => BootstrapErrorScreen(
+          failure: error is Failure ? error : Failure(code: 'server_error'),
+          onRetry: () => ref.invalidate(sessionControllerProvider),
+        ),
       _ => const Scaffold(body: Center(child: CircularProgressIndicator.adaptive())),
     };
   }
@@ -1378,21 +1365,50 @@ class AppRouter extends ConsumerWidget {
   Widget _routeAuthenticated(WidgetRef ref, Me me) {
     final holder = ref.read(occupancyHolderProvider);
     if (me.occupancies.length == 1) {
+      // Persist single occupancy selection (via controller helper if available).
       holder.occupancyId = me.occupancies.first.id;
       return const HomeShell();
     }
-    if (holder.occupancyId != null) return const HomeShell();
+    if (holder.occupancyId != null &&
+        me.occupancies.any((o) => o.id == holder.occupancyId)) {
+      return const HomeShell();
+    }
     return OccupancyPickerScreen(
       me: me,
-      // Re-runs _routeAuthenticated, which now sees holder.occupancyId != null
-      // and returns HomeShell. Re-fetching /me once on selection is acceptable.
       onChosen: () => ref.invalidate(sessionControllerProvider),
+    );
+  }
+}
+
+/// Retryable bootstrap failure UI (clarification #1).
+class BootstrapErrorScreen extends StatelessWidget {
+  const BootstrapErrorScreen({required this.failure, required this.onRetry, super.key});
+  final Failure failure;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(failureMessage(failure, l10n), textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: onRetry, child: Text(l10n.errGeneric /* or dedicated retry key */)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 ```
 
-`LamToApp` stays a `StatelessWidget`; `MaterialApp.home` is `const AppRouter()` (a `ConsumerWidget`). `onChosen` runs on tap (not during build), so invalidating the provider there is safe.
+Add ARB keys for retry if needed (`bootstrapRetry`: "Thử lại" / "Retry"). Occupancy picker must call persist + clear scoped providers on selection (via session/occupancy controller).
 
 - [ ] **Step 5: Run the tests**
 
@@ -1412,7 +1428,59 @@ cd app && flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```bash
 cd /home/nts/src/LamTo
 git add app/lib/features app/lib/app.dart app/test/app_routing_test.dart
-git commit -m "feat(app): login, occupancy picker, and session-routed tab shell"
+git commit -m "feat(app): login, occupancy picker, and adaptive session-routed tab shell"
+```
+
+---
+
+### Task 9: CI job for API drift gate + analyze + test
+
+Wire the local scripts into an actual GitHub Actions workflow (clarification #5).
+
+**Files:**
+- Create: `.github/workflows/flutter-app.yml` (or extend an existing workflow)
+
+**Requirements:**
+- Job runs on pull_request and push to main/master (and this feature branch pattern).
+- Steps: checkout → setup Flutter → setup Node (for openapi-generator) → `cd app && flutter pub get` → `./tool/check_api_generated.sh` → `flutter analyze` → `flutter test`.
+- Fail the job if any step fails.
+
+- [ ] **Step 1: Add workflow**
+
+```yaml
+name: Flutter resident app
+on:
+  push:
+    paths: ['app/**', 'docs/api/openapi-v1.yaml', '.github/workflows/flutter-app.yml']
+  pull_request:
+    paths: ['app/**', 'docs/api/openapi-v1.yaml', '.github/workflows/flutter-app.yml']
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: flutter pub get
+      - run: chmod +x tool/generate_api.sh tool/check_api_generated.sh
+      - name: API client drift gate
+        run: ./tool/check_api_generated.sh
+      - run: flutter analyze
+      - run: flutter test
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add .github/workflows/flutter-app.yml
+git commit -m "ci(app): run API drift gate, flutter analyze, and flutter test"
 ```
 
 ---
@@ -1424,16 +1492,19 @@ git commit -m "feat(app): login, occupancy picker, and session-routed tab shell"
 | Spec | Requirement | Task |
 |---|---|---|
 | §6.2 | Flutter, Material 3 + adaptive; Riverpod state | Tasks 1, 7, 8 |
-| §6.2 | Dart API client generated from committed schema; regenerated + diffed in CI | Task 2 |
-| §6.2 | Thin repository layer | Task 7 (`AuthRepository` over generated models + `standardSerializers`) |
+| §6.2 | Dart API client generated from committed schema; regenerated + diffed in CI | Tasks 2, 9 |
+| §6.2 | Thin repository layer + contract tests for manual paths | Task 7 |
 | §6.2 | Vietnamese-first l10n via ARB; copy keyed off `code` | Tasks 4, 6 |
-| §6.2 / DESIGN.md | ≥44pt targets, AA tokens, one primary action, system font scaling | Tasks 1 (theme/48px buttons), 8 |
+| §6.2 / DESIGN.md | ≥44pt targets, AA tokens, tabular VND, complete dark tokens | Task 1 |
 | §3.2 | Token in Keychain/Keystore only | Task 3 |
 | §6.4 | One interceptor: attach token; 401 → clear → login | Task 3 |
-| §3.4 | `X-LamTo-Occupancy` injection; only the occupancy id sent | Task 5 |
-| §6.4 | App start `GET /me` decides route | Task 7 |
+| §3.4 | `X-LamTo-Occupancy` **only on building-scoped** paths | Task 5 |
+| §6.4 | App start: secure storage first; auth vs retryable bootstrap taxonomy | Task 7 |
 | §6.4 | Failure doctrine (what happened / saved? / next) from `code`; no HTTP jargon | Tasks 4, 6 |
-| §6.3 | Login screen; Occupancy picker; tab scaffold (Home·Report·Issues·Ledger·Account) | Task 8 |
+| §6.3 | Login; Occupancy picker; **platform-adaptive** tab shell | Task 8 |
+| Occupancy | Persist/validate against `/me`; clear scoped state on change | Tasks 5, 7, 8 |
+| CI | Real workflow: drift gate + analyze + test | Task 9 |
+| Repo | Monorepo `app/` decided before scaffold | Repository decision |
 
 ### Deferred to the two follow-on §6 plans
 
