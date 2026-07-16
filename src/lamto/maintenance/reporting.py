@@ -164,6 +164,7 @@ def attach_report_photo(resident, report, uploaded_file, scanner=None):
         raise PermissionDenied("Active occupancy in the report building is required.")
 
     content_sha = _upload_sha256(uploaded_file)
+    # Fast path without lock (common sequential retry).
     existing = (
         ReportPhoto.objects.select_related("version")
         .filter(report=report, version__sha256=content_sha)
@@ -173,5 +174,27 @@ def attach_report_photo(resident, report, uploaded_file, scanner=None):
         return existing.version, False
 
     version = create_resident_report_photo(resident, report.building, uploaded_file, scanner)
-    ReportPhoto.objects.create(report=report, version=version)
-    return version, True
+    # Serialize attach on this report so concurrent same-bytes uploads cannot
+    # both insert ReportPhoto rows after both pass the pre-check (TOCTOU).
+    with transaction.atomic():
+        IssueReport.objects.select_for_update().filter(pk=report.pk).get()
+        existing = (
+            ReportPhoto.objects.select_related("version")
+            .filter(report=report, version__sha256=content_sha)
+            .first()
+        )
+        if existing is not None:
+            return existing.version, False
+        try:
+            ReportPhoto.objects.create(report=report, version=version)
+        except IntegrityError:
+            # Unique (report, version) or concurrent winner: re-read by content.
+            existing = (
+                ReportPhoto.objects.select_related("version")
+                .filter(report=report, version__sha256=content_sha)
+                .first()
+            )
+            if existing is not None:
+                return existing.version, False
+            raise
+        return version, True
