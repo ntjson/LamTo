@@ -8,6 +8,7 @@ import 'package:lamto/core/providers.dart';
 import 'package:lamto/core/token_store.dart';
 import 'package:lamto/features/auth/auth_repository.dart';
 import 'package:lamto/features/auth/session_controller.dart';
+import 'package:lamto/features/reports/report_draft.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -258,5 +259,41 @@ void main() {
     final state = container.read(sessionControllerProvider).value;
     expect(state, isA<SessionUnauthenticated>());
     expect(store.token, isNull);
+  });
+
+  test('signOut clears every report draft key (logout privacy)', () async {
+    SharedPreferences.setMockInitialValues({});
+    final draftStore = ReportDraftStore();
+    await draftStore.write(1, ReportDraft.fresh().copyWith(text: 'sensitive a'));
+    await draftStore.write(2, ReportDraft.fresh().copyWith(text: 'sensitive b'));
+
+    final store = _FakeStore()..token = 't';
+    final holder = OccupancyHolder()..occupancyId = 1;
+    final container = ProviderContainer(
+      overrides: [
+        tokenStoreProvider.overrideWithValue(store),
+        occupancyHolderProvider.overrideWithValue(holder),
+        authRepositoryProvider.overrideWithValue(
+          _FakeRepo(me: _me(occupancies: 1)),
+        ),
+        occupancyStoreProvider.overrideWithValue(OccupancyStore()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sessionControllerProvider.future);
+
+    await container.read(sessionControllerProvider.notifier).signOut();
+
+    expect(container.read(sessionControllerProvider).value,
+        isA<SessionUnauthenticated>());
+    expect(store.token, isNull);
+    expect(holder.occupancyId, isNull);
+    expect(await draftStore.read(1), isNull);
+    expect(await draftStore.read(2), isNull);
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getKeys().where((k) => k.startsWith('lamto_report_draft_')),
+      isEmpty,
+    );
   });
 }

@@ -42,6 +42,7 @@ dependencies:
   built_collection: ^5.1.1
   lamto_api:
     path: packages/lamto_api
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

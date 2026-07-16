@@ -7,6 +7,8 @@ import '../../core/occupancy.dart';
 import '../../core/occupancy_store.dart';
 import '../../core/providers.dart';
 import '../../core/token_store.dart';
+import '../reports/report_draft.dart';
+import '../reports/report_photo_files.dart';
 import 'auth_repository.dart';
 
 sealed class SessionState {
@@ -119,6 +121,13 @@ class SessionController extends AsyncNotifier<SessionState> {
   Future<void> signOut() async {
     await _store.clear();
     _holder.occupancyId = null;
+    // Amendment 7: wipe sensitive draft text/paths on logout.
+    await ReportDraftStore().clearAll();
+    // Amendment 8: drop app-owned photo copies. path_provider may be
+    // unavailable in pure unit tests — never block logout on photo cleanup.
+    try {
+      await ReportPhotoFileStore().clearAll();
+    } catch (_) {}
     state = const AsyncData(SessionUnauthenticated());
   }
 
