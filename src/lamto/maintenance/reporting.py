@@ -1,3 +1,5 @@
+import hashlib
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 
@@ -131,11 +133,25 @@ def submit_report_idempotent(resident, unit, text, location, photo_versions, cli
     return report, True
 
 
-def attach_report_photo(resident, report, uploaded_file, scanner=None) -> DocumentVersion:
+def _upload_sha256(uploaded_file) -> str:
+    """Content digest for photo-upload idempotency (amendment 10). Resets the stream."""
+    digest = hashlib.sha256()
+    for chunk in uploaded_file.chunks():
+        digest.update(chunk)
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    return digest.hexdigest()
+
+
+def attach_report_photo(resident, report, uploaded_file, scanner=None):
     """Upload one report photo through the ClamAV pipeline and link it to the report.
 
     The caller must own the report (checked by the view). Requires an active
     occupancy in the report's building. Preserves the P1 upload-after-commit rule.
+
+    Returns ``(version, created)``. Same report + identical content SHA-256 is
+    idempotent: returns the existing version without a second ReportPhoto row
+    (amendment 10 / lost-response retry).
     """
     # Resolve the scanner at call time (not as a default arg) so tests can patch
     # lamto.maintenance.reporting.scan_with_clamav.
@@ -146,6 +162,16 @@ def attach_report_photo(resident, report, uploaded_file, scanner=None) -> Docume
     ).first()
     if occupancy is None:
         raise PermissionDenied("Active occupancy in the report building is required.")
+
+    content_sha = _upload_sha256(uploaded_file)
+    existing = (
+        ReportPhoto.objects.select_related("version")
+        .filter(report=report, version__sha256=content_sha)
+        .first()
+    )
+    if existing is not None:
+        return existing.version, False
+
     version = create_resident_report_photo(resident, report.building, uploaded_file, scanner)
     ReportPhoto.objects.create(report=report, version=version)
-    return version
+    return version, True

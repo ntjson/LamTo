@@ -508,7 +508,11 @@ class ReportPhotoUploadView(APIView):
 
     @extend_schema(
         request=ReportPhotoUploadSerializer,
-        responses={201: ReportPhotoSerializer, **problem_responses(400, 401, 403, 404)},
+        responses={
+            201: ReportPhotoSerializer,
+            200: ReportPhotoSerializer,
+            **problem_responses(400, 401, 403, 404),
+        },
     )
     def post(self, request, pk):
         report = IssueReport.objects.filter(pk=pk, reporter=request.user).first()
@@ -517,7 +521,9 @@ class ReportPhotoUploadView(APIView):
         serializer = ReportPhotoUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            version = attach_report_photo(request.user, report, serializer.validated_data["photo"])
+            version, created = attach_report_photo(
+                request.user, report, serializer.validated_data["photo"]
+            )
         except (DocumentUploadRejected, DocumentUploadQuarantined) as error:
             raise exceptions.ValidationError({"photo": str(error)})
         except DjangoValidationError as error:
@@ -537,7 +543,7 @@ class ReportPhotoUploadView(APIView):
                     "download_url": download_url,
                 }
             ).data,
-            status=201,
+            status=201 if created else 200,
         )
 
 

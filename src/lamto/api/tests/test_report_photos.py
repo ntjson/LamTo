@@ -50,6 +50,27 @@ class ReportPhotoUploadTests(TestCase):
         assert resp.json()["sha256"]
 
     @patch("lamto.maintenance.reporting.scan_with_clamav", lambda _f: True)
+    def test_same_bytes_replay_returns_200_without_duplicate(self):
+        """Amendment 10: lost-response retry with identical content is idempotent."""
+        url = reverse("api:report-photos", kwargs={"pk": self.report.pk})
+        auth = self._auth()
+        first = self.client.post(
+            url,
+            data={"photo": SimpleUploadedFile("p.png", _PNG, content_type="image/png")},
+            headers=auth,
+        )
+        assert first.status_code == 201, first.content
+        second = self.client.post(
+            url,
+            data={"photo": SimpleUploadedFile("p.png", _PNG, content_type="image/png")},
+            headers=auth,
+        )
+        assert second.status_code == 200, second.content
+        assert ReportPhoto.objects.filter(report=self.report).count() == 1
+        assert second.json()["id"] == first.json()["id"]
+        assert second.json()["sha256"] == first.json()["sha256"]
+
+    @patch("lamto.maintenance.reporting.scan_with_clamav", lambda _f: True)
     def test_upload_to_foreign_report_is_404(self):
         from django.contrib.auth import get_user_model
         from lamto.accounts.models import ResidentOccupancy
