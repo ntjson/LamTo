@@ -61,6 +61,35 @@ void main() {
     expect((await store.read(7))!.text, 'three');
   });
 
+  test('write chains are shared across ReportDraftStore instances', () async {
+    SharedPreferences.setMockInitialValues({});
+    final a = ReportDraftStore();
+    final b = ReportDraftStore();
+    final base = ReportDraft.fresh();
+    // Cross-instance concurrent writes must still serialize (static chains).
+    final f1 = a.write(7, base.copyWith(text: 'one'));
+    final f2 = b.write(7, base.copyWith(text: 'two'));
+    final f3 = a.write(7, base.copyWith(text: 'three'));
+    await Future.wait([f1, f2, f3]);
+    expect((await b.read(7))!.text, 'three');
+  });
+
+  test('clearAll on a fresh instance awaits writes from another instance',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final writer = ReportDraftStore();
+    // Logout path constructs a new store; it must drain the shared chain.
+    final logoutStore = ReportDraftStore();
+    final base = ReportDraft.fresh();
+
+    final write = writer.write(9, base.copyWith(text: 'should-not-linger'));
+    await logoutStore.clearAll();
+    await write;
+
+    expect(await writer.read(9), isNull);
+    expect(await logoutStore.read(9), isNull);
+  });
+
   test('writes only under the lamto_report_draft_ privacy prefix', () async {
     SharedPreferences.setMockInitialValues({
       'unrelated_key': 'keep-me',

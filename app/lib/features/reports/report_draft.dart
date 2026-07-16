@@ -82,9 +82,11 @@ class ReportDraftStore {
   final SharedPreferences? _prefsOverride;
   static const _prefix = 'lamto_report_draft_';
 
-  /// In-flight write/clear chain per occupancy so concurrent autosaves cannot
-  /// complete out of order (plan amendment 9 — last enqueue wins).
-  final Map<int, Future<void>> _writeChains = {};
+  /// Process-wide write/clear chains per occupancy so concurrent autosaves
+  /// cannot complete out of order (plan amendment 9 — last enqueue wins), and
+  /// so [clearAll] on a fresh instance (logout uses `ReportDraftStore()`)
+  /// still awaits in-flight writes from any other instance.
+  static final Map<int, Future<void>> _writeChains = {};
 
   Future<SharedPreferences> get _prefs async =>
       _prefsOverride ?? await SharedPreferences.getInstance();
@@ -94,7 +96,7 @@ class ReportDraftStore {
   Future<void> _enqueue(int occupancyId, Future<void> Function() op) {
     final previous = _writeChains[occupancyId] ?? Future<void>.value();
     // Swallow prior errors so a failed write does not block later ones.
-    final next = previous.catchError((_) {}).then((_) => op());
+    final next = previous.catchError((Object _) {}).then((_) => op());
     _writeChains[occupancyId] = next;
     return next;
   }
@@ -104,7 +106,7 @@ class ReportDraftStore {
     if (raw == null) return null;
     try {
       return ReportDraft.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    } on FormatException {
+    } on Object {
       return null; // corrupt draft: start fresh rather than crash
     }
   }
@@ -126,11 +128,18 @@ class ReportDraftStore {
 
   /// Removes every draft key (all occupancies). Used on logout so resident
   /// issue text does not remain after the session ends (amendment 7).
+  ///
+  /// Drains write chains in a loop until empty so a write enqueued while
+  /// awaiting cannot re-persist after key removal.
   Future<void> clearAll() async {
-    if (_writeChains.isNotEmpty) {
+    while (_writeChains.isNotEmpty) {
+      final pending = List<Future<void>>.from(_writeChains.values);
       await Future.wait(
-        _writeChains.values.map((f) => f.catchError((_) {})),
+        pending.map((f) => f.catchError((Object _) {})),
       );
+      // Drop only the futures we waited on; keep any replacement chained
+      // during the wait so the next loop pass awaits it too.
+      _writeChains.removeWhere((_, future) => pending.contains(future));
     }
     final prefs = await _prefs;
     final keys =
