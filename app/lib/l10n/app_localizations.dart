@@ -140,6 +140,24 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get bootstrapRetry;
 
+  /// No description provided for @signOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get signOut;
+
+  /// No description provided for @noOccupancyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No home linked'**
+  String get noOccupancyTitle;
+
+  /// No description provided for @noOccupancyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is signed in, but no apartment is linked yet. Contact your building management, or sign out and try another account.'**
+  String get noOccupancyBody;
+
   /// No description provided for @errAuthFailed.
   ///
   /// In en, this message translates to:

@@ -143,4 +143,41 @@ void main() {
     expect(find.text('Trang chính'), findsWidgets);
     expect(find.text('Chọn căn hộ của bạn'), findsNothing);
   });
+
+  testWidgets('zero occupancy shows dedicated empty state and sign-out', (
+    tester,
+  ) async {
+    await _pump(tester, me: _meWith(0));
+    expect(find.text('Chưa có căn hộ liên kết'), findsOneWidget);
+    expect(find.textContaining('chưa có căn hộ'), findsWidgets);
+    expect(find.text('Đăng xuất'), findsOneWidget);
+    // Not the generic failure string.
+    expect(find.text('Đã có lỗi xảy ra. Vui lòng thử lại.'), findsNothing);
+
+    await tester.tap(find.text('Đăng xuất'));
+    await tester.pumpAndSettle();
+    expect(find.text('Đăng nhập'), findsWidgets);
+  });
+
+  testWidgets('iOS CupertinoTabScaffold uses CupertinoTabController', (
+    tester,
+  ) async {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await _pump(tester, me: _meWith(1));
+      final scaffold = tester.widget<CupertinoTabScaffold>(
+        find.byType(CupertinoTabScaffold),
+      );
+      expect(scaffold.controller, isNotNull);
+      expect(scaffold.controller!.index, 0);
+      // Tap second tab via bar; controller is single source of truth.
+      await tester.tap(find.text('Phản ánh'));
+      await tester.pumpAndSettle();
+      expect(scaffold.controller!.index, 1);
+      expect(find.text('Phản ánh'), findsWidgets);
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
+  });
 }

@@ -8,7 +8,7 @@ import 'session_controller.dart';
 class OccupancyPickerScreen extends ConsumerWidget {
   const OccupancyPickerScreen({required this.me, super.key}) : emptyState = false;
 
-  /// Zero-occupancy hard-stop (no units to pick).
+  /// Zero-occupancy: authenticated but no linked home (dedicated empty state).
   const OccupancyPickerScreen.empty({super.key})
       : me = null,
         emptyState = true;
@@ -20,9 +20,8 @@ class OccupancyPickerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     if (emptyState || me == null || me!.occupancies.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.occupancyPickerTitle)),
-        body: Center(child: Text(l10n.errGeneric)),
+      return _NoOccupancyScreen(
+        onSignOut: () => ref.read(sessionControllerProvider.notifier).signOut(),
       );
     }
     final current = me!;
@@ -33,14 +32,44 @@ class OccupancyPickerScreen extends ConsumerWidget {
           return ListTile(
             title: Text('${o.buildingName} · ${o.unitLabel}'),
             onTap: () async {
-              // Persist + notify listeners; router rebuilds to HomeShell
-              // without invalidating session (review I1).
               await ref
                   .read(sessionControllerProvider.notifier)
                   .selectOccupancy(current, o.id);
             },
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+/// Resident-facing empty state when /me has zero occupancies.
+class _NoOccupancyScreen extends StatelessWidget {
+  const _NoOccupancyScreen({required this.onSignOut});
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.noOccupancyTitle)),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              l10n.noOccupancyBody,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: onSignOut,
+              child: Text(l10n.signOut),
+            ),
+          ],
+        ),
       ),
     );
   }

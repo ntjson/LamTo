@@ -30,6 +30,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get bootstrapRetry => 'Thử lại';
 
   @override
+  String get signOut => 'Đăng xuất';
+
+  @override
+  String get noOccupancyTitle => 'Chưa có căn hộ liên kết';
+
+  @override
+  String get noOccupancyBody =>
+      'Bạn đã đăng nhập nhưng chưa có căn hộ nào được liên kết. Vui lòng liên hệ ban quản lý tòa nhà, hoặc đăng xuất và thử tài khoản khác.';
+
+  @override
   String get errAuthFailed =>
       'Số điện thoại/email hoặc mật khẩu không đúng. Chưa có gì được gửi đi. Vui lòng thử lại.';
 

@@ -30,6 +30,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bootstrapRetry => 'Retry';
 
   @override
+  String get signOut => 'Sign out';
+
+  @override
+  String get noOccupancyTitle => 'No home linked';
+
+  @override
+  String get noOccupancyBody =>
+      'Your account is signed in, but no apartment is linked yet. Contact your building management, or sign out and try another account.';
+
+  @override
   String get errAuthFailed =>
       'The phone/email or password is incorrect. Nothing was submitted. Please try again.';
 

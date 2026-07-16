@@ -89,12 +89,31 @@ class SessionController extends AsyncNotifier<SessionState> {
     return 'install';
   }
 
+  /// Login then bootstrap /me. After the knox token is written, a transient
+  /// /me failure becomes [SessionBootstrapError] (retryable) — never leave a
+  /// valid token while the UI still shows only Login (review M8).
   Future<void> signIn(String identifier, String password) async {
     final token = await _repo.login(identifier, password);
     await _store.write(token);
-    final me = await _repo.fetchMe();
-    await _restoreOccupancy(me);
-    state = AsyncData(SessionAuthenticated(me));
+    try {
+      final me = await _repo.fetchMe();
+      await _restoreOccupancy(me);
+      state = AsyncData(SessionAuthenticated(me));
+    } on DioException catch (e) {
+      final failure = Failure.fromDio(e);
+      final isAuth = e.response?.statusCode == 401 ||
+          failure.code == 'authentication_failed' ||
+          failure.code == 'not_authenticated';
+      if (isAuth) {
+        await _store.clear();
+        state = const AsyncData(SessionUnauthenticated());
+        rethrow;
+      }
+      // Token retained; router shows retry — same taxonomy as cold bootstrap.
+      state = AsyncData(SessionBootstrapError(failure));
+    } catch (_) {
+      state = AsyncData(SessionBootstrapError(Failure(code: 'schema_error')));
+    }
   }
 
   Future<void> signOut() async {

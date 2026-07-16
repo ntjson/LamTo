@@ -6,6 +6,9 @@ import '../../l10n/app_localizations.dart';
 
 /// Platform-adaptive tab shell: Material NavigationBar on Android,
 /// CupertinoTabBar on iOS; same five placeholder bodies (clarification #7).
+///
+/// iOS uses [CupertinoTabController] as the single source of truth for the
+/// selected tab so bar and body cannot diverge.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
   @override
@@ -13,7 +16,23 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
+  /// Android (and shared) selected index.
   int _index = 0;
+
+  /// iOS single source of truth for tab selection.
+  late final CupertinoTabController _cupertinoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _cupertinoController = CupertinoTabController(initialIndex: 0);
+  }
+
+  @override
+  void dispose() {
+    _cupertinoController.dispose();
+    super.dispose();
+  }
 
   List<Widget> _bodies(AppLocalizations l10n) => [
         for (final label in [
@@ -30,14 +49,12 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final bodies = _bodies(l10n);
-    // Prefer defaultTargetPlatform so widget tests can override reliably.
     final isIos = defaultTargetPlatform == TargetPlatform.iOS;
 
     if (isIos) {
       return CupertinoTabScaffold(
+        controller: _cupertinoController,
         tabBar: CupertinoTabBar(
-          currentIndex: _index,
-          onTap: (i) => setState(() => _index = i),
           items: [
             BottomNavigationBarItem(
               icon: const Icon(CupertinoIcons.home),

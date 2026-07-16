@@ -213,4 +213,50 @@ void main() {
     expect(holder.occupancyId, 2);
     expect(scopedBuildCount, greaterThan(before));
   });
+
+  test('signIn then fetchMe network error -> SessionBootstrapError keeps token',
+      () async {
+    final store = _FakeStore();
+    final repo = _FakeRepo(
+      fetchError: _dio(null, type: DioExceptionType.connectionTimeout),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        tokenStoreProvider.overrideWithValue(store),
+        authRepositoryProvider.overrideWithValue(repo),
+        occupancyStoreProvider.overrideWithValue(OccupancyStore()),
+      ],
+    );
+    addTearDown(container.dispose);
+    // Cold start: unauthenticated
+    await container.read(sessionControllerProvider.future);
+    await container
+        .read(sessionControllerProvider.notifier)
+        .signIn('r@example.com', 'pw');
+    final state = container.read(sessionControllerProvider).value;
+    expect(state, isA<SessionBootstrapError>());
+    expect((state as SessionBootstrapError).failure.code, 'network_error');
+    expect(store.token, 'tok'); // token retained for retry
+  });
+
+  test('signIn then fetchMe 401 -> unauthenticated and clears token', () async {
+    final store = _FakeStore();
+    final repo = _FakeRepo(fetchError: _dio(401));
+    final container = ProviderContainer(
+      overrides: [
+        tokenStoreProvider.overrideWithValue(store),
+        authRepositoryProvider.overrideWithValue(repo),
+        occupancyStoreProvider.overrideWithValue(OccupancyStore()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sessionControllerProvider.future);
+    await expectLater(
+      container.read(sessionControllerProvider.notifier).signIn('r@example.com', 'pw'),
+      throwsA(isA<DioException>()),
+    );
+    final state = container.read(sessionControllerProvider).value;
+    expect(state, isA<SessionUnauthenticated>());
+    expect(store.token, isNull);
+  });
 }
