@@ -1,0 +1,20 @@
+{
+  "appTitle": "LamTo",
+  "loginTitle": "Sign in",
+  "loginIdentifier": "Phone or email",
+  "loginPassword": "Password",
+  "loginSubmit": "Sign in",
+  "occupancyPickerTitle": "Choose your home",
+  "bootstrapRetry": "Retry",
+  "errAuthFailed": "The phone/email or password is incorrect. Nothing was submitted. Please try again.",
+  "errThrottled": "Too many attempts. Nothing was submitted. Please wait a few minutes and try again.",
+  "errOccupancyRequired": "Please choose which home this applies to.",
+  "errNetwork": "No connection. Your action was not sent. Check your network and retry.",
+  "errServer": "Something went wrong on our side. Your action may not have been saved. Please try again shortly.",
+  "errGeneric": "Something went wrong. Please try again.",
+  "tabHome": "Home",
+  "tabReport": "Report",
+  "tabIssues": "Issues",
+  "tabLedger": "Ledger",
+  "tabAccount": "Account"
+}
