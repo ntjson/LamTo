@@ -138,4 +138,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportAnother => 'Report another issue';
+
+  @override
+  String get issuesTitle => 'My issues';
+
+  @override
+  String get issuesEmpty => 'You have not reported any issues yet.';
+
+  @override
+  String get issuesLoadMore => 'Load more';
+
+  @override
+  String get statusOpen => 'Open';
+
+  @override
+  String get statusResolved => 'Resolved';
 }

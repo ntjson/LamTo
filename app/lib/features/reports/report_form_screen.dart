@@ -10,6 +10,7 @@ import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import 'issue_detail_screen.dart';
 import 'location_picker_screen.dart';
+import 'my_issues_screen.dart';
 import 'report_draft.dart';
 import 'report_submitter.dart';
 import 'reports_repository.dart';
@@ -249,6 +250,8 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           .map((p) => p.path);
       await ref.read(reportPhotoFileStoreProvider).deletePaths(uploaded);
       if (!mounted) return;
+      // User-global my-issues list should show the new report (amendment 12).
+      ref.invalidate(myReportsProvider);
       setState(() {
         _outcome = outcome;
         _notice = outcome.allPhotosUploaded

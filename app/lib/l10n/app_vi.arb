@@ -40,5 +40,10 @@
   "reportConflict": "Phản ánh này đã được gửi trước đó. Nội dung bạn vừa sửa sẽ được gửi thành phản ánh mới — bấm Gửi lần nữa.",
   "reportMissingFields": "Vui lòng mô tả sự cố và chọn vị trí. Chưa có gì được gửi đi.",
   "reportViewIssue": "Xem phản ánh này",
-  "reportAnother": "Gửi phản ánh khác"
+  "reportAnother": "Gửi phản ánh khác",
+  "issuesTitle": "Việc của tôi",
+  "issuesEmpty": "Bạn chưa gửi phản ánh nào.",
+  "issuesLoadMore": "Tải thêm",
+  "statusOpen": "Đang mở",
+  "statusResolved": "Đã xử lý"
 }

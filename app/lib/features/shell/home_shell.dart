@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../reports/my_issues_screen.dart';
 import '../reports/report_form_screen.dart';
 
 /// Platform-adaptive tab shell: Material NavigationBar on Android,
@@ -38,7 +39,7 @@ class _HomeShellState extends State<HomeShell> {
   List<Widget> _bodies(AppLocalizations l10n) => [
         Center(child: Text(l10n.tabHome)),
         const ReportFormScreen(),
-        Center(child: Text(l10n.tabIssues)),
+        const MyIssuesScreen(),
         Center(child: Text(l10n.tabLedger)),
         Center(child: Text(l10n.tabAccount)),
       ];

@@ -39,5 +39,10 @@
   "reportConflict": "This report was already sent. Your edits will be sent as a new report — tap Send again.",
   "reportMissingFields": "Please describe the issue and choose a location. Nothing was sent yet.",
   "reportViewIssue": "View this issue",
-  "reportAnother": "Report another issue"
+  "reportAnother": "Report another issue",
+  "issuesTitle": "My issues",
+  "issuesEmpty": "You have not reported any issues yet.",
+  "issuesLoadMore": "Load more",
+  "statusOpen": "Open",
+  "statusResolved": "Resolved"
 }

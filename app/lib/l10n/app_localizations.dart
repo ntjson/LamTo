@@ -337,6 +337,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Report another issue'**
   String get reportAnother;
+
+  /// No description provided for @issuesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My issues'**
+  String get issuesTitle;
+
+  /// No description provided for @issuesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not reported any issues yet.'**
+  String get issuesEmpty;
+
+  /// No description provided for @issuesLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get issuesLoadMore;
+
+  /// No description provided for @statusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get statusOpen;
+
+  /// No description provided for @statusResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get statusResolved;
 }
 
 class _AppLocalizationsDelegate

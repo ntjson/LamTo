@@ -137,4 +137,19 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get reportAnother => 'Gửi phản ánh khác';
+
+  @override
+  String get issuesTitle => 'Việc của tôi';
+
+  @override
+  String get issuesEmpty => 'Bạn chưa gửi phản ánh nào.';
+
+  @override
+  String get issuesLoadMore => 'Tải thêm';
+
+  @override
+  String get statusOpen => 'Đang mở';
+
+  @override
+  String get statusResolved => 'Đã xử lý';
 }
