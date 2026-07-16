@@ -153,4 +153,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusResolved => 'Resolved';
+
+  @override
+  String get timelineSubmitted => 'Report submitted';
+
+  @override
+  String get timelineTriagePending => 'Waiting for staff review';
+
+  @override
+  String get timelineTriageDone => 'Reviewed by staff';
+
+  @override
+  String timelineCase(String category) {
+    return 'Grouped into case: $category';
+  }
+
+  @override
+  String timelineWork(String status, String deadline) {
+    return 'Work order $status, deadline $deadline';
+  }
+
+  @override
+  String get timelineCompleted => 'Work completed';
+
+  @override
+  String get rateWorkCta => 'Rate this work';
+
+  @override
+  String get rateWorkTitle => 'How was the work?';
+
+  @override
+  String get rateCommentLabel => 'Comment (optional)';
+
+  @override
+  String get rateSubmit => 'Send rating';
+
+  @override
+  String get rateThanks => 'Thank you for your rating.';
+
+  @override
+  String get workStatusAssigned => 'Assigned';
+
+  @override
+  String get workStatusInProgress => 'In progress';
+
+  @override
+  String get workStatusAwaiting => 'Awaiting acceptance';
+
+  @override
+  String get workStatusAccepted => 'Accepted';
+
+  @override
+  String get workStatusClosed => 'Closed';
+
+  @override
+  String get workStatusCancelled => 'Cancelled';
 }

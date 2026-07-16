@@ -367,6 +367,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resolved'**
   String get statusResolved;
+
+  /// No description provided for @timelineSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Report submitted'**
+  String get timelineSubmitted;
+
+  /// No description provided for @timelineTriagePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for staff review'**
+  String get timelineTriagePending;
+
+  /// No description provided for @timelineTriageDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed by staff'**
+  String get timelineTriageDone;
+
+  /// No description provided for @timelineCase.
+  ///
+  /// In en, this message translates to:
+  /// **'Grouped into case: {category}'**
+  String timelineCase(String category);
+
+  /// No description provided for @timelineWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Work order {status}, deadline {deadline}'**
+  String timelineWork(String status, String deadline);
+
+  /// No description provided for @timelineCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Work completed'**
+  String get timelineCompleted;
+
+  /// No description provided for @rateWorkCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate this work'**
+  String get rateWorkCta;
+
+  /// No description provided for @rateWorkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How was the work?'**
+  String get rateWorkTitle;
+
+  /// No description provided for @rateCommentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment (optional)'**
+  String get rateCommentLabel;
+
+  /// No description provided for @rateSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Send rating'**
+  String get rateSubmit;
+
+  /// No description provided for @rateThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for your rating.'**
+  String get rateThanks;
+
+  /// No description provided for @workStatusAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned'**
+  String get workStatusAssigned;
+
+  /// No description provided for @workStatusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get workStatusInProgress;
+
+  /// No description provided for @workStatusAwaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting acceptance'**
+  String get workStatusAwaiting;
+
+  /// No description provided for @workStatusAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted'**
+  String get workStatusAccepted;
+
+  /// No description provided for @workStatusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get workStatusClosed;
+
+  /// No description provided for @workStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get workStatusCancelled;
 }
 
 class _AppLocalizationsDelegate

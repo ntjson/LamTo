@@ -152,4 +152,59 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get statusResolved => 'Đã xử lý';
+
+  @override
+  String get timelineSubmitted => 'Đã gửi phản ánh';
+
+  @override
+  String get timelineTriagePending => 'Đang chờ ban quản lý xem xét';
+
+  @override
+  String get timelineTriageDone => 'Ban quản lý đã xem xét';
+
+  @override
+  String timelineCase(String category) {
+    return 'Đã ghép vào yêu cầu xử lý: $category';
+  }
+
+  @override
+  String timelineWork(String status, String deadline) {
+    return 'Công việc $status, hạn $deadline';
+  }
+
+  @override
+  String get timelineCompleted => 'Công việc đã hoàn thành';
+
+  @override
+  String get rateWorkCta => 'Đánh giá công việc';
+
+  @override
+  String get rateWorkTitle => 'Công việc thế nào?';
+
+  @override
+  String get rateCommentLabel => 'Nhận xét (không bắt buộc)';
+
+  @override
+  String get rateSubmit => 'Gửi đánh giá';
+
+  @override
+  String get rateThanks => 'Cảm ơn bạn đã đánh giá.';
+
+  @override
+  String get workStatusAssigned => 'Đã giao';
+
+  @override
+  String get workStatusInProgress => 'Đang thực hiện';
+
+  @override
+  String get workStatusAwaiting => 'Chờ nghiệm thu';
+
+  @override
+  String get workStatusAccepted => 'Đã nghiệm thu';
+
+  @override
+  String get workStatusClosed => 'Đã đóng';
+
+  @override
+  String get workStatusCancelled => 'Đã hủy';
 }
