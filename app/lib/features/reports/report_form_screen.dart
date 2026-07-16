@@ -338,11 +338,18 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             .toList() ??
         const <PhotoUpload>[];
     final editingLocked = _busy || _committed;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.reportFormTitle)),
-      body: ListView(
+    // Body-only: shell owns Scaffold/CupertinoPageScaffold chrome (no nested
+    // AppBar). Material provides ink/TextField surface without a second scaffold.
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Text(
+            l10n.reportFormTitle,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
           TextField(
             controller: _text,
             maxLines: 4,

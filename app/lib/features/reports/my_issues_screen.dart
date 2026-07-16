@@ -63,73 +63,95 @@ class MyIssuesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final reports = ref.watch(myReportsProvider);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.issuesTitle)),
-      body: switch (reports) {
-        AsyncData(:final value) => RefreshIndicator.adaptive(
-            onRefresh: () => ref.refresh(myReportsProvider.future),
-            child: value.isEmpty
-                ? ListView(
-                    children: [
-                      const SizedBox(height: 120),
-                      Center(child: Text(l10n.issuesEmpty)),
-                    ],
-                  )
-                : ListView(
-                    children: [
-                      for (final report in value)
-                        ListTile(
-                          minTileHeight: 64,
-                          title: Text(
-                            report.text,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            report.locationPathSnapshot,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: Chip(
-                            visualDensity: VisualDensity.compact,
-                            // DESIGN.md success-bg / info-bg tokens.
-                            backgroundColor: report.status == 'RESOLVED'
-                                ? const Color(0xFFE7F6EE)
-                                : const Color(0xFFEFF8FF),
-                            label: Text(
-                              reportStatusLabel(report.status, l10n),
-                              style: TextStyle(
-                                color: report.status == 'RESOLVED'
-                                    ? LamToColors.success
-                                    : LamToColors.info,
-                              ),
-                            ),
-                          ),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  IssueDetailScreen(reportId: report.id),
+    // Body-only: shell owns Scaffold/CupertinoPageScaffold chrome (no nested
+    // AppBar). Material provides ListTile ink without a second scaffold.
+    final title = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        l10n.issuesTitle,
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+    );
+    final body = switch (reports) {
+      AsyncData(:final value) => RefreshIndicator.adaptive(
+          onRefresh: () => ref.refresh(myReportsProvider.future),
+          child: value.isEmpty
+              ? ListView(
+                  children: [
+                    title,
+                    const SizedBox(height: 120),
+                    Center(child: Text(l10n.issuesEmpty)),
+                  ],
+                )
+              : ListView(
+                  children: [
+                    title,
+                    for (final report in value)
+                      ListTile(
+                        minTileHeight: 64,
+                        title: Text(
+                          report.text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          report.locationPathSnapshot,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Chip(
+                          visualDensity: VisualDensity.compact,
+                          // DESIGN.md success-bg / info-bg tokens.
+                          backgroundColor: report.status == 'RESOLVED'
+                              ? const Color(0xFFE7F6EE)
+                              : const Color(0xFFEFF8FF),
+                          label: Text(
+                            reportStatusLabel(report.status, l10n),
+                            style: TextStyle(
+                              color: report.status == 'RESOLVED'
+                                  ? LamToColors.success
+                                  : LamToColors.info,
                             ),
                           ),
                         ),
-                      if (ref.read(myReportsProvider.notifier).hasMore)
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: OutlinedButton(
-                            onPressed: () =>
-                                ref.read(myReportsProvider.notifier).loadMore(),
-                            child: Text(l10n.issuesLoadMore),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                IssueDetailScreen(reportId: report.id),
                           ),
                         ),
-                    ],
-                  ),
-          ),
-        AsyncError(:final error) => Center(
-            child: Text(failureMessage(Failure.fromObject(error), l10n)),
-          ),
-        _ => const Center(child: CircularProgressIndicator.adaptive()),
-      },
+                      ),
+                    if (ref.read(myReportsProvider.notifier).hasMore)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              ref.read(myReportsProvider.notifier).loadMore(),
+                          child: Text(l10n.issuesLoadMore),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      AsyncError(:final error) => ListView(
+          children: [
+            title,
+            const SizedBox(height: 48),
+            Center(child: Text(failureMessage(Failure.fromObject(error), l10n))),
+          ],
+        ),
+      _ => ListView(
+          children: [
+            title,
+            const SizedBox(height: 48),
+            const Center(child: CircularProgressIndicator.adaptive()),
+          ],
+        ),
+    };
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: body,
     );
   }
 }
