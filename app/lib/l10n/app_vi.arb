@@ -39,5 +39,6 @@
   "reportPhotoRetry": "Thử lại",
   "reportConflict": "Phản ánh này đã được gửi trước đó. Nội dung bạn vừa sửa sẽ được gửi thành phản ánh mới — bấm Gửi lần nữa.",
   "reportMissingFields": "Vui lòng mô tả sự cố và chọn vị trí. Chưa có gì được gửi đi.",
-  "reportViewIssue": "Xem phản ánh này"
+  "reportViewIssue": "Xem phản ánh này",
+  "reportAnother": "Gửi phản ánh khác"
 }

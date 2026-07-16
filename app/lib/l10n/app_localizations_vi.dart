@@ -134,4 +134,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get reportViewIssue => 'Xem phản ánh này';
+
+  @override
+  String get reportAnother => 'Gửi phản ánh khác';
 }

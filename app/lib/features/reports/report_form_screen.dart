@@ -43,11 +43,23 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   SubmitOutcome? _outcome;
   Timer? _autosaveTimer;
   Future<void>? _pendingPersist;
+  /// Cached for dispose flush — [ref] is unsafe after unmount (Riverpod).
+  ReportDraftStore? _draftStore;
+  int? _cachedOccupancyId;
 
   /// True once create succeeded — no whole-report resubmit (amendment 11).
   bool get _committed => _outcome != null;
 
-  int get _occupancyId => ref.read(occupancyHolderProvider).occupancyId!;
+  int get _occupancyId =>
+      _cachedOccupancyId ?? ref.read(occupancyHolderProvider).occupancyId!;
+
+  ReportDraftStore get _store =>
+      _draftStore ?? ref.read(reportDraftStoreProvider);
+
+  void _ensureDepsCached() {
+    _draftStore ??= ref.read(reportDraftStoreProvider);
+    _cachedOccupancyId ??= ref.read(occupancyHolderProvider).occupancyId;
+  }
 
   @override
   void initState() {
@@ -57,15 +69,33 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Capture store/occupancy early so dispose can flush without [ref].
+    _ensureDepsCached();
+  }
+
+  @override
   void dispose() {
     _autosaveTimer?.cancel();
+    _autosaveTimer = null;
+    // Debounce may hold the latest text; persist immediately if still editing.
+    // Cannot await in dispose — store serializes writes (last enqueue wins).
+    // Use cached deps only (ref is unsafe here).
+    final store = _draftStore;
+    final occupancyId = _cachedOccupancyId;
+    if (!_committed && store != null && occupancyId != null) {
+      unawaited(store.write(occupancyId, _draft));
+    }
     _text.removeListener(_onTextChanged);
     _text.dispose();
     super.dispose();
   }
 
   Future<void> _restore() async {
-    final saved = await ref.read(reportDraftStoreProvider).read(_occupancyId);
+    _ensureDepsCached();
+    final occupancyId = _occupancyId;
+    final saved = await _store.read(occupancyId);
     if (!mounted) return;
     setState(() {
       if (saved != null) {
@@ -86,8 +116,10 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     });
   }
 
-  Future<void> _persist() =>
-      ref.read(reportDraftStoreProvider).write(_occupancyId, _draft);
+  Future<void> _persist() {
+    _ensureDepsCached();
+    return _store.write(_occupancyId, _draft);
+  }
 
   Future<void> _flushAutosave() async {
     _autosaveTimer?.cancel();
@@ -278,6 +310,20 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     );
   }
 
+  /// Start a new compose after a successful create (committed-result secondary).
+  void _startAnotherReport() {
+    _autosaveTimer?.cancel();
+    _autosaveTimer = null;
+    final fresh = ReportDraft.fresh();
+    setState(() {
+      _outcome = null;
+      _notice = null;
+      _draft = fresh;
+      // Listener copies empty text onto the fresh draft and schedules autosave.
+      _text.text = '';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -333,6 +379,10 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
                 ActionChip(
                   avatar: const Icon(Icons.add_a_photo_outlined, size: 20),
                   label: Text(l10n.reportAddPhoto),
+                  // ≥48dp touch target (spec §6.2/§6.4).
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                   onPressed: _busy ? null : () => _addPhoto(l10n),
                 ),
             ],
@@ -354,8 +404,18 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           if (_committed) ...[
             const SizedBox(height: 16),
             TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
               onPressed: _openIssueDetail,
               child: Text(l10n.reportViewIssue),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              onPressed: _startAnotherReport,
+              child: Text(l10n.reportAnother),
             ),
           ],
           if (!_committed) ...[

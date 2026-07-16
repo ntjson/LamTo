@@ -331,6 +331,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View this issue'**
   String get reportViewIssue;
+
+  /// No description provided for @reportAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Report another issue'**
+  String get reportAnother;
 }
 
 class _AppLocalizationsDelegate
