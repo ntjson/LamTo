@@ -76,4 +76,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tabAccount => 'Account';
+
+  @override
+  String get locationPickerTitle => 'Where is the issue?';
+
+  @override
+  String get locationChooseHere => 'Choose this area';
+
+  @override
+  String get commonRetry => 'Try again';
 }

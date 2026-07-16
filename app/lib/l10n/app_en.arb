@@ -19,5 +19,8 @@
   "tabReport": "Report",
   "tabIssues": "Issues",
   "tabLedger": "Ledger",
-  "tabAccount": "Account"
+  "tabAccount": "Account",
+  "locationPickerTitle": "Where is the issue?",
+  "locationChooseHere": "Choose this area",
+  "commonRetry": "Try again"
 }

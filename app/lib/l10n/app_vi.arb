@@ -20,5 +20,8 @@
   "tabReport": "Phản ánh",
   "tabIssues": "Việc của tôi",
   "tabLedger": "Sổ quỹ",
-  "tabAccount": "Tài khoản"
+  "tabAccount": "Tài khoản",
+  "locationPickerTitle": "Sự cố ở đâu?",
+  "locationChooseHere": "Chọn khu vực này",
+  "commonRetry": "Thử lại"
 }

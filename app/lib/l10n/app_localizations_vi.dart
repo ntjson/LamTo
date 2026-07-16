@@ -75,4 +75,13 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get tabAccount => 'Tài khoản';
+
+  @override
+  String get locationPickerTitle => 'Sự cố ở đâu?';
+
+  @override
+  String get locationChooseHere => 'Chọn khu vực này';
+
+  @override
+  String get commonRetry => 'Thử lại';
 }

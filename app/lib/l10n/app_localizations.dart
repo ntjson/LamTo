@@ -223,6 +223,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Account'**
   String get tabAccount;
+
+  /// No description provided for @locationPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where is the issue?'**
+  String get locationPickerTitle;
+
+  /// No description provided for @locationChooseHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose this area'**
+  String get locationChooseHere;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get commonRetry;
 }
 
 class _AppLocalizationsDelegate
