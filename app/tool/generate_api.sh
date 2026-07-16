@@ -29,4 +29,4 @@ else
   exit 1
 fi
 
-( cd "$OUT" && dart pub get && dart run build_runner build )
+( cd "$OUT" && dart pub get && dart run build_runner build --delete-conflicting-outputs )

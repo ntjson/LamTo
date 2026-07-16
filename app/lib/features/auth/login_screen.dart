@@ -35,9 +35,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(sessionControllerProvider.notifier)
           .signIn(_id.text.trim(), _pw.text);
     } on DioException catch (e) {
-      setState(() => _error = failureMessage(Failure.fromDio(e), l10n));
+      if (mounted) {
+        setState(() => _error = failureMessage(Failure.fromDio(e), l10n));
+      }
     } catch (_) {
-      setState(() => _error = l10n.errGeneric);
+      if (mounted) setState(() => _error = l10n.errGeneric);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -13,13 +13,25 @@ final occupancyHolderProvider =
     Provider<OccupancyHolder>((ref) => OccupancyHolder());
 final occupancyStoreProvider = Provider<OccupancyStore>((ref) => OccupancyStore());
 
-/// Marker provider invalidated when occupancy changes (scoped caches).
+/// Feature providers that cache occupancy-scoped data MUST `ref.watch` this
+/// so they rebuild when occupancy changes (clarification #2).
 final occupancyScopedProviders = Provider<void>((ref) {});
+
+/// True once the user has completed a successful sign-in or bootstrap in this
+/// process; gates interceptor-driven session invalidation (review I2).
+final sessionEstablishedProvider = Provider<bool>((ref) {
+  final session = ref.watch(sessionControllerProvider);
+  return switch (session) {
+    AsyncData(:final value) => value is SessionAuthenticated,
+    _ => false,
+  };
+});
 
 final dioProvider = Provider<Dio>((ref) {
   return buildDio(
     store: ref.watch(tokenStoreProvider),
     occupancy: ref.watch(occupancyHolderProvider),
+    signalSessionLoss: () => ref.read(sessionEstablishedProvider),
     onUnauthorized: () => ref.invalidate(sessionControllerProvider),
   );
 });

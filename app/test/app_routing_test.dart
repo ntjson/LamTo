@@ -132,4 +132,15 @@ void main() {
       debugDefaultTargetPlatformOverride = previous;
     }
   });
+
+  testWidgets('multi-occupancy pick lands on tab shell without re-login', (
+    tester,
+  ) async {
+    await _pump(tester, me: _meWith(2));
+    expect(find.text('Chọn căn hộ của bạn'), findsOneWidget);
+    await tester.tap(find.text('Toa A · A-1'));
+    await tester.pumpAndSettle();
+    expect(find.text('Trang chính'), findsWidgets);
+    expect(find.text('Chọn căn hộ của bạn'), findsNothing);
+  });
 }

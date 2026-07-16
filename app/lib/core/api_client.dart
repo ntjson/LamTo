@@ -5,13 +5,15 @@ import 'occupancy.dart';
 import 'token_store.dart';
 
 /// One interceptor owns auth (spec 6.4): attach the knox token; on any 401
-/// clear secure storage and signal the session is lost. Occupancy header is
-/// injected only on building-scoped paths (clarification #3).
+/// clear secure storage. [onUnauthorized] fires only when [signalSessionLoss]
+/// is true (post-login session expiry) — bootstrap handles 401 itself to avoid
+/// racing invalidate of the building notifier (review I2).
 Dio buildDio({
   required TokenStore store,
   required OccupancyHolder occupancy,
   required void Function() onUnauthorized,
   String? baseUrl,
+  bool Function()? signalSessionLoss,
 }) {
   final dio = Dio(BaseOptions(baseUrl: baseUrl ?? apiBaseUrl));
   dio.interceptors.add(
@@ -29,11 +31,14 @@ Dio buildDio({
         handler.next(options);
       },
       onError: (error, handler) async {
-        // Only a 401 on a request that CARRIED a token is a session expiry.
         if (error.response?.statusCode == 401 &&
             error.requestOptions.extra['had_token'] == true) {
           await store.clear();
-          onUnauthorized();
+          // Only notify session loss after an established session — not during
+          // cold-start bootstrap (session controller owns that 401 path).
+          if (signalSessionLoss == null || signalSessionLoss()) {
+            onUnauthorized();
+          }
         }
         handler.next(error);
       },

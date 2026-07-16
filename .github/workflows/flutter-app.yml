@@ -26,6 +26,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: flutter pub get
       - name: Make API scripts executable
         run: chmod +x tool/generate_api.sh tool/check_api_generated.sh

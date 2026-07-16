@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import 'core/failure.dart';
+import 'core/occupancy.dart';
 import 'core/providers.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/occupancy_picker_screen.dart';
@@ -34,16 +35,40 @@ class LamToApp extends StatelessWidget {
   }
 }
 
-class AppRouter extends ConsumerWidget {
+class AppRouter extends ConsumerStatefulWidget {
   const AppRouter({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppRouter> createState() => _AppRouterState();
+}
+
+class _AppRouterState extends ConsumerState<AppRouter> {
+  OccupancyHolder? _listened;
+
+  @override
+  void dispose() {
+    _listened?.removeListener(_onOccupancyChanged);
+    super.dispose();
+  }
+
+  void _onOccupancyChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
+    final holder = ref.watch(occupancyHolderProvider);
+    if (!identical(_listened, holder)) {
+      _listened?.removeListener(_onOccupancyChanged);
+      _listened = holder;
+      holder.addListener(_onOccupancyChanged);
+    }
+
     return switch (session) {
       AsyncData(:final value) => switch (value) {
           SessionUnauthenticated() => const LoginScreen(),
-          SessionAuthenticated(:final me) => _routeAuthenticated(ref, me),
+          SessionAuthenticated(:final me) => _routeAuthenticated(me, holder),
           SessionBootstrapError(:final failure) => BootstrapErrorScreen(
               failure: failure,
               onRetry: () => ref.invalidate(sessionControllerProvider),
@@ -59,14 +84,17 @@ class AppRouter extends ConsumerWidget {
     };
   }
 
-  Widget _routeAuthenticated(WidgetRef ref, Me me) {
-    final holder = ref.read(occupancyHolderProvider);
+  /// Pure routing over session + occupancy holder (no mutations in build).
+  Widget _routeAuthenticated(Me me, OccupancyHolder holder) {
+    if (me.occupancies.isEmpty) {
+      return const OccupancyPickerScreen.empty();
+    }
     if (me.occupancies.length == 1) {
-      holder.occupancyId = me.occupancies.first.id;
+      // Single occupancy is selected during bootstrap; just land on shell.
       return const HomeShell();
     }
-    if (holder.occupancyId != null &&
-        me.occupancies.any((o) => o.id == holder.occupancyId)) {
+    final selected = holder.occupancyId;
+    if (selected != null && me.occupancies.any((o) => o.id == selected)) {
       return const HomeShell();
     }
     return OccupancyPickerScreen(me: me);
