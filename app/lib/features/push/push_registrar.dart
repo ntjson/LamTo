@@ -44,20 +44,35 @@ abstract final class PushPrefsKeys {
 /// install id). Later submits never re-prompt; register only when permission
 /// was granted and a token is available.
 ///
+/// **I1:** the permission-requested flag is set only when the OS was actually
+/// consulted ([PushPermissionResult.granted] / [PushPermissionResult.denied]).
+/// [PushPermissionResult.unsupported] (e.g. Firebase missing) does not burn
+/// the flag so a later production build can still prompt.
+///
 /// **A5:** failed [deregister] persists [PushPrefsKeys.pendingDeregister] so
 /// the next authenticated session can [retryPendingDeregister].
+///
+/// **I2:** [deregister] bounds the server deactivate call with a short timeout
+/// so a stalled network never hangs logout; timeout → same pending path.
 class PushRegistrar {
   PushRegistrar({
     required this.tokenSource,
     required this.repository,
     required this.installIdStore,
     SharedPreferences? prefs,
-  }) : _prefsOverride = prefs;
+    Duration? deregisterTimeout,
+  })  : _prefsOverride = prefs,
+        deregisterTimeout =
+            deregisterTimeout ?? PushRegistrar.defaultDeregisterTimeout;
+
+  /// Bounds devicesDestroy so logout never hangs on a stalled Dio call (I2).
+  static const defaultDeregisterTimeout = Duration(seconds: 8);
 
   final PushTokenSource tokenSource;
   final TransparencyRepository repository;
   final InstallIdStore installIdStore;
   final SharedPreferences? _prefsOverride;
+  final Duration deregisterTimeout;
   StreamSubscription<String>? _refreshSub;
 
   Future<SharedPreferences> _prefs() async =>
@@ -80,9 +95,17 @@ class PushRegistrar {
       final alreadyRequested = prefs.getBool(requestedKey) ?? false;
 
       if (!alreadyRequested) {
-        final granted = await tokenSource.requestPermission();
-        await prefs.setBool(requestedKey, true);
-        if (!granted) return;
+        final result = await tokenSource.requestPermission();
+        switch (result) {
+          case PushPermissionResult.unsupported:
+            // OS never consulted — do not burn the once-per-install flag (I1).
+            return;
+          case PushPermissionResult.denied:
+            await prefs.setBool(requestedKey, true);
+            return;
+          case PushPermissionResult.granted:
+            await prefs.setBool(requestedKey, true);
+        }
       }
       // Already requested: never re-prompt (A4). Proceed only if a token is
       // available (implies permission still useful for registration).
@@ -114,13 +137,15 @@ class PushRegistrar {
   }
 
   /// Logout deactivates this install's device (spec 7.2 + A5). Best-effort:
-  /// on failure, persist a pending key for the next authenticated session.
+  /// on failure or timeout (I2), persist a pending key for the next session.
   Future<void> deregister() async {
     await _refreshSub?.cancel();
     _refreshSub = null;
     final installId = await installIdStore.get();
     try {
-      await repository.deactivateDevice(installId);
+      await repository
+          .deactivateDevice(installId)
+          .timeout(deregisterTimeout);
       final prefs = await _prefs();
       await prefs.remove(PushPrefsKeys.pendingDeregister);
     } catch (_) {
@@ -135,7 +160,9 @@ class PushRegistrar {
       final prefs = await _prefs();
       final pending = prefs.getString(PushPrefsKeys.pendingDeregister);
       if (pending == null || pending.isEmpty) return;
-      await repository.deactivateDevice(pending);
+      await repository
+          .deactivateDevice(pending)
+          .timeout(deregisterTimeout);
       await prefs.remove(PushPrefsKeys.pendingDeregister);
     } catch (_) {
       // Leave the pending key for a later authenticated session.

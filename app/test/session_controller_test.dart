@@ -82,7 +82,8 @@ DioException _dio(int? status, {DioExceptionType type = DioExceptionType.badResp
 
 class _NoPushSource implements PushTokenSource {
   @override
-  Future<bool> requestPermission() async => false;
+  Future<PushPermissionResult> requestPermission() async =>
+      PushPermissionResult.unsupported;
   @override
   Future<String?> getToken() async => null;
   @override

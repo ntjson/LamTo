@@ -5,8 +5,23 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kReleaseMode;
 
+/// Outcome of consulting OS notification permission (or failing to).
+///
+/// Distinguishes Firebase-unavailable from a real user deny so the
+/// permission-requested flag is only burned when the OS was asked (I1 / A4).
+enum PushPermissionResult {
+  /// Firebase / push stack not available — OS was never consulted.
+  unsupported,
+
+  /// OS was asked; user denied (or provisional not treated as grant).
+  denied,
+
+  /// OS was asked; user granted (authorized or provisional).
+  granted,
+}
+
 abstract class PushTokenSource {
-  Future<bool> requestPermission();
+  Future<PushPermissionResult> requestPermission();
   Future<String?> getToken();
   Stream<String> get onTokenRefresh;
   Future<Map<String, String>?> initialMessageData();
@@ -49,14 +64,20 @@ class FirebasePushTokenSource implements PushTokenSource {
   }
 
   @override
-  Future<bool> requestPermission() async {
-    if (!await _ensure()) return false;
+  Future<PushPermissionResult> requestPermission() async {
+    if (!await _ensure()) return PushPermissionResult.unsupported;
     try {
       final settings = await FirebaseMessaging.instance.requestPermission();
-      return settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional;
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      return granted
+          ? PushPermissionResult.granted
+          : PushPermissionResult.denied;
     } catch (_) {
-      return false;
+      // Firebase present but permission API failed — treat as unsupported so
+      // we do not permanently burn the once-per-install request flag.
+      return PushPermissionResult.unsupported;
     }
   }
 

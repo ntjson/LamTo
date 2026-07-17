@@ -50,7 +50,8 @@ class _FakeAuth implements AuthRepository {
 
 class _NoPushSource implements PushTokenSource {
   @override
-  Future<bool> requestPermission() async => false;
+  Future<PushPermissionResult> requestPermission() async =>
+      PushPermissionResult.unsupported;
   @override
   Future<String?> getToken() async => null;
   @override

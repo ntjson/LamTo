@@ -8,22 +8,25 @@ import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeSource implements PushTokenSource {
-  _FakeSource({this.permission = true, this.token = 'tok-1'});
-  bool permission;
+  _FakeSource({
+    this.permission = PushPermissionResult.granted,
+    this.token = 'tok-1',
+  });
+  PushPermissionResult permission;
   String? token;
   int requestCount = 0;
   final refresh = StreamController<String>.broadcast();
 
   @override
-  Future<bool> requestPermission() async {
+  Future<PushPermissionResult> requestPermission() async {
     requestCount++;
     return permission;
   }
 
   @override
   Future<String?> getToken() async {
-    // Realistic: denied notification permission yields no usable FCM token.
-    if (!permission) return null;
+    // Realistic: denied / unsupported yields no usable FCM token.
+    if (permission != PushPermissionResult.granted) return null;
     return token;
   }
 
@@ -39,6 +42,8 @@ class _FakeRepo implements TransparencyRepository {
   final registered = <(String, String)>[];
   final deactivated = <String>[];
   Object? deactivateError;
+  Duration? deactivateDelay;
+  int deactivateCalls = 0;
 
   @override
   Future<Device> registerDevice({
@@ -56,6 +61,10 @@ class _FakeRepo implements TransparencyRepository {
 
   @override
   Future<void> deactivateDevice(String installId) async {
+    deactivateCalls++;
+    if (deactivateDelay != null) {
+      await Future<void>.delayed(deactivateDelay!);
+    }
     if (deactivateError != null) throw deactivateError!;
     deactivated.add(installId);
   }
@@ -86,7 +95,7 @@ void main() {
   test('no permission or no token -> no registration, no crash', () async {
     final repo = _FakeRepo();
     final denied = PushRegistrar(
-      tokenSource: _FakeSource(permission: false),
+      tokenSource: _FakeSource(permission: PushPermissionResult.denied),
       repository: repo,
       installIdStore: InstallIdStore(),
     );
@@ -141,7 +150,7 @@ void main() {
 
   test('A4: denied once never re-prompts; later OS grant can register',
       () async {
-    final source = _FakeSource(permission: false);
+    final source = _FakeSource(permission: PushPermissionResult.denied);
     final repo = _FakeRepo();
     final registrar = PushRegistrar(
       tokenSource: source,
@@ -155,10 +164,74 @@ void main() {
     expect(repo.registered, isEmpty);
 
     // User enables notifications in system settings: still no OS re-prompt.
-    source.permission = true;
+    source.permission = PushPermissionResult.granted;
     await registrar.registerAfterConsent();
     expect(source.requestCount, 1);
     expect(repo.registered, hasLength(1));
+
+    final prefs = await SharedPreferences.getInstance();
+    final installId = repo.registered.first.$1;
+    expect(prefs.getBool(PushPrefsKeys.permissionRequested(installId)), isTrue);
+  });
+
+  test('I1: unsupported does not set permission-requested flag', () async {
+    final store = InstallIdStore();
+    final installId = await store.get();
+    final prefs = await SharedPreferences.getInstance();
+    final requestedKey = PushPrefsKeys.permissionRequested(installId);
+
+    // Firebase missing / unsupported — OS never consulted.
+    final source = _FakeSource(permission: PushPermissionResult.unsupported);
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: _FakeRepo(),
+      installIdStore: store,
+    );
+    await registrar.registerAfterConsent();
+    await registrar.registerAfterConsent();
+    expect(source.requestCount, 2); // may retry later
+    expect(prefs.getBool(requestedKey), isNull);
+  });
+
+  test('I1: real deny burns permission-requested flag (no re-prompt)', () async {
+    final store = InstallIdStore();
+    final installId = await store.get();
+    final prefs = await SharedPreferences.getInstance();
+    final requestedKey = PushPrefsKeys.permissionRequested(installId);
+
+    final source = _FakeSource(permission: PushPermissionResult.denied);
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: _FakeRepo(),
+      installIdStore: store,
+    );
+    await registrar.registerAfterConsent();
+    await registrar.registerAfterConsent();
+    expect(source.requestCount, 1);
+    expect(prefs.getBool(requestedKey), isTrue);
+  });
+
+  test('I1: after unsupported, a later granted consult can still prompt + register',
+      () async {
+    final source = _FakeSource(permission: PushPermissionResult.unsupported);
+    final repo = _FakeRepo();
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+
+    await registrar.registerAfterConsent();
+    expect(source.requestCount, 1);
+    expect(repo.registered, isEmpty);
+
+    // Production build with Firebase becomes available — OS may be asked once.
+    source.permission = PushPermissionResult.granted;
+    source.token = 'tok-prod';
+    await registrar.registerAfterConsent();
+    expect(source.requestCount, 2);
+    expect(repo.registered, hasLength(1));
+    expect(repo.registered.first.$2, 'tok-prod');
 
     final prefs = await SharedPreferences.getInstance();
     final installId = repo.registered.first.$1;
@@ -208,6 +281,29 @@ void main() {
     expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
   });
 
+  test('I2: deregister timeout takes pending path and completes', () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo()
+      ..deactivateDelay = const Duration(seconds: 30);
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: InstallIdStore(),
+      deregisterTimeout: const Duration(milliseconds: 50),
+    );
+    await registrar.registerAfterConsent();
+    final installId = repo.registered.first.$1;
+
+    final sw = Stopwatch()..start();
+    await registrar.deregister();
+    sw.stop();
+
+    expect(sw.elapsed, lessThan(const Duration(seconds: 2)));
+    expect(repo.deactivated, isEmpty);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), installId);
+  });
+
   test('A5: retryPendingDeregister is no-op without pending key', () async {
     final repo = _FakeRepo();
     final registrar = PushRegistrar(
@@ -237,11 +333,13 @@ void main() {
   test('A6: FirebasePushTokenSource degrades without platform config', () async {
     final source = FirebasePushTokenSource();
     // No google-services.json / GoogleService-Info.plist in this environment.
-    expect(await source.requestPermission(), isFalse);
+    expect(
+      await source.requestPermission(),
+      PushPermissionResult.unsupported,
+    );
     expect(await source.getToken(), isNull);
     expect(await source.initialMessageData(), isNull);
     await expectLater(source.onTokenRefresh, emitsDone);
     await expectLater(source.onMessageOpened, emitsDone);
   });
 }
-
