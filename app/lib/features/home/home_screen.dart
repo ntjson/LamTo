@@ -1,5 +1,3 @@
-import 'dart:ui' show FontFeature;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
@@ -29,9 +27,11 @@ class HomeScreen extends ConsumerWidget {
       color: Colors.transparent,
       child: RefreshIndicator.adaptive(
         onRefresh: () async {
-          ref.invalidate(fundSummaryProvider);
-          ref.invalidate(recentSpendingProvider);
-          await ref.refresh(myReportsProvider.future);
+          await Future.wait([
+            ref.refresh(fundSummaryProvider.future),
+            ref.refresh(recentSpendingProvider.future),
+            ref.refresh(myReportsProvider.future),
+          ]);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
