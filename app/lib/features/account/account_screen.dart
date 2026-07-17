@@ -1,0 +1,153 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lamto_api/lamto_api.dart';
+
+import '../../core/providers.dart';
+import '../../l10n/app_localizations.dart';
+import '../auth/session_controller.dart';
+import '../transparency/transparency_repository.dart';
+
+/// The five resident notification categories (server defaults absent rows to
+/// enabled). Labels resolve through l10n.
+List<({String code, String label})> residentPreferenceCategories(
+        AppLocalizations l10n) =>
+    [
+      (code: 'report.receipt', label: l10n.prefReportReceipt),
+      (code: 'triage.status', label: l10n.prefTriageStatus),
+      (code: 'work.completed', label: l10n.prefWorkCompleted),
+      (code: 'ledger.publication', label: l10n.prefLedgerPublication),
+      (code: 'correction.status', label: l10n.prefCorrectionStatus),
+    ];
+
+/// Account tab (spec 6.3(7)). Body-only: the shell owns chrome.
+class AccountScreen extends ConsumerStatefulWidget {
+  const AccountScreen({super.key});
+
+  @override
+  ConsumerState<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends ConsumerState<AccountScreen> {
+  /// Local overlay of toggles the user flipped this session.
+  final Map<String, bool> _email = {};
+  final Map<String, bool> _push = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final session = ref.watch(sessionControllerProvider);
+    final me = switch (session) {
+      AsyncData(value: SessionAuthenticated(:final me)) => me,
+      _ => null,
+    };
+    if (me == null) {
+      return const Center(child: CircularProgressIndicator.adaptive());
+    }
+    final holder = ref.watch(occupancyHolderProvider);
+    final serverPrefs = {
+      for (final pref in me.notificationPreferences) pref.eventCode: pref,
+    };
+
+    return Material(
+      color: Colors.transparent,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(me.displayName,
+                style: Theme.of(context).textTheme.titleLarge),
+            Text(me.email, style: Theme.of(context).textTheme.bodySmall),
+            if (me.phone != null && me.phone!.isNotEmpty)
+              Text(me.phone!, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 24),
+            Text(l10n.accountOccupancies,
+                style: Theme.of(context).textTheme.titleMedium),
+            for (final occupancy in me.occupancies)
+              RadioListTile<int>(
+                contentPadding: EdgeInsets.zero,
+                value: occupancy.id,
+                groupValue: holder.occupancyId,
+                title:
+                    Text('${occupancy.buildingName} · ${occupancy.unitLabel}'),
+                onChanged: (id) {
+                  if (id != null) {
+                    ref
+                        .read(sessionControllerProvider.notifier)
+                        .selectOccupancy(me, id);
+                  }
+                },
+              ),
+            const SizedBox(height: 24),
+            Text(l10n.accountPreferences,
+                style: Theme.of(context).textTheme.titleMedium),
+            for (final category in residentPreferenceCategories(l10n))
+              _prefRow(l10n, category, serverPrefs[category.code]),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () =>
+                  ref.read(sessionControllerProvider.notifier).signOut(),
+              child: Text(l10n.signOut),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => ref
+                  .read(sessionControllerProvider.notifier)
+                  .signOut(allDevices: true),
+              child: Text(l10n.accountSignOutAll),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _prefRow(AppLocalizations l10n, ({String code, String label}) category,
+      NotificationPreference? server) {
+    final email = _email[category.code] ?? server?.emailEnabled ?? true;
+    final push = _push[category.code] ?? server?.pushEnabled ?? true;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text(category.label)),
+          Text(l10n.accountPrefEmail,
+              style: Theme.of(context).textTheme.labelSmall),
+          Switch.adaptive(
+            key: Key('email_${category.code}'),
+            value: email,
+            onChanged: (value) => _patch(category.code, email: value),
+          ),
+          Text(l10n.accountPrefPush,
+              style: Theme.of(context).textTheme.labelSmall),
+          Switch.adaptive(
+            key: Key('push_${category.code}'),
+            value: push,
+            onChanged: (value) => _patch(category.code, push: value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _patch(String code, {bool? email, bool? push}) async {
+    setState(() {
+      if (email != null) _email[code] = email;
+      if (push != null) _push[code] = push;
+    });
+    try {
+      await ref.read(transparencyRepositoryProvider).updatePreference(
+            eventCode: code,
+            emailEnabled: email,
+            pushEnabled: push,
+          );
+    } catch (_) {
+      // Revert the optimistic flip on failure.
+      if (!mounted) return;
+      setState(() {
+        if (email != null) _email[code] = !email;
+        if (push != null) _push[code] = !push;
+      });
+    }
+  }
+}

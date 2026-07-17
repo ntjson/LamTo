@@ -120,7 +120,12 @@ class SessionController extends AsyncNotifier<SessionState> {
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut({bool allDevices = false}) async {
+    // Server-side revocation is best-effort: a network failure must never
+    // trap the resident in a session (spec 6.4).
+    try {
+      allDevices ? await _repo.logoutAll() : await _repo.logout();
+    } catch (_) {}
     await _store.clear();
     _holder.occupancyId = null;
     // Amendment 7: wipe sensitive draft text/paths on logout.

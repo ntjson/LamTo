@@ -108,5 +108,15 @@
   "integrityVerified": "Record verified",
   "integrityMismatch": "Integrity mismatch detected",
   "integrityUnavailable": "Integrity check unavailable",
-  "integrityUnchecked": "Published — integrity not yet checked"
+  "integrityUnchecked": "Published — integrity not yet checked",
+  "accountOccupancies": "My homes",
+  "accountPreferences": "Notifications",
+  "accountPrefEmail": "Email",
+  "accountPrefPush": "Push",
+  "accountSignOutAll": "Sign out of all devices",
+  "prefReportReceipt": "Report received",
+  "prefTriageStatus": "Report reviewed",
+  "prefWorkCompleted": "Work completed",
+  "prefLedgerPublication": "Published spending",
+  "prefCorrectionStatus": "Corrections"
 }

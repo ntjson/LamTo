@@ -337,4 +337,34 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get integrityUnchecked => 'Đã công bố — chưa kiểm tra toàn vẹn';
+
+  @override
+  String get accountOccupancies => 'Căn hộ của tôi';
+
+  @override
+  String get accountPreferences => 'Thông báo';
+
+  @override
+  String get accountPrefEmail => 'Email';
+
+  @override
+  String get accountPrefPush => 'Đẩy (push)';
+
+  @override
+  String get accountSignOutAll => 'Đăng xuất mọi thiết bị';
+
+  @override
+  String get prefReportReceipt => 'Đã nhận phản ánh';
+
+  @override
+  String get prefTriageStatus => 'Phản ánh được xem xét';
+
+  @override
+  String get prefWorkCompleted => 'Công việc hoàn thành';
+
+  @override
+  String get prefLedgerPublication => 'Khoản chi được công bố';
+
+  @override
+  String get prefCorrectionStatus => 'Điều chỉnh';
 }

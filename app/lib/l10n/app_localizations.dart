@@ -703,6 +703,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Published — integrity not yet checked'**
   String get integrityUnchecked;
+
+  /// No description provided for @accountOccupancies.
+  ///
+  /// In en, this message translates to:
+  /// **'My homes'**
+  String get accountOccupancies;
+
+  /// No description provided for @accountPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get accountPreferences;
+
+  /// No description provided for @accountPrefEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get accountPrefEmail;
+
+  /// No description provided for @accountPrefPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push'**
+  String get accountPrefPush;
+
+  /// No description provided for @accountSignOutAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of all devices'**
+  String get accountSignOutAll;
+
+  /// No description provided for @prefReportReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Report received'**
+  String get prefReportReceipt;
+
+  /// No description provided for @prefTriageStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Report reviewed'**
+  String get prefTriageStatus;
+
+  /// No description provided for @prefWorkCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Work completed'**
+  String get prefWorkCompleted;
+
+  /// No description provided for @prefLedgerPublication.
+  ///
+  /// In en, this message translates to:
+  /// **'Published spending'**
+  String get prefLedgerPublication;
+
+  /// No description provided for @prefCorrectionStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrections'**
+  String get prefCorrectionStatus;
 }
 
 class _AppLocalizationsDelegate

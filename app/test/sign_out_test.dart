@@ -1,0 +1,89 @@
+import 'package:built_collection/built_collection.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lamto/core/providers.dart';
+import 'package:lamto/core/token_store.dart';
+import 'package:lamto/features/auth/auth_repository.dart';
+import 'package:lamto/features/auth/session_controller.dart';
+import 'package:lamto_api/lamto_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _FakeStore implements TokenStore {
+  String? token = 'knox-token';
+  @override
+  Future<void> clear() async => token = null;
+  @override
+  Future<String?> read() async => token;
+  @override
+  Future<void> write(String value) async => token = value;
+}
+
+class _FakeAuth implements AuthRepository {
+  final calls = <String>[];
+  bool throwOnLogout = false;
+
+  @override
+  Future<Me> fetchMe() async => Me(
+        (b) => b
+          ..displayName = 'R'
+          ..email = 'r@example.com'
+          ..occupancies = ListBuilder<Occupancy>()
+          ..notificationPreferences = ListBuilder<NotificationPreference>(),
+      );
+  @override
+  Future<String> login(String i, String p) async => 'tok';
+  @override
+  Future<void> logout() async {
+    calls.add('logout');
+    if (throwOnLogout) {
+      throw DioException(requestOptions: RequestOptions(path: '/x'));
+    }
+  }
+
+  @override
+  Future<void> logoutAll() async => calls.add('logout-all');
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  ProviderContainer _container(_FakeAuth auth) {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer(overrides: [
+      tokenStoreProvider.overrideWithValue(_FakeStore()),
+      authRepositoryProvider.overrideWithValue(auth),
+    ]);
+    addTearDown(container.dispose);
+    return container;
+  }
+
+  test('signOut calls server logout then clears locally', () async {
+    final auth = _FakeAuth();
+    final container = _container(auth);
+    await container.read(sessionControllerProvider.future);
+    await container.read(sessionControllerProvider.notifier).signOut();
+    expect(auth.calls, ['logout']);
+    final state = await container.read(sessionControllerProvider.future);
+    expect(state, isA<SessionUnauthenticated>());
+  });
+
+  test('logout-all variant and server failure never block local sign-out',
+      () async {
+    final auth = _FakeAuth()..throwOnLogout = true;
+    final container = _container(auth);
+    await container.read(sessionControllerProvider.future);
+    // Throws server-side; still signs out locally.
+    await container.read(sessionControllerProvider.notifier).signOut();
+    expect(await container.read(sessionControllerProvider.future),
+        isA<SessionUnauthenticated>());
+
+    final auth2 = _FakeAuth();
+    final container2 = _container(auth2);
+    await container2.read(sessionControllerProvider.future);
+    await container2
+        .read(sessionControllerProvider.notifier)
+        .signOut(allDevices: true);
+    expect(auth2.calls, ['logout-all']);
+  });
+}

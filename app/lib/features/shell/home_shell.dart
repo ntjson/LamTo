@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../account/account_screen.dart';
 import '../home/home_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../reports/my_issues_screen.dart';
@@ -38,18 +39,18 @@ class _HomeShellState extends State<HomeShell> {
     super.dispose();
   }
 
-  List<Widget> _bodies(AppLocalizations l10n) => [
+  List<Widget> get _bodies => [
         const HomeScreen(),
         const ReportFormScreen(),
         const MyIssuesScreen(),
         const LedgerScreen(),
-        Center(child: Text(l10n.tabAccount)),
+        const AccountScreen(),
       ];
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final bodies = _bodies(l10n);
+    final bodies = _bodies;
     final isIos = defaultTargetPlatform == TargetPlatform.iOS;
 
     if (isIos) {

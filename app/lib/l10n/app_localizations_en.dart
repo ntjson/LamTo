@@ -338,4 +338,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get integrityUnchecked => 'Published — integrity not yet checked';
+
+  @override
+  String get accountOccupancies => 'My homes';
+
+  @override
+  String get accountPreferences => 'Notifications';
+
+  @override
+  String get accountPrefEmail => 'Email';
+
+  @override
+  String get accountPrefPush => 'Push';
+
+  @override
+  String get accountSignOutAll => 'Sign out of all devices';
+
+  @override
+  String get prefReportReceipt => 'Report received';
+
+  @override
+  String get prefTriageStatus => 'Report reviewed';
+
+  @override
+  String get prefWorkCompleted => 'Work completed';
+
+  @override
+  String get prefLedgerPublication => 'Published spending';
+
+  @override
+  String get prefCorrectionStatus => 'Corrections';
 }

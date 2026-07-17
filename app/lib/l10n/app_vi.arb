@@ -109,5 +109,15 @@
   "integrityVerified": "Bản ghi đã xác minh",
   "integrityMismatch": "Phát hiện sai lệch toàn vẹn",
   "integrityUnavailable": "Chưa kiểm tra được tính toàn vẹn",
-  "integrityUnchecked": "Đã công bố — chưa kiểm tra toàn vẹn"
+  "integrityUnchecked": "Đã công bố — chưa kiểm tra toàn vẹn",
+  "accountOccupancies": "Căn hộ của tôi",
+  "accountPreferences": "Thông báo",
+  "accountPrefEmail": "Email",
+  "accountPrefPush": "Đẩy (push)",
+  "accountSignOutAll": "Đăng xuất mọi thiết bị",
+  "prefReportReceipt": "Đã nhận phản ánh",
+  "prefTriageStatus": "Phản ánh được xem xét",
+  "prefWorkCompleted": "Công việc hoàn thành",
+  "prefLedgerPublication": "Khoản chi được công bố",
+  "prefCorrectionStatus": "Điều chỉnh"
 }
