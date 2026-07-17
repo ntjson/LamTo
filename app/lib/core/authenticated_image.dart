@@ -4,13 +4,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/app_localizations.dart';
 import 'providers.dart';
 
 /// Fetches a signed relative URL through the shared Dio (knox token attached)
 /// and renders the bytes. Image.network cannot carry our auth header.
 ///
 /// The GET is memoized per [url]: parent rebuilds with the same URL reuse the
-/// in-flight or completed future (no re-fetch).
+/// in-flight or completed future (no re-fetch). On failure, an explicit retry
+/// control clears the memoized future and re-issues the GET.
 class AuthenticatedImage extends ConsumerStatefulWidget {
   const AuthenticatedImage(this.url, {this.width, this.height, super.key});
 
@@ -25,6 +27,8 @@ class AuthenticatedImage extends ConsumerStatefulWidget {
 class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
   Future<Response<List<int>>>? _future;
   String? _url;
+  /// Bumped on each explicit retry so FutureBuilder sees a new future.
+  int _retryToken = 0;
 
   Future<Response<List<int>>> _startFetch(Dio dio, String url) {
     return dio.get<List<int>>(
@@ -41,6 +45,14 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
     return _future!;
   }
 
+  void _retry() {
+    setState(() {
+      _future = null;
+      _url = null;
+      _retryToken++;
+    });
+  }
+
   @override
   void didUpdateWidget(covariant AuthenticatedImage oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -53,7 +65,10 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
   @override
   Widget build(BuildContext context) {
     final dio = ref.watch(dioProvider);
+    final l10n = AppLocalizations.of(context);
     return FutureBuilder<Response<List<int>>>(
+      // ValueKey forces FutureBuilder to re-subscribe after explicit retry.
+      key: ValueKey<int>(_retryToken),
       future: _futureFor(dio),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data?.data != null) {
@@ -64,13 +79,25 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
             fit: BoxFit.cover,
           );
         }
-        final placeholder = snapshot.hasError
-            ? const Icon(Icons.broken_image_outlined)
-            : const Center(child: CircularProgressIndicator.adaptive());
+        if (snapshot.hasError) {
+          final retryLabel = l10n?.commonRetry ?? 'Retry';
+          return SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: Center(
+              child: IconButton(
+                key: const Key('authenticated_image_retry'),
+                tooltip: retryLabel,
+                icon: const Icon(Icons.refresh),
+                onPressed: _retry,
+              ),
+            ),
+          );
+        }
         return SizedBox(
           width: widget.width,
           height: widget.height,
-          child: placeholder,
+          child: const Center(child: CircularProgressIndicator.adaptive()),
         );
       },
     );

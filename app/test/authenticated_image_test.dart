@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/core/authenticated_image.dart';
 import 'package:lamto/core/providers.dart';
+import 'package:lamto/l10n/app_localizations.dart';
 
 /// Minimal 1x1 PNG so Image.memory can decode when the future completes.
 final _pngBytes = Uint8List.fromList(<int>[
@@ -21,6 +22,8 @@ final _pngBytes = Uint8List.fromList(<int>[
 class _CountingAdapter implements HttpClientAdapter {
   int getCount = 0;
   final paths = <String>[];
+  /// When non-empty, the next fetch fails once then succeeds.
+  int failNext = 0;
 
   @override
   void close({bool force = false}) {}
@@ -33,6 +36,14 @@ class _CountingAdapter implements HttpClientAdapter {
   ) async {
     getCount++;
     paths.add(options.path);
+    if (failNext > 0) {
+      failNext--;
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionError,
+        message: 'simulated failure',
+      );
+    }
     return ResponseBody.fromBytes(
       _pngBytes,
       200,
@@ -59,24 +70,31 @@ void main() {
 
   tearDown(() => container.dispose());
 
+  Widget host({required Widget child}) {
+    return UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: Scaffold(body: child),
+      ),
+    );
+  }
+
   testWidgets('rebuild with same URL does not re-issue GET', (tester) async {
     late StateSetter rebuild;
     await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          home: Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) {
-                rebuild = setState;
-                return const AuthenticatedImage(
-                  '/api/v1/documents/tok',
-                  width: 40,
-                  height: 40,
-                );
-              },
-            ),
-          ),
+      host(
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            rebuild = setState;
+            return const AuthenticatedImage(
+              '/api/v1/documents/tok',
+              width: 40,
+              height: 40,
+            );
+          },
         ),
       ),
     );
@@ -84,7 +102,6 @@ void main() {
     expect(adapter.getCount, 1);
     expect(adapter.paths, ['/api/v1/documents/tok']);
 
-    // Parent rebuild keeps the same State — must not start another GET.
     rebuild(() {});
     await tester.pump();
     await tester.idle();
@@ -95,17 +112,12 @@ void main() {
     var url = '/api/v1/documents/a';
     late StateSetter rebuild;
     await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          home: Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) {
-                rebuild = setState;
-                return AuthenticatedImage(url, width: 40, height: 40);
-              },
-            ),
-          ),
+      host(
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            rebuild = setState;
+            return AuthenticatedImage(url, width: 40, height: 40);
+          },
         ),
       ),
     );
@@ -118,5 +130,32 @@ void main() {
     await tester.idle();
     expect(adapter.getCount, 2);
     expect(adapter.paths, ['/api/v1/documents/a', '/api/v1/documents/b']);
+  });
+
+  testWidgets('explicit retry after error re-issues GET and shows image',
+      (tester) async {
+    adapter.failNext = 1;
+    await tester.pumpWidget(
+      host(
+        child: const AuthenticatedImage(
+          '/api/v1/documents/retry-me',
+          width: 40,
+          height: 40,
+        ),
+      ),
+    );
+    await tester.idle();
+    await tester.pump();
+    expect(adapter.getCount, 1);
+    expect(find.byKey(const Key('authenticated_image_retry')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('authenticated_image_retry')));
+    await tester.pump();
+    await tester.idle();
+    await tester.pump();
+
+    expect(adapter.getCount, 2);
+    expect(find.byKey(const Key('authenticated_image_retry')), findsNothing);
+    expect(find.byType(Image), findsOneWidget);
   });
 }
