@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:lamto/app.dart';
+import 'package:lamto/core/providers.dart';
+import 'package:lamto/core/token_store.dart';
 
 /// §6.5 happy path against a compose-seeded backend (run nightly on a device):
 ///
@@ -14,6 +16,10 @@ import 'package:lamto/app.dart';
 ///
 /// Pilot fixture defaults (from `manage.py seed_pilot --fixture`):
 ///   pilot-resident@pilot.lamto.test / pilot-test-secret
+///
+/// Token storage: this harness overrides [tokenStoreProvider] with
+/// [TokenStore.memory] so headless Linux CI (no libsecret/keyring) can complete
+/// login. Production apps still use platform secure storage via [TokenStore].
 const _identifier = String.fromEnvironment('INTEGRATION_IDENTIFIER');
 const _password = String.fromEnvironment('INTEGRATION_PASSWORD');
 
@@ -25,13 +31,19 @@ void main() {
     assert(_identifier.isNotEmpty && _password.isNotEmpty,
         'Pass INTEGRATION_IDENTIFIER / INTEGRATION_PASSWORD dart-defines.');
 
-    await tester.pumpWidget(const ProviderScope(child: LamToApp()));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        // Avoid flutter_secure_storage / libsecret on headless Linux runners.
+        tokenStoreProvider.overrideWithValue(TokenStore.memory()),
+      ],
+      child: const LamToApp(),
+    ));
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     // Login.
     await tester.enterText(find.byType(TextField).at(0), _identifier);
     await tester.enterText(find.byType(TextField).at(1), _password);
-    await tester.tap(find.text('Đăng nhập'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Đăng nhập'));
     await tester.pumpAndSettle(const Duration(seconds: 5));
 
     // Home: fund block present (integer VND with dong sign).
@@ -58,7 +70,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 3));
     expect(find.textContaining('Kiểm thử tự động'), findsWidgets);
 
-    // Ledger tab renders (seeded world has a published expenditure).
+    // Ledger tab title (seeded world has fund; list may be empty).
     await tester.tap(find.text('Sổ quỹ').last);
     await tester.pumpAndSettle(const Duration(seconds: 3));
     expect(find.text('Sổ quỹ tòa nhà'), findsOneWidget);

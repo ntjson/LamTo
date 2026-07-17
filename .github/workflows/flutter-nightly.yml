@@ -141,6 +141,10 @@ jobs:
             libgtk-3-dev liblzma-dev libstdc++-14-dev \
             libsecret-1-dev libjsoncpp-dev \
             xvfb
+          # Note: libsecret-1-dev satisfies native plugin *link* deps.
+          # Headless runners still lack a user session keyring. The
+          # integration_test harness uses TokenStore.memory() (see app_test.dart)
+          # so login does not depend on a live secret service.
 
       - name: Flutter pub get
         working-directory: app
@@ -148,9 +152,6 @@ jobs:
 
       - name: Run integration_test happy path (Linux + xvfb)
         working-directory: app
-        env:
-          # Host-reachable API from the Linux desktop runner (not Android 10.0.2.2).
-          API_BASE_URL_VALUE: http://127.0.0.1:8000
         run: |
           xvfb-run -a flutter test integration_test/app_test.dart -d linux \
             --dart-define=API_BASE_URL=http://127.0.0.1:8000 \

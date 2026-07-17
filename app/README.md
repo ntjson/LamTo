@@ -62,7 +62,14 @@ non-production seeds.
 | iOS simulator / Linux desktop / host | `http://127.0.0.1:8000` |
 
 Scheduled CI: [`.github/workflows/flutter-nightly.yml`](../.github/workflows/flutter-nightly.yml)
-brings up compose, seeds the pilot world, and runs this happy path.
+brings up compose, seeds the pilot world, and runs this happy path on Linux
+desktop under `xvfb`.
+
+**CI token storage:** the integration harness overrides `tokenStoreProvider`
+with `TokenStore.memory()` so headless Ubuntu runners do not need a working
+libsecret/keyring. Production builds still use `flutter_secure_storage`
+(Keychain / Keystore). To exercise real secure storage, run on a
+device/emulator without that override (or temporarily remove it).
 
 Compile-only check (no device):
 
