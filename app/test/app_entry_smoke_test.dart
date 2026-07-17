@@ -50,4 +50,10 @@ class _NoSessionRepo implements AuthRepository {
   Future<String> login(String identifier, String password) async => 'x';
   @override
   Future<Me> fetchMe() async => throw StateError('none');
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> logoutAll() async {}
 }

@@ -37,6 +37,12 @@ class _Repo implements AuthRepository {
     if (me == null) throw StateError('none');
     return me;
   }
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> logoutAll() async {}
 }
 
 Me _meWith(int occupancies) => Me((b) {

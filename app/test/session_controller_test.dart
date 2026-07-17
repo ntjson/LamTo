@@ -41,6 +41,12 @@ class _FakeRepo implements AuthRepository {
     if (me == null) throw StateError('no session');
     return me!;
   }
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> logoutAll() async {}
 }
 
 Me _me({int occupancies = 0, List<int>? ids}) => Me(
