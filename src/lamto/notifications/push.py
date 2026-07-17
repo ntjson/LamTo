@@ -1,30 +1,32 @@
 """FCM sender + payload minimization (spec 7.1, 7.4). No abstraction layer:
-firebase_admin.messaging is called directly."""
+firebase_admin.messaging is called directly.
+
+Event-code string literals are inlined (not imported from services) so this
+module does not circular-import with services (which re-exports send_push).
+"""
 
 from django.conf import settings
 
-from .services import (
-    EVENT_CORRECTION_STATUS,
-    EVENT_PUBLICATION,
-    EVENT_REPORT_RECEIPT,
-    EVENT_TRIAGE_STATUS,
-    EVENT_WORK_COMPLETED,
-    _event_code_from_key,
-)
-
 # Fixed generic Vietnamese copy shown by the OS before the app runs (spec 7.4);
-# never the delivery's sensitive subject/body.
+# never the delivery's sensitive subject/body. Keys match services.EVENT_*.
 PUSH_COPY = {
-    EVENT_REPORT_RECEIPT: ("Đã nhận phản ánh", "Phản ánh của bạn đã được ghi nhận."),
-    EVENT_TRIAGE_STATUS: ("Phản ánh đã được phân loại", "Phản ánh của bạn đã được mở thành yêu cầu xử lý."),
-    EVENT_WORK_COMPLETED: ("Công việc đã hoàn thành", "Vui lòng đánh giá công việc đã thực hiện."),
-    EVENT_PUBLICATION: ("Khoản chi mới được công bố", "Có khoản chi mới trong sổ quỹ tòa nhà."),
-    EVENT_CORRECTION_STATUS: ("Có điều chỉnh mới", "Một điều chỉnh đã được công bố trong sổ quỹ."),
+    "report.receipt": ("Đã nhận phản ánh", "Phản ánh của bạn đã được ghi nhận."),
+    "triage.status": ("Phản ánh đã được phân loại", "Phản ánh của bạn đã được mở thành yêu cầu xử lý."),
+    "work.completed": ("Công việc đã hoàn thành", "Vui lòng đánh giá công việc đã thực hiện."),
+    "ledger.publication": ("Khoản chi mới được công bố", "Có khoản chi mới trong sổ quỹ tòa nhà."),
+    "correction.status": ("Có điều chỉnh mới", "Một điều chỉnh đã được công bố trong sổ quỹ."),
 }
 _DEFAULT_COPY = ("Thông báo mới", "Bạn có một thông báo mới.")
 
 # Allowlisted entity segment (from event_key) -> app deep-link route type.
-DEEP_LINK_TYPES = {"report": "report", "case": "case", "entry": "ledger", "correction": "ledger"}
+# correction has no resident detail screen (A2): map to notifications so the
+# client allowlist lands on the feed (not ledger with a correction pk / 404).
+DEEP_LINK_TYPES = {
+    "report": "report",
+    "case": "case",
+    "entry": "ledger",
+    "correction": "notifications",
+}
 
 _firebase_app = None
 
@@ -93,6 +95,13 @@ def _parse_reference(event_key: str):
     if len(parts) >= 3:
         return parts[1], parts[2]
     return None, None
+
+
+def _event_code_from_key(event_key: str) -> str:
+    """Prefix before the first ':' — same contract as services._event_code_from_key."""
+    if not event_key:
+        return ""
+    return event_key.split(":", 1)[0]
 
 
 def build_push_payload(delivery):

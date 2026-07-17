@@ -3,7 +3,11 @@ from firebase_admin import exceptions, messaging
 
 from lamto.notifications.models import NotificationDelivery
 from lamto.notifications.push import build_push_payload, classify_push_error
-from lamto.notifications.services import EVENT_PUBLICATION, EVENT_PAYMENT_RECORDED
+from lamto.notifications.services import (
+    EVENT_CORRECTION_STATUS,
+    EVENT_PAYMENT_RECORDED,
+    EVENT_PUBLICATION,
+)
 
 
 def _firebase_err(cls, message: str):
@@ -29,6 +33,17 @@ class PushPayloadTests(TestCase):
         d = self._delivery(f"{EVENT_PAYMENT_RECORDED}:payment:7", EVENT_PAYMENT_RECORDED, "x")
         _title, _body, data = build_push_payload(d)
         assert data["type"] == "notifications"  # payment is not an allowlisted resident deep link
+
+    def test_correction_entity_maps_to_notifications_not_ledger(self):
+        """A2: correction has no resident detail; must not open ledger with correction pk."""
+        d = self._delivery(
+            f"{EVENT_CORRECTION_STATUS}:correction:99:PENDING",
+            EVENT_CORRECTION_STATUS,
+            "x",
+        )
+        _title, _body, data = build_push_payload(d)
+        assert data["type"] == "notifications"
+        assert data["id"] == "99"
 
 
 class ClassifyPushErrorTests(TestCase):

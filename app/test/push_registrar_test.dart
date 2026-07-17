@@ -73,6 +73,41 @@ class _FakeRepo implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+
+class _OrderTrackingRepo implements TransparencyRepository {
+  _OrderTrackingRepo(this._inner, this.order);
+  final _FakeRepo _inner;
+  final List<String> order;
+
+  List<(String, String)> get registered => _inner.registered;
+  List<String> get deactivated => _inner.deactivated;
+
+  @override
+  Future<Device> registerDevice({
+    required String installId,
+    required String fcmToken,
+    required String platform,
+    String appVersion = '',
+  }) async {
+    order.add('register');
+    return _inner.registerDevice(
+      installId: installId,
+      fcmToken: fcmToken,
+      platform: platform,
+      appVersion: appVersion,
+    );
+  }
+
+  @override
+  Future<void> deactivateDevice(String installId) async {
+    order.add('deactivate');
+    return _inner.deactivateDevice(installId);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -375,4 +410,60 @@ void main() {
     expect(source.requestCount, 0);
     expect(repo.registered, isEmpty);
   });
+
+  test('onAuthenticatedSession sequences deactivate then register for pending install',
+      () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final store = InstallIdStore();
+    final installId = await store.get();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(PushPrefsKeys.permissionRequested(installId), true);
+    await prefs.setString(PushPrefsKeys.pendingDeregister, installId);
+
+    // Slow deactivate so a race would let register win first if parallel.
+    repo.deactivateDelay = const Duration(milliseconds: 80);
+    final order = <String>[];
+    final tracking = _OrderTrackingRepo(repo, order);
+
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: tracking,
+      installIdStore: store,
+      deregisterTimeout: const Duration(seconds: 2),
+    );
+    await registrar.onAuthenticatedSession();
+
+    expect(order, ['deactivate', 'register']);
+    expect(tracking.registered, hasLength(1));
+    expect(tracking.deactivated, [installId]);
+    // Pending cleared so a later session cannot deactivate after register.
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
+  });
+
+  test('onAuthenticatedSession clears sticky pending when re-registering same install',
+      () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final store = InstallIdStore();
+    final installId = await store.get();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(PushPrefsKeys.permissionRequested(installId), true);
+    await prefs.setString(PushPrefsKeys.pendingDeregister, installId);
+    repo.deactivateError = Exception('still offline');
+
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: store,
+      deregisterTimeout: const Duration(milliseconds: 50),
+    );
+    await registrar.onAuthenticatedSession();
+
+    // Register still happened via upsert path.
+    expect(repo.registered, hasLength(1));
+    // Pending for this install must not stick (would kill push next bootstrap).
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
+  });
+
 }

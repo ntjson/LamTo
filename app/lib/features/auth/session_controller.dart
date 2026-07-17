@@ -68,13 +68,15 @@ class SessionController extends AsyncNotifier<SessionState> {
     }
   }
 
-  /// After auth: retry failed logout deregister (A5) and re-attach push if
-  /// this install already completed OS consent (spec 7.2 — not only after
-  /// the next report submit).
+  /// After auth: ordered push hygiene via [PushRegistrar.onAuthenticatedSession]
+  /// (await pending deregister **then** re-register if consented — never race
+  /// deactivate after register for the same install_id).
   void _schedulePendingDeregisterRetry() {
-    final registrar = ref.read(pushRegistrarProvider);
-    unawaited(registrar.retryPendingDeregister().catchError((Object _) {}));
-    unawaited(registrar.ensureRegisteredIfConsented().catchError((Object _) {}));
+    unawaited(
+      ref.read(pushRegistrarProvider).onAuthenticatedSession().catchError(
+            (Object _) {},
+          ),
+    );
   }
 
 

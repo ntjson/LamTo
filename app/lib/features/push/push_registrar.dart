@@ -131,6 +131,45 @@ class PushRegistrar {
     } catch (_) {}
   }
 
+  /// Ordered post-auth push hygiene (must not race):
+  /// 1. A5: retry any pending logout deactivation first.
+  /// 2. Spec 7.2: re-register if OS consent was already completed.
+  /// 3. If pending was for **this** install and we re-registered, clear it —
+  ///    the user is logged in again; a later deactivate must not land after
+  ///    register and leave the install inactive.
+  Future<void> onAuthenticatedSession() async {
+    try {
+      final installId = await installIdStore.get();
+      final prefs = await _prefs();
+      final pending = prefs.getString(PushPrefsKeys.pendingDeregister);
+
+      // (1) Finish prior failed logout deactivation before any re-register.
+      if (pending != null && pending.isNotEmpty) {
+        try {
+          await repository
+              .deactivateDevice(pending)
+              .timeout(deregisterTimeout);
+          await prefs.remove(PushPrefsKeys.pendingDeregister);
+        } catch (_) {
+          // Leave pending; re-register below may still succeed via upsert.
+        }
+      }
+
+      // (2) Re-attach push without re-prompting when consent already happened.
+      final alreadyRequested =
+          prefs.getBool(PushPrefsKeys.permissionRequested(installId)) ?? false;
+      if (alreadyRequested) {
+        await _registerWithCurrentToken(installId);
+        watchTokenRefresh();
+        // (3) Same install re-authed: register upserted active — drop pending
+        // so a stuck offline-logout key cannot deactivate after register.
+        if (pending == installId) {
+          await prefs.remove(PushPrefsKeys.pendingDeregister);
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _registerWithCurrentToken(String installId) async {
     final token = await tokenSource.getToken();
     if (token == null || token.isEmpty) return;
