@@ -143,7 +143,9 @@ class DownloadTests(TestCase):
             scan_status=DocumentVersion.ScanStatus.CLEAN,
             uploader=self.resident,
         )
-        ReportPhoto.objects.create(report=self.report, version=version)
+        ReportPhoto.objects.create(
+            report=self.report, version=version, content_sha=version.sha256
+        )
         token = issue_download_token(self.resident.pk, version.pk)
         got = self.client.get(
             reverse("api:document-download", args=[token]), headers=self._auth()

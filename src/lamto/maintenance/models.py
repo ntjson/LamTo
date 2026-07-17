@@ -86,10 +86,16 @@ class IssueReport(models.Model):
 class ReportPhoto(models.Model):
     report = models.ForeignKey(IssueReport, on_delete=models.PROTECT, related_name="photos")
     version = models.ForeignKey(DocumentVersion, on_delete=models.PROTECT)
+    # Denormalized content digest for DB-level same-bytes idempotency per report
+    # (unique with report). Populated from version.sha256 on create.
+    content_sha = models.CharField(max_length=64)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["report", "version"], name="report_photo_once")
+            models.UniqueConstraint(fields=["report", "version"], name="report_photo_once"),
+            models.UniqueConstraint(
+                fields=["report", "content_sha"], name="report_photo_content_sha_once"
+            ),
         ]
 
 

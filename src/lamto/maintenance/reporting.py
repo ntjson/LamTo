@@ -83,7 +83,14 @@ def submit_report(resident, unit, text, location, photo_versions, client_ref=Non
         client_ref=client_ref,
     )
     ReportPhoto.objects.bulk_create(
-        [ReportPhoto(report=report, version=version) for version in photo_versions]
+        [
+            ReportPhoto(
+                report=report,
+                version=version,
+                content_sha=version.sha256,
+            )
+            for version in photo_versions
+        ]
     )
     TriageJob.objects.create(report=report)
     record_audit(
@@ -167,31 +174,35 @@ def attach_report_photo(resident, report, uploaded_file, scanner=None):
     # Fast path without lock (common sequential retry).
     existing = (
         ReportPhoto.objects.select_related("version")
-        .filter(report=report, version__sha256=content_sha)
+        .filter(report=report, content_sha=content_sha)
         .first()
     )
     if existing is not None:
         return existing.version, False
 
-    version = create_resident_report_photo(resident, report.building, uploaded_file, scanner)
-    # Serialize attach on this report so concurrent same-bytes uploads cannot
-    # both insert ReportPhoto rows after both pass the pre-check (TOCTOU).
+    # Lock first, recheck, then create the DocumentVersion so a concurrent
+    # loser never creates an orphan version (append-only docs cannot be deleted).
     with transaction.atomic():
         IssueReport.objects.select_for_update().filter(pk=report.pk).get()
         existing = (
             ReportPhoto.objects.select_related("version")
-            .filter(report=report, version__sha256=content_sha)
+            .filter(report=report, content_sha=content_sha)
             .first()
         )
         if existing is not None:
             return existing.version, False
+        version = create_resident_report_photo(
+            resident, report.building, uploaded_file, scanner
+        )
         try:
-            ReportPhoto.objects.create(report=report, version=version)
+            ReportPhoto.objects.create(
+                report=report, version=version, content_sha=content_sha
+            )
         except IntegrityError:
-            # Unique (report, version) or concurrent winner: re-read by content.
+            # Unique (report, content_sha) or (report, version): re-read winner.
             existing = (
                 ReportPhoto.objects.select_related("version")
-                .filter(report=report, version__sha256=content_sha)
+                .filter(report=report, content_sha=content_sha)
                 .first()
             )
             if existing is not None:
