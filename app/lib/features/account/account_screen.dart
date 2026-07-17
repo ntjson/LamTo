@@ -69,21 +69,27 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             const SizedBox(height: 24),
             Text(l10n.accountOccupancies,
                 style: Theme.of(context).textTheme.titleMedium),
-            for (final occupancy in me.occupancies)
-              RadioListTile<int>(
-                contentPadding: EdgeInsets.zero,
-                value: occupancy.id,
-                groupValue: holder.occupancyId,
-                title:
-                    Text('${occupancy.buildingName} · ${occupancy.unitLabel}'),
-                onChanged: (id) {
-                  if (id != null) {
-                    ref
-                        .read(sessionControllerProvider.notifier)
-                        .selectOccupancy(me, id);
-                  }
-                },
+            RadioGroup<int>(
+              groupValue: holder.occupancyId,
+              onChanged: (id) {
+                if (id != null) {
+                  ref
+                      .read(sessionControllerProvider.notifier)
+                      .selectOccupancy(me, id);
+                }
+              },
+              child: Column(
+                children: [
+                  for (final occupancy in me.occupancies)
+                    RadioListTile<int>(
+                      contentPadding: EdgeInsets.zero,
+                      value: occupancy.id,
+                      title: Text(
+                          '${occupancy.buildingName} · ${occupancy.unitLabel}'),
+                    ),
+                ],
               ),
+            ),
             const SizedBox(height: 24),
             Text(l10n.accountPreferences,
                 style: Theme.of(context).textTheme.titleMedium),

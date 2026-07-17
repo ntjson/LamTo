@@ -14,8 +14,7 @@ import '../../core/uuid.dart';
 class ReportPhotoFileStore {
   /// [rootOverride] is for tests (temp dir). Production uses
   /// `getApplicationDocumentsDirectory()/report_draft_photos`.
-  ReportPhotoFileStore({Directory? rootOverride})
-      : _rootOverride = rootOverride;
+  ReportPhotoFileStore({this._rootOverride});
 
   final Directory? _rootOverride;
 

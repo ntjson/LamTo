@@ -79,7 +79,7 @@ class _FakeDevices implements TransparencyRepository {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  ProviderContainer _container(
+  ProviderContainer makeContainer(
     _FakeAuth auth, {
     TransparencyRepository? devices,
   }) {
@@ -101,7 +101,7 @@ void main() {
 
   test('signOut calls server logout then clears locally', () async {
     final auth = _FakeAuth();
-    final container = _container(auth);
+    final container = makeContainer(auth);
     await container.read(sessionControllerProvider.future);
     await container.read(sessionControllerProvider.notifier).signOut();
     expect(auth.calls, ['logout']);
@@ -112,7 +112,7 @@ void main() {
   test('logout-all variant and server failure never block local sign-out',
       () async {
     final auth = _FakeAuth()..throwOnLogout = true;
-    final container = _container(auth);
+    final container = makeContainer(auth);
     await container.read(sessionControllerProvider.future);
     // Throws server-side; still signs out locally.
     await container.read(sessionControllerProvider.notifier).signOut();
@@ -120,7 +120,7 @@ void main() {
         isA<SessionUnauthenticated>());
 
     final auth2 = _FakeAuth();
-    final container2 = _container(auth2);
+    final container2 = makeContainer(auth2);
     await container2.read(sessionControllerProvider.future);
     await container2
         .read(sessionControllerProvider.notifier)
@@ -131,7 +131,7 @@ void main() {
   test('signOut deregisters push device before server logout (A5)', () async {
     final auth = _FakeAuth();
     final devices = _FakeDevices();
-    final container = _container(auth, devices: devices);
+    final container = makeContainer(auth, devices: devices);
     await container.read(sessionControllerProvider.future);
     final installId = await InstallIdStore().get();
     await container.read(sessionControllerProvider.notifier).signOut();
@@ -143,7 +143,7 @@ void main() {
       () async {
     final auth = _FakeAuth();
     final devices = _FakeDevices()..deactivateError = Exception('down');
-    final container = _container(auth, devices: devices);
+    final container = makeContainer(auth, devices: devices);
     await container.read(sessionControllerProvider.future);
     final installId = await InstallIdStore().get();
     await container.read(sessionControllerProvider.notifier).signOut();

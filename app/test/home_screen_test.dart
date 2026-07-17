@@ -105,7 +105,7 @@ void main() {
     // Riverpod 3 auto-retries Exceptions; disable so AsyncError surfaces
     // immediately (production still retries then settles on AsyncError).
     await tester.pumpWidget(ProviderScope(
-      retry: (_, __) => null,
+      retry: (_, _) => null,
       overrides: [
         reportsRepositoryProvider.overrideWithValue(_ThrowingReports()),
         transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),

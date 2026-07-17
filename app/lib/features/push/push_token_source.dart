@@ -34,7 +34,7 @@ abstract class PushTokenSource {
 /// **A6:** dev/test no-op silently; production (`kReleaseMode`) surfaces a
 /// clear diagnostic operators can see in logs. Never commit platform config.
 class FirebasePushTokenSource implements PushTokenSource {
-  FirebasePushTokenSource({void Function(String message)? this._onDiagnostic});
+  FirebasePushTokenSource({this._onDiagnostic});
 
   final void Function(String message)? _onDiagnostic;
   bool? _available;

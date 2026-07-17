@@ -97,7 +97,7 @@ void main() {
     submitter = ReportSubmitter(repository: repo, draftStore: drafts);
   });
 
-  ReportDraft _draft({List<String> photos = const []}) =>
+  ReportDraft draftOf({List<String> photos = const []}) =>
       ReportDraft.fresh().copyWith(
         text: 'Leak',
         locationId: 3,
@@ -105,7 +105,7 @@ void main() {
       );
 
   test('submit commits text, clears draft, uploads photos in order', () async {
-    final draft = _draft(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
+    final draft = draftOf(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
     await drafts.write(7, draft);
     final outcome = await submitter.submit(draft: draft, occupancyId: 7);
     expect(outcome.reportId, 42);
@@ -116,7 +116,7 @@ void main() {
 
   test('retry after network failure reuses the SAME client_ref (spec 3.5)',
       () async {
-    final draft = _draft();
+    final draft = draftOf();
     repo.createError = DioException(
       requestOptions: RequestOptions(path: '/api/v1/reports'),
       type: DioExceptionType.connectionTimeout,
@@ -132,14 +132,14 @@ void main() {
   test('409 client_ref_conflict surfaces ReportConflictException', () async {
     repo.createError = _problem(409, 'client_ref_conflict');
     await expectLater(
-      submitter.submit(draft: _draft(), occupancyId: 7),
+      submitter.submit(draft: draftOf(), occupancyId: 7),
       throwsA(isA<ReportConflictException>()),
     );
   });
 
   test('failed photo never loses the report; retryPhoto recovers it', () async {
     repo.failPhotoPaths = {'/tmp/b.jpg'};
-    final draft = _draft(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
+    final draft = draftOf(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
     await drafts.write(7, draft);
     final outcome = await submitter.submit(draft: draft, occupancyId: 7);
     expect(outcome.reportId, 42);
@@ -158,7 +158,7 @@ void main() {
   // attachment id / status). Backend sha256 dedup covers lost-response; client
   // must not double-call when status is already uploaded.
   test('retryPhoto is idempotent when photo already uploaded', () async {
-    final draft = _draft(photos: ['/tmp/a.jpg']);
+    final draft = draftOf(photos: ['/tmp/a.jpg']);
     final outcome = await submitter.submit(draft: draft, occupancyId: 7);
     final photo = outcome.photos.single;
     expect(photo.status, PhotoUploadStatus.uploaded);
@@ -172,7 +172,7 @@ void main() {
   // Soft-fail non-Dio photo errors so form always reaches committed-result.
   test('non-Dio photo error marks failed and still returns reportId', () async {
     repo.throwLocalPaths = {'/tmp/a.jpg'};
-    final draft = _draft(photos: ['/tmp/a.jpg']);
+    final draft = draftOf(photos: ['/tmp/a.jpg']);
     await drafts.write(7, draft);
     final outcome = await submitter.submit(draft: draft, occupancyId: 7);
     expect(outcome.reportId, 42);
