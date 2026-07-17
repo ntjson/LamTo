@@ -17,6 +17,9 @@ String reportStatusLabel(String status, AppLocalizations l10n) =>
       _ => l10n.statusOpen,
     };
 
+/// Active = not resolved. API enum today is OPEN/RESOLVED (amendment A3).
+bool isActiveReportStatus(String status) => status != 'RESOLVED';
+
 /// Cursor-paginated list of **all** reports submitted by the authenticated
 /// user across units (user-global; amendment 12). Not filtered to the
 /// selected occupancy. Rebuilds when session identity changes so a later

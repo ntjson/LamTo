@@ -63,5 +63,13 @@
   "workStatusAwaiting": "Awaiting acceptance",
   "workStatusAccepted": "Accepted",
   "workStatusClosed": "Closed",
-  "workStatusCancelled": "Cancelled"
+  "workStatusCancelled": "Cancelled",
+  "homeFundTitle": "Maintenance fund",
+  "homeFundInflows": "In (30d)",
+  "homeFundOutflows": "Out (30d)",
+  "homeActiveReports": "My open reports",
+  "homeRecentSpending": "Recently published spending",
+  "homeNoActiveReports": "No open reports.",
+  "homeNoSpending": "No published spending yet.",
+  "notificationsTitle": "Notifications"
 }

@@ -207,4 +207,28 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get workStatusCancelled => 'Đã hủy';
+
+  @override
+  String get homeFundTitle => 'Quỹ bảo trì';
+
+  @override
+  String get homeFundInflows => 'Thu (30 ngày)';
+
+  @override
+  String get homeFundOutflows => 'Chi (30 ngày)';
+
+  @override
+  String get homeActiveReports => 'Phản ánh đang mở';
+
+  @override
+  String get homeRecentSpending => 'Khoản chi mới công bố';
+
+  @override
+  String get homeNoActiveReports => 'Không có phản ánh đang mở.';
+
+  @override
+  String get homeNoSpending => 'Chưa có khoản chi nào được công bố.';
+
+  @override
+  String get notificationsTitle => 'Thông báo';
 }

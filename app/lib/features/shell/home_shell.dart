@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../home/home_screen.dart';
 import '../reports/my_issues_screen.dart';
 import '../reports/report_form_screen.dart';
 
@@ -37,7 +38,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   List<Widget> _bodies(AppLocalizations l10n) => [
-        Center(child: Text(l10n.tabHome)),
+        const HomeScreen(),
         const ReportFormScreen(),
         const MyIssuesScreen(),
         Center(child: Text(l10n.tabLedger)),

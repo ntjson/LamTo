@@ -469,6 +469,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancelled'**
   String get workStatusCancelled;
+
+  /// No description provided for @homeFundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance fund'**
+  String get homeFundTitle;
+
+  /// No description provided for @homeFundInflows.
+  ///
+  /// In en, this message translates to:
+  /// **'In (30d)'**
+  String get homeFundInflows;
+
+  /// No description provided for @homeFundOutflows.
+  ///
+  /// In en, this message translates to:
+  /// **'Out (30d)'**
+  String get homeFundOutflows;
+
+  /// No description provided for @homeActiveReports.
+  ///
+  /// In en, this message translates to:
+  /// **'My open reports'**
+  String get homeActiveReports;
+
+  /// No description provided for @homeRecentSpending.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently published spending'**
+  String get homeRecentSpending;
+
+  /// No description provided for @homeNoActiveReports.
+  ///
+  /// In en, this message translates to:
+  /// **'No open reports.'**
+  String get homeNoActiveReports;
+
+  /// No description provided for @homeNoSpending.
+  ///
+  /// In en, this message translates to:
+  /// **'No published spending yet.'**
+  String get homeNoSpending;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
 }
 
 class _AppLocalizationsDelegate

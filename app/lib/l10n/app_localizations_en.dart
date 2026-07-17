@@ -208,4 +208,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workStatusCancelled => 'Cancelled';
+
+  @override
+  String get homeFundTitle => 'Maintenance fund';
+
+  @override
+  String get homeFundInflows => 'In (30d)';
+
+  @override
+  String get homeFundOutflows => 'Out (30d)';
+
+  @override
+  String get homeActiveReports => 'My open reports';
+
+  @override
+  String get homeRecentSpending => 'Recently published spending';
+
+  @override
+  String get homeNoActiveReports => 'No open reports.';
+
+  @override
+  String get homeNoSpending => 'No published spending yet.';
+
+  @override
+  String get notificationsTitle => 'Notifications';
 }

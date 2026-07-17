@@ -64,5 +64,13 @@
   "workStatusAwaiting": "Chờ nghiệm thu",
   "workStatusAccepted": "Đã nghiệm thu",
   "workStatusClosed": "Đã đóng",
-  "workStatusCancelled": "Đã hủy"
+  "workStatusCancelled": "Đã hủy",
+  "homeFundTitle": "Quỹ bảo trì",
+  "homeFundInflows": "Thu (30 ngày)",
+  "homeFundOutflows": "Chi (30 ngày)",
+  "homeActiveReports": "Phản ánh đang mở",
+  "homeRecentSpending": "Khoản chi mới công bố",
+  "homeNoActiveReports": "Không có phản ánh đang mở.",
+  "homeNoSpending": "Chưa có khoản chi nào được công bố.",
+  "notificationsTitle": "Thông báo"
 }
