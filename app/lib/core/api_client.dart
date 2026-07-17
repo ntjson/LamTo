@@ -4,18 +4,35 @@ import 'config.dart';
 import 'occupancy.dart';
 import 'token_store.dart';
 
+/// Default connect timeout for the shared resident Dio client.
+const Duration kDioConnectTimeout = Duration(seconds: 15);
+
+/// Default receive timeout for the shared resident Dio client.
+const Duration kDioReceiveTimeout = Duration(seconds: 30);
+
 /// One interceptor owns auth (spec 6.4): attach the knox token; on any 401
 /// clear secure storage. [onUnauthorized] fires only when [signalSessionLoss]
 /// is true (post-login session expiry) — bootstrap handles 401 itself to avoid
 /// racing invalidate of the building notifier (review I2).
+///
+/// Connect/receive timeouts are finite so a stalled network fails into the
+/// [Failure] network path instead of hanging indefinitely.
 Dio buildDio({
   required TokenStore store,
   required OccupancyHolder occupancy,
   required void Function() onUnauthorized,
   String? baseUrl,
   bool Function()? signalSessionLoss,
+  Duration? connectTimeout,
+  Duration? receiveTimeout,
 }) {
-  final dio = Dio(BaseOptions(baseUrl: baseUrl ?? apiBaseUrl));
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: baseUrl ?? apiBaseUrl,
+      connectTimeout: connectTimeout ?? kDioConnectTimeout,
+      receiveTimeout: receiveTimeout ?? kDioReceiveTimeout,
+    ),
+  );
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {

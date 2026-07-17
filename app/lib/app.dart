@@ -49,6 +49,10 @@ class AppRouter extends ConsumerStatefulWidget {
 class _AppRouterState extends ConsumerState<AppRouter> {
   OccupancyHolder? _listened;
 
+  /// Last push-open payload waiting for [SessionAuthenticated] (last-wins).
+  Map<String, String>? _pendingPush;
+  bool _pushWired = false;
+
   @override
   void initState() {
     super.initState();
@@ -56,13 +60,42 @@ class _AppRouterState extends ConsumerState<AppRouter> {
   }
 
   Future<void> _wirePushTaps() async {
+    if (_pushWired) return;
+    _pushWired = true;
     final source = ref.read(pushTokenSourceProvider);
     final initial = await source.initialMessageData();
     if (initial != null) _openPush(initial);
     source.onMessageOpened.listen(_openPush);
   }
 
+  bool get _isAuthenticated {
+    final session = ref.read(sessionControllerProvider);
+    return switch (session) {
+      AsyncData(value: SessionAuthenticated()) => true,
+      _ => false,
+    };
+  }
+
+  /// Gate navigation: buffer while unauthenticated / bootstrapping; apply when
+  /// [SessionAuthenticated]. Destinations still re-fetch via the API (A8).
   void _openPush(Map<String, String> data) {
+    if (!mounted) return;
+    if (!_isAuthenticated) {
+      _pendingPush = data;
+      return;
+    }
+    _navigatePush(data);
+  }
+
+  void _flushPendingPush() {
+    final pending = _pendingPush;
+    if (pending == null || !mounted) return;
+    if (!_isAuthenticated) return;
+    _pendingPush = null;
+    _navigatePush(pending);
+  }
+
+  void _navigatePush(Map<String, String> data) {
     if (!mounted) return;
     final link = parsePushLink(type: data['type'], id: data['id']);
     final navigator = Navigator.of(context);
@@ -98,6 +131,18 @@ class _AppRouterState extends ConsumerState<AppRouter> {
       _listened = holder;
       holder.addListener(_onOccupancyChanged);
     }
+
+    // When auth becomes ready, apply any buffered cold-start / background tap.
+    ref.listen(sessionControllerProvider, (previous, next) {
+      final authed = switch (next) {
+        AsyncData(value: SessionAuthenticated()) => true,
+        _ => false,
+      };
+      if (!authed) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _flushPendingPush();
+      });
+    });
 
     return switch (session) {
       AsyncData(:final value) => switch (value) {
