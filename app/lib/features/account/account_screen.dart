@@ -33,6 +33,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   final Map<String, bool> _email = {};
   final Map<String, bool> _push = {};
 
+  /// Last preference PATCH failure (resident copy). Inline — not SnackBar —
+  /// so the message works under iOS [CupertinoPageScaffold] (no Material
+  /// Scaffold / ScaffoldMessenger host).
+  String? _prefError;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -82,6 +87,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             const SizedBox(height: 24),
             Text(l10n.accountPreferences,
                 style: Theme.of(context).textTheme.titleMedium),
+            if (_prefError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _prefError!,
+                key: const Key('account_pref_error'),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
             for (final category in residentPreferenceCategories(l10n))
               _prefRow(l10n, category, serverPrefs[category.code]),
             const SizedBox(height: 24),
@@ -135,6 +151,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     setState(() {
       if (email != null) _email[code] = email;
       if (push != null) _push[code] = push;
+      _prefError = null;
     });
     try {
       await ref.read(transparencyRepositoryProvider).updatePreference(
@@ -144,17 +161,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           );
     } catch (error) {
       // Revert the optimistic flip on failure and surface resident copy.
+      // Inline error only — SnackBar needs a Material Scaffold host that
+      // iOS CupertinoPageScaffold (HomeShell) does not provide.
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         if (email != null) _email[code] = !email;
         if (push != null) _push[code] = !push;
+        _prefError = failureMessage(Failure.fromObject(error), l10n);
       });
-      final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(failureMessage(Failure.fromObject(error), l10n)),
-        ),
-      );
     }
   }
 }
