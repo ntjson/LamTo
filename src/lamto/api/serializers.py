@@ -156,6 +156,16 @@ class ProofSerializer(serializers.Serializer):
     events = ProofEventSerializer(many=True)
 
 
+class LedgerApproverSerializer(serializers.Serializer):
+    """Who authorized the spend (board / resident rep / emergency)."""
+
+    role = serializers.CharField(
+        help_text="Machine role: board, resident_rep, or emergency."
+    )
+    name = serializers.CharField(help_text="Display name of the approver.")
+    decision = serializers.CharField(help_text="Decision code (e.g. APPROVE).")
+
+
 class LedgerEntryDetailSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     contractor_name = serializers.CharField()
@@ -163,6 +173,15 @@ class LedgerEntryDetailSerializer(serializers.Serializer):
     published_at = serializers.DateTimeField()
     proposed_amount_vnd = serializers.IntegerField(allow_null=True)
     integrity_status = serializers.CharField()
+    # §6.3(6) plain-language story (A1): what / why / approvers alongside amount
+    # and payment verification. Sourced from work/report relations, not invented.
+    what_was_fixed = serializers.CharField(
+        help_text="Resident-visible narrative of work completed."
+    )
+    why = serializers.CharField(
+        help_text="Resident-visible rationale (cause / purpose / emergency reason)."
+    )
+    approvers = LedgerApproverSerializer(many=True)
     payload = serializers.JSONField()
     verification = VerificationSerializer(allow_null=True)
     redacted_documents = RedactedDocumentSerializer(many=True)

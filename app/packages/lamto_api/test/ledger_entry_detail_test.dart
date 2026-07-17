@@ -37,6 +37,23 @@ void main() {
       // TODO
     });
 
+    // Resident-visible narrative of work completed.
+    // String whatWasFixed
+    test('to test the property `whatWasFixed`', () async {
+      // TODO
+    });
+
+    // Resident-visible rationale (cause / purpose / emergency reason).
+    // String why
+    test('to test the property `why`', () async {
+      // TODO
+    });
+
+    // BuiltList<LedgerApprover> approvers
+    test('to test the property `approvers`', () async {
+      // TODO
+    });
+
     // JsonObject payload
     test('to test the property `payload`', () async {
       // TODO

@@ -25,6 +25,7 @@ export 'package:lamto_api/src/model/correction.dart';
 export 'package:lamto_api/src/model/device.dart';
 export 'package:lamto_api/src/model/device_register_request.dart';
 export 'package:lamto_api/src/model/fund_summary.dart';
+export 'package:lamto_api/src/model/ledger_approver.dart';
 export 'package:lamto_api/src/model/ledger_entry_detail.dart';
 export 'package:lamto_api/src/model/ledger_entry_list.dart';
 export 'package:lamto_api/src/model/location.dart';

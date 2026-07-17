@@ -6,6 +6,7 @@
 import 'package:lamto_api/src/model/verification.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:lamto_api/src/model/redacted_document.dart';
+import 'package:lamto_api/src/model/ledger_approver.dart';
 import 'package:lamto_api/src/model/proof.dart';
 import 'package:lamto_api/src/model/correction.dart';
 import 'package:built_value/json_object.dart';
@@ -23,6 +24,9 @@ part 'ledger_entry_detail.g.dart';
 /// * [publishedAt] 
 /// * [proposedAmountVnd] 
 /// * [integrityStatus] 
+/// * [whatWasFixed] - Resident-visible narrative of work completed.
+/// * [why] - Resident-visible rationale (cause / purpose / emergency reason).
+/// * [approvers] 
 /// * [payload] 
 /// * [verification] 
 /// * [redactedDocuments] 
@@ -47,6 +51,17 @@ abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntry
 
   @BuiltValueField(wireName: r'integrity_status')
   String get integrityStatus;
+
+  /// Resident-visible narrative of work completed.
+  @BuiltValueField(wireName: r'what_was_fixed')
+  String get whatWasFixed;
+
+  /// Resident-visible rationale (cause / purpose / emergency reason).
+  @BuiltValueField(wireName: r'why')
+  String get why;
+
+  @BuiltValueField(wireName: r'approvers')
+  BuiltList<LedgerApprover> get approvers;
 
   @BuiltValueField(wireName: r'payload')
   JsonObject? get payload;
@@ -115,6 +130,21 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
     yield serializers.serialize(
       object.integrityStatus,
       specifiedType: const FullType(String),
+    );
+    yield r'what_was_fixed';
+    yield serializers.serialize(
+      object.whatWasFixed,
+      specifiedType: const FullType(String),
+    );
+    yield r'why';
+    yield serializers.serialize(
+      object.why,
+      specifiedType: const FullType(String),
+    );
+    yield r'approvers';
+    yield serializers.serialize(
+      object.approvers,
+      specifiedType: const FullType(BuiltList, [FullType(LedgerApprover)]),
     );
     yield r'payload';
     yield object.payload == null ? null : serializers.serialize(
@@ -206,6 +236,27 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
             specifiedType: const FullType(String),
           ) as String;
           result.integrityStatus = valueDes;
+          break;
+        case r'what_was_fixed':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.whatWasFixed = valueDes;
+          break;
+        case r'why':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.why = valueDes;
+          break;
+        case r'approvers':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(LedgerApprover)]),
+          ) as BuiltList<LedgerApprover>;
+          result.approvers.replace(valueDes);
           break;
         case r'payload':
           final valueDes = serializers.deserialize(

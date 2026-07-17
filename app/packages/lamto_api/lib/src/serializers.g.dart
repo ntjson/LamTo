@@ -11,6 +11,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Device.serializer)
       ..add(DeviceRegisterRequest.serializer)
       ..add(FundSummary.serializer)
+      ..add(LedgerApprover.serializer)
       ..add(LedgerEntryDetail.serializer)
       ..add(LedgerEntryList.serializer)
       ..add(Location.serializer)
@@ -41,6 +42,15 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(WorkRatingRequest.serializer)
       ..add(WorkRatingResult.serializer)
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LedgerApprover)]),
+          () => ListBuilder<LedgerApprover>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(RedactedDocument)]),
+          () => ListBuilder<RedactedDocument>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Correction)]),
+          () => ListBuilder<Correction>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LedgerEntryList)]),
           () => ListBuilder<LedgerEntryList>())
       ..addBuilderFactory(
@@ -60,12 +70,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ProofEvent)]),
           () => ListBuilder<ProofEvent>())
-      ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(RedactedDocument)]),
-          () => ListBuilder<RedactedDocument>())
-      ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(Correction)]),
-          () => ListBuilder<Correction>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ReportPhoto)]),
           () => ListBuilder<ReportPhoto>())

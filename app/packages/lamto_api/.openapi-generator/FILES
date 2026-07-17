@@ -11,6 +11,7 @@ doc/DocumentsApi.md
 doc/FundApi.md
 doc/FundSummary.md
 doc/LedgerApi.md
+doc/LedgerApprover.md
 doc/LedgerEntryDetail.md
 doc/LedgerEntryList.md
 doc/Location.md
@@ -69,6 +70,7 @@ lib/src/model/date.dart
 lib/src/model/device.dart
 lib/src/model/device_register_request.dart
 lib/src/model/fund_summary.dart
+lib/src/model/ledger_approver.dart
 lib/src/model/ledger_entry_detail.dart
 lib/src/model/ledger_entry_list.dart
 lib/src/model/location.dart
@@ -109,6 +111,7 @@ test/documents_api_test.dart
 test/fund_api_test.dart
 test/fund_summary_test.dart
 test/ledger_api_test.dart
+test/ledger_approver_test.dart
 test/ledger_entry_detail_test.dart
 test/ledger_entry_list_test.dart
 test/location_test.dart

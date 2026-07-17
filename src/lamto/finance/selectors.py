@@ -47,14 +47,20 @@ def published_ledger_entry_for_proof(building_id, pk):
         published_ledger_entries(building_id)
         .filter(pk=pk)
         .select_related(
+            "case__decision__report",
             "work_order__acceptance",
             "work_order__acceptance__invoice_redacted",
             "work_order__acceptance__acceptance_redacted",
+            "work_order__emergency_authorization__membership__user",
             "payment__proof_redacted",
             "payment__outbox_event",
             "payment__verification__outbox_event",
+            "proposal__current_version",
         )
-        .prefetch_related("corrections")
+        .prefetch_related(
+            "corrections",
+            "proposal__current_version__approval_decisions__membership__user",
+        )
         .first()
     )
 
@@ -90,6 +96,73 @@ def fund_period_flows(building_id, *, days=30):
         or 0
     )
     return int(inflows), int(outflows)
+
+
+def _ledger_story_fields(entry, payload):
+    """Resident-visible plain-language story for §6.3(6).
+
+    Prefer completion narratives on the work order; fall back to report text /
+    case category. Approvers are display names (never invent empty names).
+    """
+    from lamto.finance.models import ApprovalDecision, Proposal
+
+    work = entry.work_order
+    case = entry.case
+    report = None
+    decision = getattr(case, "decision", None)
+    if decision is not None:
+        report = getattr(decision, "report", None)
+
+    result = (getattr(work, "result", None) or "").strip()
+    cause = (getattr(work, "cause", None) or "").strip()
+    report_text = (getattr(report, "text", None) or "").strip() if report else ""
+    category = (getattr(case, "category", None) or "").strip()
+    emergency_reason = (getattr(work, "emergency_reason", None) or "").strip()
+
+    what_was_fixed = result or report_text or category
+    why = cause or emergency_reason or category
+
+    approvers = []
+    version = entry.proposal.current_version if entry.proposal_id else None
+    if version is not None and entry.proposal.mode == Proposal.Mode.NORMAL:
+        stage_to_role = {
+            ApprovalDecision.Stage.BOARD: "board",
+            ApprovalDecision.Stage.RESIDENT_REP: "resident_rep",
+        }
+        for approval in version.approval_decisions.all():
+            if approval.decision != ApprovalDecision.Decision.APPROVE:
+                continue
+            role = stage_to_role.get(approval.stage)
+            if role is None:
+                continue
+            name = approval.membership.user.display_name
+            if not name:
+                continue
+            approvers.append(
+                {
+                    "role": role,
+                    "name": name,
+                    "decision": approval.decision,
+                }
+            )
+    elif payload.get("emergency") or getattr(work, "emergency", False):
+        auth = getattr(work, "emergency_authorization", None)
+        if auth is not None:
+            name = auth.membership.user.display_name
+            if name:
+                approvers.append(
+                    {
+                        "role": "emergency",
+                        "name": name,
+                        "decision": "AUTHORIZED",
+                    }
+                )
+
+    return {
+        "what_was_fixed": what_was_fixed,
+        "why": why,
+        "approvers": approvers,
+    }
 
 
 def ledger_entry_proof(entry):
@@ -134,6 +207,7 @@ def ledger_entry_proof(entry):
         )
         if event is not None
     ]
+    story = _ledger_story_fields(entry, payload)
     return {
         "payload": payload,
         "proposed_amount": (
@@ -154,6 +228,9 @@ def ledger_entry_proof(entry):
         ],
         "emergency": payload.get("emergency"),
         "evidence_level": evidence_level(entry.snapshot.outbox_event.status),
+        "what_was_fixed": story["what_was_fixed"],
+        "why": story["why"],
+        "approvers": story["approvers"],
     }
 
 

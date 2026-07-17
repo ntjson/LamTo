@@ -909,6 +909,23 @@ components:
       - period_days
       - period_inflows_vnd
       - period_outflows_vnd
+    LedgerApprover:
+      type: object
+      description: Who authorized the spend (board / resident rep / emergency).
+      properties:
+        role:
+          type: string
+          description: 'Machine role: board, resident_rep, or emergency.'
+        name:
+          type: string
+          description: Display name of the approver.
+        decision:
+          type: string
+          description: Decision code (e.g. APPROVE).
+      required:
+      - decision
+      - name
+      - role
     LedgerEntryDetail:
       type: object
       properties:
@@ -926,6 +943,16 @@ components:
           nullable: true
         integrity_status:
           type: string
+        what_was_fixed:
+          type: string
+          description: Resident-visible narrative of work completed.
+        why:
+          type: string
+          description: Resident-visible rationale (cause / purpose / emergency reason).
+        approvers:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerApprover'
         payload: {}
         verification:
           allOf:
@@ -943,6 +970,7 @@ components:
           $ref: '#/components/schemas/Proof'
       required:
       - actual_cost_vnd
+      - approvers
       - contractor_name
       - corrections
       - id
@@ -953,6 +981,8 @@ components:
       - published_at
       - redacted_documents
       - verification
+      - what_was_fixed
+      - why
     LedgerEntryList:
       type: object
       properties:

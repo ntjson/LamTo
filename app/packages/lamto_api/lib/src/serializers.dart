@@ -18,6 +18,7 @@ import 'package:lamto_api/src/model/correction.dart';
 import 'package:lamto_api/src/model/device.dart';
 import 'package:lamto_api/src/model/device_register_request.dart';
 import 'package:lamto_api/src/model/fund_summary.dart';
+import 'package:lamto_api/src/model/ledger_approver.dart';
 import 'package:lamto_api/src/model/ledger_entry_detail.dart';
 import 'package:lamto_api/src/model/ledger_entry_list.dart';
 import 'package:lamto_api/src/model/location.dart';
@@ -55,6 +56,7 @@ part 'serializers.g.dart';
   Device,
   DeviceRegisterRequest,
   FundSummary,
+  LedgerApprover,
   LedgerEntryDetail,
   LedgerEntryList,
   Location,

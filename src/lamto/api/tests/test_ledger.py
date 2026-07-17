@@ -110,6 +110,17 @@ class LedgerApiTests(TestCase):
         assert body["contractor_name"] == self.entry.contractor_name
         assert body["actual_cost_vnd"] == self.entry.actual_cost_vnd
         assert body["proposed_amount_vnd"] is not None
+        # §6.3(6)/A1: plain-language story fields (not client-faked).
+        assert body["what_was_fixed"] == "Cable secured"
+        assert body["why"] == "Worn cable"
+        assert body["actual_cost_vnd"] == self.entry.actual_cost_vnd
+        roles = {a["role"] for a in body["approvers"]}
+        assert "board" in roles
+        assert "resident_rep" in roles
+        for approver in body["approvers"]:
+            assert set(approver) == {"role", "name", "decision"}
+            assert approver["name"]
+            assert approver["decision"] == "APPROVE"
         assert "report_id" in body["payload"]
         assert body["verification"]["decision"] == "VERIFIED"
         assert body["verification"]["verified_by"]

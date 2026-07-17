@@ -358,6 +358,9 @@ class LedgerDetailView(APIView):
             "published_at": entry.published_at,
             "proposed_amount_vnd": detail["proposed_amount"],
             "integrity_status": entry.effective_integrity_status,
+            "what_was_fixed": detail["what_was_fixed"],
+            "why": detail["why"],
+            "approvers": detail["approvers"],
             "payload": detail["payload"],
             "verification": (
                 {

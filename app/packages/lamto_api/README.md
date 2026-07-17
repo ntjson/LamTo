@@ -92,6 +92,7 @@ Class | Method | HTTP request | Description
  - [Device](doc/Device.md)
  - [DeviceRegisterRequest](doc/DeviceRegisterRequest.md)
  - [FundSummary](doc/FundSummary.md)
+ - [LedgerApprover](doc/LedgerApprover.md)
  - [LedgerEntryDetail](doc/LedgerEntryDetail.md)
  - [LedgerEntryList](doc/LedgerEntryList.md)
  - [Location](doc/Location.md)

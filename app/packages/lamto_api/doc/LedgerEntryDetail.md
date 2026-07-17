@@ -14,6 +14,9 @@ Name | Type | Description | Notes
 **publishedAt** | [**DateTime**](DateTime.md) |  | 
 **proposedAmountVnd** | **int** |  | 
 **integrityStatus** | **String** |  | 
+**whatWasFixed** | **String** | Resident-visible narrative of work completed. | 
+**why** | **String** | Resident-visible rationale (cause / purpose / emergency reason). | 
+**approvers** | [**BuiltList&lt;LedgerApprover&gt;**](LedgerApprover.md) |  | 
 **payload** | [**JsonObject**](.md) |  | 
 **verification** | [**Verification**](Verification.md) |  | 
 **redactedDocuments** | [**BuiltList&lt;RedactedDocument&gt;**](RedactedDocument.md) |  | 

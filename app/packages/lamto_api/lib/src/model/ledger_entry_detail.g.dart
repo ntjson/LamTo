@@ -20,6 +20,12 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
   @override
   final String integrityStatus;
   @override
+  final String whatWasFixed;
+  @override
+  final String why;
+  @override
+  final BuiltList<LedgerApprover> approvers;
+  @override
   final JsonObject? payload;
   @override
   final Verification? verification;
@@ -41,6 +47,9 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
       required this.publishedAt,
       this.proposedAmountVnd,
       required this.integrityStatus,
+      required this.whatWasFixed,
+      required this.why,
+      required this.approvers,
       this.payload,
       this.verification,
       required this.redactedDocuments,
@@ -65,6 +74,9 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
         publishedAt == other.publishedAt &&
         proposedAmountVnd == other.proposedAmountVnd &&
         integrityStatus == other.integrityStatus &&
+        whatWasFixed == other.whatWasFixed &&
+        why == other.why &&
+        approvers == other.approvers &&
         payload == other.payload &&
         verification == other.verification &&
         redactedDocuments == other.redactedDocuments &&
@@ -81,6 +93,9 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
     _$hash = $jc(_$hash, publishedAt.hashCode);
     _$hash = $jc(_$hash, proposedAmountVnd.hashCode);
     _$hash = $jc(_$hash, integrityStatus.hashCode);
+    _$hash = $jc(_$hash, whatWasFixed.hashCode);
+    _$hash = $jc(_$hash, why.hashCode);
+    _$hash = $jc(_$hash, approvers.hashCode);
     _$hash = $jc(_$hash, payload.hashCode);
     _$hash = $jc(_$hash, verification.hashCode);
     _$hash = $jc(_$hash, redactedDocuments.hashCode);
@@ -99,6 +114,9 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
           ..add('publishedAt', publishedAt)
           ..add('proposedAmountVnd', proposedAmountVnd)
           ..add('integrityStatus', integrityStatus)
+          ..add('whatWasFixed', whatWasFixed)
+          ..add('why', why)
+          ..add('approvers', approvers)
           ..add('payload', payload)
           ..add('verification', verification)
           ..add('redactedDocuments', redactedDocuments)
@@ -140,6 +158,20 @@ class LedgerEntryDetailBuilder
   set integrityStatus(String? integrityStatus) =>
       _$this._integrityStatus = integrityStatus;
 
+  String? _whatWasFixed;
+  String? get whatWasFixed => _$this._whatWasFixed;
+  set whatWasFixed(String? whatWasFixed) => _$this._whatWasFixed = whatWasFixed;
+
+  String? _why;
+  String? get why => _$this._why;
+  set why(String? why) => _$this._why = why;
+
+  ListBuilder<LedgerApprover>? _approvers;
+  ListBuilder<LedgerApprover> get approvers =>
+      _$this._approvers ??= ListBuilder<LedgerApprover>();
+  set approvers(ListBuilder<LedgerApprover>? approvers) =>
+      _$this._approvers = approvers;
+
   JsonObject? _payload;
   JsonObject? get payload => _$this._payload;
   set payload(JsonObject? payload) => _$this._payload = payload;
@@ -179,6 +211,9 @@ class LedgerEntryDetailBuilder
       _publishedAt = $v.publishedAt;
       _proposedAmountVnd = $v.proposedAmountVnd;
       _integrityStatus = $v.integrityStatus;
+      _whatWasFixed = $v.whatWasFixed;
+      _why = $v.why;
+      _approvers = $v.approvers.toBuilder();
       _payload = $v.payload;
       _verification = $v.verification?.toBuilder();
       _redactedDocuments = $v.redactedDocuments.toBuilder();
@@ -218,6 +253,11 @@ class LedgerEntryDetailBuilder
             proposedAmountVnd: proposedAmountVnd,
             integrityStatus: BuiltValueNullFieldError.checkNotNull(
                 integrityStatus, r'LedgerEntryDetail', 'integrityStatus'),
+            whatWasFixed: BuiltValueNullFieldError.checkNotNull(
+                whatWasFixed, r'LedgerEntryDetail', 'whatWasFixed'),
+            why: BuiltValueNullFieldError.checkNotNull(
+                why, r'LedgerEntryDetail', 'why'),
+            approvers: approvers.build(),
             payload: payload,
             verification: _verification?.build(),
             redactedDocuments: redactedDocuments.build(),
@@ -227,6 +267,9 @@ class LedgerEntryDetailBuilder
     } catch (_) {
       late String _$failedField;
       try {
+        _$failedField = 'approvers';
+        approvers.build();
+
         _$failedField = 'verification';
         _verification?.build();
         _$failedField = 'redactedDocuments';
