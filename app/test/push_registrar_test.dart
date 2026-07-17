@@ -1,0 +1,247 @@
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lamto/features/push/push_registrar.dart';
+import 'package:lamto/features/push/push_token_source.dart';
+import 'package:lamto/features/transparency/transparency_repository.dart';
+import 'package:lamto_api/lamto_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _FakeSource implements PushTokenSource {
+  _FakeSource({this.permission = true, this.token = 'tok-1'});
+  bool permission;
+  String? token;
+  int requestCount = 0;
+  final refresh = StreamController<String>.broadcast();
+
+  @override
+  Future<bool> requestPermission() async {
+    requestCount++;
+    return permission;
+  }
+
+  @override
+  Future<String?> getToken() async {
+    // Realistic: denied notification permission yields no usable FCM token.
+    if (!permission) return null;
+    return token;
+  }
+
+  @override
+  Stream<String> get onTokenRefresh => refresh.stream;
+  @override
+  Future<Map<String, String>?> initialMessageData() async => null;
+  @override
+  Stream<Map<String, String>> get onMessageOpened => const Stream.empty();
+}
+
+class _FakeRepo implements TransparencyRepository {
+  final registered = <(String, String)>[];
+  final deactivated = <String>[];
+  Object? deactivateError;
+
+  @override
+  Future<Device> registerDevice({
+    required String installId,
+    required String fcmToken,
+    required String platform,
+    String appVersion = '',
+  }) async {
+    registered.add((installId, fcmToken));
+    return Device((b) => b
+      ..installId = installId
+      ..platform = platform
+      ..active = true);
+  }
+
+  @override
+  Future<void> deactivateDevice(String installId) async {
+    if (deactivateError != null) throw deactivateError!;
+    deactivated.add(installId);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('registers after consent with a stable install id', () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final store = InstallIdStore();
+    final registrar = PushRegistrar(
+        tokenSource: source, repository: repo, installIdStore: store);
+
+    await registrar.registerAfterConsent();
+    await registrar.registerAfterConsent(); // idempotent upsert
+    expect(repo.registered, hasLength(2));
+    expect(repo.registered[0].$1, repo.registered[1].$1); // same install id
+    expect(repo.registered[0].$2, 'tok-1');
+  });
+
+  test('no permission or no token -> no registration, no crash', () async {
+    final repo = _FakeRepo();
+    final denied = PushRegistrar(
+      tokenSource: _FakeSource(permission: false),
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+    await denied.registerAfterConsent();
+    final tokenless = PushRegistrar(
+      tokenSource: _FakeSource(token: null),
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+    await tokenless.registerAfterConsent();
+    expect(repo.registered, isEmpty);
+  });
+
+  test('token refresh re-registers; deregister deactivates the install',
+      () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final registrar = PushRegistrar(
+        tokenSource: source,
+        repository: repo,
+        installIdStore: InstallIdStore());
+    await registrar.registerAfterConsent();
+    registrar.watchTokenRefresh();
+    source.refresh.add('tok-2');
+    await Future<void>.delayed(Duration.zero);
+    expect(repo.registered.last.$2, 'tok-2');
+
+    await registrar.deregister();
+    expect(repo.deactivated.single, repo.registered.first.$1);
+  });
+
+  test('A4: OS permission requested only once per install', () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+
+    await registrar.registerAfterConsent();
+    await registrar.registerAfterConsent();
+    await registrar.registerAfterConsent();
+
+    expect(source.requestCount, 1);
+    expect(repo.registered, hasLength(3));
+
+    final prefs = await SharedPreferences.getInstance();
+    final installId = repo.registered.first.$1;
+    expect(prefs.getBool(PushPrefsKeys.permissionRequested(installId)), isTrue);
+  });
+
+  test('A4: denied once never re-prompts; later OS grant can register',
+      () async {
+    final source = _FakeSource(permission: false);
+    final repo = _FakeRepo();
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+
+    await registrar.registerAfterConsent();
+    await registrar.registerAfterConsent(); // still denied
+    expect(source.requestCount, 1);
+    expect(repo.registered, isEmpty);
+
+    // User enables notifications in system settings: still no OS re-prompt.
+    source.permission = true;
+    await registrar.registerAfterConsent();
+    expect(source.requestCount, 1);
+    expect(repo.registered, hasLength(1));
+
+    final prefs = await SharedPreferences.getInstance();
+    final installId = repo.registered.first.$1;
+    expect(prefs.getBool(PushPrefsKeys.permissionRequested(installId)), isTrue);
+  });
+
+  test('A5: successful deregister clears any pending retry key', () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+    await registrar.registerAfterConsent();
+    final installId = repo.registered.first.$1;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(PushPrefsKeys.pendingDeregister, installId);
+
+    await registrar.deregister();
+    expect(repo.deactivated, [installId]);
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
+  });
+
+  test('A5: failed deregister persists pending id for retry', () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo()..deactivateError = Exception('network');
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+    await registrar.registerAfterConsent();
+    final installId = repo.registered.first.$1;
+
+    await registrar.deregister();
+    expect(repo.deactivated, isEmpty);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), installId);
+
+    // Next authenticated session retries and clears on success.
+    repo.deactivateError = null;
+    await registrar.retryPendingDeregister();
+    expect(repo.deactivated, [installId]);
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
+  });
+
+  test('A5: retryPendingDeregister is no-op without pending key', () async {
+    final repo = _FakeRepo();
+    final registrar = PushRegistrar(
+      tokenSource: _FakeSource(),
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+    await registrar.retryPendingDeregister();
+    expect(repo.deactivated, isEmpty);
+  });
+
+  test('A5: failed retry leaves pending key for a later session', () async {
+    final repo = _FakeRepo()..deactivateError = Exception('still down');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(PushPrefsKeys.pendingDeregister, 'install-xyz');
+
+    final registrar = PushRegistrar(
+      tokenSource: _FakeSource(),
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+    await registrar.retryPendingDeregister();
+    expect(repo.deactivated, isEmpty);
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), 'install-xyz');
+  });
+
+  test('A6: FirebasePushTokenSource degrades without platform config', () async {
+    final source = FirebasePushTokenSource();
+    // No google-services.json / GoogleService-Info.plist in this environment.
+    expect(await source.requestPermission(), isFalse);
+    expect(await source.getToken(), isNull);
+    expect(await source.initialMessageData(), isNull);
+    await expectLater(source.onTokenRefresh, emitsDone);
+    await expectLater(source.onMessageOpened, emitsDone);
+  });
+}
+

@@ -51,6 +51,7 @@ class SessionController extends AsyncNotifier<SessionState> {
     try {
       final me = await _repo.fetchMe();
       await _restoreOccupancy(me);
+      _schedulePendingDeregisterRetry();
       return SessionAuthenticated(me);
     } on DioException catch (e) {
       final failure = Failure.fromDio(e);
@@ -66,6 +67,17 @@ class SessionController extends AsyncNotifier<SessionState> {
       return SessionBootstrapError(Failure(code: 'schema_error'));
     }
   }
+
+  /// A5: if a prior logout failed to deactivate the install, retry once the
+  /// session is authenticated again (fire-and-forget).
+  void _schedulePendingDeregisterRetry() {
+    unawaited(
+      ref.read(pushRegistrarProvider).retryPendingDeregister().catchError(
+            (Object _) {},
+          ),
+    );
+  }
+
 
   Future<void> _restoreOccupancy(Me me) async {
     final userKey = _userKey(me);
@@ -103,6 +115,7 @@ class SessionController extends AsyncNotifier<SessionState> {
       final me = await _repo.fetchMe();
       await _restoreOccupancy(me);
       state = AsyncData(SessionAuthenticated(me));
+      _schedulePendingDeregisterRetry();
     } on DioException catch (e) {
       final failure = Failure.fromDio(e);
       final isAuth = e.response?.statusCode == 401 ||
@@ -121,6 +134,11 @@ class SessionController extends AsyncNotifier<SessionState> {
   }
 
   Future<void> signOut({bool allDevices = false}) async {
+    // Deactivate this install's push device first (spec 7.2 + A5); best-effort.
+    // Failed deregister persists pending_device_deregister_install_id for retry.
+    try {
+      await ref.read(pushRegistrarProvider).deregister();
+    } catch (_) {}
     // Server-side revocation is best-effort: a network failure must never
     // trap the resident in a session (spec 6.4).
     try {

@@ -6,6 +6,9 @@ import 'package:lamto/core/providers.dart';
 import 'package:lamto/core/token_store.dart';
 import 'package:lamto/features/auth/auth_repository.dart';
 import 'package:lamto/features/auth/session_controller.dart';
+import 'package:lamto/features/push/push_registrar.dart';
+import 'package:lamto/features/push/push_token_source.dart';
+import 'package:lamto/features/transparency/transparency_repository.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,14 +48,51 @@ class _FakeAuth implements AuthRepository {
   Future<void> logoutAll() async => calls.add('logout-all');
 }
 
+class _NoPushSource implements PushTokenSource {
+  @override
+  Future<bool> requestPermission() async => false;
+  @override
+  Future<String?> getToken() async => null;
+  @override
+  Stream<String> get onTokenRefresh => const Stream.empty();
+  @override
+  Future<Map<String, String>?> initialMessageData() async => null;
+  @override
+  Stream<Map<String, String>> get onMessageOpened => const Stream.empty();
+}
+
+class _FakeDevices implements TransparencyRepository {
+  final deactivated = <String>[];
+  Object? deactivateError;
+
+  @override
+  Future<void> deactivateDevice(String installId) async {
+    if (deactivateError != null) throw deactivateError!;
+    deactivated.add(installId);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  ProviderContainer _container(_FakeAuth auth) {
+  ProviderContainer _container(
+    _FakeAuth auth, {
+    TransparencyRepository? devices,
+  }) {
     SharedPreferences.setMockInitialValues({});
     final container = ProviderContainer(overrides: [
       tokenStoreProvider.overrideWithValue(_FakeStore()),
       authRepositoryProvider.overrideWithValue(auth),
+      pushRegistrarProvider.overrideWithValue(
+        PushRegistrar(
+          tokenSource: _NoPushSource(),
+          repository: devices ?? _FakeDevices(),
+          installIdStore: InstallIdStore(),
+        ),
+      ),
     ]);
     addTearDown(container.dispose);
     return container;
@@ -85,5 +125,31 @@ void main() {
         .read(sessionControllerProvider.notifier)
         .signOut(allDevices: true);
     expect(auth2.calls, ['logout-all']);
+  });
+
+  test('signOut deregisters push device before server logout (A5)', () async {
+    final auth = _FakeAuth();
+    final devices = _FakeDevices();
+    final container = _container(auth, devices: devices);
+    await container.read(sessionControllerProvider.future);
+    final installId = await InstallIdStore().get();
+    await container.read(sessionControllerProvider.notifier).signOut();
+    expect(devices.deactivated, [installId]);
+    expect(auth.calls, ['logout']);
+  });
+
+  test('signOut still clears session when deregister fails (A5 pending)',
+      () async {
+    final auth = _FakeAuth();
+    final devices = _FakeDevices()..deactivateError = Exception('down');
+    final container = _container(auth, devices: devices);
+    await container.read(sessionControllerProvider.future);
+    final installId = await InstallIdStore().get();
+    await container.read(sessionControllerProvider.notifier).signOut();
+    expect(devices.deactivated, isEmpty);
+    expect(await container.read(sessionControllerProvider.future),
+        isA<SessionUnauthenticated>());
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(PushPrefsKeys.pendingDeregister), installId);
   });
 }

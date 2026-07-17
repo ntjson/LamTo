@@ -8,7 +8,10 @@ import 'package:lamto/core/providers.dart';
 import 'package:lamto/core/token_store.dart';
 import 'package:lamto/features/auth/auth_repository.dart';
 import 'package:lamto/features/auth/session_controller.dart';
+import 'package:lamto/features/push/push_registrar.dart';
+import 'package:lamto/features/push/push_token_source.dart';
 import 'package:lamto/features/reports/report_draft.dart';
+import 'package:lamto/features/transparency/transparency_repository.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -76,6 +79,33 @@ DioException _dio(int? status, {DioExceptionType type = DioExceptionType.badResp
     type: type,
   );
 }
+
+class _NoPushSource implements PushTokenSource {
+  @override
+  Future<bool> requestPermission() async => false;
+  @override
+  Future<String?> getToken() async => null;
+  @override
+  Stream<String> get onTokenRefresh => const Stream.empty();
+  @override
+  Future<Map<String, String>?> initialMessageData() async => null;
+  @override
+  Stream<Map<String, String>> get onMessageOpened => const Stream.empty();
+}
+
+class _NoopDevices implements TransparencyRepository {
+  @override
+  Future<void> deactivateDevice(String installId) async {}
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Override push so signOut never hits the real Dio (no connect timeout).
+PushRegistrar get _noopPushRegistrar => PushRegistrar(
+      tokenSource: _NoPushSource(),
+      repository: _NoopDevices(),
+      installIdStore: InstallIdStore(),
+    );
 
 void main() {
   setUp(() {
@@ -283,6 +313,7 @@ void main() {
           _FakeRepo(me: _me(occupancies: 1)),
         ),
         occupancyStoreProvider.overrideWithValue(OccupancyStore()),
+        pushRegistrarProvider.overrideWithValue(_noopPushRegistrar),
       ],
     );
     addTearDown(container.dispose);

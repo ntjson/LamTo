@@ -266,6 +266,15 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           );
         }
       });
+      // Spec 7.5: request push consent right after the first successful
+      // report submission — never as an app-launch ambush. Fire-and-forget.
+      // A4: OS permission is requested at most once per install.
+      final registrar = ref.read(pushRegistrarProvider);
+      unawaited(
+        registrar
+            .registerAfterConsent()
+            .then((_) => registrar.watchTokenRefresh()),
+      );
     } on ReportConflictException {
       // Already submitted with different content: mint a fresh ref so the
       // edited draft becomes a NEW report on the next send (spec 3.5).

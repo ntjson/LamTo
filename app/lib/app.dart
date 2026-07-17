@@ -9,6 +9,10 @@ import 'core/providers.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/occupancy_picker_screen.dart';
 import 'features/auth/session_controller.dart';
+import 'features/ledger/ledger_detail_screen.dart';
+import 'features/notifications/deep_link.dart';
+import 'features/notifications/notifications_screen.dart';
+import 'features/reports/issue_detail_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'l10n/app_localizations.dart';
 import 'theme.dart';
@@ -44,6 +48,36 @@ class AppRouter extends ConsumerStatefulWidget {
 
 class _AppRouterState extends ConsumerState<AppRouter> {
   OccupancyHolder? _listened;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _wirePushTaps());
+  }
+
+  Future<void> _wirePushTaps() async {
+    final source = ref.read(pushTokenSourceProvider);
+    final initial = await source.initialMessageData();
+    if (initial != null) _openPush(initial);
+    source.onMessageOpened.listen(_openPush);
+  }
+
+  void _openPush(Map<String, String> data) {
+    if (!mounted) return;
+    final link = parsePushLink(type: data['type'], id: data['id']);
+    final navigator = Navigator.of(context);
+    switch (link) {
+      case DeepLinkReport(:final id):
+        navigator.push(MaterialPageRoute(
+            builder: (_) => IssueDetailScreen(reportId: id)));
+      case DeepLinkLedger(:final id):
+        navigator.push(MaterialPageRoute(
+            builder: (_) => LedgerDetailScreen(entryId: id)));
+      case DeepLinkFeed():
+        navigator.push(MaterialPageRoute(
+            builder: (_) => const NotificationsScreen()));
+    }
+  }
 
   @override
   void dispose() {
