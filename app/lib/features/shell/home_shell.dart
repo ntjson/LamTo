@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../home/home_screen.dart';
+import '../ledger/ledger_screen.dart';
 import '../reports/my_issues_screen.dart';
 import '../reports/report_form_screen.dart';
 
@@ -41,7 +42,7 @@ class _HomeShellState extends State<HomeShell> {
         const HomeScreen(),
         const ReportFormScreen(),
         const MyIssuesScreen(),
-        Center(child: Text(l10n.tabLedger)),
+        const LedgerScreen(),
         Center(child: Text(l10n.tabAccount)),
       ];
 

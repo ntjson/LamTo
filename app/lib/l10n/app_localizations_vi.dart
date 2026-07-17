@@ -231,4 +231,104 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get notificationsTitle => 'Thông báo';
+
+  @override
+  String get ledgerTitle => 'Sổ quỹ tòa nhà';
+
+  @override
+  String get ledgerEmpty => 'Không có khoản chi nào trong kỳ này.';
+
+  @override
+  String get ledgerAllTime => 'Tất cả';
+
+  @override
+  String get ledgerLoadMore => 'Tải thêm';
+
+  @override
+  String ledgerPublishedOn(String date) {
+    return 'Công bố ngày $date';
+  }
+
+  @override
+  String get ledgerAmount => 'Số tiền';
+
+  @override
+  String get ledgerContractor => 'Nhà thầu';
+
+  @override
+  String get ledgerWhatFixed => 'Đã sửa gì';
+
+  @override
+  String get ledgerWhy => 'Lý do';
+
+  @override
+  String get ledgerApprovers => 'Người phê duyệt';
+
+  @override
+  String ledgerApproverBoard(String name) {
+    return 'Ban quản trị: $name';
+  }
+
+  @override
+  String ledgerApproverRep(String name) {
+    return 'Đại diện cư dân: $name';
+  }
+
+  @override
+  String ledgerApproverEmergency(String name) {
+    return 'Ủy quyền khẩn cấp: $name';
+  }
+
+  @override
+  String ledgerApproverGeneric(String name) {
+    return '$name';
+  }
+
+  @override
+  String ledgerVerifiedBy(String name) {
+    return 'Thanh toán đã được $name xác nhận';
+  }
+
+  @override
+  String get ledgerNotVerified => 'Thanh toán chưa được xác nhận';
+
+  @override
+  String get ledgerCorrections => 'Điều chỉnh';
+
+  @override
+  String get ledgerDocuments => 'Tài liệu (đã che thông tin)';
+
+  @override
+  String get ledgerProofTitle => 'Chi tiết xác thực';
+
+  @override
+  String get ledgerProofHash => 'Mã băm bản ghi';
+
+  @override
+  String get ledgerProofEvents => 'Sự kiện đã ký';
+
+  @override
+  String get evidenceChain => 'Đã neo trên blockchain';
+
+  @override
+  String get evidenceLocal =>
+      'Đã ký và khóa băm — hệ thống này chưa bật neo blockchain';
+
+  @override
+  String get evidencePending => 'Đang chờ neo blockchain';
+
+  @override
+  String get evidenceMismatch => 'Phát hiện sai lệch dữ liệu';
+
+  @override
+  String get integrityVerified => 'Bản ghi đã xác minh';
+
+  @override
+  String get integrityMismatch => 'Phát hiện sai lệch toàn vẹn';
+
+  @override
+  String get integrityUnavailable => 'Chưa kiểm tra được tính toàn vẹn';
+
+  @override
+  String get integrityUnchecked => 'Đã công bố — chưa kiểm tra toàn vẹn';
 }

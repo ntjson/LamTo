@@ -7,6 +7,7 @@ import 'package:lamto_api/lamto_api.dart';
 import '../../core/failure.dart';
 import '../../core/format.dart';
 import '../../l10n/app_localizations.dart';
+import '../ledger/ledger_detail_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../reports/issue_detail_screen.dart';
 import '../reports/my_issues_screen.dart';
@@ -161,7 +162,12 @@ class HomeScreen extends ConsumerWidget {
             title: Text(entry.contractorName,
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text(formatVnd(entry.actualCostVnd)),
-            // Task "Ledger" wires the tap-through to LedgerDetailScreen.
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => LedgerDetailScreen(entryId: entry.id)),
+            ),
           ),
       ],
     );

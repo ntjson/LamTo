@@ -517,6 +517,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notifications'**
   String get notificationsTitle;
+
+  /// No description provided for @ledgerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Building ledger'**
+  String get ledgerTitle;
+
+  /// No description provided for @ledgerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No published spending for this period.'**
+  String get ledgerEmpty;
+
+  /// No description provided for @ledgerAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get ledgerAllTime;
+
+  /// No description provided for @ledgerLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get ledgerLoadMore;
+
+  /// No description provided for @ledgerPublishedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Published {date}'**
+  String ledgerPublishedOn(String date);
+
+  /// No description provided for @ledgerAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get ledgerAmount;
+
+  /// No description provided for @ledgerContractor.
+  ///
+  /// In en, this message translates to:
+  /// **'Contractor'**
+  String get ledgerContractor;
+
+  /// No description provided for @ledgerWhatFixed.
+  ///
+  /// In en, this message translates to:
+  /// **'What was fixed'**
+  String get ledgerWhatFixed;
+
+  /// No description provided for @ledgerWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Why'**
+  String get ledgerWhy;
+
+  /// No description provided for @ledgerApprovers.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved by'**
+  String get ledgerApprovers;
+
+  /// No description provided for @ledgerApproverBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Board: {name}'**
+  String ledgerApproverBoard(String name);
+
+  /// No description provided for @ledgerApproverRep.
+  ///
+  /// In en, this message translates to:
+  /// **'Resident representative: {name}'**
+  String ledgerApproverRep(String name);
+
+  /// No description provided for @ledgerApproverEmergency.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency authorization: {name}'**
+  String ledgerApproverEmergency(String name);
+
+  /// No description provided for @ledgerApproverGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}'**
+  String ledgerApproverGeneric(String name);
+
+  /// No description provided for @ledgerVerifiedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment verified by {name}'**
+  String ledgerVerifiedBy(String name);
+
+  /// No description provided for @ledgerNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment not yet verified'**
+  String get ledgerNotVerified;
+
+  /// No description provided for @ledgerCorrections.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrections'**
+  String get ledgerCorrections;
+
+  /// No description provided for @ledgerDocuments.
+  ///
+  /// In en, this message translates to:
+  /// **'Redacted documents'**
+  String get ledgerDocuments;
+
+  /// No description provided for @ledgerProofTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification details'**
+  String get ledgerProofTitle;
+
+  /// No description provided for @ledgerProofHash.
+  ///
+  /// In en, this message translates to:
+  /// **'Record hash'**
+  String get ledgerProofHash;
+
+  /// No description provided for @ledgerProofEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed events'**
+  String get ledgerProofEvents;
+
+  /// No description provided for @evidenceChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Anchored on the blockchain'**
+  String get evidenceChain;
+
+  /// No description provided for @evidenceLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed and hash-locked — blockchain anchoring is off for this deployment'**
+  String get evidenceLocal;
+
+  /// No description provided for @evidencePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for blockchain anchoring'**
+  String get evidencePending;
+
+  /// No description provided for @evidenceMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Data mismatch detected'**
+  String get evidenceMismatch;
+
+  /// No description provided for @integrityVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Record verified'**
+  String get integrityVerified;
+
+  /// No description provided for @integrityMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Integrity mismatch detected'**
+  String get integrityMismatch;
+
+  /// No description provided for @integrityUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Integrity check unavailable'**
+  String get integrityUnavailable;
+
+  /// No description provided for @integrityUnchecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Published — integrity not yet checked'**
+  String get integrityUnchecked;
 }
 
 class _AppLocalizationsDelegate

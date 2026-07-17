@@ -232,4 +232,104 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationsTitle => 'Notifications';
+
+  @override
+  String get ledgerTitle => 'Building ledger';
+
+  @override
+  String get ledgerEmpty => 'No published spending for this period.';
+
+  @override
+  String get ledgerAllTime => 'All';
+
+  @override
+  String get ledgerLoadMore => 'Load more';
+
+  @override
+  String ledgerPublishedOn(String date) {
+    return 'Published $date';
+  }
+
+  @override
+  String get ledgerAmount => 'Amount';
+
+  @override
+  String get ledgerContractor => 'Contractor';
+
+  @override
+  String get ledgerWhatFixed => 'What was fixed';
+
+  @override
+  String get ledgerWhy => 'Why';
+
+  @override
+  String get ledgerApprovers => 'Approved by';
+
+  @override
+  String ledgerApproverBoard(String name) {
+    return 'Board: $name';
+  }
+
+  @override
+  String ledgerApproverRep(String name) {
+    return 'Resident representative: $name';
+  }
+
+  @override
+  String ledgerApproverEmergency(String name) {
+    return 'Emergency authorization: $name';
+  }
+
+  @override
+  String ledgerApproverGeneric(String name) {
+    return '$name';
+  }
+
+  @override
+  String ledgerVerifiedBy(String name) {
+    return 'Payment verified by $name';
+  }
+
+  @override
+  String get ledgerNotVerified => 'Payment not yet verified';
+
+  @override
+  String get ledgerCorrections => 'Corrections';
+
+  @override
+  String get ledgerDocuments => 'Redacted documents';
+
+  @override
+  String get ledgerProofTitle => 'Verification details';
+
+  @override
+  String get ledgerProofHash => 'Record hash';
+
+  @override
+  String get ledgerProofEvents => 'Signed events';
+
+  @override
+  String get evidenceChain => 'Anchored on the blockchain';
+
+  @override
+  String get evidenceLocal =>
+      'Signed and hash-locked — blockchain anchoring is off for this deployment';
+
+  @override
+  String get evidencePending => 'Waiting for blockchain anchoring';
+
+  @override
+  String get evidenceMismatch => 'Data mismatch detected';
+
+  @override
+  String get integrityVerified => 'Record verified';
+
+  @override
+  String get integrityMismatch => 'Integrity mismatch detected';
+
+  @override
+  String get integrityUnavailable => 'Integrity check unavailable';
+
+  @override
+  String get integrityUnchecked => 'Published — integrity not yet checked';
 }
