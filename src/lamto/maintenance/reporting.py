@@ -191,15 +191,17 @@ def attach_report_photo(resident, report, uploaded_file, scanner=None):
         )
         if existing is not None:
             return existing.version, False
-        version = create_resident_report_photo(
-            resident, report.building, uploaded_file, scanner
-        )
+        # Nested savepoint so IntegrityError recovery does not poison the
+        # outer select_for_update transaction (same pattern as device races).
         try:
-            ReportPhoto.objects.create(
-                report=report, version=version, content_sha=content_sha
-            )
+            with transaction.atomic():
+                version = create_resident_report_photo(
+                    resident, report.building, uploaded_file, scanner
+                )
+                ReportPhoto.objects.create(
+                    report=report, version=version, content_sha=content_sha
+                )
         except IntegrityError:
-            # Unique (report, content_sha) or (report, version): re-read winner.
             existing = (
                 ReportPhoto.objects.select_related("version")
                 .filter(report=report, content_sha=content_sha)
