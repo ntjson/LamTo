@@ -754,15 +754,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportPhoto'
-          description: Photo attached (new content hash for this report).
+          description: ''
         '200':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportPhoto'
-          description: Idempotent content-hash replay — this report already has
-            a photo with the same SHA-256; returns the existing ReportPhoto
-            without creating a duplicate row (lost-response retry).
+          description: ''
         '400':
           content:
             application/problem+json:
@@ -1048,6 +1046,12 @@ components:
           type: integer
         event_code:
           type: string
+        event_key:
+          type: string
+          description: 'Deep-link reference ''{code}:{entity}:{id}'' (spec 6.3/7.4).
+            Entity ids are resident-visible resources the API re-authorizes on fetch.
+            Authorization-neutral and non-sensitive: codes/entity/ids only — no PII,
+            bodies, or tokens.'
         subject:
           type: string
         body:
@@ -1063,6 +1067,7 @@ components:
       - body
       - created_at
       - event_code
+      - event_key
       - id
       - read_at
       - subject

@@ -13,6 +13,7 @@ part 'notification_feed.g.dart';
 /// Properties:
 /// * [id] 
 /// * [eventCode] 
+/// * [eventKey] - Deep-link reference '{code}:{entity}:{id}' (spec 6.3/7.4). Entity ids are resident-visible resources the API re-authorizes on fetch. Authorization-neutral and non-sensitive: codes/entity/ids only — no PII, bodies, or tokens.
 /// * [subject] 
 /// * [body] 
 /// * [createdAt] 
@@ -24,6 +25,10 @@ abstract class NotificationFeed implements Built<NotificationFeed, NotificationF
 
   @BuiltValueField(wireName: r'event_code')
   String get eventCode;
+
+  /// Deep-link reference '{code}:{entity}:{id}' (spec 6.3/7.4). Entity ids are resident-visible resources the API re-authorizes on fetch. Authorization-neutral and non-sensitive: codes/entity/ids only — no PII, bodies, or tokens.
+  @BuiltValueField(wireName: r'event_key')
+  String get eventKey;
 
   @BuiltValueField(wireName: r'subject')
   String get subject;
@@ -68,6 +73,11 @@ class _$NotificationFeedSerializer implements PrimitiveSerializer<NotificationFe
     yield r'event_code';
     yield serializers.serialize(
       object.eventCode,
+      specifiedType: const FullType(String),
+    );
+    yield r'event_key';
+    yield serializers.serialize(
+      object.eventKey,
       specifiedType: const FullType(String),
     );
     yield r'subject';
@@ -126,6 +136,13 @@ class _$NotificationFeedSerializer implements PrimitiveSerializer<NotificationFe
             specifiedType: const FullType(String),
           ) as String;
           result.eventCode = valueDes;
+          break;
+        case r'event_key':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.eventKey = valueDes;
           break;
         case r'subject':
           final valueDes = serializers.deserialize(

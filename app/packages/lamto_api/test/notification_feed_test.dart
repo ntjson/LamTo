@@ -17,6 +17,12 @@ void main() {
       // TODO
     });
 
+    // Deep-link reference '{code}:{entity}:{id}' (spec 6.3/7.4). Entity ids are resident-visible resources the API re-authorizes on fetch. Authorization-neutral and non-sensitive: codes/entity/ids only — no PII, bodies, or tokens.
+    // String eventKey
+    test('to test the property `eventKey`', () async {
+      // TODO
+    });
+
     // String subject
     test('to test the property `subject`', () async {
       // TODO

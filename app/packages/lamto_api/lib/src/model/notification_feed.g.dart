@@ -12,6 +12,8 @@ class _$NotificationFeed extends NotificationFeed {
   @override
   final String eventCode;
   @override
+  final String eventKey;
+  @override
   final String subject;
   @override
   final String body;
@@ -27,6 +29,7 @@ class _$NotificationFeed extends NotificationFeed {
   _$NotificationFeed._(
       {required this.id,
       required this.eventCode,
+      required this.eventKey,
       required this.subject,
       required this.body,
       required this.createdAt,
@@ -46,6 +49,7 @@ class _$NotificationFeed extends NotificationFeed {
     return other is NotificationFeed &&
         id == other.id &&
         eventCode == other.eventCode &&
+        eventKey == other.eventKey &&
         subject == other.subject &&
         body == other.body &&
         createdAt == other.createdAt &&
@@ -57,6 +61,7 @@ class _$NotificationFeed extends NotificationFeed {
     var _$hash = 0;
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, eventCode.hashCode);
+    _$hash = $jc(_$hash, eventKey.hashCode);
     _$hash = $jc(_$hash, subject.hashCode);
     _$hash = $jc(_$hash, body.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
@@ -70,6 +75,7 @@ class _$NotificationFeed extends NotificationFeed {
     return (newBuiltValueToStringHelper(r'NotificationFeed')
           ..add('id', id)
           ..add('eventCode', eventCode)
+          ..add('eventKey', eventKey)
           ..add('subject', subject)
           ..add('body', body)
           ..add('createdAt', createdAt)
@@ -89,6 +95,10 @@ class NotificationFeedBuilder
   String? _eventCode;
   String? get eventCode => _$this._eventCode;
   set eventCode(String? eventCode) => _$this._eventCode = eventCode;
+
+  String? _eventKey;
+  String? get eventKey => _$this._eventKey;
+  set eventKey(String? eventKey) => _$this._eventKey = eventKey;
 
   String? _subject;
   String? get subject => _$this._subject;
@@ -115,6 +125,7 @@ class NotificationFeedBuilder
     if ($v != null) {
       _id = $v.id;
       _eventCode = $v.eventCode;
+      _eventKey = $v.eventKey;
       _subject = $v.subject;
       _body = $v.body;
       _createdAt = $v.createdAt;
@@ -144,6 +155,8 @@ class NotificationFeedBuilder
               id, r'NotificationFeed', 'id'),
           eventCode: BuiltValueNullFieldError.checkNotNull(
               eventCode, r'NotificationFeed', 'eventCode'),
+          eventKey: BuiltValueNullFieldError.checkNotNull(
+              eventKey, r'NotificationFeed', 'eventKey'),
           subject: BuiltValueNullFieldError.checkNotNull(
               subject, r'NotificationFeed', 'subject'),
           body: BuiltValueNullFieldError.checkNotNull(

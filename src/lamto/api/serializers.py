@@ -257,6 +257,14 @@ class LocationSerializer(serializers.Serializer):
 class NotificationFeedSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     event_code = serializers.CharField()
+    event_key = serializers.CharField(
+        help_text=(
+            "Deep-link reference '{code}:{entity}:{id}' (spec 6.3/7.4). Entity ids "
+            "are resident-visible resources the API re-authorizes on fetch. "
+            "Authorization-neutral and non-sensitive: codes/entity/ids only — "
+            "no PII, bodies, or tokens."
+        ),
+    )
     subject = serializers.CharField()
     body = serializers.CharField()
     created_at = serializers.DateTimeField()
