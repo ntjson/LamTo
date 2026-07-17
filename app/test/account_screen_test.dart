@@ -72,6 +72,21 @@ class _FakeTransparency implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Preference PATCH fails so the account screen must revert + surface error.
+class _ThrowingTransparency implements TransparencyRepository {
+  @override
+  Future<List<NotificationPreference>> updatePreference({
+    required String eventCode,
+    bool? emailEnabled,
+    bool? pushEnabled,
+  }) async {
+    throw Exception('boom');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   testWidgets('shows profile, occupancies, preference toggles; patches a flip',
       (tester) async {
@@ -106,5 +121,44 @@ void main() {
     expect(repo.patches.single, ('ledger.publication', null, true));
     expect(find.text('Đăng xuất'), findsOneWidget);
     expect(find.text('Đăng xuất mọi thiết bị'), findsOneWidget);
+  });
+
+  testWidgets(
+      'preference PATCH failure reverts switch and shows resident SnackBar',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        tokenStoreProvider.overrideWithValue(_FakeStore()),
+        authRepositoryProvider.overrideWithValue(_FakeAuth()),
+        transparencyRepositoryProvider
+            .overrideWithValue(_ThrowingTransparency()),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('vi'),
+        home: const Scaffold(body: AccountScreen()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final pushKey = find.byKey(const Key('push_ledger.publication'));
+    // Server pref starts pushEnabled = false.
+    expect(tester.widget<Switch>(pushKey).value, isFalse);
+
+    await tester.tap(pushKey);
+    // Optimistic flip then async PATCH fail + revert.
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Switch>(pushKey).value, isFalse);
+    // Exception('boom') → Failure.fromObject → server_error → l10n.errServer
+    expect(
+      find.text(
+          'Đã có lỗi từ phía hệ thống. Thao tác có thể chưa được lưu. Vui lòng thử lại sau.'),
+      findsOneWidget,
+    );
+    expect(find.byType(SnackBar), findsOneWidget);
   });
 }

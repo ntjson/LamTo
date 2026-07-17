@@ -48,6 +48,17 @@ class _FakeReports implements ReportsRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Reports list throws; used to assert home active-reports error copy.
+class _ThrowingReports implements ReportsRepository {
+  @override
+  Future<PaginatedReportSummaryList> listReports({String? cursor}) async {
+    throw Exception('boom');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _FakeTransparency implements TransparencyRepository {
   @override
   Future<FundSummary> fetchFundSummary() async => _fund();
@@ -86,5 +97,40 @@ void main() {
     expect(find.text('Đèn hỏng'), findsNothing); // RESOLVED filtered out
     expect(find.text('Acme Co'), findsOneWidget); // recent spending row
     expect(find.byIcon(Icons.notifications_outlined), findsOneWidget); // bell
+  });
+
+  testWidgets(
+      'home active-reports AsyncError shows resident failure copy, not empty',
+      (tester) async {
+    // Riverpod 3 auto-retries Exceptions; disable so AsyncError surfaces
+    // immediately (production still retries then settles on AsyncError).
+    await tester.pumpWidget(ProviderScope(
+      retry: (_, __) => null,
+      overrides: [
+        reportsRepositoryProvider.overrideWithValue(_ThrowingReports()),
+        transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('vi'),
+        home: const Scaffold(body: HomeScreen()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Fund / spending still succeed.
+    expect(find.text('Quỹ bảo trì'), findsOneWidget);
+    expect(find.text('1.500.000 ₫'), findsOneWidget);
+    expect(find.text('Acme Co'), findsOneWidget);
+
+    // Active-reports section header + resident-facing errServer (generic throw
+    // → Failure.fromObject → server_error), not a silent empty list.
+    expect(find.text('Phản ánh đang mở'), findsOneWidget);
+    expect(
+      find.text(
+          'Đã có lỗi từ phía hệ thống. Thao tác có thể chưa được lưu. Vui lòng thử lại sau.'),
+      findsOneWidget,
+    );
   });
 }

@@ -68,7 +68,8 @@ class HomeScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium),
             switch (reports) {
               AsyncData(:final value) => _activeReports(context, l10n, value),
-              AsyncError() => const SizedBox.shrink(),
+              AsyncError(:final error) =>
+                Text(failureMessage(Failure.fromObject(error), l10n)),
               _ => const SizedBox.shrink(),
             },
             const SizedBox(height: 24),

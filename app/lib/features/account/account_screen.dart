@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/failure.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/session_controller.dart';
@@ -141,13 +142,19 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             emailEnabled: email,
             pushEnabled: push,
           );
-    } catch (_) {
-      // Revert the optimistic flip on failure.
+    } catch (error) {
+      // Revert the optimistic flip on failure and surface resident copy.
       if (!mounted) return;
       setState(() {
         if (email != null) _email[code] = !email;
         if (push != null) _push[code] = !push;
       });
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(failureMessage(Failure.fromObject(error), l10n)),
+        ),
+      );
     }
   }
 }
