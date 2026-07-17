@@ -55,12 +55,79 @@ Generated surfaces this plan consumes (pinned from `app/packages/lamto_api`):
 
 ## Design decisions
 
-1. **Backend first, once (Task 1).** `NotificationFeedSerializer` gains `event_key` (`{code}:{entity}:{id}[:...]` — the field already exists on `NotificationDelivery`; the entity ids it exposes are report/ledger ids the resident already sees in API URLs). Schema + Dart client regenerate under both drift gates; no new routes, so the adversarial classifier is untouched.
-2. **Deep links are one allowlist for both sources.** Push data (`{type, id}` per §7.4) and feed `event_key`s both parse into a sealed `DeepLink` (`report(id)` | `ledger(id)` | `feed`); unknown types/entities fall back to the feed. A wrong id lands on the pushed detail screen's existing failure state — the §7.4 "safe fallback" (the API re-authorizes; a push can never grant access).
-3. **Push behind a seam, off by default.** `PushTokenSource` (requestPermission/getToken/onTokenRefresh) has one Firebase implementation guarded by a `Firebase.initializeApp()` try/catch; without platform config every call resolves to "unsupported" and the app behaves exactly as before. Registration triggers in context right after the first successful report submission (§7.5), re-registers on token refresh, deactivates on logout. Widget tests use a fake source.
+1. **Backend first, once (Task 1).** `NotificationFeedSerializer` gains `event_key` (`{code}:{entity}:{id}[:...]` — the field already exists on `NotificationDelivery`; the entity ids it exposes are report/ledger ids the resident already sees in API URLs). Schema + Dart client regenerate under both drift gates; no new routes, so the adversarial classifier is untouched. See **A8**: keys are codes/entity/ids only, never sensitive, never auth-granting.
+2. **Deep links are one allowlist for both sources.** Push data (`{type, id}` per §7.4) and feed `event_key`s both parse into a sealed `DeepLink` (`report(id)` | `ledger(id)` | `feed`); **case and all other non-report/non-ledger entities fall back to the feed** (see **A2**). A wrong id lands on the pushed detail screen's existing failure state — the §7.4 "safe fallback" (the API re-authorizes; a push can never grant access).
+3. **Push behind a seam, off by default.** `PushTokenSource` (requestPermission/getToken/onTokenRefresh) has one Firebase implementation guarded by a `Firebase.initializeApp()` try/catch; without platform config every call resolves to "unsupported" in dev/test (see **A6** for production diagnostic). Registration triggers in context right after the first successful report submission (§7.5) with **permission-requested persisted once per install (A4)**; re-registers on token refresh; deactivates on logout with **retryable/coupled deregistration (A5)**. Widget tests use a fake source.
 4. **Preferences are patched one toggle at a time.** The Account screen renders the 5 resident event categories (`report.receipt`, `triage.status`, `work.completed`, `ledger.publication`, `correction.status`) with email+push switches, defaulting to on when `/me` has no row (server semantics), sending a single-item PATCH per flip.
 5. **Reuse over new state.** Home reuses `myReportsProvider` (same first page as the Issues tab) and adds only two tiny providers (`fundSummaryProvider`, `recentSpendingProvider`); the Ledger and Feed get cursor controllers mirroring the as-built `MyReportsController`.
 6. **Integer VND formatting** via `intl` (`1.500.000 ₫`, Vietnamese grouping, tabular numerals through the Amount text style) in one `formatVnd` helper.
+
+## Execution amendments (2026-07-17)
+
+Mandatory clarifications applied **before** Tasks 1–8. Implementers must treat these as plan law; they supersede conflicting sample code in later task bodies.
+
+### A1. Ledger plain-language story (§6.3(6) complete)
+
+`LedgerEntryDetail` and the detail UI must expose the **full** plain-language story, not only contractor / amount / evidence:
+
+| Story element | Source of truth |
+|---|---|
+| What was fixed | Resident-visible narrative from entry `payload` (or a dedicated backend field if payload lacks one) — e.g. work summary / title |
+| Why | Resident-visible rationale from payload (or dedicated field) |
+| Amount | `actualCostVnd` via `formatVnd` |
+| Approvers | Who authorized publication / approval (payload or dedicated field); do not invent if absent — extend backend minimally so the story is complete |
+| Payment verification | `verification` (`decision`, `verifiedBy`, `verifiedAt`) with `ledgerVerifiedBy` / `ledgerNotVerified` copy |
+
+**Task 4 obligation:** Inspect `LedgerEntryDetail` / resident ledger payload. If “what/why/approvers” are missing as resident-visible fields, extend the backend/detail payload **minimally**, regenerate OpenAPI + Dart client, then teach the UI. Do not fake the story client-side from empty data. Tests assert presence of all five story elements (not only contractor/amount/evidence). Mono hashes remain only inside the expandable proof.
+
+### A2. Case deep-link behavior (documented fallback)
+
+**Decision (this execution):** the resident app does **not** ship a Case detail screen. Per §7.4 allowlist, deep links of type/entity `case` (and other non-report/non-ledger entities such as corrections/work) **safely fall back to the notifications feed** (`DeepLinkFeed`).
+
+Document this in:
+- `deep_link.dart` (doc comments on `parsePushLink` / `parseEventKey`)
+- `deep_link_test.dart` (`triage.status:case:…` → feed; `type: case` → feed)
+- This plan section (source of truth for reviewers)
+
+No resident-visible case destination is added. Unknown types also → feed. Every destination that *is* navigated still re-fetches via the authenticated API.
+
+### A3. Home active reports — API-authoritative status semantics
+
+**Do not** hard-code a one-off `status == 'OPEN'` scattered in the Home widget as the sole definition of “active.”
+
+Report status enum today is `OPEN` / `RESOLVED`. Authoritative “active report” = **not resolved** / status `OPEN` (matches server list semantics for open work).
+
+**Task 3 obligation:** centralize via a shared helper, e.g. `bool isActiveReportStatus(String status)` in the reports feature (same place as `reportStatusLabel` or a tiny `report_status.dart`), used by Home (and available to other surfaces). Home filters with that helper, not a bare magic string inline. Tests continue to show OPEN and hide RESOLVED.
+
+### A4. Push permission requested once per install
+
+Persist a per-install flag (e.g. `SharedPreferences` key keyed by `install_id`, such as `push_permission_requested_<install_id>`) so OS permission is requested **only once** at the first useful moment (after first successful report submission per §7.5). Subsequent report submits must **not** re-prompt if the flag is set, regardless of whether the user granted or denied. Registration still proceeds only when permission is granted and a token is available.
+
+### A5. Device deregistration durable across logout
+
+Best-effort local logout **must not** silently leave the install receiving push indefinitely.
+
+**Required behavior (Task 7 + Account sign-out):**
+1. On logout / logout-all: attempt `DELETE /devices/{install_id}` (or equivalent) **before** clearing local session when possible.
+2. If deregistration **fails** (network/error): persist `pending_device_deregister_install_id` (or equivalent) so the next authenticated session **retries** deactivation, **or** couple install deactivation to the server logout endpoint so the server deactivates the install as part of logout.
+3. Tests cover: successful deregister on logout; failed deregister leaves a retry path (or server-coupled path) — not a silent permanent active install after local session clear.
+
+### A6. Firebase degradation + production diagnostic
+
+Keep graceful degradation for **development and tests** (no platform config → no-op / unsupported; widget tests never touch real Firebase).
+
+**Additionally:** when platform configuration is missing in a **production** build (`kReleaseMode` / non-debug), surface a **visible diagnostic** (e.g. debug-safe log + optional non-blocking in-app banner/snack only if product-appropriate, or at minimum a clear `debugPrint`/`logger` diagnostic that operators can see in crash/log pipelines). Do **not** commit `google-services.json` / `GoogleService-Info.plist`. Dev and test still no-op without config.
+
+### A7. Nightly integration_test job + real-device push smoke checklist
+
+- Wire `app/integration_test/` into an **actual** scheduled CI job (e.g. `.github/workflows/nightly-integration.yml` or equivalent) that runs the happy path against a seeded backend — not README-only prose.
+- Add a **separate** real-device push smoke checklist document (e.g. `docs/ops/push-smoke-checklist.md` or under `app/docs/`) covering: permission request, device registration, token refresh re-registration, background/terminated notification-tap routing, logout deregistration.
+
+### A8. `event_key` authorization-neutral and non-sensitive
+
+- `event_key` format remains `{code}:{entity}:{id}[:suffix]` using **codes, entity type names, and opaque numeric/resource ids only**.
+- **Never** put PII, free-text bodies, tokens, emails, phone numbers, or secret material in `event_key`.
+- Keys are **authorization-neutral**: possession of a key grants nothing; every destination re-fetches through the authenticated API, which re-authorizes. Task 1 tests and notification hooks must keep this contract.
 
 ## File Structure
 
@@ -94,6 +161,7 @@ Generated surfaces this plan consumes (pinned from `app/packages/lamto_api`):
 
 **Interfaces:**
 - Produces: `NotificationFeed.event_key` on the wire → generated `NotificationFeed.eventKey` (Dart). Format `{code}:{entity}:{id}[:{suffix}]` (e.g. `report.receipt:report:5`, `ledger.publication:entry:42`).
+- **A8:** `event_key` is authorization-neutral and non-sensitive (codes/entity/ids only; no PII, bodies, or tokens). Document in serializer help_text; tests may assert shape does not embed free text beyond the opaque key contract.
 
 - [ ] **Step 1: Write the failing backend test**
 
@@ -108,6 +176,8 @@ In `src/lamto/api/tests/test_notifications.py`, inside `NotificationFeedTests`, 
 ```
 
 (The class's `setUp` already creates a delivery with `event_key="ledger.publication:x:1"`.)
+
+Also assert (same test or sibling) that the exposed key is the stored opaque reference only — no subject/body fields are concatenated into `event_key`.
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -851,7 +921,8 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _activeReports(
       BuildContext context, AppLocalizations l10n, List<ReportSummary> all) {
-    final open = all.where((r) => r.status == 'OPEN').take(3).toList();
+    // A3: use shared isActiveReportStatus — not a bare inline magic string.
+    final open = all.where((r) => isActiveReportStatus(r.status)).take(3).toList();
     if (open.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -2438,6 +2509,8 @@ git commit -m "feat(app): account tab with occupancy switcher, preferences, and 
 
 The client half of §7: a `PushTokenSource` seam over `firebase_messaging`, a persistent `install_id`, registration right after the first successful report submission, re-registration on token refresh, deregistration on logout, and notification-tap deep links. Everything no-ops without Firebase config.
 
+**Amendments binding this task:** **A4** (persist permission-requested once per install), **A5** (failed deregister must be retryable or logout-coupled — not silent indefinite push after local logout), **A6** (dev/test graceful no-op; production missing-config surfaces a visible diagnostic).
+
 **Files:**
 - Modify: `app/pubspec.yaml` (+`firebase_core`, `firebase_messaging`)
 - Create: `app/lib/features/push/push_token_source.dart`, `app/lib/features/push/push_registrar.dart`
@@ -2856,6 +2929,8 @@ git commit -m "feat(app): consent-gated FCM registration with refresh and logout
 ---
 
 ### Task 8: Integration-test happy path + full exit gate
+
+**A7 obligations (in addition to the steps below):** (1) Wire `integration_test` into an actual scheduled nightly CI workflow under `.github/workflows/` (not README-only). (2) Add a real-device push smoke checklist document covering permission, registration, token refresh, background/terminated tap routing, and logout deregistration.
 
 The §6.5 end-to-end: against a compose-seeded backend on a device/emulator — login → Home fund block → submit a report → see it in My Issues → open the Ledger. Documented as the nightly artifact (the repo has no CI files; the command is the contract).
 
