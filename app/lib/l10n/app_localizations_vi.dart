@@ -233,6 +233,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get notificationsTitle => 'Thông báo';
 
   @override
+  String get notificationsEmpty => 'Chưa có thông báo nào.';
+
+  @override
+  String get notificationsLoadMore => 'Tải thêm';
+
+  @override
   String get ledgerTitle => 'Sổ quỹ tòa nhà';
 
   @override

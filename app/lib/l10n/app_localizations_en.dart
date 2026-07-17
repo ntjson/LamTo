@@ -234,6 +234,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsTitle => 'Notifications';
 
   @override
+  String get notificationsEmpty => 'No notifications yet.';
+
+  @override
+  String get notificationsLoadMore => 'Load more';
+
+  @override
   String get ledgerTitle => 'Building ledger';
 
   @override

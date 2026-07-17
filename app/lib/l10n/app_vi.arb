@@ -73,6 +73,8 @@
   "homeNoActiveReports": "Không có phản ánh đang mở.",
   "homeNoSpending": "Chưa có khoản chi nào được công bố.",
   "notificationsTitle": "Thông báo",
+  "notificationsEmpty": "Chưa có thông báo nào.",
+  "notificationsLoadMore": "Tải thêm",
   "ledgerTitle": "Sổ quỹ tòa nhà",
   "ledgerEmpty": "Không có khoản chi nào trong kỳ này.",
   "ledgerAllTime": "Tất cả",

@@ -72,6 +72,8 @@
   "homeNoActiveReports": "No open reports.",
   "homeNoSpending": "No published spending yet.",
   "notificationsTitle": "Notifications",
+  "notificationsEmpty": "No notifications yet.",
+  "notificationsLoadMore": "Load more",
   "ledgerTitle": "Building ledger",
   "ledgerEmpty": "No published spending for this period.",
   "ledgerAllTime": "All",
