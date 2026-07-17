@@ -342,4 +342,37 @@ void main() {
     await expectLater(source.onTokenRefresh, emitsDone);
     await expectLater(source.onMessageOpened, emitsDone);
   });
+
+  test('ensureRegisteredIfConsented re-registers without re-prompt', () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final store = InstallIdStore();
+    final installId = await store.get();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(PushPrefsKeys.permissionRequested(installId), true);
+
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: store,
+    );
+    await registrar.ensureRegisteredIfConsented();
+    expect(source.requestCount, 0); // no OS prompt
+    expect(repo.registered, hasLength(1));
+    expect(repo.registered.single.$1, installId);
+    expect(repo.registered.single.$2, 'tok-1');
+  });
+
+  test('ensureRegisteredIfConsented no-ops before first consent', () async {
+    final source = _FakeSource();
+    final repo = _FakeRepo();
+    final registrar = PushRegistrar(
+      tokenSource: source,
+      repository: repo,
+      installIdStore: InstallIdStore(),
+    );
+    await registrar.ensureRegisteredIfConsented();
+    expect(source.requestCount, 0);
+    expect(repo.registered, isEmpty);
+  });
 }

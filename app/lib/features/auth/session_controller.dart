@@ -68,14 +68,13 @@ class SessionController extends AsyncNotifier<SessionState> {
     }
   }
 
-  /// A5: if a prior logout failed to deactivate the install, retry once the
-  /// session is authenticated again (fire-and-forget).
+  /// After auth: retry failed logout deregister (A5) and re-attach push if
+  /// this install already completed OS consent (spec 7.2 — not only after
+  /// the next report submit).
   void _schedulePendingDeregisterRetry() {
-    unawaited(
-      ref.read(pushRegistrarProvider).retryPendingDeregister().catchError(
-            (Object _) {},
-          ),
-    );
+    final registrar = ref.read(pushRegistrarProvider);
+    unawaited(registrar.retryPendingDeregister().catchError((Object _) {}));
+    unawaited(registrar.ensureRegisteredIfConsented().catchError((Object _) {}));
   }
 
 

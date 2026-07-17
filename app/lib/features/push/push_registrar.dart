@@ -109,17 +109,36 @@ class PushRegistrar {
       }
       // Already requested: never re-prompt (A4). Proceed only if a token is
       // available (implies permission still useful for registration).
-
-      final token = await tokenSource.getToken();
-      if (token == null || token.isEmpty) return;
-      await repository.registerDevice(
-        installId: installId,
-        fcmToken: token,
-        platform: _platform,
-      );
+      await _registerWithCurrentToken(installId);
+      watchTokenRefresh();
     } catch (_) {
       // Push failure never blocks any workflow (spec 7.4).
     }
+  }
+
+  /// After login / cold bootstrap: if this install already completed the
+  /// OS permission moment, re-register the current FCM token and attach the
+  /// refresh listener without re-prompting (spec 7.2; branch review Important).
+  Future<void> ensureRegisteredIfConsented() async {
+    try {
+      final installId = await installIdStore.get();
+      final prefs = await _prefs();
+      final alreadyRequested =
+          prefs.getBool(PushPrefsKeys.permissionRequested(installId)) ?? false;
+      if (!alreadyRequested) return;
+      await _registerWithCurrentToken(installId);
+      watchTokenRefresh();
+    } catch (_) {}
+  }
+
+  Future<void> _registerWithCurrentToken(String installId) async {
+    final token = await tokenSource.getToken();
+    if (token == null || token.isEmpty) return;
+    await repository.registerDevice(
+      installId: installId,
+      fcmToken: token,
+      platform: _platform,
+    );
   }
 
   /// Re-register whenever FCM rotates the token (spec 7.2).
