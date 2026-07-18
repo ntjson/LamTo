@@ -4,12 +4,7 @@ out/
 
 # Ignores development broadcast logs
 broadcast/
-!/broadcast
-!/broadcast/*
-!/broadcast/*/
-!/broadcast/*/*/
-!/broadcast/*/*/*/
-!/broadcast/*/*/*/*.json
+
 
 # Docs
 docs/
