@@ -6,7 +6,7 @@
   <p class="hint">Purpose (from case, immutable): {{ work_order.case.category }}</p>
 
   {% if sign_form %}
-  <div class="signed-box">
+  <div class="workflow-section">
     <h2>Review and sign</h2>
     <p class="hint">Amount {{ sign_form.amount_vnd.value }} VND · {{ sign_form.contractor_name.value }}</p>
     <p class="hint">The quotation is uploaded and frozen. Sign with your wallet to submit for Board review.</p>
@@ -15,8 +15,9 @@
       <input type="hidden" name="action" value="submit">
       {{ sign_form.as_p }}
       <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
-      <button type="submit" class="button">Submit proposal</button>
+      <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign and send this proposal for Board review.</p>
+      <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+      <button type="submit" class="button button-primary">Submit proposal</button>
     </form>
   </div>
   {% else %}
@@ -25,7 +26,7 @@
     <input type="hidden" name="action" value="prepare">
     {{ create_form.as_p }}
     <p class="hint">Upload the quotation original and a redacted copy (PDF). Amounts are integer VND.</p>
-    <button type="submit" class="button">Prepare proposal</button>
+    <button type="submit" class="button button-primary">Prepare proposal</button>
   </form>
   {% endif %}
 </section>

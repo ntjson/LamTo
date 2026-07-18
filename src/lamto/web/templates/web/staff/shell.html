@@ -6,16 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Staff · LamTo{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'web/app.css' %}">
-  <style>
-    body.staff { padding-bottom: 1rem; }
-    .staff-nav { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem; background: #1c2434; }
-    .staff-nav a { color: #fff; text-decoration: none; padding: .5rem .75rem; border-radius: 8px; min-height: 44px; display: inline-flex; align-items: center; }
-    .staff-nav a.is-active, .staff-nav a:hover { background: #2f3a8f; }
-    .membership-bar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; padding: .75rem 1rem; background: #eef1f8; border-bottom: 1px solid #d7dce8; }
-    .membership-bar select, .membership-bar button { min-height: 44px; }
-    .signed-box { border: 1px solid #d7dce8; border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fff; }
-    .signed-box pre { white-space: pre-wrap; word-break: break-all; font-size: .85rem; background: #f6f7fb; padding: .75rem; border-radius: 8px; }
-  </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="staff">
@@ -33,7 +23,7 @@
   </header>
 
   <div class="membership-bar" role="region" aria-label="Active membership">
-    <form method="post" action="{% url 'web:switch-membership' %}" class="stack-form" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;width:100%;">
+    <form method="post" action="{% url 'web:switch-membership' %}" class="membership-form">
       {% csrf_token %}
       <label for="active-membership">Active membership</label>
       <select id="active-membership" name="membership" class="input">
@@ -50,9 +40,10 @@
   <nav class="staff-nav" role="navigation" aria-label="Staff">
     {% for item in nav_items %}
     <a class="{% if nav_active == item.label|lower or nav_active == 'work' and item.url_name == 'web:work-order-list' or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}is-active{% endif %}"
+       {% if nav_active == item.label|lower or nav_active == 'work' and item.url_name == 'web:work-order-list' or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}aria-current="page"{% endif %}
        href="{% url item.url_name %}">{{ item.label }}</a>
     {% endfor %}
-    <a href="{% url 'web:account' %}">Account</a>
+    <a class="{% if nav_active == 'account' %}is-active{% endif %}" {% if nav_active == 'account' %}aria-current="page"{% endif %} href="{% url 'web:account' %}">Account</a>
   </nav>
 
   {% if messages %}
@@ -68,7 +59,7 @@
   </main>
 
   {# Cache-bust: service worker previously froze an old wallet-signing.js #}
-  <script src="{% static 'web/wallet-signing.js' %}?v=4"></script>
+  <script src="{% static 'web/wallet-signing.js' %}?v=5"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

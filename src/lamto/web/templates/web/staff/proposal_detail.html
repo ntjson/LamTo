@@ -1,115 +1,106 @@
 {% extends "web/staff/shell.html" %}
-{% block title %}Proposals · LamTo{% endblock %}
+{% block title %}{% if list_mode %}Proposals{% else %}Proposal #{{ proposal.pk }}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
 <section class="panel">
   <h1>{% if publish_only %}Pending publication{% else %}Proposals{% endif %}</h1>
-  {% include "web/staff/_list.html" with items=proposal_items empty_label="No proposals." %}
+  {% include "web/staff/_list.html" with items=proposal_items empty_label="No proposals need attention." %}
 </section>
 {% else %}
 <section class="panel">
   <h1>Proposal #{{ proposal.pk }}</h1>
-  <dl class="detail-list">
-    <div><dt>Status</dt><dd>{{ proposal.status }}</dd></div>
-    <div><dt>Mode</dt><dd>{{ proposal.mode }}</dd></div>
-    {% if version %}
-    <div><dt>Amount</dt><dd>{{ version.amount_vnd }} VND</dd></div>
-    <div><dt>Contractor</dt><dd>{{ version.contractor_name }}</dd></div>
-    <div><dt>Snapshot hash</dt><dd><code>{{ version.snapshot_hash }}</code></dd></div>
-    <div><dt>Verification</dt><dd>{{ version.verification_label|default:"—" }}</dd></div>
-    {% endif %}
-  </dl>
-
-  {% if can_approve and form and version %}
-  <div class="signed-box">
-    <h2>Signed decision</h2>
-    <p class="hint">Canonical snapshot hash: <code>{{ version.snapshot_hash }}</code></p>
-    <pre id="snapshot-json">{{ version.snapshot }}</pre>
-    <p class="hint">
-      Event id and Signature are hidden and automatic. Fill Reason + Decision only,
-      then Submit so MetaMask can sign. Changing Decision reloads typed data.
-    </p>
-    <form method="post" class="stack-form" data-signed-form id="decision-form"
-          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
-      {% csrf_token %}
-      <input type="hidden" name="action" value="decide">
-      {% if expected_signer %}
-      <p class="hint">Registered signer for this role: <code>{{ expected_signer }}</code> — MetaMask must use this account.</p>
-      {% endif %}
-      {% if form.non_field_errors %}
-      <ul class="messages" role="alert">
-        {% for err in form.non_field_errors %}
-        <li class="message message-error">{{ err }}</li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-      {% for field in form %}
-        {% if field.errors %}
-        <p class="message message-error" role="alert"><strong>{{ field.label }}:</strong> {{ field.errors|striptags }}</p>
+  <div class="record-layout">
+    <div class="record-summary">
+      {% if version %}<p class="lede">{{ version.purpose }}</p>{% endif %}
+      <dl class="detail-list detail-list-wide">
+        <div><dt>Status</dt><dd>{{ proposal.get_status_display }}</dd></div>
+        {% if version %}
+        <div><dt>Amount</dt><dd>{{ version.amount_vnd }} VND</dd></div>
+        <div><dt>Contractor</dt><dd>{{ version.contractor_name }}</dd></div>
+        <div><dt>Maintenance case</dt><dd>{{ proposal.work_order.case.category }} · Case #{{ proposal.work_order.case_id }}</dd></div>
+        <div><dt>Work order</dt><dd><a href="{% url 'web:work-order-detail' proposal.work_order_id %}">#{{ proposal.work_order_id }}</a></dd></div>
+        <div><dt>Evidence</dt><dd>{{ version.quotations.count }} quotation file{{ version.quotations.count|pluralize }} linked</dd></div>
         {% endif %}
-      {% endfor %}
-      {{ form.as_p }}
-      {% if typed_data %}
-      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint" data-signing-status>MetaMask will sign typed data (Mainnet / chainId 1). Select the wallet for <strong>this login role</strong> (Board ≈ 0x9e3e…, Resident rep ≈ 0x090b…). Clear Signature before re-submitting after an error.</p>
-      {% else %}
-      <p class="hint" data-signing-status>No typed data available (already decided, wrong role, or missing board step).</p>
-      {% endif %}
-      <button type="submit" class="button">Submit decision</button>
-    </form>
-  </div>
-  {% endif %}
+      </dl>
 
-  {% if can_publish and publish_form %}
-  <div class="signed-box">
-    <h2>Prepare publication (signed)</h2>
-    <p class="hint">
-      Publish verified spending to the resident ledger.
-      <strong>Do not type Event id, Signature, or Publication id</strong> —
-      they are filled automatically. Only Reason is optional text.
-    </p>
-    {% if publish_expected_signer %}
-    <p class="hint">Registered publisher wallet: <code>{{ publish_expected_signer }}</code></p>
-    {% endif %}
-    <form method="post" class="stack-form" data-signed-form id="publish-form"
-          {% if publish_expected_signer %}data-expected-signer="{{ publish_expected_signer }}"{% endif %}>
-      {% csrf_token %}
-      <input type="hidden" name="action" value="publish">
-      {{ publish_form.as_p }}
-      {% if publish_typed_data %}
-      <script type="application/json" data-typed-data>{{ publish_typed_data|safe }}</script>
-      <p class="hint" data-signing-status>
-        Ready: click <strong>Prepare publication</strong> → MetaMask Sign with publisher wallet
-        (Mainnet). No IDs to type.
-      </p>
-      {% else %}
-      <p class="hint" data-signing-status role="alert">
-        Publication not ready to sign (gates failed — see message above).
-      </p>
+      {% if version %}
+      <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
+        <summary>Technical proof</summary>
+        <dl class="detail-list">
+          <div><dt>Snapshot hash</dt><dd><code class="hash">{{ version.snapshot_hash }}</code></dd></div>
+          <div><dt>Verification</dt><dd>{{ version.verification_label|default:"Not yet verified" }}</dd></div>
+          <div><dt>Mode</dt><dd>{{ proposal.mode }}</dd></div>
+          {% if expected_signer %}<div><dt>Registered decision wallet</dt><dd><code class="hash">{{ expected_signer }}</code></dd></div>{% endif %}
+          {% if publish_expected_signer %}<div><dt>Registered publisher wallet</dt><dd><code class="hash">{{ publish_expected_signer }}</code></dd></div>{% endif %}
+        </dl>
+        <h3>Signed snapshot</h3>
+        <pre id="snapshot-json">{{ version.snapshot }}</pre>
+      </details>
       {% endif %}
-      <button type="submit" class="button" {% if not publish_typed_data %}disabled{% endif %}>
-        Prepare publication
-      </button>
-    </form>
+    </div>
+
+    <div class="record-action">
+      {% if can_approve and form and version %}
+      <div class="workflow-section">
+        <h2>Review decision</h2>
+        <p>
+          Acting as {{ membership.get_role_display }}, approve to send this proposal to the next required step,
+          or reject it for correction. Your reason and decision become part of the evidence chain.
+        </p>
+        <form method="post" class="stack-form" data-signed-form id="decision-form"
+              {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="decide">
+          {% if form.non_field_errors %}
+          <ul class="messages" role="alert">
+            {% for err in form.non_field_errors %}<li class="message message-error">{{ err }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+          {% for field in form %}
+            {% if field.errors %}<p class="message message-error" role="alert"><strong>{{ field.label }}:</strong> {{ field.errors|striptags }}</p>{% endif %}
+          {% endfor %}
+          {{ form.as_p }}
+          {% if typed_data %}
+          <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+          {% if typed_data_options %}<script type="application/json" data-typed-data-options>{{ typed_data_options|safe }}</script>{% endif %}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign with the wallet registered for this role.</p>
+          {% else %}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">This decision is not ready to sign. Check the required prior approval.</p>
+          {% endif %}
+          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <button type="submit" class="button button-primary">Submit decision</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if can_publish and publish_form %}
+      <div class="workflow-section">
+        <h2>Prepare publication</h2>
+        <p>Publish the verified outcome to the resident ledger. LamTo records the proof fields automatically.</p>
+        <form method="post" class="stack-form" data-signed-form id="publish-form"
+              {% if publish_expected_signer %}data-expected-signer="{{ publish_expected_signer }}"{% endif %}>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="publish">
+          {{ publish_form.as_p }}
+          {% if publish_typed_data %}
+          <script type="application/json" data-typed-data>{{ publish_typed_data|safe }}</script>
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign and prepare the resident-facing publication.</p>
+          {% else %}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Publication is not ready. Review the unmet checks above.</p>
+          {% endif %}
+          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <button type="submit" class="button button-primary" {% if not publish_typed_data %}disabled{% endif %}>
+            Prepare publication
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if not can_approve and not can_publish %}
+      <p class="empty">No action is assigned to this membership. Review the proposal summary and return to the action inbox.</p>
+      {% endif %}
+    </div>
   </div>
-  {% endif %}
 </section>
-{% endif %}
-{% endblock %}
-{% block extra_js %}
-{% if can_approve and form and version %}
-<script>
-(function () {
-  var form = document.getElementById("decision-form");
-  if (!form) return;
-  var decision = form.querySelector('[name="decision"]');
-  if (!decision) return;
-  decision.addEventListener("change", function () {
-    var url = new URL(window.location.href);
-    url.searchParams.set("decision", decision.value);
-    window.location.href = url.toString();
-  });
-})();
-</script>
 {% endif %}
 {% endblock %}

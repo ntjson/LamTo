@@ -115,15 +115,9 @@
         }
       }
       throw new Error(
-        "Form requires " +
-          expected +
-          " but " +
+        "The wallet registered for this role is not connected. Open that account in " +
           providerLabel +
-          " only exposed: " +
-          accounts.map(normalizeAccount).join(", ") +
-          ". Open THAT wallet extension (not a different panel), connect the " +
-          "required account to this site. If Brave Wallet and MetaMask both " +
-          "exist, disable Brave Wallet or set MetaMask as default."
+          ", connect it to LamTo, then try again."
       );
     }
     var selected = normalizeAccount(eth.selectedAddress);
@@ -176,6 +170,52 @@
     }
   }
 
+  function setError(form, message) {
+    var el = form.querySelector("[data-signing-error]");
+    if (!el) return;
+    el.textContent = message || "";
+    el.hidden = !message;
+  }
+
+  function setBusy(form, busy) {
+    if (busy) {
+      form.setAttribute("aria-busy", "true");
+    } else {
+      form.removeAttribute("aria-busy");
+    }
+    var controls = form.querySelectorAll(
+      'button[type="submit"], input[type="submit"]'
+    );
+    for (var i = 0; i < controls.length; i++) {
+      if (busy) {
+        controls[i]._lamtoWasDisabled = controls[i].disabled;
+        controls[i].disabled = true;
+      } else {
+        controls[i].disabled = !!controls[i]._lamtoWasDisabled;
+        delete controls[i]._lamtoWasDisabled;
+      }
+    }
+  }
+
+  function bindTypedDataOptions(form) {
+    var optionsScript = form.querySelector(
+      "script[type='application/json'][data-typed-data-options]"
+    );
+    var typedScript = form.querySelector(
+      "script[type='application/json'][data-typed-data]"
+    );
+    var decision = form.querySelector('[name="decision"]');
+    if (!optionsScript || !typedScript || !decision) return;
+    var options = JSON.parse(optionsScript.textContent || "{}");
+    decision.addEventListener("change", function () {
+      if (!options[decision.value]) return;
+      typedScript.textContent = JSON.stringify(options[decision.value]);
+      setField(form, "signature", "");
+      setError(form, "");
+      setStatus(form, "Decision updated. Your reason is preserved and ready to sign.");
+    });
+  }
+
   async function handleSignedSubmit(event) {
     var form = event.target;
     if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-signed-form")) {
@@ -195,16 +235,18 @@
 
     event.preventDefault();
     event.stopPropagation();
+    setError(form, "");
+    setBusy(form, true);
 
     try {
       // Drop any leftover signature from a previous attempt.
       setField(form, "signature", "");
 
-      setStatus(form, "Preparing wallet signature…");
+      setStatus(form, "Preparing secure evidence…");
       var typedData = parseTypedData(form);
       if (!typedData) {
         throw new Error(
-          "No typed data on this form. Provide data-typed-data JSON, or fill event_id and signature manually."
+          "This action is not ready to sign. Keep your entries and refresh the page; if it persists, contact an administrator."
         );
       }
       if (!typedData.message) {
@@ -214,22 +256,17 @@
         typedData.message.eventId = randomBytes32();
       }
 
-      setStatus(form, "Requesting wallet account…");
+      setStatus(form, "Connecting to the wallet registered for this role…");
       var account = await resolveSignerAccount(form);
       var expected = expectedSigner(form);
       if (expected && normalizeAccount(account) !== expected) {
         throw new Error(
-          "Refusing to sign: resolved " +
-            normalizeAccount(account) +
-            " but form requires " +
-            expected
+          "The connected wallet does not match the wallet registered for this role. Open the correct account, connect it to LamTo, then try again."
         );
       }
       setStatus(
         form,
-        "Sign in MetaMask as " +
-          account +
-          " (must match registered role wallet). Check the address IN THE SIGN POPUP, not only the header."
+        "Confirm this action in the wallet registered for your current role."
       );
       if (typedData.message.eventId) {
         setField(form, "event_id", typedData.message.eventId);
@@ -237,13 +274,14 @@
       var signature = await signTypedData(account, typedData);
       signature = normalizeSignatureHex(signature);
       setField(form, "signature", signature);
-      setStatus(form, "Submitting as " + account + " …");
+      setStatus(form, "Saving your signed action…");
       form.removeEventListener("submit", handleSignedSubmit);
       HTMLFormElement.prototype.submit.call(form);
     } catch (err) {
       var msg = (err && err.message) || String(err);
-      setStatus(form, msg);
-      global.alert(msg);
+      setStatus(form, "Signing stopped. Your entries are still here.");
+      setError(form, msg + " Check the details above and try again.");
+      setBusy(form, false);
     }
   }
 
@@ -251,6 +289,7 @@
     var scope = root || document;
     var forms = scope.querySelectorAll("form[data-signed-form]");
     for (var i = 0; i < forms.length; i++) {
+      bindTypedDataOptions(forms[i]);
       forms[i].addEventListener("submit", handleSignedSubmit);
     }
   }
@@ -259,6 +298,7 @@
     signTypedData: signTypedData,
     bindSignedForms: bindSignedForms,
     handleSignedSubmit: handleSignedSubmit,
+    bindTypedDataOptions: bindTypedDataOptions,
     parseTypedData: parseTypedData,
     randomBytes32: randomBytes32,
     resolveSignerAccount: resolveSignerAccount,

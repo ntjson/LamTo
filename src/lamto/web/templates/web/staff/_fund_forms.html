@@ -2,7 +2,7 @@
   {% if mode == "record" %}
   <h1>Record fund source</h1>
   {% if sign_form %}
-  <div class="signed-box">
+  <div class="workflow-section">
     <h2>Review and sign</h2>
     <p class="hint">{{ sign_form.entry_type.value }} · {{ sign_form.amount_vnd.value }} VND</p>
     <form method="post" class="stack-form" data-signed-form>
@@ -10,8 +10,9 @@
       <input type="hidden" name="action" value="submit">
       {{ sign_form.as_p }}
       <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
-      <button type="submit" class="button">Record source</button>
+      <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign this fund source record.</p>
+      <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+      <button type="submit" class="button button-primary">Record source</button>
     </form>
   </div>
   {% else %}
@@ -20,7 +21,7 @@
     <input type="hidden" name="action" value="prepare">
     {{ record_form.as_p }}
     <p class="hint">Upload the source evidence original and a redacted copy (PDF). Amounts are integer VND.</p>
-    <button type="submit" class="button">Prepare source</button>
+    <button type="submit" class="button button-primary">Prepare source</button>
   </form>
   {% endif %}
   {% endif %}

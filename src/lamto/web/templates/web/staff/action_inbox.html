@@ -2,22 +2,78 @@
 {% block title %}Action inbox · LamTo{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="inbox-heading">
-  <h1 id="inbox-heading">Action inbox</h1>
-  <p class="hint">Items for membership #{{ membership.pk }} only. Capabilities are never combined across memberships.</p>
-  {% if action_items %}
-  <ul class="card-list">
-    {% for item in action_items %}
-    <li>
-      <a class="card-link" href="{{ item.url }}">
-        <span class="status status-info"><span class="status-icon" aria-hidden="true">●</span> {{ item.title }}</span>
-        <p class="card-title">{{ item.summary }}</p>
-        <p class="card-meta">{{ item.target_type }} #{{ item.target_id }}</p>
-      </a>
-    </li>
+  <div class="panel-header">
+    <div>
+      <h1 id="inbox-heading">Action inbox</h1>
+      <p class="hint">Work assigned to {{ membership.get_role_display }} at {{ membership.organization.building.name }}.</p>
+    </div>
+    {% if action_page.paginator.count %}<p class="queue-count">{{ action_page.paginator.count }} open task{{ action_page.paginator.count|pluralize }}</p>{% endif %}
+  </div>
+
+  <form method="get" class="queue-toolbar" role="search">
+    <label for="inbox-search">Search tasks
+      <input id="inbox-search" name="q" value="{{ inbox_query }}" placeholder="Case, work order, payment…">
+    </label>
+    <label for="inbox-kind">Task type
+      <select id="inbox-kind" name="kind">
+        <option value="">All task types</option>
+        {% for filter in kind_filters %}
+        <option value="{{ filter.value }}" {% if active_kind == filter.value %}selected{% endif %}>{{ filter.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label for="inbox-status">Queue
+      <select id="inbox-status" name="status">
+        <option value="">All queues</option>
+        {% for filter in status_filters %}
+        <option value="{{ filter.value }}" {% if active_status == filter.value %}selected{% endif %}>{{ filter.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="button button-secondary">Apply filters</button>
+    {% if inbox_query or active_kind or active_status %}<a class="text-link clear-filters" href="{% url 'web:action-inbox' %}">Clear</a>{% endif %}
+  </form>
+
+  {% if action_groups %}
+  <div class="task-queue">
+    {% for group in action_groups %}
+    <section class="task-group" aria-labelledby="task-group-{{ forloop.counter }}">
+      <h2 id="task-group-{{ forloop.counter }}">{{ group.label }}</h2>
+      <ul class="task-list">
+        {% for item in group.items %}
+        <li>
+          <a class="task-row" href="{{ item.url }}">
+            <span class="task-action">{{ item.title }}</span>
+            <span class="task-subject">{{ item.summary }}</span>
+            <span class="task-meta">
+              <span>Responsible: {{ membership.get_role_display }}</span>
+              <span>{% if item.deadline_at %}Deadline: {{ item.deadline_at }}{% else %}No deadline set{% endif %}</span>
+            </span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
     {% endfor %}
-  </ul>
+  </div>
+
+  {% if action_page.has_other_pages %}
+  <nav class="pagination" aria-label="Action inbox pages">
+    {% if action_page.has_previous %}
+    <a class="button button-secondary" href="?q={{ inbox_query|urlencode }}&amp;kind={{ active_kind|urlencode }}&amp;status={{ active_status|urlencode }}&amp;page={{ action_page.previous_page_number }}">Previous</a>
+    {% endif %}
+    <span>Page {{ action_page.number }} of {{ action_page.paginator.num_pages }}</span>
+    {% if action_page.has_next %}
+    <a class="button button-secondary" href="?q={{ inbox_query|urlencode }}&amp;kind={{ active_kind|urlencode }}&amp;status={{ active_status|urlencode }}&amp;page={{ action_page.next_page_number }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
   {% else %}
-  <p>No open actions for this membership.</p>
+  <div class="empty-state">
+    <h2>No matching tasks</h2>
+    <p>{% if inbox_query or active_kind or active_status %}Clear the filters to see every open responsibility.{% else %}There is nothing for this membership to act on now.{% endif %}</p>
+    {% if inbox_query or active_kind or active_status %}<a class="button button-secondary" href="{% url 'web:action-inbox' %}">Clear filters</a>{% endif %}
+  </div>
   {% endif %}
 </section>
 {% endblock %}

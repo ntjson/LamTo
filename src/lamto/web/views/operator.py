@@ -328,6 +328,7 @@ def proposal_detail(request, pk):
     can_approve = PROPOSAL_APPROVE in caps
     version = proposal.current_version
     typed_data = None
+    typed_data_options = None
     publish_typed_data = None
     publish_expected_signer = ""
 
@@ -358,7 +359,7 @@ def proposal_detail(request, pk):
                 messages.error(
                     request,
                     f"Publication not saved: {detail} "
-                    "Leave Signature empty and let MetaMask sign (use the publisher wallet).",
+                    "Your entries are still here. Connect the registered publisher wallet and try again.",
                 )
         elif action == "decide" and can_approve:
             if form.is_valid():
@@ -374,8 +375,8 @@ def proposal_detail(request, pk):
                     messages.error(
                         request,
                         str(error)
-                        or "Signature does not match this role's registered wallet. "
-                        "In MetaMask, select the account for this login, clear Signature, and submit again.",
+                        or "The connected wallet does not match this role. "
+                        "Connect the registered wallet and submit again.",
                     )
                 else:
                     messages.success(request, "Decision recorded.")
@@ -388,7 +389,7 @@ def proposal_detail(request, pk):
                 messages.error(
                     request,
                     f"Decision not saved: {detail} "
-                    "Leave Signature empty, ensure MetaMask is on the correct account, then Submit so the wallet can sign.",
+                    "Your reason and decision are still here. Connect the registered wallet and submit again.",
                 )
 
     # Embed EIP-712 typed data so wallet-signing.js + MetaMask can fill signature.
@@ -413,13 +414,17 @@ def proposal_detail(request, pk):
             }
         )
         try:
-            typed_data = json.dumps(
-                build_approval_evidence_typed_data(
-                    version, membership, decision, event_id
+            options = {
+                value: build_approval_evidence_typed_data(
+                    version, membership, value, event_id
                 )
-            )
+                for value in ("APPROVE", "REJECT")
+            }
+            typed_data = json.dumps(options[decision])
+            typed_data_options = json.dumps(options)
         except (ValidationError, PermissionDenied, ValueError):
             typed_data = None
+            typed_data_options = None
 
     expected_signer = ""
     if can_approve:
@@ -515,6 +520,7 @@ def proposal_detail(request, pk):
             publish_form=publish_form if can_publish else None,
             can_publish=can_publish,
             typed_data=typed_data,
+            typed_data_options=typed_data_options,
             expected_signer=expected_signer,
             publish_typed_data=publish_typed_data,
             publish_expected_signer=publish_expected_signer,

@@ -7,7 +7,7 @@ Never combines capabilities across memberships — callers pass a single members
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db.models import Q
 from django.urls import reverse
@@ -61,6 +61,7 @@ class ActionItem:
     target_id: int
     url: str
     priority: int = 50
+    deadline_at: datetime | None = None
 
 
 def _has(membership, code: str) -> bool:
@@ -199,6 +200,7 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
                 target_id=case.pk,
                 url=reverse("web:case-detail", kwargs={"pk": case.pk}),
                 priority=15,
+                deadline_at=case.deadline_at,
             )
         )
     work = WorkOrder.objects.filter(
@@ -220,6 +222,7 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
                 target_id=wo.pk,
                 url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
                 priority=15,
+                deadline_at=wo.deadline_at,
             )
         )
     return items
@@ -242,6 +245,7 @@ def _assigned_work_items(user_id: int, building_id: int) -> list[ActionItem]:
                 target_id=wo.pk,
                 url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
                 priority=20,
+                deadline_at=wo.deadline_at,
             )
         )
     return items
@@ -341,6 +345,7 @@ def _emergency_items(building_id: int, membership) -> list[ActionItem]:
                 target_id=wo.pk,
                 url=reverse("web:emergency-authorize", kwargs={"pk": wo.pk}),
                 priority=5,
+                deadline_at=wo.deadline_at,
             )
         )
     # Open authorizations needing ratification (board may also track)
@@ -358,6 +363,7 @@ def _emergency_items(building_id: int, membership) -> list[ActionItem]:
                 target_id=auth.pk,
                 url=reverse("web:emergency-decide", kwargs={"pk": auth.pk}),
                 priority=5,
+                deadline_at=auth.ratification_deadline,
             )
         )
     return items
@@ -379,6 +385,7 @@ def _emergency_ratification_items(building_id: int) -> list[ActionItem]:
                 target_id=auth.pk,
                 url=reverse("web:emergency-decide", kwargs={"pk": auth.pk}),
                 priority=5,
+                deadline_at=auth.ratification_deadline,
             )
         )
     return items
@@ -400,6 +407,7 @@ def _work_acceptance_items(building_id: int) -> list[ActionItem]:
                 target_id=wo.pk,
                 url=reverse("web:work-accept", kwargs={"pk": wo.pk}),
                 priority=18,
+                deadline_at=wo.deadline_at,
             )
         )
     return items

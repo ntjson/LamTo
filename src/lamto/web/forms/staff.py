@@ -136,8 +136,8 @@ class SignedDecisionForm(forms.Form):
         value = (self.cleaned_data.get("signature") or "").strip()
         if not value:
             raise forms.ValidationError(
-                "Signature is required. Connect MetaMask and submit again, "
-                "or paste a valid hex signature."
+                "Signature is required. Keep your entries, connect the wallet "
+                "registered for this role, and submit again."
             )
         return value
 
@@ -404,4 +404,3 @@ class SignFundSourceForm(SignedDecisionForm):
     evidence_redacted_id = forms.IntegerField(widget=forms.HiddenInput())
     fund_entry_id = forms.IntegerField(widget=forms.HiddenInput())
     entry_timestamp = forms.CharField(max_length=40, widget=forms.HiddenInput())
-

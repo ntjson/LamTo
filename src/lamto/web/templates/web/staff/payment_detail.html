@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% block title %}Payments · LamTo{% endblock %}
+{% block title %}{% if list_mode %}Payments{% elif payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
 <section class="panel">
@@ -7,81 +7,93 @@
   {% if filters %}
   <div class="filter-bar" role="group" aria-label="Filter by status">
     {% for f in filters %}
-    <a class="chip {% if f.active %}chip-active{% endif %}"
+    <a class="chip {% if f.active %}chip-active{% endif %}" {% if f.active %}aria-current="true"{% endif %}
        href="?{{ filter_param }}={{ f.value }}">{{ f.label }}</a>
     {% endfor %}
-    <a class="chip {% if not filters_active %}chip-active{% endif %}" href="?">All</a>
+    <a class="chip {% if not filters_active %}chip-active{% endif %}" {% if not filters_active %}aria-current="true"{% endif %} href="?">All</a>
   </div>
   {% endif %}
   {% if can_record %}
   <h2>Record payment</h2>
-  {% include "web/staff/_list.html" with items=record_items empty_label="No payments to record." filters=None filters_active=False only %}
+  {% include "web/staff/_list.html" with items=record_items empty_label="No accepted work is waiting for payment recording." filters=None filters_active=False only %}
   {% endif %}
   {% if can_verify %}
   <h2>Payment verification</h2>
-  {% include "web/staff/_list.html" with items=verify_items empty_label="No payments awaiting verification." filters=None filters_active=False only %}
+  {% include "web/staff/_list.html" with items=verify_items empty_label="No recorded payments are waiting for verification." filters=None filters_active=False only %}
   {% endif %}
 </section>
 {% else %}
 <section class="panel">
-  <h1>
-    {% if payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %}
-  </h1>
-  <dl class="detail-list">
-    {% if acceptance %}
-    <div><dt>Work order</dt><dd>#{{ acceptance.work_order_id }}</dd></div>
-    <div><dt>Actual cost</dt><dd>{{ acceptance.actual_cost_vnd }} VND</dd></div>
-    {% endif %}
-    {% if payment %}
-    <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
-    <div><dt>Amount</dt><dd>{{ payment.amount_vnd }} VND</dd></div>
-    <div><dt>Status</dt><dd>{{ payment.external_status }}</dd></div>
-    {% endif %}
-  </dl>
+  <h1>{% if payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %}</h1>
+  <div class="record-layout">
+    <div class="record-summary">
+      <p class="lede">Work order #{{ acceptance.work_order_id }} · {{ acceptance.work_order.case.category }}</p>
+      <dl class="detail-list detail-list-wide">
+        <div><dt>Actual work cost</dt><dd>{{ acceptance.actual_cost_vnd }} VND</dd></div>
+        {% if payment %}
+        <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
+        <div><dt>Recorded amount</dt><dd>{{ payment.amount_vnd }} VND</dd></div>
+        <div><dt>Payment status</dt><dd>{{ payment.get_external_status_display }}</dd></div>
+        <div><dt>Evidence</dt><dd>Original and resident-safe payment proof linked</dd></div>
+        {% else %}
+        <div><dt>Payment status</dt><dd>Not yet recorded</dd></div>
+        {% endif %}
+      </dl>
 
-  {% if can_record and record_form %}
-  <div class="signed-box">
-    <h2>Record payment (signed)</h2>
-    {% if expected_signer %}
-    <p class="hint">Registered signer: <code>{{ expected_signer }}</code></p>
-    {% endif %}
-    <form method="post" class="stack-form" data-signed-form id="record-payment-form"
-          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
-      {% csrf_token %}
-      <input type="hidden" name="action" value="record">
-      {{ record_form.as_p }}
-      {% if typed_data %}
-      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint" data-signing-status>Leave Signature empty; MetaMask signs. Amount must equal actual cost.</p>
-      {% else %}
-      <p class="hint" data-signing-status>No typed data — fill proof original/redacted IDs then reload.</p>
+      {% if expected_signer %}
+      <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
+        <summary>Technical proof</summary>
+        <dl class="detail-list">
+          <div><dt>Registered wallet</dt><dd><code class="hash">{{ expected_signer }}</code></dd></div>
+        </dl>
+      </details>
       {% endif %}
-      <button type="submit" class="button">Record payment</button>
-    </form>
-  </div>
-  {% endif %}
+    </div>
 
-  {% if can_verify and verify_form %}
-  <div class="signed-box">
-    <h2>Payment verification (signed)</h2>
-    {% if expected_signer %}
-    <p class="hint">Registered signer: <code>{{ expected_signer }}</code></p>
-    {% endif %}
-    <form method="post" class="stack-form" data-signed-form id="verify-payment-form"
-          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
-      {% csrf_token %}
-      <input type="hidden" name="action" value="verify">
-      {{ verify_form.as_p }}
-      {% if typed_data %}
-      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint" data-signing-status>Leave Signature empty; MetaMask signs with verifier wallet.</p>
-      {% else %}
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+    <div class="record-action">
+      {% if can_record and record_form %}
+      <div class="workflow-section">
+        <h2>Record payment</h2>
+        <p>Confirm the bank reference, amount, result, and linked payment proof. The amount must match the accepted work cost.</p>
+        <form method="post" class="stack-form" data-signed-form id="record-payment-form"
+              {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="record">
+          {{ record_form.as_p }}
+          {% if typed_data %}
+          <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign the payment record with the wallet registered for this role.</p>
+          {% else %}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Payment is not ready. Link both versions of the payment proof, then try again.</p>
+          {% endif %}
+          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Record payment</button>
+        </form>
+      </div>
       {% endif %}
-      <button type="submit" class="button">Verify payment</button>
-    </form>
+
+      {% if can_verify and verify_form %}
+      <div class="workflow-section">
+        <h2>Verify payment</h2>
+        <p>Compare the recorded payment with the accepted work and bank evidence. Verification makes it eligible for publication.</p>
+        <form method="post" class="stack-form" data-signed-form id="verify-payment-form"
+              {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="verify">
+          {{ verify_form.as_p }}
+          {% if typed_data %}
+          <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign the verification with the wallet registered for this role.</p>
+          {% else %}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Verification is not ready. Review the payment status and evidence.</p>
+          {% endif %}
+          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Verify payment</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
   </div>
-  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

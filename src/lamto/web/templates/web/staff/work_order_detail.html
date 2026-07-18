@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% block title %}Work order · LamTo{% endblock %}
+{% block title %}{% if list_mode %}Work orders{% else %}Work order #{{ work_order.pk }}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
 <section class="panel">
@@ -9,87 +9,110 @@
 {% else %}
 <section class="panel">
   <h1>Work order #{{ work_order.pk }}</h1>
-  <dl class="detail-list">
-    <div><dt>Status</dt><dd>{{ work_order.status }}</dd></div>
-    <div><dt>Authorization</dt><dd>{{ work_order.authorization_status }}</dd></div>
-    <div><dt>Priority</dt><dd>{{ work_order.priority }}</dd></div>
-    <div><dt>Deadline</dt><dd>{{ work_order.deadline_at }}</dd></div>
-    <div><dt>Verification</dt><dd>{{ work_order.verification_label|default:"—" }}</dd></div>
-    {% if work_order.emergency %}
-    <div><dt>Emergency</dt><dd>{{ work_order.emergency_label }}</dd></div>
-    {% endif %}
-  </dl>
+  <div class="record-layout">
+    <div class="record-summary">
+      <p class="lede">{{ work_order.case.category }} · Case #{{ work_order.case_id }}</p>
+      <dl class="detail-list detail-list-wide">
+        <div><dt>Status</dt><dd>{{ work_order.get_status_display }}</dd></div>
+        <div><dt>Authorization</dt><dd>{{ work_order.get_authorization_status_display }}</dd></div>
+        <div><dt>Priority</dt><dd>{{ work_order.priority }}</dd></div>
+        <div><dt>Deadline</dt><dd>{{ work_order.deadline_at|default:"Not set" }}</dd></div>
+        <div><dt>Verification</dt><dd>{{ work_order.verification_label|default:"Not yet verified" }}</dd></div>
+        {% if work_order.emergency %}<div><dt>Emergency</dt><dd>{{ work_order.emergency_label }}</dd></div>{% endif %}
+      </dl>
 
-  {% if "proposal.create" in capabilities and work_order.requires_spending %}
-  <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.pk %}">Create proposal</a></p>
-  {% endif %}
-
-  {% if is_assignee and work_order.status == "ASSIGNED" %}
-  <form method="post" class="stack-form">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="start">
-    <button type="submit" class="button">Start work</button>
-  </form>
-  {% endif %}
-
-  {% if is_assignee and work_order.status == "IN_PROGRESS" and form %}
-  <h2>Complete work</h2>
-  <form method="post" class="stack-form">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="complete">
-    {{ form.as_p }}
-    <p class="hint">Provide before/after document version IDs (uploaded separately).</p>
-    <label>Before version IDs <input class="input" name="before_version_ids" multiple></label>
-    <label>After version IDs <input class="input" name="after_version_ids" multiple></label>
-    <button type="submit" class="button">Complete</button>
-  </form>
-  {% endif %}
-
-  {% if accept_form %}
-  <div class="signed-box">
-    <h2>Accept work (signed)</h2>
-    <p class="hint">Review the snapshot, then sign with your wallet via eth_signTypedData_v4.</p>
-    {% if expected_signer %}
-    <p class="hint">Registered signer: <code>{{ expected_signer }}</code> (payment recorder wallet).</p>
-    {% endif %}
-    <form method="post" class="stack-form" data-signed-form id="accept-form"
-          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
-      {% csrf_token %}
-      {{ accept_form.as_p }}
-      {% if typed_data %}
-      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint" data-signing-status>MetaMask will sign typed data. Leave Signature empty. Mainnet + correct Connected account.</p>
-      {% else %}
-      <p class="hint" data-signing-status>No typed data — fill document IDs (invoice/acceptance pairs) then reload, or ask ops for pilot doc IDs.</p>
+      {% if expected_signer %}
+      <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
+        <summary>Technical proof</summary>
+        <dl class="detail-list">
+          <div><dt>Registered acceptance wallet</dt><dd><code class="hash">{{ expected_signer }}</code></dd></div>
+        </dl>
+      </details>
       {% endif %}
-      <button type="submit" class="button">Submit acceptance</button>
-    </form>
-  </div>
-  {% endif %}
 
-  {% if emergency_form %}
-  <div class="signed-box">
-    <h2>Authorize emergency (signed)</h2>
-    <form method="post" class="stack-form" data-signed-form>
-      {% csrf_token %}
-      {{ emergency_form.as_p }}
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
-      <button type="submit" class="button">Authorize</button>
-    </form>
-  </div>
-  {% endif %}
+      {% if "proposal.create" in capabilities and work_order.requires_spending %}
+      <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.pk %}">Create spending proposal</a></p>
+      {% endif %}
+    </div>
 
-  {% if emergency_decide_form %}
-  <div class="signed-box">
-    <h2>Emergency ratification (signed)</h2>
-    <form method="post" class="stack-form" data-signed-form>
-      {% csrf_token %}
-      {{ emergency_decide_form.as_p }}
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
-      <button type="submit" class="button">Submit outcome</button>
-    </form>
+    <div class="record-action">
+      {% if is_assignee and work_order.status == "ASSIGNED" %}
+      <div class="workflow-section">
+        <h2>Begin assigned work</h2>
+        <form method="post" class="stack-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="start">
+          <button type="submit" class="button button-primary">Start work</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if is_assignee and work_order.status == "IN_PROGRESS" and form %}
+      <div class="workflow-section">
+        <h2>Complete work</h2>
+        <form method="post" class="stack-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="complete">
+          {{ form.as_p }}
+          <p class="hint">Link the before and after document versions already uploaded for this work order.</p>
+          <label>Before version IDs <input class="input" name="before_version_ids" multiple></label>
+          <label>After version IDs <input class="input" name="after_version_ids" multiple></label>
+          <button type="submit" class="button button-primary">Complete work</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if accept_form %}
+      <div class="workflow-section">
+        <h2>Accept completed work</h2>
+        <p>Confirm the actual cost and linked invoice and acceptance evidence. Acceptance unlocks payment recording.</p>
+        <form method="post" class="stack-form" data-signed-form id="accept-form"
+              {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
+          {% csrf_token %}
+          {{ accept_form.as_p }}
+          {% if typed_data %}
+          <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign the acceptance with the wallet registered for this role.</p>
+          {% else %}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Acceptance is not ready. Link complete invoice and acceptance document pairs, then try again.</p>
+          {% endif %}
+          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Accept work</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if emergency_form %}
+      <div class="workflow-section">
+        <h2>Authorize emergency work</h2>
+        <form method="post" class="stack-form" data-signed-form>
+          {% csrf_token %}
+          {{ emergency_form.as_p }}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the emergency reason before signing.</p>
+          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <button type="submit" class="button button-primary">Authorize emergency</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if emergency_decide_form %}
+      <div class="workflow-section">
+        <h2>Record emergency ratification</h2>
+        <form method="post" class="stack-form" data-signed-form>
+          {% csrf_token %}
+          {{ emergency_decide_form.as_p }}
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the outcome before signing.</p>
+          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <button type="submit" class="button button-primary">Submit outcome</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if not is_assignee and not accept_form and not emergency_form and not emergency_decide_form %}
+      <p class="empty">No action is assigned to this membership. Review the work status or return to the action inbox.</p>
+      {% endif %}
+    </div>
   </div>
-  {% endif %}
 </section>
 {% endif %}
 {% endblock %}
