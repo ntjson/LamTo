@@ -585,7 +585,7 @@ class RoleWorkspaceTests(TestCase):
         )
         self.assertEqual(verify_resp.status_code, 200)
         self.assertContains(verify_resp, f"Payment #{collision_pk}")
-        self.assertContains(verify_resp, "Payment verification")
+        self.assertContains(verify_resp, "Verify payment")
 
         # Inbox links must use disambiguated routes
         items = action_items_for(board)

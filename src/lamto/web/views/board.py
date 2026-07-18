@@ -13,7 +13,7 @@ from lamto.accounts.capabilities import (
     WORK_ACCEPT,
 )
 from lamto.accounts.security import require_recent_auth, require_staff_mfa
-from lamto.documents.models import DocumentVersion
+from lamto.documents.models import Document
 from lamto.finance.models import AcceptanceRecord, PaymentEvidence
 from lamto.web.forms.staff import (
     AcceptWorkForm,
@@ -22,6 +22,7 @@ from lamto.web.forms.staff import (
     VerifyPaymentForm,
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff_signing import document_pair_options, selected_pair
 
 
 @login_required
@@ -31,21 +32,33 @@ def payment_record(request):
     require_staff_mfa(request)
     require_recent_auth(request)
     membership, memberships = require_staff_capability(request, PAYMENT_RECORD)
-    form = RecordPaymentForm(request.POST)
+    building_id = membership.organization.building_id
+    acceptance_id = request.POST.get("acceptance_id")
+    acceptance = get_object_or_404(
+        AcceptanceRecord,
+        pk=acceptance_id,
+        work_order__case__building_id=building_id,
+    )
+    if hasattr(acceptance, "payment") and acceptance.payment is not None:
+        raise PermissionDenied("Payment already recorded.")
+    proof_options = document_pair_options(building_id, Document.Kind.PAYMENT_PROOF)
+    form = RecordPaymentForm(
+        request.POST,
+        proof_choices=[(v, label) for v, label, _, _ in proof_options],
+    )
     if not form.is_valid():
         from django.http import JsonResponse
 
         return JsonResponse({"errors": form.errors}, status=400)
-    acceptance_id = form.cleaned_data.get("acceptance_id") or request.POST.get("acceptance_id")
-    acceptance = get_object_or_404(
-        AcceptanceRecord,
-        pk=acceptance_id,
-        work_order__case__building_id=membership.organization.building_id,
-    )
-    if hasattr(acceptance, "payment") and acceptance.payment is not None:
-        raise PermissionDenied("Payment already recorded.")
-    proof_o = DocumentVersion.objects.filter(pk=form.cleaned_data["proof_original_id"]).first()
-    proof_r = DocumentVersion.objects.filter(pk=form.cleaned_data["proof_redacted_id"]).first()
+    pair = selected_pair(proof_options, form.cleaned_data["proof_pair"])
+    if not pair:
+        from django.http import JsonResponse
+
+        form.add_error(
+            "proof_pair", "Selected evidence is no longer available. Select it again."
+        )
+        return JsonResponse({"errors": form.errors}, status=400)
+    proof_o, proof_r = pair
     try:
         payment = form.save(acceptance, membership, proof_o, proof_r)
     except ValidationError as error:
@@ -141,9 +154,10 @@ def payment_record_detail(request, pk):
     """Record payment against AcceptanceRecord pk (never PaymentEvidence pk)."""
     import json
     from django.utils import timezone
+    from django.utils.dateparse import parse_datetime
 
     from lamto.accounts.models import SignerWallet
-    from lamto.documents.models import Document
+    from lamto.evidence.services import utc_rfc3339
     from lamto.finance.payments import (
         allocate_payment_id,
         build_payment_evidence_typed_data,
@@ -161,32 +175,36 @@ def payment_record_detail(request, pk):
     if payment is not None:
         return redirect("web:payment-verify-detail", pk=payment.pk)
 
-    record_form = RecordPaymentForm(request.POST or None)
+    # Rebuild scoped options on every GET/POST before constructing the form.
+    proof_options = document_pair_options(building_id, Document.Kind.PAYMENT_PROOF)
+    proof_choices = [(v, label) for v, label, _, _ in proof_options]
+    record_form = RecordPaymentForm(
+        request.POST or None, proof_choices=proof_choices
+    )
     typed_data = None
     expected_signer = ""
     if request.method == "POST" and record_form.is_valid():
         require_recent_auth(request)
-        proof_o = DocumentVersion.objects.filter(
-            pk=record_form.cleaned_data["proof_original_id"]
-        ).first()
-        proof_r = DocumentVersion.objects.filter(
-            pk=record_form.cleaned_data["proof_redacted_id"]
-        ).first()
-        try:
-            payment = record_form.save(acceptance, membership, proof_o, proof_r)
-        except ValidationError as error:
-            messages.error(
-                request,
-                error.messages[0] if getattr(error, "messages", None) else str(error),
+        pair = selected_pair(proof_options, record_form.cleaned_data["proof_pair"])
+        if not pair:
+            record_form.add_error(
+                "proof_pair",
+                "Selected evidence is no longer available. Select it again.",
             )
-        except PermissionDenied as error:
-            messages.error(request, str(error) or "Permission denied.")
         else:
-            messages.success(request, "Payment recorded.")
-            return redirect("web:payment-verify-detail", pk=payment.pk)
-
-    from django.utils.dateparse import parse_datetime
-    from lamto.evidence.services import utc_rfc3339
+            proof_o, proof_r = pair
+            try:
+                payment = record_form.save(acceptance, membership, proof_o, proof_r)
+            except ValidationError as error:
+                messages.error(
+                    request,
+                    error.messages[0] if getattr(error, "messages", None) else str(error),
+                )
+            except PermissionDenied as error:
+                messages.error(request, str(error) or "Permission denied.")
+            else:
+                messages.success(request, "Payment recorded.")
+                return redirect("web:payment-verify-detail", pk=payment.pk)
 
     event_id = new_event_id()
     amount = acceptance.actual_cost_vnd
@@ -197,27 +215,11 @@ def payment_record_detail(request, pk):
     # record_payment verifies (do not call timezone.now() again on POST).
     completed_at = timezone.now()
     payment_id = None
-    proof_o = (
-        DocumentVersion.objects.filter(
-            document__building_id=building_id,
-            document__kind=Document.Kind.PAYMENT_PROOF,
-            variant=DocumentVersion.Variant.ORIGINAL,
-            scan_status=DocumentVersion.ScanStatus.CLEAN,
-        )
-        .order_by("-pk")
-        .first()
-    )
-    proof_r = (
-        DocumentVersion.objects.filter(
-            document_id=getattr(proof_o, "document_id", None),
-            variant=DocumentVersion.Variant.REDACTED,
-            scan_status=DocumentVersion.ScanStatus.CLEAN,
-        )
-        .order_by("-pk")
-        .first()
-        if proof_o
-        else None
-    )
+    # Prefer posted pair, else first available scoped option for typed-data pilot.
+    proof_pair_value = ""
+    proof_o = proof_r = None
+    if proof_options:
+        proof_pair_value, _, proof_o, proof_r = proof_options[0]
     if record_form.is_bound:
         bank_ref = record_form.data.get("bank_reference") or bank_ref
         reason = record_form.data.get("reason") or reason
@@ -230,12 +232,10 @@ def payment_record_detail(request, pk):
             payment_id = int(record_form.data.get("payment_id") or 0) or None
         except (TypeError, ValueError):
             payment_id = None
-        proof_o = DocumentVersion.objects.filter(
-            pk=record_form.data.get("proof_original_id")
-        ).first() or proof_o
-        proof_r = DocumentVersion.objects.filter(
-            pk=record_form.data.get("proof_redacted_id")
-        ).first() or proof_r
+        posted_pair = selected_pair(proof_options, record_form.data.get("proof_pair"))
+        if posted_pair:
+            proof_o, proof_r = posted_pair
+            proof_pair_value = record_form.data.get("proof_pair") or proof_pair_value
         # Reuse pinned timestamp from the signed attempt when re-showing errors.
         raw_ts = (record_form.data.get("completed_at") or "").strip()
         if raw_ts:
@@ -251,19 +251,21 @@ def payment_record_detail(request, pk):
     if payment_id is None:
         payment_id = allocate_payment_id()
 
-    record_form = RecordPaymentForm(
-        initial={
-            "event_id": event_id,
-            "reason": reason,
-            "bank_reference": bank_ref,
-            "amount_vnd": amount,
-            "external_status": ext_status,
-            "proof_original_id": getattr(proof_o, "pk", None),
-            "proof_redacted_id": getattr(proof_r, "pk", None),
-            "payment_id": payment_id,
-            "completed_at": utc_rfc3339(completed_at),
-        }
-    )
+    # Keep bound form (and field errors) after a failed POST; only rebuild on GET.
+    if not record_form.is_bound or not record_form.errors:
+        record_form = RecordPaymentForm(
+            proof_choices=proof_choices,
+            initial={
+                "event_id": event_id,
+                "reason": reason,
+                "bank_reference": bank_ref,
+                "amount_vnd": amount,
+                "external_status": ext_status,
+                "proof_pair": proof_pair_value,
+                "payment_id": payment_id,
+                "completed_at": utc_rfc3339(completed_at),
+            },
+        )
     if proof_o and proof_r:
         try:
             typed_data = json.dumps(
@@ -439,122 +441,105 @@ def accept_work(request, pk):
     from lamto.web.staff_signing import new_event_id
 
     membership, memberships = require_staff_capability(request, WORK_ACCEPT)
+    building_id = membership.organization.building_id
     work_order = get_object_or_404(
         WorkOrder,
         pk=pk,
-        case__building_id=membership.organization.building_id,
+        case__building_id=building_id,
     )
-    form = AcceptWorkForm(request.POST or None)
+    # Rebuild scoped options on every GET/POST before constructing the form.
+    invoice_options = document_pair_options(building_id, Document.Kind.INVOICE)
+    acceptance_options = document_pair_options(
+        building_id, Document.Kind.ACCEPTANCE_REPORT
+    )
+    invoice_choices = [(v, label) for v, label, _, _ in invoice_options]
+    acceptance_choices = [(v, label) for v, label, _, _ in acceptance_options]
+    form = AcceptWorkForm(
+        request.POST or None,
+        invoice_choices=invoice_choices,
+        acceptance_choices=acceptance_choices,
+    )
     typed_data = None
     expected_signer = ""
     if request.method == "POST":
         require_recent_auth(request)
     if request.method == "POST" and form.is_valid():
-        docs = {
-            "invoice_original": DocumentVersion.objects.filter(
-                pk=form.cleaned_data["invoice_original_id"]
-            ).first(),
-            "invoice_redacted": DocumentVersion.objects.filter(
-                pk=form.cleaned_data["invoice_redacted_id"]
-            ).first(),
-            "acceptance_original": DocumentVersion.objects.filter(
-                pk=form.cleaned_data["acceptance_original_id"]
-            ).first(),
-            "acceptance_redacted": DocumentVersion.objects.filter(
-                pk=form.cleaned_data["acceptance_redacted_id"]
-            ).first(),
-        }
-        try:
-            form.save(work_order, membership, docs)
-        except ValidationError as error:
-            messages.error(
-                request,
-                error.messages[0] if getattr(error, "messages", None) else str(error),
+        pair_inv = selected_pair(invoice_options, form.cleaned_data["invoice_pair"])
+        pair_acc = selected_pair(
+            acceptance_options, form.cleaned_data["acceptance_pair"]
+        )
+        if not pair_inv:
+            form.add_error(
+                "invoice_pair",
+                "Selected evidence is no longer available. Select it again.",
             )
-        except PermissionDenied as error:
-            messages.error(request, str(error) or "Permission denied.")
+        elif not pair_acc:
+            form.add_error(
+                "acceptance_pair",
+                "Selected evidence is no longer available. Select it again.",
+            )
         else:
-            messages.success(request, "Work accepted.")
-            return redirect("web:work-order-detail", pk=work_order.pk)
+            docs = {
+                "invoice_original": pair_inv[0],
+                "invoice_redacted": pair_inv[1],
+                "acceptance_original": pair_acc[0],
+                "acceptance_redacted": pair_acc[1],
+            }
+            try:
+                form.save(work_order, membership, docs)
+            except ValidationError as error:
+                messages.error(
+                    request,
+                    error.messages[0] if getattr(error, "messages", None) else str(error),
+                )
+            except PermissionDenied as error:
+                messages.error(request, str(error) or "Permission denied.")
+            else:
+                messages.success(request, "Work accepted.")
+                return redirect("web:work-order-detail", pk=work_order.pk)
 
-    # Mint event id + typed data for MetaMask. Prefer POST values; else pilot
-    # defaults so the form is fillable without a separate upload UI.
-    from lamto.documents.models import Document
-
+    # Mint event id + typed data for MetaMask. Prefer POST values; else first
+    # scoped pair so the form is fillable without a separate upload UI.
     event_id = new_event_id()
     cost = 5_000_000
     reason = "Nghiem thu OK"
+    inv_pair_value = ""
+    acc_pair_value = ""
+    inv_o = inv_r = acc_o = acc_r = None
+    if invoice_options:
+        inv_pair_value, _, inv_o, inv_r = invoice_options[0]
+    if acceptance_options:
+        acc_pair_value, _, acc_o, acc_r = acceptance_options[0]
     if form.is_bound:
         try:
             cost = int(form.data.get("actual_cost_vnd") or cost)
         except (TypeError, ValueError):
             pass
         reason = (form.data.get("reason") or reason).strip() or reason
-        inv_o = DocumentVersion.objects.filter(pk=form.data.get("invoice_original_id")).first()
-        inv_r = DocumentVersion.objects.filter(pk=form.data.get("invoice_redacted_id")).first()
-        acc_o = DocumentVersion.objects.filter(
-            pk=form.data.get("acceptance_original_id")
-        ).first()
-        acc_r = DocumentVersion.objects.filter(
-            pk=form.data.get("acceptance_redacted_id")
-        ).first()
-    else:
-        # Latest clean invoice / acceptance pairs for this building (pilot docs).
-        building_id = work_order.case.building_id
-        inv_o = (
-            DocumentVersion.objects.filter(
-                document__building_id=building_id,
-                document__kind=Document.Kind.INVOICE,
-                variant=DocumentVersion.Variant.ORIGINAL,
-                scan_status=DocumentVersion.ScanStatus.CLEAN,
-            )
-            .order_by("-pk")
-            .first()
-        )
-        inv_r = (
-            DocumentVersion.objects.filter(
-                document_id=getattr(inv_o, "document_id", None),
-                variant=DocumentVersion.Variant.REDACTED,
-                scan_status=DocumentVersion.ScanStatus.CLEAN,
-            )
-            .order_by("-pk")
-            .first()
-            if inv_o
-            else None
-        )
-        acc_o = (
-            DocumentVersion.objects.filter(
-                document__building_id=building_id,
-                document__kind=Document.Kind.ACCEPTANCE_REPORT,
-                variant=DocumentVersion.Variant.ORIGINAL,
-                scan_status=DocumentVersion.ScanStatus.CLEAN,
-            )
-            .order_by("-pk")
-            .first()
-        )
-        acc_r = (
-            DocumentVersion.objects.filter(
-                document_id=getattr(acc_o, "document_id", None),
-                variant=DocumentVersion.Variant.REDACTED,
-                scan_status=DocumentVersion.ScanStatus.CLEAN,
-            )
-            .order_by("-pk")
-            .first()
-            if acc_o
-            else None
-        )
+        posted_inv = selected_pair(invoice_options, form.data.get("invoice_pair"))
+        posted_acc = selected_pair(acceptance_options, form.data.get("acceptance_pair"))
+        if posted_inv:
+            inv_o, inv_r = posted_inv
+            inv_pair_value = form.data.get("invoice_pair") or inv_pair_value
+        if posted_acc:
+            acc_o, acc_r = posted_acc
+            acc_pair_value = form.data.get("acceptance_pair") or acc_pair_value
+        if request.method == "POST" and form.data.get("event_id"):
+            event_id = form.data.get("event_id").strip() or event_id
 
-    form = AcceptWorkForm(
-        initial={
-            "event_id": event_id,
-            "reason": reason,
-            "actual_cost_vnd": cost,
-            "invoice_original_id": getattr(inv_o, "pk", None),
-            "invoice_redacted_id": getattr(inv_r, "pk", None),
-            "acceptance_original_id": getattr(acc_o, "pk", None),
-            "acceptance_redacted_id": getattr(acc_r, "pk", None),
-        }
-    )
+    # Keep bound form (and field errors) after a failed POST; only rebuild on GET.
+    if not form.is_bound or not form.errors:
+        form = AcceptWorkForm(
+            invoice_choices=invoice_choices,
+            acceptance_choices=acceptance_choices,
+            initial={
+                "event_id": event_id,
+                "reason": reason,
+                "actual_cost_vnd": cost,
+                "invoice_pair": inv_pair_value,
+                "acceptance_pair": acc_pair_value,
+            },
+        )
     if inv_o and inv_r and acc_o and acc_r:
         try:
             typed_data = json.dumps(

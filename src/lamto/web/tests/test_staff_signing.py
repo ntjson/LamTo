@@ -15,9 +15,16 @@ from io import StringIO
 
 from lamto.accounts.models import Building, Organization, OrganizationMembership
 from lamto.documents.models import Document, DocumentVersion
+from lamto.web.forms.staff import (
+    AcceptWorkForm,
+    CompleteWorkOrderForm,
+    RecordPaymentForm,
+)
 from lamto.web.staff_signing import (
     cleanup_stale_prepared_ops,
+    document_pair_options,
     new_event_id,
+    selected_pair,
     upload_document_pair,
 )
 
@@ -64,6 +71,36 @@ class UploadDocumentPairTests(TestCase):
     def test_new_event_id_is_random_bytes32(self):
         a, b = new_event_id(), new_event_id()
         assert a.startswith("0x") and len(a) == 66 and a != b
+
+    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    def test_document_pair_options_are_scoped_and_human_readable(self):
+        original, redacted = upload_document_pair(
+            self.building,
+            Document.Kind.INVOICE,
+            self.user,
+            _pdf("invoice-original.pdf", b"original"),
+            _pdf("invoice-resident.pdf", b"redacted"),
+        )
+        other = Building.objects.create(name="Other building")
+        other_org = Organization.objects.create(
+            building=other, name="Other Ops", kind=Organization.Kind.OPERATOR
+        )
+        OrganizationMembership.objects.create(
+            user=self.user,
+            organization=other_org,
+            role=OrganizationMembership.Role.OPERATOR,
+        )
+        upload_document_pair(
+            other,
+            Document.Kind.INVOICE,
+            self.user,
+            _pdf("foreign.pdf", b"foreign original"),
+            _pdf("foreign-redacted.pdf", b"foreign redacted"),
+        )
+        options = document_pair_options(self.building.pk, Document.Kind.INVOICE)
+        self.assertEqual([item[0] for item in options], [f"{original.pk}:{redacted.pk}"])
+        self.assertIn("invoice-original.pdf", options[0][1])
+        self.assertIn("invoice-resident.pdf", options[0][1])
 
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
     def test_uploads_linked_clean_pair(self):
@@ -267,3 +304,132 @@ class UploadDocumentPairTests(TestCase):
         self.assertIn("dry_run", text)
         self.assertIn("documents_candidate=", text)
         self.assertEqual(Document.objects.count(), 1)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "private": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class StaffEvidenceFormTests(TestCase):
+    def setUp(self):
+        self.building = Building.objects.create(name="Evidence Building")
+        org = Organization.objects.create(
+            building=self.building, name="Maint", kind=Organization.Kind.OPERATOR
+        )
+        self.user = get_user_model().objects.create_user(
+            email="maint-ev@example.test", password="secret", display_name="Maint"
+        )
+        OrganizationMembership.objects.create(
+            user=self.user, organization=org, role=OrganizationMembership.Role.MAINTENANCE
+        )
+        self.other = Building.objects.create(name="Foreign Building")
+        self.before = self._photo(self.building, Document.Kind.BEFORE_PHOTO, "before-local.jpg")
+        self.after = self._photo(self.building, Document.Kind.AFTER_PHOTO, "after-local.jpg")
+        # Cross-building and wrong-kind noise must not appear in form querysets.
+        self._photo(self.other, Document.Kind.BEFORE_PHOTO, "before-foreign.jpg")
+        # Wrong kind under before/after filters: REPORT_PHOTO original for this building.
+        self._photo(self.building, Document.Kind.REPORT_PHOTO, "report.jpg")
+
+    def _photo(self, building, kind, filename):
+        return DocumentVersion.objects.create(
+            document=Document.objects.create(building=building, kind=kind),
+            version=1,
+            variant=DocumentVersion.Variant.ORIGINAL,
+            storage_key=f"staff-ev/{building.pk}/{filename}",
+            provider_version_id=f"pv-{filename}",
+            filename=filename,
+            content_type="image/jpeg",
+            byte_size=1,
+            sha256=f"{abs(hash(filename)):064x}"[:64],
+            scan_status=DocumentVersion.ScanStatus.CLEAN,
+            uploader=self.user,
+        )
+
+    def test_complete_work_order_form_scopes_photo_querysets(self):
+        form = CompleteWorkOrderForm(
+            building_id=self.building.pk, uploader_id=self.user.pk
+        )
+        self.assertQuerySetEqual(
+            form.fields["before_versions"].queryset,
+            [self.before],
+            transform=lambda x: x,
+        )
+        self.assertQuerySetEqual(
+            form.fields["after_versions"].queryset,
+            [self.after],
+            transform=lambda x: x,
+        )
+
+    def test_accept_work_form_uses_pair_choices_not_raw_ids(self):
+        invoice_value = "10:11"
+        invoice_label = "inv-o.pdf / inv-r.pdf"
+        acceptance_value = "20:21"
+        acceptance_label = "acc-o.pdf / acc-r.pdf"
+        accept = AcceptWorkForm(
+            invoice_choices=[(invoice_value, invoice_label)],
+            acceptance_choices=[(acceptance_value, acceptance_label)],
+        )
+        self.assertEqual(
+            accept.fields["invoice_pair"].choices[1], (invoice_value, invoice_label)
+        )
+        self.assertEqual(
+            accept.fields["acceptance_pair"].choices[1],
+            (acceptance_value, acceptance_label),
+        )
+        self.assertNotIn("invoice_original_id", accept.fields)
+        self.assertNotIn("invoice_redacted_id", accept.fields)
+        self.assertNotIn("acceptance_original_id", accept.fields)
+        self.assertNotIn("acceptance_redacted_id", accept.fields)
+
+    def test_accept_work_form_rejects_foreign_pair_value(self):
+        invoice_value = "10:11"
+        acceptance_value = "20:21"
+        accept = AcceptWorkForm(
+            data={
+                "actual_cost_vnd": "1000",
+                "invoice_pair": "999:998",  # not in choices
+                "acceptance_pair": acceptance_value,
+                "event_id": "0x" + "11" * 32,
+                "signature": "0x" + "22" * 65,
+                "reason": "ok",
+            },
+            invoice_choices=[(invoice_value, "inv")],
+            acceptance_choices=[(acceptance_value, "acc")],
+        )
+        self.assertFalse(accept.is_valid())
+        self.assertIn("Select valid evidence.", accept.errors.get("invoice_pair", []))
+
+    def test_record_payment_form_uses_proof_pair(self):
+        proof_value = "30:31"
+        form = RecordPaymentForm(
+            proof_choices=[(proof_value, "proof-o / proof-r")],
+        )
+        self.assertEqual(form.fields["proof_pair"].choices[1], (proof_value, "proof-o / proof-r"))
+        self.assertNotIn("proof_original_id", form.fields)
+        self.assertNotIn("proof_redacted_id", form.fields)
+
+    def test_record_payment_form_rejects_foreign_proof_pair(self):
+        form = RecordPaymentForm(
+            data={
+                "bank_reference": "REF",
+                "amount_vnd": "1000",
+                "external_status": "COMPLETED",
+                "proof_pair": "1:2",
+                "event_id": "0x" + "11" * 32,
+                "signature": "0x" + "22" * 65,
+                "completed_at": "2020-01-01T00:00:00Z",
+            },
+            proof_choices=[("30:31", "ok pair")],
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("Select valid evidence.", form.errors.get("proof_pair", []))
+
+    def test_selected_pair_resolves_and_misses(self):
+        original = object()
+        redacted = object()
+        options = [("1:2", "label", original, redacted)]
+        self.assertEqual(selected_pair(options, "1:2"), (original, redacted))
+        self.assertIsNone(selected_pair(options, "9:9"))

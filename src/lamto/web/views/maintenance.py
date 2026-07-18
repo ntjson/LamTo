@@ -84,7 +84,11 @@ def work_order_detail(request, pk):
         pk=pk,
         case__building_id=membership.organization.building_id,
     )
-    form = CompleteWorkOrderForm(request.POST or None)
+    form = CompleteWorkOrderForm(
+        request.POST or None,
+        building_id=membership.organization.building_id,
+        uploader_id=request.user.pk,
+    )
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -108,15 +112,8 @@ def work_order_detail(request, pk):
                 messages.success(request, "Work started.")
                 return redirect("web:work-order-detail", pk=work_order.pk)
         elif action == "complete" and form.is_valid():
-            # Evidence versions must be uploaded separately; empty for now surfaces validation.
-            before_ids = request.POST.getlist("before_version_ids")
-            after_ids = request.POST.getlist("after_version_ids")
-            from lamto.documents.models import DocumentVersion
-
-            before = list(DocumentVersion.objects.filter(pk__in=before_ids))
-            after = list(DocumentVersion.objects.filter(pk__in=after_ids))
             try:
-                form.save(work_order, request.user, before, after)
+                form.save(work_order, request.user)
             except (ValidationError, PermissionDenied) as error:
                 if isinstance(error, ValidationError):
                     form.add_error(None, error)

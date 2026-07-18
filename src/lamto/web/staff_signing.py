@@ -78,6 +78,54 @@ def upload_document_pair(building, kind, uploader, original_file, redacted_file)
     return original, redacted
 
 
+def document_pair_options(building_id: int, kind: str):
+    """Return clean original/redacted pairs for a building and document kind.
+
+    Each option is ``(value, label, original, redacted)`` where value is
+    ``"<original_pk>:<redacted_pk>"`` and label is human-readable filenames.
+    Scoped to the building; incomplete pairs are omitted.
+    """
+    versions = (
+        DocumentVersion.objects.filter(
+            document__building_id=building_id,
+            document__kind=kind,
+            variant__in=(DocumentVersion.Variant.ORIGINAL, DocumentVersion.Variant.REDACTED),
+            scan_status=DocumentVersion.ScanStatus.CLEAN,
+        )
+        .select_related("document")
+        .order_by("document_id", "-version")
+    )
+    pairs = {}
+    for version in versions:
+        pairs.setdefault(version.document_id, {}).setdefault(version.variant, version)
+    options = []
+    for pair in pairs.values():
+        original = pair.get(DocumentVersion.Variant.ORIGINAL)
+        redacted = pair.get(DocumentVersion.Variant.REDACTED)
+        if original and redacted:
+            options.append(
+                (
+                    f"{original.pk}:{redacted.pk}",
+                    f"{original.filename} / {redacted.filename}",
+                    original,
+                    redacted,
+                )
+            )
+    return options
+
+
+def selected_pair(options, value):
+    """Resolve a pair value against freshly rebuilt options; None if gone."""
+    return next(
+        (
+            (original, redacted)
+            for key, _, original, redacted in options
+            if key == value
+        ),
+        None,
+    )
+
+
 def _disable_document_append_only_triggers():
     """Allow owner-level maintenance deletes/updates of append-only document rows.
 

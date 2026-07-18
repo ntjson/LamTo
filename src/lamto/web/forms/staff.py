@@ -4,6 +4,7 @@ from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
 
 from lamto.accounts.models import OrganizationMembership
+from lamto.documents.models import Document, DocumentVersion
 from lamto.finance.acceptance import accept_work
 from lamto.finance.approvals import decide_proposal
 from lamto.finance.emergencies import authorize_emergency, decide_emergency
@@ -101,15 +102,40 @@ class CreateWorkOrderForm(forms.Form):
 class CompleteWorkOrderForm(forms.Form):
     cause = forms.CharField(widget=forms.Textarea(attrs={"class": "input", "rows": 3}))
     result = forms.CharField(widget=forms.Textarea(attrs={"class": "input", "rows": 3}))
+    before_versions = forms.ModelMultipleChoiceField(
+        queryset=DocumentVersion.objects.none(),
+        widget=forms.SelectMultiple(attrs={"class": "input"}),
+        label="Before photos",
+    )
+    after_versions = forms.ModelMultipleChoiceField(
+        queryset=DocumentVersion.objects.none(),
+        widget=forms.SelectMultiple(attrs={"class": "input"}),
+        label="After photos",
+    )
 
-    def save(self, work_order, maintenance_user, before_versions, after_versions):
+    def __init__(self, *args, building_id=None, uploader_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        base = DocumentVersion.objects.filter(
+            document__building_id=building_id,
+            uploader_id=uploader_id,
+            variant=DocumentVersion.Variant.ORIGINAL,
+            scan_status=DocumentVersion.ScanStatus.CLEAN,
+        )
+        self.fields["before_versions"].queryset = base.filter(
+            document__kind=Document.Kind.BEFORE_PHOTO
+        )
+        self.fields["after_versions"].queryset = base.filter(
+            document__kind=Document.Kind.AFTER_PHOTO
+        )
+
+    def save(self, work_order, maintenance_user):
         return complete_work_order(
             work_order,
             maintenance_user,
             self.cleaned_data["cause"],
             self.cleaned_data["result"],
-            before_versions,
-            after_versions,
+            list(self.cleaned_data["before_versions"]),
+            list(self.cleaned_data["after_versions"]),
         )
 
 
@@ -166,14 +192,25 @@ class AcceptWorkForm(SignedDecisionForm):
     actual_cost_vnd = forms.IntegerField(
         min_value=1, widget=forms.NumberInput(attrs={"class": "input"})
     )
-    invoice_original_id = forms.IntegerField(widget=forms.NumberInput(attrs={"class": "input"}))
-    invoice_redacted_id = forms.IntegerField(widget=forms.NumberInput(attrs={"class": "input"}))
-    acceptance_original_id = forms.IntegerField(
-        widget=forms.NumberInput(attrs={"class": "input"})
+    invoice_pair = forms.ChoiceField(
+        choices=(),
+        widget=forms.Select(attrs={"class": "input"}),
+        error_messages={"invalid_choice": "Select valid evidence."},
+        label="Invoice evidence",
     )
-    acceptance_redacted_id = forms.IntegerField(
-        widget=forms.NumberInput(attrs={"class": "input"})
+    acceptance_pair = forms.ChoiceField(
+        choices=(),
+        widget=forms.Select(attrs={"class": "input"}),
+        error_messages={"invalid_choice": "Select valid evidence."},
+        label="Acceptance report evidence",
     )
+
+    def __init__(self, *args, invoice_choices=None, acceptance_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        inv = [("", "Select evidence…")] + list(invoice_choices or [])
+        acc = [("", "Select evidence…")] + list(acceptance_choices or [])
+        self.fields["invoice_pair"].choices = inv
+        self.fields["acceptance_pair"].choices = acc
 
     def save(self, work_order, membership, documents):
         return accept_work(
@@ -198,15 +235,23 @@ class RecordPaymentForm(SignedDecisionForm):
         choices=[("COMPLETED", "Completed"), ("FAILED", "Failed"), ("REVERSED", "Reversed")],
         widget=forms.Select(attrs={"class": "input"}),
     )
-    proof_original_id = forms.IntegerField(widget=forms.NumberInput(attrs={"class": "input"}))
-    proof_redacted_id = forms.IntegerField(widget=forms.NumberInput(attrs={"class": "input"}))
+    proof_pair = forms.ChoiceField(
+        choices=(),
+        widget=forms.Select(attrs={"class": "input"}),
+        error_messages={"invalid_choice": "Select valid evidence."},
+        label="Payment proof evidence",
+    )
     payment_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
     # Must match the timestamp baked into EIP-712 typed data shown to MetaMask.
     # Using timezone.now() again on POST would change the payload hash and make
     # ecrecover return a random "signed as" address for a valid recorder signature.
     completed_at = forms.CharField(widget=forms.HiddenInput())
-    # Document version ids stay as number inputs only if empty — prefilled hidden when set
-    # (still NumberInput so ops can override pilot IDs if needed).
+
+    def __init__(self, *args, proof_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["proof_pair"].choices = [("", "Select evidence…")] + list(
+            proof_choices or []
+        )
 
     def save(self, acceptance, membership, proof_original, proof_redacted, completed_at=None):
         from django.utils import timezone

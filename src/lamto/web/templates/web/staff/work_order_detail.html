@@ -58,9 +58,7 @@
           {% csrf_token %}
           <input type="hidden" name="action" value="complete">
           {{ form.as_p }}
-          <p class="hint">Link the before and after document versions already uploaded for this work order.</p>
-          <label>Before version IDs <input class="input" name="before_version_ids" multiple></label>
-          <label>After version IDs <input class="input" name="after_version_ids" multiple></label>
+          <p class="hint">Select the before and after photos already uploaded for this building and account.</p>
           <div class="form-actions">
             <button type="submit" class="button button-primary">Complete work</button>
             <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
