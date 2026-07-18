@@ -33,7 +33,7 @@
 
 **Interfaces:** `web/base.html` produces `body_class` and `bottom_nav` blocks. Authentication/security templates override both. The resident `web:account` route is unchanged.
 
-- [ ] **Step 1: Add failing contract tests**
+- [x] **Step 1: Add failing contract tests**
 
 Add to `StaffUiContractTests`:
 
@@ -58,7 +58,7 @@ def test_authenticated_resident_navigation_remains_in_base(self):
     self.assertIn("web:account", base)
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_ui.py::StaffUiContractTests::test_staff_shell_has_no_account_destination src/lamto/web/tests/test_staff_ui.py::StaffUiContractTests::test_authentication_pages_suppress_resident_navigation src/lamto/web/tests/test_staff_ui.py::StaffUiContractTests::test_authenticated_resident_navigation_remains_in_base -q
@@ -66,7 +66,7 @@ uv run pytest src/lamto/web/tests/test_staff_ui.py::StaffUiContractTests::test_s
 
 Expected: two failures because the Account link and unblocked resident navigation still exist.
 
-- [ ] **Step 3: Implement the template seams**
+- [x] **Step 3: Implement the template seams**
 
 In `web/base.html`, change the body opening and wrap the existing navigation:
 
@@ -94,7 +94,7 @@ body.no-bottom-nav {
 }
 ```
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_ui.py -q
@@ -120,7 +120,7 @@ Expected: all `test_staff_ui.py` tests pass.
 
 **Interfaces:** `finance_nav_items_for(membership) -> list[dict[str, str]]`; every item has `label`, `url_name`, and `active_key`. `staff_context()` exposes `finance_nav_items`.
 
-- [ ] **Step 1: Add failing helper tests**
+- [x] **Step 1: Add failing helper tests**
 
 Extend `NavStructureTests`, reusing `_board()` and `grant_capability()`:
 
@@ -144,7 +144,7 @@ def test_fund_only_membership_gets_only_fund_destination(self):
 
 Import `finance_nav_items_for`, the three capability constants, and existing `grant_capability`.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_nav.py::NavStructureTests::test_finance_subnavigation_is_capability_filtered src/lamto/web/tests/test_staff_nav.py::NavStructureTests::test_fund_only_membership_gets_only_fund_destination -q
@@ -152,7 +152,7 @@ uv run pytest src/lamto/web/tests/test_staff_nav.py::NavStructureTests::test_fin
 
 Expected: import failure because `finance_nav_items_for` does not exist.
 
-- [ ] **Step 3: Implement the helper**
+- [x] **Step 3: Implement the helper**
 
 Add to `staff.py`:
 
@@ -173,7 +173,7 @@ def finance_nav_items_for(membership) -> list[dict[str, str]]:
 
 Add `finance_nav_items=finance_nav_items_for(membership)` to `staff_context()`. Pass `finance_active="proposals"`, `"payments"`, or `"fund"` from the corresponding views.
 
-- [ ] **Step 4: Render navigation and exits**
+- [x] **Step 4: Render navigation and exits**
 
 Under the primary staff nav:
 
@@ -215,7 +215,7 @@ Use existing tokens:
 }
 ```
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_nav.py src/lamto/web/tests/test_staff_ui.py -q
@@ -243,7 +243,7 @@ git commit -m "feat(staff): expose finance destinations and stable exits"
 - `AcceptWorkForm` accepts keyword arguments `invoice_choices` and `acceptance_choices` and owns `invoice_pair` and `acceptance_pair`.
 - `RecordPaymentForm` accepts keyword argument `proof_choices` and owns `proof_pair`.
 
-- [ ] **Step 1: Add failing pair-discovery test**
+- [x] **Step 1: Add failing pair-discovery test**
 
 In `UploadDocumentPairTests`, reuse `_pdf()` and `upload_document_pair()`:
 
@@ -266,7 +266,7 @@ def test_document_pair_options_are_scoped_and_human_readable(self):
     self.assertIn("invoice-resident.pdf", options[0][1])
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_signing.py::UploadDocumentPairTests::test_document_pair_options_are_scoped_and_human_readable -q
@@ -274,7 +274,7 @@ uv run pytest src/lamto/web/tests/test_staff_signing.py::UploadDocumentPairTests
 
 Expected: import failure for `document_pair_options`.
 
-- [ ] **Step 3: Implement pair discovery in `staff_signing.py`**
+- [x] **Step 3: Implement pair discovery in `staff_signing.py`**
 
 ```python
 def document_pair_options(building_id: int, kind: str):
@@ -308,7 +308,7 @@ def selected_pair(options, value):
     return next(((original, redacted) for key, _, original, redacted in options if key == value), None)
 ```
 
-- [ ] **Step 4: Add failing form-scope tests**
+- [x] **Step 4: Add failing form-scope tests**
 
 Create `StaffEvidenceFormTests(TestCase)` in `test_staff_signing.py`. Build clean before/after documents in the active building and cross-building/wrong-kind documents. Assert:
 
@@ -327,7 +327,7 @@ self.assertNotIn("invoice_original_id", accept.fields)
 
 Bind a foreign pair value and assert `is_valid()` is false with `Select valid evidence.` on the pair field.
 
-- [ ] **Step 5: Verify RED**
+- [x] **Step 5: Verify RED**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_signing.py::StaffEvidenceFormTests -q
@@ -335,7 +335,7 @@ uv run pytest src/lamto/web/tests/test_staff_signing.py::StaffEvidenceFormTests 
 
 Expected: constructor/field failures.
 
-- [ ] **Step 6: Implement native scoped fields**
+- [x] **Step 6: Implement native scoped fields**
 
 Add `before_versions` and `after_versions` as `ModelMultipleChoiceField`s. Their querysets must filter by active building, current uploader, original variant, clean scan status, and `BEFORE_PHOTO`/`AFTER_PHOTO`. Change `CompleteWorkOrderForm.save()` to use its cleaned querysets directly.
 
@@ -355,7 +355,7 @@ form = AcceptWorkForm(
 
 After `form.is_valid()`, resolve only through `selected_pair()`. If a choice disappeared, attach `Selected evidence is no longer available. Select it again.` and do not sign or save. Delete raw `request.POST.getlist()` evidence handling and manual ID inputs.
 
-- [ ] **Step 7: Verify trust boundaries and commit**
+- [x] **Step 7: Verify trust boundaries and commit**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_signing.py src/lamto/web/tests/test_role_workspaces.py src/lamto/maintenance/tests/test_workorders.py src/lamto/finance/tests/test_acceptance.py src/lamto/finance/tests/test_payments.py -q
@@ -390,7 +390,7 @@ Expected: zero failures.
 - Stage keys: `report`, `triage`, `work`, `proposal`, `acceptance`, `payment`, `publication`.
 - Review bindings: `data-review-form`, `data-review-value`, `data-decision-label`, `data-decision-submit`.
 
-- [ ] **Step 1: Add failing chain/review tests**
+- [x] **Step 1: Add failing chain/review tests**
 
 ```python
 class AccountabilityChainTests(SimpleTestCase):
@@ -419,7 +419,7 @@ def test_signed_actions_have_rigorous_review_summaries(self):
     self.assertIn("bindReviewSummary", WALLET_JS.read_text(encoding="utf-8"))
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_ui.py::AccountabilityChainTests src/lamto/web/tests/test_staff_ui.py::StaffUiContractTests::test_signed_actions_have_rigorous_review_summaries -q
@@ -427,7 +427,7 @@ uv run pytest src/lamto/web/tests/test_staff_ui.py::AccountabilityChainTests src
 
 Expected: missing helper, includes, and review binding.
 
-- [ ] **Step 3: Implement the stage builder and partial**
+- [x] **Step 3: Implement the stage builder and partial**
 
 ```python
 ACCOUNTABILITY_STAGES = (
@@ -456,7 +456,7 @@ def accountability_chain(current: str, *, blocked: bool = False):
 
 Render an ordered list in `_accountability_chain.html`; put `aria-current="step"` on current/blocked stages and print the state text. Pass `work`, `proposal`, `payment`, or `publication` context from existing views and include the partial before technical proof.
 
-- [ ] **Step 4: Implement rigorous review summaries**
+- [x] **Step 4: Implement rigorous review summaries**
 
 `_review_summary.html` must render Action, Acting as, each supplied review item, Consequence, and What happens next in a `<dl>`. Include it immediately before signed submit controls.
 
@@ -506,7 +506,7 @@ function bindReviewSummary(form) {
 
 Export it through the existing `window.LamToWalletSigning` test seam. Keep typed-data construction unchanged.
 
-- [ ] **Step 5: Add flat CSS and verify**
+- [x] **Step 5: Add flat CSS and verify**
 
 Use flex-wrapped ordered stages, text labels, existing semantic colors, and border-only review summaries. Do not add cards or shadows.
 
@@ -528,7 +528,7 @@ git commit -m "feat(staff): explain accountability and signed consequences"
 
 **Interfaces:** Fund uses existing `.balance-value` and `.amount`. Ops groups have IDs `queue-health`, `integrity-health`, `notification-health`, `device-health`, and `anchoring-health`.
 
-- [ ] **Step 1: Add failing hierarchy test**
+- [x] **Step 1: Add failing hierarchy test**
 
 ```python
 def test_fund_and_ops_use_product_specific_hierarchy(self):
@@ -542,13 +542,13 @@ def test_fund_and_ops_use_product_specific_hierarchy(self):
         self.assertIn(f'id="{section_id}"', ops)
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_ui.py::StaffUiContractTests::test_fund_and_ops_use_product_specific_hierarchy -q
 ```
 
-- [ ] **Step 3: Recompose without new cards**
+- [x] **Step 3: Recompose without new cards**
 
 Use the existing prominent amount pattern:
 
@@ -563,7 +563,7 @@ Put inflow/outflow context in the existing `.stat-grid`. Convert the remaining F
 
 Group Ops metrics into Queue, Evidence integrity, Notifications, Devices, and Anchoring. Put non-zero failures/mismatches before healthy metadata and pair every state color with `Needs attention` or `No current failures` text.
 
-- [ ] **Step 4: Run focused, domain, and full verification**
+- [x] **Step 4: Run focused, domain, and full verification**
 
 ```bash
 uv run pytest src/lamto/web/tests/test_staff_ui.py src/lamto/web/tests/test_staff_nav.py src/lamto/web/tests/test_staff_signing.py src/lamto/web/tests/test_role_workspaces.py src/lamto/web/tests/test_resident_views.py src/lamto/web/tests/test_tenancy_review_minors.py src/lamto/web/tests/test_exports_and_health.py src/lamto/web/tests/test_fund_ops.py -q
@@ -575,7 +575,7 @@ git diff --check
 
 Expected: zero test failures, detector output `[]`, and no whitespace errors.
 
-- [ ] **Step 5: Inspect rendered states**
+- [x] **Step 5: Inspect rendered states**
 
 At 1440×900, 1024×768, and 390×844, capture and read screenshots for:
 
@@ -590,7 +590,7 @@ At 1440×900, 1024×768, and 390×844, capture and read screenshots for:
 
 Check keyboard order, 200% zoom, long filenames, wrong-wallet recovery, and reduced motion. If local authentication or environment setup blocks rendering, report the exact blocker and do not claim browser verification.
 
-- [ ] **Step 6: Commit and verify clean state**
+- [x] **Step 6: Commit and verify clean state**
 
 ```bash
 git add src/lamto/web/tests/test_staff_ui.py src/lamto/web/templates/web/staff/fund_detail.html src/lamto/web/templates/web/staff/ops_health.html src/lamto/web/static/web/app.css

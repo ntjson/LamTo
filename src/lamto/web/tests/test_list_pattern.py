@@ -276,3 +276,34 @@ class ListPatternTests(TestCase):
                 {"status": PaymentEvidence.ExternalStatus.COMPLETED},
             )
             self.assertContains(filtered_ok, f"Payment #{payment.pk}")
+
+    # Record lists are complete, searchable histories: no silent 100-item cap.
+    def test_work_list_paginates_with_total_and_preserved_filters(self):
+        building, _loc, user, membership, case = self._case_world(email_prefix="pag")
+        for _ in range(25):
+            self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
+        self._login(user, membership)
+
+        first = self.client.get(
+            reverse("web:work-order-list"), {"status": "ASSIGNED"}
+        )
+        self.assertContains(first, "25 results")
+        self.assertContains(first, "Page 1 of 2")
+        self.assertContains(first, "status=ASSIGNED")  # pagination keeps filters
+
+        second = self.client.get(
+            reverse("web:work-order-list"), {"status": "ASSIGNED", "page": 2}
+        )
+        self.assertContains(second, "Page 2 of 2")
+        self.assertEqual(len(second.context["items"]), 5)
+
+    def test_work_list_search_matches_category_and_id(self):
+        building, _loc, user, membership, case = self._case_world(email_prefix="srch")
+        match = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
+        self._login(user, membership)
+
+        by_id = self.client.get(reverse("web:work-order-list"), {"q": str(match.pk)})
+        self.assertContains(by_id, f"Work order #{match.pk}")
+
+        miss = self.client.get(reverse("web:work-order-list"), {"q": "no-such-thing"})
+        self.assertContains(miss, "0 results")

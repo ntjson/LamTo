@@ -2,8 +2,14 @@
 {% block title %}{% if list_mode %}Proposals{% else %}Proposal #{{ proposal.pk }}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
-<section class="panel">
-  <h1>{% if publish_only %}Pending publication{% else %}Proposals{% endif %}</h1>
+<section class="panel" aria-labelledby="proposals-heading">
+  <div class="panel-header">
+    <div>
+      <h1 id="proposals-heading">{% if publish_only %}Pending publication{% else %}Proposals{% endif %}</h1>
+      <p class="hint">Spending proposals for this building, from draft through approval. Each row shows the next step.</p>
+    </div>
+  </div>
+  {% include "web/staff/_list_toolbar.html" %}
   {% include "web/staff/_list.html" with items=proposal_items empty_label="No proposals need attention." %}
 </section>
 {% else %}
@@ -143,11 +149,11 @@
     </div>
     <div>
       <dt>Consequence</dt>
-      <dd>Prepares an append-only publication snapshot for the resident ledger. Residents will see the verified expense once anchoring completes.</dd>
+      <dd>Prepares an append-only publication snapshot for the resident ledger. Residents will see the verified expense once it is confirmed on the public chain.</dd>
     </div>
     <div>
       <dt>What happens next</dt>
-      <dd>The outbox anchors the publication and the expense appears on the resident ledger.</dd>
+      <dd>The publication is confirmed on the public chain and the expense appears on the resident ledger.</dd>
     </div>
   </dl>
 </section>

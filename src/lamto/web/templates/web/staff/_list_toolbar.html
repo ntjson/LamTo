@@ -1,0 +1,17 @@
+<form method="get" class="queue-toolbar" role="search">
+  {% for f in filters %}{% if f.active %}<input type="hidden" name="{{ filter_param }}" value="{{ f.value }}">{% endif %}{% endfor %}
+  <label for="record-search">{{ search_label|default:"Search records" }}
+    <input id="record-search" name="q" value="{{ list_meta.query }}" placeholder="{{ search_placeholder|default:'ID, category, or name…' }}">
+  </label>
+  {% if list_meta.sort_options|length > 1 %}
+  <label for="record-sort">Sort by
+    <select id="record-sort" name="sort">
+      {% for opt in list_meta.sort_options %}
+      <option value="{{ opt.value }}" {% if opt.active %}selected{% endif %}>{{ opt.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <button type="submit" class="button button-secondary">Apply</button>
+  {% if list_meta.query or list_meta.sort %}<a class="text-link clear-filters" href="?">Clear</a>{% endif %}
+</form>

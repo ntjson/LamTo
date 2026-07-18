@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from lamto.accounts.capabilities import AUDIT_EXPORT
 from lamto.accounts.models import OrganizationMembership
 from lamto.audit.services import record_audit
-from lamto.evidence.models import BlockchainOutboxEvent
+from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.finance.fund import fund_balance
 from lamto.finance.integrity import verify_published_entry
 from lamto.finance.models import PublishedLedgerEntry, VerificationObservation
@@ -59,7 +59,16 @@ def audit_search(request):
         try:
             observation = verify_published_entry(entry.pk)
         except (ValidationError, PermissionDenied) as error:
-            messages.error(request, str(error))
+            detail = (
+                error.messages[0]
+                if getattr(error, "messages", None)
+                else "The integrity check could not run."
+            )
+            messages.error(
+                request,
+                f"No observation was appended. {detail} "
+                "The published record is unchanged — try the check again.",
+            )
         else:
             record_audit(
                 request.user,
@@ -149,6 +158,11 @@ def audit_search(request):
             transaction_ids=tx_ids,
             recomputed_balance=balance,
             outbox_event=outbox_event,
+            evidence_level_label=(
+                EvidenceLevel(outbox_event.evidence_level).label
+                if outbox_event is not None
+                else ""
+            ),
             search_entry_id=entry_id or "",
             accountability_stages=(
                 accountability_chain("publication") if entry is not None else None

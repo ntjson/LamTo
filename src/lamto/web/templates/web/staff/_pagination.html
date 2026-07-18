@@ -1,0 +1,11 @@
+{% if list_meta.page.has_other_pages %}
+<nav class="pagination" aria-label="{{ pagination_label|default:'Pages' }}">
+  {% if list_meta.page.has_previous %}
+  <a class="button button-secondary" href="?{% if list_meta.querystring %}{{ list_meta.querystring }}&amp;{% endif %}{{ list_meta.page_param }}={{ list_meta.page.previous_page_number }}">Previous</a>
+  {% endif %}
+  <span>Page {{ list_meta.page.number }} of {{ list_meta.page.paginator.num_pages }}</span>
+  {% if list_meta.page.has_next %}
+  <a class="button button-secondary" href="?{% if list_meta.querystring %}{{ list_meta.querystring }}&amp;{% endif %}{{ list_meta.page_param }}={{ list_meta.page.next_page_number }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}

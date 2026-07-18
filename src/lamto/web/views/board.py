@@ -22,7 +22,11 @@ from lamto.web.forms.staff import (
     VerifyPaymentForm,
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
-from lamto.web.views.staff_common import accountability_chain
+from lamto.web.views.staff_common import (
+    accountability_chain,
+    prepare_record_list,
+    signed_action_failure,
+)
 from lamto.web.staff_signing import document_pair_options, selected_pair
 
 
@@ -73,7 +77,11 @@ def payment_record(request):
             },
             status=400,
         )
-    messages.success(request, "Payment recorded.")
+    messages.success(
+        request,
+        "Payment recorded. An independent verifier now checks it "
+        "against the bank statement.",
+    )
     return redirect("web:payment-verify-detail", pk=payment.pk)
 
 
@@ -87,13 +95,19 @@ def payment_list(request):
     building_id = membership.organization.building_id
     status = request.GET.get("status") or ""
     valid_status = status in PaymentEvidence.ExternalStatus.values
-    pending_record = (
-        AcceptanceRecord.objects.filter(
-            work_order__case__building_id=building_id,
-            payment__isnull=True,
-        ).order_by("-accepted_at")[:50]
+    record_list = (
+        prepare_record_list(
+            request,
+            AcceptanceRecord.objects.filter(
+                work_order__case__building_id=building_id,
+                payment__isnull=True,
+            ).select_related("work_order__case"),
+            search_fields=("work_order__case__category",),
+            sorts=(("", "Newest first", ("-accepted_at",)),),
+            page_param="rpage",
+        )
         if PAYMENT_RECORD in caps
-        else []
+        else None
     )
     verify_qs = PaymentEvidence.objects.filter(
         acceptance__work_order__case__building_id=building_id,
@@ -101,26 +115,40 @@ def payment_list(request):
     )
     if valid_status:
         verify_qs = verify_qs.filter(external_status=status)
-    pending_verify = (
-        verify_qs.order_by("-recorded_at")[:50] if PAYMENT_VERIFY in caps else []
+    verify_list = (
+        prepare_record_list(
+            request,
+            verify_qs.select_related("acceptance__work_order__case"),
+            search_fields=(
+                "bank_reference",
+                "acceptance__work_order__case__category",
+            ),
+            sorts=(("", "Newest first", ("-recorded_at",)),),
+        )
+        if PAYMENT_VERIFY in caps
+        else None
     )
     record_items = [
         {
             "url": f"/s/payments/record/{a.pk}/",
-            "title": f"Acceptance #{a.pk} · {a.actual_cost_vnd} VND",
+            "title": f"Acceptance #{a.pk} · {a.actual_cost_vnd} VND"
+            f" · {a.work_order.case.category}",
             "status": None,
             "deadline": None,
+            "next_action": "Record payment",
         }
-        for a in pending_record
+        for a in (record_list["page"].object_list if record_list else [])
     ]
     verify_items = [
         {
             "url": f"/s/payments/verify/{p.pk}/",
-            "title": f"Payment #{p.pk} · {p.amount_vnd} VND",
+            "title": f"Payment #{p.pk} · {p.amount_vnd} VND"
+            f" · {p.acceptance.work_order.case.category}",
             "status": p.get_external_status_display(),
             "deadline": None,
+            "next_action": "Verify against bank statement",
         }
-        for p in pending_verify
+        for p in (verify_list["page"].object_list if verify_list else [])
     ]
     filters = [
         {"label": label, "value": value, "active": valid_status and value == status}
@@ -136,10 +164,12 @@ def payment_list(request):
             nav_active="finance",
             finance_active="payments",
             list_mode=True,
-            pending_record=pending_record,
-            pending_verify=pending_verify,
             record_items=record_items,
+            record_list=record_list,
             verify_items=verify_items,
+            verify_list=verify_list,
+            search_label="Search payments",
+            search_placeholder="ID, bank reference, or category…",
             filters=filters,
             filters_active=valid_status,
             filter_param="status",
@@ -196,15 +226,19 @@ def payment_record_detail(request, pk):
             proof_o, proof_r = pair
             try:
                 payment = record_form.save(acceptance, membership, proof_o, proof_r)
-            except ValidationError as error:
-                messages.error(
+            except (ValidationError, PermissionDenied) as error:
+                signed_action_failure(
                     request,
-                    error.messages[0] if getattr(error, "messages", None) else str(error),
+                    error,
+                    action="The payment record",
+                    next_step="Check the amount and linked proof, then sign again.",
                 )
-            except PermissionDenied as error:
-                messages.error(request, str(error) or "Permission denied.")
             else:
-                messages.success(request, "Payment recorded.")
+                messages.success(
+                    request,
+                    "Payment recorded. An independent verifier now checks it "
+                    "against the bank statement.",
+                )
                 return redirect("web:payment-verify-detail", pk=payment.pk)
 
     event_id = new_event_id()
@@ -354,15 +388,19 @@ def payment_verify_detail(request, pk):
             try:
                 # timestamp defaults to payment.recorded_at — must match typed data below
                 verify_form.save(payment, membership)
-            except ValidationError as error:
-                messages.error(
+            except (ValidationError, PermissionDenied) as error:
+                signed_action_failure(
                     request,
-                    error.messages[0] if getattr(error, "messages", None) else str(error),
+                    error,
+                    action="The payment verification",
+                    next_step="Check the decision and reason, then sign again.",
                 )
-            except PermissionDenied as error:
-                messages.error(request, str(error) or "Permission denied.")
             else:
-                messages.success(request, "Payment verification recorded.")
+                messages.success(
+                    request,
+                    "Payment verification recorded in the evidence chain. "
+                    "The expense can now be published to residents.",
+                )
                 return redirect("web:payment-verify-detail", pk=payment.pk)
 
     if can_verify:
@@ -490,15 +528,19 @@ def accept_work(request, pk):
             }
             try:
                 form.save(work_order, membership, docs)
-            except ValidationError as error:
-                messages.error(
+            except (ValidationError, PermissionDenied) as error:
+                signed_action_failure(
                     request,
-                    error.messages[0] if getattr(error, "messages", None) else str(error),
+                    error,
+                    action="The work acceptance",
+                    next_step="Check the cost and linked evidence, then sign again.",
                 )
-            except PermissionDenied as error:
-                messages.error(request, str(error) or "Permission denied.")
             else:
-                messages.success(request, "Work accepted.")
+                messages.success(
+                    request,
+                    "Work accepted. A payment recorder signs the matching "
+                    "bank transfer next.",
+                )
                 return redirect("web:work-order-detail", pk=work_order.pk)
 
     # Mint event id + typed data for MetaMask. Prefer POST values; else first
@@ -606,7 +648,11 @@ def emergency_authorize(request, pk):
             else:
                 raise
         else:
-            messages.success(request, "Emergency authorized.")
+            messages.success(
+                request,
+                "Emergency authorized. A resident representative or the Board "
+                "must ratify or reject this authorization afterwards.",
+            )
             return redirect("web:work-order-detail", pk=work_order.pk)
     return render(
         request,

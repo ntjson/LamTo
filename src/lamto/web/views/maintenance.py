@@ -12,7 +12,7 @@ from lamto.maintenance.models import WorkOrder
 from lamto.maintenance.workorders import start_work_order
 from lamto.web.forms.staff import CompleteWorkOrderForm
 from lamto.web.staff import resolve_active_membership, staff_context
-from lamto.web.views.staff_common import accountability_chain
+from lamto.web.views.staff_common import accountability_chain, prepare_record_list
 
 
 def _require_maintenance(membership):
@@ -36,22 +36,37 @@ def work_order_list(request):
     membership, memberships = resolve_active_membership(request)
     _require_maintenance(membership)
     building_id = membership.organization.building_id
-    qs = WorkOrder.objects.filter(case__building_id=building_id)
+    qs = WorkOrder.objects.filter(case__building_id=building_id).select_related("case")
     if membership.role == OrganizationMembership.Role.MAINTENANCE:
         qs = qs.filter(assignee=request.user)
     status = request.GET.get("status") or ""
     valid_status = status in WorkOrder.Status.values
     if valid_status:
         qs = qs.filter(status=status)
-    work_orders = qs.order_by("-created_at")[:100]
+    list_meta = prepare_record_list(
+        request,
+        qs,
+        search_fields=("case__category", "assignee__display_name"),
+        sorts=(
+            ("", "Newest first", ("-created_at",)),
+            ("deadline", "Deadline soonest", ("deadline_at",)),
+        ),
+    )
+    next_actions = {
+        WorkOrder.Status.ASSIGNED: "Start work",
+        WorkOrder.Status.IN_PROGRESS: "Complete work",
+        WorkOrder.Status.AWAITING_ACCEPTANCE: "Accept completed work",
+        WorkOrder.Status.ACCEPTED: "Record payment",
+    }
     items = [
         {
             "url": f"/s/work/{wo.pk}/",
-            "title": f"Work order #{wo.pk}",
-            "status": wo.status,
+            "title": f"Work order #{wo.pk} · {wo.case.category}",
+            "status": wo.get_status_display(),
             "deadline": wo.deadline_at,
+            "next_action": next_actions.get(wo.status, ""),
         }
-        for wo in work_orders
+        for wo in list_meta["page"].object_list
     ]
     filters = [
         {"label": label, "value": value, "active": valid_status and value == status}
@@ -67,6 +82,8 @@ def work_order_list(request):
             nav_active="work",
             list_mode=True,
             items=items,
+            list_meta=list_meta,
+            search_label="Search work orders",
             filters=filters,
             filters_active=valid_status,
             filter_param="status",
@@ -98,7 +115,16 @@ def work_order_detail(request, pk):
                 start_work_order(work_order, request.user)
             except (ValidationError, PermissionDenied) as error:
                 if isinstance(error, ValidationError):
-                    messages.error(request, str(error))
+                    detail = (
+                        error.messages[0]
+                        if getattr(error, "messages", None)
+                        else "The work order is not in a startable state."
+                    )
+                    messages.error(
+                        request,
+                        f"Work was not started. {detail} "
+                        "Nothing was changed — review the status and try again.",
+                    )
                 else:
                     raise
             else:
@@ -110,7 +136,10 @@ def work_order_detail(request, pk):
                     str(work_order.pk),
                     "accepted",
                 )
-                messages.success(request, "Work started.")
+                messages.success(
+                    request,
+                    "Work started. Complete it and link the before/after photos when done.",
+                )
                 return redirect("web:work-order-detail", pk=work_order.pk)
         elif action == "complete" and form.is_valid():
             try:
@@ -121,7 +150,10 @@ def work_order_detail(request, pk):
                 else:
                     raise
             else:
-                messages.success(request, "Work completed.")
+                messages.success(
+                    request,
+                    "Work completed. The Board reviews and accepts the finished work next.",
+                )
                 return redirect("web:work-order-detail", pk=work_order.pk)
 
     return render(

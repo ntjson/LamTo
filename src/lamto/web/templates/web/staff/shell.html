@@ -29,7 +29,7 @@
       <select id="active-membership" name="membership" class="input">
         {% for m in memberships %}
         <option value="{{ m.pk }}" {% if membership and m.pk == membership.pk %}selected{% endif %}>
-          {{ m.organization.building.name }} — {{ m.get_role_display }} (#{{ m.pk }})
+          {{ m.organization.building.name }} — {{ m.get_role_display }}
         </option>
         {% endfor %}
       </select>

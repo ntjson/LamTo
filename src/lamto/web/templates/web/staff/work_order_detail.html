@@ -2,8 +2,14 @@
 {% block title %}{% if list_mode %}Work orders{% else %}Work order #{{ work_order.pk }}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
-<section class="panel">
-  <h1>Work orders</h1>
+<section class="panel" aria-labelledby="work-heading">
+  <div class="panel-header">
+    <div>
+      <h1 id="work-heading">Work orders</h1>
+      <p class="hint">Every work order for this building. Each row shows the next step and its deadline.</p>
+    </div>
+  </div>
+  {% include "web/staff/_list_toolbar.html" %}
   {% include "web/staff/_list.html" %}
 </section>
 {% else %}

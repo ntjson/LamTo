@@ -45,7 +45,11 @@ from lamto.web.forms.staff import (
     SignProposalForm,
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
-from lamto.web.views.staff_common import accountability_chain
+from lamto.web.views.staff_common import (
+    accountability_chain,
+    prepare_record_list,
+    signed_action_failure,
+)
 from lamto.web.staff_signing import new_event_id, upload_document_pair
 
 
@@ -78,34 +82,63 @@ def case_list(request):
 
     status = request.GET.get("status") or ""
     valid_status = status in URGENCIES
-    open_reports = (
-        IssueReport.objects.filter(unit__building_id=building_id, status=IssueReport.Status.OPEN)
-        .order_by("-created_at")[:100]
+    from django.db.models import Count
+
+    report_list = prepare_record_list(
+        request,
+        IssueReport.objects.filter(
+            unit__building_id=building_id, status=IssueReport.Status.OPEN
+        ),
+        search_fields=("text", "location_path_snapshot"),
+        sorts=(("", "Newest first", ("-created_at",)),),
+        page_param="rpage",
     )
-    cases_qs = MaintenanceCase.objects.filter(building_id=building_id, active=True)
+    cases_qs = (
+        MaintenanceCase.objects.filter(building_id=building_id, active=True)
+        .select_related("location")
+        .annotate(work_count=Count("work_orders"))
+    )
     if valid_status:
         cases_qs = cases_qs.filter(urgency=status)
-    cases = cases_qs.order_by("-created_at")[:100]
+    case_list = prepare_record_list(
+        request,
+        cases_qs,
+        search_fields=("category", "department", "location__name"),
+        sorts=(
+            ("", "Newest first", ("-created_at",)),
+            ("deadline", "Deadline soonest", ("deadline_at",)),
+        ),
+    )
+    urgency_labels = {
+        "LOW": "Low",
+        "MEDIUM": "Medium",
+        "HIGH": "High",
+        "EMERGENCY": "Emergency",
+    }
     report_items = [
         {
             "url": f"/s/reports/{r.pk}/",
             "title": r.text,
             "status": r.get_status_display(),
             "deadline": None,
+            "next_action": "Confirm triage",
         }
-        for r in open_reports
+        for r in report_list["page"].object_list
     ]
     case_items = [
         {
             "url": f"/s/cases/{c.pk}/",
-            "title": f"Case #{c.pk} · {c.category}",
-            "status": c.urgency,
+            "title": f"Case #{c.pk} · {c.category} · {c.location.name}",
+            "status": urgency_labels.get(c.urgency, c.urgency.title()),
             "deadline": c.deadline_at,
+            "next_action": (
+                "Create work order" if c.work_count == 0 else "Follow work in progress"
+            ),
         }
-        for c in cases
+        for c in case_list["page"].object_list
     ]
     filters = [
-        {"label": u, "value": u, "active": valid_status and u == status}
+        {"label": urgency_labels[u], "value": u, "active": valid_status and u == status}
         for u in ("LOW", "MEDIUM", "HIGH", "EMERGENCY")
     ]
     return render(
@@ -117,10 +150,11 @@ def case_list(request):
             memberships,
             nav_active="cases",
             list_mode=True,
-            open_reports=open_reports,
-            cases=cases,
             report_items=report_items,
+            report_list=report_list,
             case_items=case_items,
+            case_list=case_list,
+            search_label="Search reports and cases",
             filters=filters,
             filters_active=valid_status,
             filter_param="status",
@@ -162,7 +196,10 @@ def report_detail(request, pk):
                         str(case.pk),
                         "accepted",
                     )
-                    messages.success(request, "Triage confirmed.")
+                    messages.success(
+                        request,
+                        "Triage confirmed. Create a work order to assign the repair.",
+                    )
                     return redirect("web:case-detail", pk=case.pk)
 
     return render(
@@ -208,7 +245,10 @@ def case_detail(request, pk):
                     else:
                         raise
                 else:
-                    messages.success(request, f"Work order #{wo.pk} created.")
+                    messages.success(
+                        request,
+                        f"Work order #{wo.pk} created. The assignee can now start work.",
+                    )
                     return redirect("web:work-order-detail", pk=wo.pk)
 
     if work_form is None:
@@ -264,19 +304,37 @@ def proposal_list(request):
     proposals_qs = Proposal.objects.filter(work_order__case__building_id=building_id)
     if valid_status:
         proposals_qs = proposals_qs.filter(status=status)
-    proposals = (
-        proposals_qs.select_related("current_version", "work_order")
-        .order_by("-created_at")[:100]
+    list_meta = prepare_record_list(
+        request,
+        proposals_qs.select_related("current_version", "work_order__case"),
+        search_fields=(
+            "current_version__contractor_name",
+            "work_order__case__category",
+        ),
+        sorts=(("", "Newest first", ("-created_at",)),),
     )
+    next_actions = {
+        Proposal.Status.DRAFT: "Complete and submit",
+        Proposal.Status.IN_REVIEW: "Review and decide",
+        Proposal.Status.NORMAL_AUTHORIZED: "Continue to acceptance and payment",
+        Proposal.Status.EMERGENCY_EVIDENCE: "Review emergency evidence",
+        Proposal.Status.REJECTED: "Correct and resubmit",
+    }
     proposal_items = [
         {
             "url": f"/s/proposals/{p.pk}/",
-            "title": f"Proposal #{p.pk}"
-            + (f" · {p.current_version.amount_vnd} VND" if p.current_version else ""),
+            "title": f"Proposal #{p.pk} · {p.work_order.case.category}"
+            + (
+                f" · {p.current_version.contractor_name}"
+                f" · {p.current_version.amount_vnd} VND"
+                if p.current_version
+                else ""
+            ),
             "status": p.get_status_display(),
             "deadline": None,
+            "next_action": next_actions.get(p.status, ""),
         }
-        for p in proposals
+        for p in list_meta["page"].object_list
     ]
     filters = [
         {"label": label, "value": value, "active": valid_status and value == status}
@@ -292,8 +350,10 @@ def proposal_list(request):
             nav_active="finance",
             finance_active="proposals",
             list_mode=True,
-            proposals=proposals,
             proposal_items=proposal_items,
+            list_meta=list_meta,
+            search_label="Search proposals",
+            search_placeholder="ID, contractor, or category…",
             filters=filters,
             filters_active=valid_status,
             filter_param="status",
@@ -344,15 +404,19 @@ def proposal_detail(request, pk):
             if publish_form.is_valid():
                 try:
                     publish_form.save(proposal, membership)
-                except ValidationError as error:
-                    messages.error(
+                except (ValidationError, PermissionDenied) as error:
+                    signed_action_failure(
                         request,
-                        error.messages[0] if getattr(error, "messages", None) else str(error),
+                        error,
+                        action="The publication",
+                        next_step="Check the publication details, then sign again.",
                     )
-                except PermissionDenied as error:
-                    messages.error(request, str(error) or "Permission denied.")
                 else:
-                    messages.success(request, "Publication snapshot prepared.")
+                    messages.success(
+                        request,
+                        "Publication snapshot prepared. Once independently confirmed, "
+                        "residents see this verified expense on the public ledger.",
+                    )
                     return redirect("web:proposal-detail", pk=proposal.pk)
             else:
                 detail = "; ".join(
@@ -367,21 +431,22 @@ def proposal_detail(request, pk):
             if form.is_valid():
                 try:
                     form.save(version, membership)
-                except ValidationError as error:
+                except (ValidationError, PermissionDenied) as error:
                     # Keep a visible flash — rebuilding the sign form below
                     # replaces the bound form and would hide field errors.
-                    messages.error(request, error.messages[0] if getattr(error, "messages", None) else str(error))
-                except PermissionDenied as error:
-                    # Typical: MetaMask signed with a different account than the
-                    # membership's registered wallet.
-                    messages.error(
+                    signed_action_failure(
                         request,
-                        str(error)
-                        or "The connected wallet does not match this role. "
-                        "Connect the registered wallet and submit again.",
+                        error,
+                        action="The decision",
+                        next_step="Check your decision and reason, then sign again.",
                     )
                 else:
-                    messages.success(request, "Decision recorded.")
+                    messages.success(
+                        request,
+                        "Decision recorded and added to the evidence chain. If approved, "
+                        "the proposal moves to the next required approval; if rejected, "
+                        "it returns to the creator for correction.",
+                    )
                     return redirect("web:proposal-detail", pk=proposal.pk)
             else:
                 # e.g. empty signature (MetaMask did not run / user left field blank)
@@ -483,11 +548,15 @@ def proposal_detail(request, pk):
                 )
         except (ValidationError, PermissionDenied, ValueError) as error:
             publish_typed_data = None
-            messages.error(
-                request,
+            detail = (
                 error.messages[0]
                 if getattr(error, "messages", None)
-                else str(error),
+                else "The publication package could not be prepared."
+            )
+            messages.error(
+                request,
+                f"Publication is not ready to sign. {detail} "
+                "Resolve the issue above, then reload this page.",
             )
         publish_form = PreparePublicationForm(
             initial={

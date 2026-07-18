@@ -17,9 +17,10 @@
 <section class="panel">
   <h2>Evidence event #{{ outbox_event.pk }}</h2>
   <dl class="detail-list detail-list-wide">
-    <div><dt>Status</dt><dd>{{ outbox_event.status }}</dd></div>
-    <div><dt>Evidence level</dt><dd>{{ outbox_event.evidence_level }}</dd></div>
+    <div><dt>Delivery status</dt><dd>{{ outbox_event.get_status_display }}</dd></div>
+    <div><dt>Evidence level</dt><dd>{{ evidence_level_label }}</dd></div>
   </dl>
+  <p class="hint">Evidence level is how far this event's proof has progressed: signed locally first, then confirmed on the public chain.</p>
   <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
     <summary>Technical proof</summary>
     <dl class="detail-list">

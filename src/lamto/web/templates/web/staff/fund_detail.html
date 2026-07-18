@@ -26,6 +26,7 @@
 
   <div class="workflow-section">
     <h2>Verified entries</h2>
+    <p class="queue-count">{{ entries_list.page.paginator.count }} entr{{ entries_list.page.paginator.count|pluralize:"y,ies" }}</p>
     <ul class="card-list">
       {% for entry in entries %}
       <li>
@@ -36,6 +37,7 @@
       <li><p>No verified entries.</p></li>
       {% endfor %}
     </ul>
+    {% include "web/staff/_pagination.html" with list_meta=entries_list pagination_label="Verified entry pages" %}
   </div>
 
   <div class="workflow-section">

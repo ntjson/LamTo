@@ -52,13 +52,13 @@
       {% if health.notification_failures or health.push_failures %}
       <div><dt>Notification failures</dt><dd>{{ health.notification_failures }}</dd></div>
       <div><dt>Push failures</dt><dd>{{ health.push_failures }}</dd></div>
-      <div><dt>Push sent (FCM success)</dt><dd>{{ health.push_sent_success }}</dd></div>
-      <div><dt>Push suppressed (not FCM success)</dt><dd>{{ health.push_suppressed }}</dd></div>
+      <div><dt>Push notifications delivered</dt><dd>{{ health.push_sent_success }}</dd></div>
+      <div><dt>Push notifications not delivered</dt><dd>{{ health.push_suppressed }}</dd></div>
       {% else %}
       <div><dt>Notification failures</dt><dd>{{ health.notification_failures }}</dd></div>
       <div><dt>Push failures</dt><dd>{{ health.push_failures }}</dd></div>
-      <div><dt>Push sent (FCM success)</dt><dd>{{ health.push_sent_success }}</dd></div>
-      <div><dt>Push suppressed (not FCM success)</dt><dd>{{ health.push_suppressed }}</dd></div>
+      <div><dt>Push notifications delivered</dt><dd>{{ health.push_sent_success }}</dd></div>
+      <div><dt>Push notifications not delivered</dt><dd>{{ health.push_suppressed }}</dd></div>
       {% endif %}
     </dl>
   </div>

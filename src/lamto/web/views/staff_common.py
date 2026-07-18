@@ -1,8 +1,12 @@
 """Shared staff routes: action inbox and membership switcher."""
 
+import logging
+
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -14,6 +18,72 @@ from lamto.web.staff import (
     staff_context,
     user_memberships,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+def signed_action_failure(request, error, *, action, next_step):
+    """Flash a task-focused recovery message; keep the raw error in server logs.
+
+    Covers what failed, that inputs are preserved, and the next safe action.
+    Backend exception text never reaches the flash for PermissionDenied.
+    """
+    logger.warning("%s failed: %s", action, error)
+    if isinstance(error, ValidationError):
+        detail = (
+            error.messages[0]
+            if getattr(error, "messages", None)
+            else "The server rejected the submitted values."
+        )
+    else:
+        # Typical PermissionDenied: MetaMask signed with a different account
+        # than the membership's registered wallet.
+        detail = "The connected wallet does not match the wallet registered for this role."
+        next_step = "Connect the registered wallet and sign again."
+    messages.error(
+        request,
+        f"{action} was not saved. {detail} "
+        f"Your entries are still on this page. {next_step}",
+    )
+
+
+def prepare_record_list(
+    request, qs, *, search_fields=(), sorts=(), page_param="page", per_page=20
+):
+    """Search, sort, and paginate a record list (same pattern as the action inbox).
+
+    ``sorts``: ``((value, label, order_by_fields), ...)``; the first entry is
+    the default. A numeric query also matches the record's ID.
+    """
+    query = (request.GET.get("q") or "").strip()
+    if query:
+        condition = Q()
+        for field in search_fields:
+            condition |= Q(**{f"{field}__icontains": query})
+        if query.isdigit():
+            condition |= Q(pk=int(query))
+        qs = qs.filter(condition)
+    sort = request.GET.get("sort") or ""
+    sort_map = {value: order_by for value, _label, order_by in sorts}
+    if sort not in sort_map:
+        sort = ""
+    if sorts:
+        qs = qs.order_by(*sort_map.get(sort, sorts[0][2]))
+    page = Paginator(qs, per_page).get_page(request.GET.get(page_param))
+    params = request.GET.copy()
+    params.pop(page_param, None)
+    return {
+        "page": page,
+        "query": query,
+        "sort": sort,
+        "sort_options": [
+            {"value": value, "label": label, "active": value == sort}
+            for value, label, _order in sorts
+        ],
+        "page_param": page_param,
+        "querystring": params.urlencode(),
+    }
 
 
 EXCEPTION_KINDS = {"failed_outbox", "integrity_mismatch", "quarantined_upload"}
@@ -134,22 +204,34 @@ ACCOUNTABILITY_STAGES = (
 )
 
 
+STAGE_STATE_LABELS = {
+    "complete": "Completed",
+    "current": "Current step",
+    "blocked": "Blocked",
+    "upcoming": "Not started",
+}
+
+
 def accountability_chain(current: str, *, blocked: bool = False):
     """Return ordered accountability stages with complete/current/upcoming/blocked state."""
     current_index = [key for key, _ in ACCOUNTABILITY_STAGES].index(current)
-    return [
-        {
-            "key": key,
-            "label": label,
-            "state": (
-                "blocked"
-                if index == current_index and blocked
-                else "current"
-                if index == current_index
-                else "complete"
-                if index < current_index
-                else "upcoming"
-            ),
-        }
-        for index, (key, label) in enumerate(ACCOUNTABILITY_STAGES)
-    ]
+    stages = []
+    for index, (key, label) in enumerate(ACCOUNTABILITY_STAGES):
+        state = (
+            "blocked"
+            if index == current_index and blocked
+            else "current"
+            if index == current_index
+            else "complete"
+            if index < current_index
+            else "upcoming"
+        )
+        stages.append(
+            {
+                "key": key,
+                "label": label,
+                "state": state,
+                "state_label": STAGE_STATE_LABELS[state],
+            }
+        )
+    return stages

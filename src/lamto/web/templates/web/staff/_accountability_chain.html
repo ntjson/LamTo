@@ -4,7 +4,7 @@
     {% for stage in accountability_stages %}
     <li class="accountability-stage accountability-stage-{{ stage.state }}"{% if stage.state == "current" or stage.state == "blocked" %} aria-current="step"{% endif %}>
       <span class="accountability-stage-label">{{ stage.label }}</span>
-      <span class="accountability-stage-state">{{ stage.state }}</span>
+      <span class="accountability-stage-state">{{ stage.state_label|default:stage.state }}</span>
     </li>
     {% endfor %}
   </ol>

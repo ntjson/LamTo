@@ -49,13 +49,16 @@ def _require_fund_access(request):
 @login_required
 @require_GET
 def fund_home(request):
+    from lamto.web.views.staff_common import prepare_record_list
+
     membership, memberships, caps = _require_fund_access(request)
     building_id = membership.organization.building_id
-    entries = (
-        verified_fund_entries(building_id)
-        .select_related("recorder", "verification")
-        .order_by("-recorded_at", "-pk")[:100]
+    entries_list = prepare_record_list(
+        request,
+        verified_fund_entries(building_id).select_related("recorder", "verification"),
+        sorts=(("", "Newest first", ("-recorded_at", "-pk")),),
     )
+    entries = entries_list["page"].object_list
     pending_verification = list(pending_fund_verification_entries(building_id)[:50])
     inflows, outflows = fund_period_flows(building_id, days=30)
     pending = pending_reconciliation_proposals(building_id)[:50]
@@ -70,6 +73,7 @@ def fund_home(request):
             finance_active="fund",
             list_mode=True,
             entries=entries,
+            entries_list=entries_list,
             pending_verification=pending_verification,
             balance_vnd=fund_balance(building_id, verified_only=True),
             period_inflows=inflows,
