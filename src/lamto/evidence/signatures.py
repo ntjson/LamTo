@@ -43,7 +43,8 @@ def build_evidence_typed_data(event_id, event_type, payload_hash_hex, previous_h
             "eventId": event_id,
             "payloadHash": payload_hash_hex,
             "previousHash": previous_hash_hex,
-            "eventType": event_type,
+            # Plain int so JSON/MetaMask eth_signTypedData_v4 never see an enum label.
+            "eventType": int(event_type),
         },
     }
 
@@ -52,15 +53,18 @@ def normalize_signature(signature) -> str:
     if isinstance(signature, str):
         value = signature.removeprefix("0x")
         try:
-            raw = bytes.fromhex(value)
+            raw = bytearray(bytes.fromhex(value))
         except ValueError as exc:
             raise ValueError("Signature must be hexadecimal.") from exc
-    elif isinstance(signature, bytes):
-        raw = signature
+    elif isinstance(signature, (bytes, bytearray)):
+        raw = bytearray(signature)
     else:
         raise ValueError("Signature must be bytes or hexadecimal.")
     if len(raw) != 65:
         raise ValueError("Signature must be exactly 65 bytes.")
+    # MetaMask / some wallets return recovery id as 0 or 1; EIP-155 style uses 27/28.
+    if raw[64] in (0, 1):
+        raw[64] = raw[64] + 27
     r = int.from_bytes(raw[:32], "big")
     s = int.from_bytes(raw[32:64], "big")
     if not 0 < r < SECP256K1_N or not 0 < s <= SECP256K1_N // 2 or raw[64] not in (27, 28):

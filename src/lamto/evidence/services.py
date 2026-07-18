@@ -402,8 +402,12 @@ def queue_signed_event(
         recovered = recover_signer(typed_data, signature)
     except Exception as exc:
         raise ValidationError("Evidence signature is invalid.") from exc
-    if recovered != wallet.address:
-        raise PermissionDenied("Evidence signature does not match the active wallet.")
+    # MetaMask / eth_account may differ on checksum casing; compare canonically.
+    if recovered.lower() != wallet.address.lower():
+        raise PermissionDenied(
+            "Evidence signature does not match the active wallet "
+            f"(signed as {recovered}, expected {wallet.address})."
+        )
     authorization = _signed_write_authorization(
         "evidence-queue",
         event_id,

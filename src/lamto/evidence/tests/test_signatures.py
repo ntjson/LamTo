@@ -49,7 +49,8 @@ class EvidenceSignatureTests(SimpleTestCase):
             encode_typed_data(full_message=typed), wallet.key
         ).signature
 
-        for invalid in (high_s_signature(signature), bytes(signature[:-1]), bytes(signature[:64]) + b"\x00"):
+        # v=0/1 are accepted (MetaMask) after normalize → 27/28; use v=2 as invalid.
+        for invalid in (high_s_signature(signature), bytes(signature[:-1]), bytes(signature[:64]) + b"\x02"):
             with self.subTest(signature=invalid), self.assertRaises(ValueError):
                 recover_signer(typed, invalid)
 

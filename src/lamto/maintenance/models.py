@@ -27,6 +27,9 @@ class BuildingLocation(models.Model):
         if self.parent_id and self.parent.building_id != self.building_id:
             raise ValidationError({"parent": "Parent location must belong to the same building."})
 
+    def __str__(self):
+        return self.name
+
     @property
     def path_label(self):
         names = []

@@ -2,7 +2,8 @@
  * Caches only versioned static assets and the offline shell.
  * Never caches authenticated HTML, API responses, documents, or mutations.
  */
-const VERSION = "lamto-web-v1";
+// Bump VERSION whenever staff signing JS changes so clients drop stale static.
+const VERSION = "lamto-web-v3";
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const OFFLINE_URL = "/offline/";
@@ -73,8 +74,23 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isStaticAsset(url) || url.pathname === OFFLINE_URL || url.pathname.endsWith("manifest.webmanifest")) {
+    // Network-first for JS (wallet signing must not stick on a stale build).
+    // Cache-first for other static (CSS/icons) after a successful network fetch.
+    const isJs = url.pathname.endsWith(".js");
     event.respondWith(
       caches.open(STATIC_CACHE).then(async (cache) => {
+        if (isJs) {
+          try {
+            const response = await fetch(request, { cache: "no-store" });
+            if (response && response.ok) {
+              cache.put(request, response.clone());
+            }
+            return response;
+          } catch (err) {
+            const cached = await cache.match(request);
+            return cached || Response.error();
+          }
+        }
         const cached = await cache.match(request);
         if (cached) {
           return cached;

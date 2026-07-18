@@ -401,6 +401,119 @@ def build_publication_evidence_typed_data(
     )
 
 
+def build_publication_sign_package(proposal, publisher, *, event_id, publication_id, timestamp):
+    """Compute the exact EIP-712 package MetaMask must sign for prepare_publication.
+
+    Read-only: does not write snapshots. Raises ValidationError/PermissionDenied
+    with the same gates as prepare_publication (except dual-control denial, which
+    is still enforced on write).
+    """
+    proposal = (
+        Proposal.objects.select_related(
+            "work_order__case__decision",
+            "current_version__outbox_event",
+            "creator_membership__user",
+        ).get(pk=proposal.pk)
+    )
+    actor = require_capability(publisher.user, publisher.pk, LEDGER_PUBLISH)
+    if actor.organization.kind != Organization.Kind.BOARD:
+        raise PermissionDenied("Only a Board membership may publish the ledger.")
+    work_order = proposal.work_order
+    if actor.organization.building_id != work_order.case.building_id:
+        raise PermissionDenied("Board must belong to the work-order building.")
+    if work_order.drill:
+        raise ValidationError("Drill-mode proposals cannot be published to the ledger.")
+    if PublicationSnapshot.objects.filter(proposal=proposal).exists():
+        raise ValidationError("Publication snapshot already exists for this proposal.")
+    if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
+        raise ValidationError("Proposal is already published.")
+
+    version = proposal.current_version
+    if version is None:
+        raise ValidationError("A current proposal version is required.")
+    acceptance, payment, verification = _load_execution_chain(proposal)
+    if verification.decision != PaymentVerification.Decision.VERIFIED:
+        raise ValidationError("Payment must be VERIFIED before publication.")
+    if payment.external_status != PaymentEvidence.ExternalStatus.COMPLETED:
+        raise ValidationError("Payment evidence status must be COMPLETED.")
+
+    emergency_outcome = None
+    emergency_outcome_hash = None
+    prerequisite_events = []
+    now = timestamp or timezone.now()
+
+    if proposal.mode == Proposal.Mode.NORMAL:
+        board = _board_approval(version)
+        rep = _rep_approval(version)
+        if board is None or rep is None:
+            raise ValidationError(
+                "Normal publication requires Board and resident-representative approvals."
+            )
+        prerequisite_events.extend(
+            [version.outbox_event, board.outbox_event, rep.outbox_event]
+        )
+    elif proposal.mode == Proposal.Mode.EMERGENCY:
+        authorization, ratification = _emergency_context(proposal, now)
+        emergency_outcome = (authorization, ratification)
+        prerequisite_events.extend([authorization.outbox_event, version.outbox_event])
+        if ratification.outbox_event_id:
+            prerequisite_events.append(ratification.outbox_event)
+            emergency_outcome_hash = ratification.outbox_event.payload_hash
+        else:
+            emergency_outcome_hash = authorization.outbox_event.payload_hash
+    else:
+        raise ValidationError("Proposal mode is not publishable.")
+
+    prerequisite_events.extend(
+        [acceptance.outbox_event, payment.outbox_event, verification.outbox_event]
+    )
+    for event in prerequisite_events:
+        _require_settled(event, "Prerequisite")
+
+    document_checks = _collect_document_checks(
+        proposal, version, acceptance, payment, verification
+    )
+    document_hashes = []
+    for version_doc, expected_hash, gate in document_checks:
+        actual, failure = _confirm_document(version_doc, expected_hash, gate)
+        if failure is not None:
+            raise ValidationError(failure.get("message") or "Publication document check failed.")
+        document_hashes.append(actual)
+    document_hashes = sorted(set(document_hashes))
+    resident_payload = _resident_payload(
+        proposal,
+        version,
+        acceptance,
+        payment,
+        verification,
+        document_hashes,
+        emergency_outcome=emergency_outcome,
+    )
+    if type(publication_id) is not int or publication_id <= 0:
+        raise ValidationError("Publication id must be a positive integer.")
+    prerequisite_event_hashes = [event.payload_hash for event in prerequisite_events]
+    previous_hash = "0x" + verification.outbox_event.payload_hash
+    typed = build_publication_evidence_typed_data(
+        proposal,
+        actor,
+        publication_id,
+        prerequisite_event_hashes,
+        resident_payload,
+        document_hashes,
+        event_id,
+        timestamp=timestamp,
+        emergency_outcome_hash=emergency_outcome_hash,
+        previous_hash=previous_hash,
+    )
+    return {
+        "typed_data": typed,
+        "publication_id": publication_id,
+        "event_id": event_id,
+        "timestamp": timestamp,
+        "forbidden_publisher": actor.user_id in _forbidden_publisher_user_ids(proposal, payment),
+    }
+
+
 def prepare_publication(
     proposal,
     publisher,

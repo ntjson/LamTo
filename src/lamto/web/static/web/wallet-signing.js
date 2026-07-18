@@ -7,16 +7,13 @@
  *   - child <script type="application/json" data-typed-data>
  *   - global window.lamtoBuildTypedData(form)
  *
- * If event_id and signature are already filled (manual/tests), submit proceeds.
- * Otherwise requests eth_requestAccounts + eth_signTypedData_v4 and populates
- * the form fields before POST.
+ * When data-expected-signer is set, ALWAYS re-sign with that account (never
+ * trust a pre-filled signature or MetaMask's display alone).
  */
 (function (global) {
   "use strict";
 
   function randomBytes32() {
-    // Event IDs must be cryptographically random (spec 2.2): a predictable ID
-    // would leak submission ordering to chain observers. No Math.random fallback.
     if (!global.crypto || typeof global.crypto.getRandomValues !== "function") {
       throw new Error("Secure random generator unavailable; cannot sign evidence.");
     }
@@ -29,14 +26,115 @@
     return "0x" + hex;
   }
 
+  function normalizeAccount(addr) {
+    return addr ? String(addr).toLowerCase() : "";
+  }
+
+  /** MetaMask often returns recovery id 0/1; server expects 27/28. */
+  function normalizeSignatureHex(sig) {
+    if (!sig || typeof sig !== "string") return sig;
+    var hex = sig.startsWith("0x") || sig.startsWith("0X") ? sig.slice(2) : sig;
+    if (hex.length !== 130) return sig;
+    var v = parseInt(hex.slice(128, 130), 16);
+    if (v === 0 || v === 1) {
+      hex = hex.slice(0, 128) + (v + 27).toString(16);
+    }
+    return "0x" + hex.toLowerCase();
+  }
+
+  /**
+   * Prefer MetaMask when Brave Wallet also injects window.ethereum.
+   * Watching the MetaMask panel while Brave answers request() causes
+   * "signed as <other address>" even when the panel shows the right account.
+   */
+  function getEthereumProvider() {
+    var eth = global.ethereum;
+    if (!eth) return null;
+    if (Array.isArray(eth.providers) && eth.providers.length) {
+      var i;
+      for (i = 0; i < eth.providers.length; i++) {
+        var p = eth.providers[i];
+        if (p && p.isMetaMask && !p.isBraveWallet) return p;
+      }
+      for (i = 0; i < eth.providers.length; i++) {
+        if (eth.providers[i] && eth.providers[i].isMetaMask) return eth.providers[i];
+      }
+      return eth.providers[0];
+    }
+    return eth;
+  }
+
   async function signTypedData(account, typedData) {
-    if (!global.ethereum || typeof global.ethereum.request !== "function") {
+    var eth = getEthereumProvider();
+    if (!eth || typeof eth.request !== "function") {
       throw new Error("A compatible wallet is required to sign this decision.");
     }
-    return global.ethereum.request({
+    var payload = JSON.parse(JSON.stringify(typedData));
+    if (payload.domain && typeof payload.domain.chainId === "string") {
+      payload.domain.chainId = parseInt(payload.domain.chainId, 10);
+    }
+    if (payload.message && typeof payload.message.eventType === "string") {
+      payload.message.eventType = parseInt(payload.message.eventType, 10);
+    }
+    return eth.request({
       method: "eth_signTypedData_v4",
-      params: [account, JSON.stringify(typedData)],
+      params: [account, JSON.stringify(payload)],
     });
+  }
+
+  function expectedSigner(form) {
+    return normalizeAccount(
+      (form && form.getAttribute("data-expected-signer")) ||
+        (form && form.dataset && form.dataset.expectedSigner) ||
+        ""
+    );
+  }
+
+  async function resolveSignerAccount(form) {
+    var eth = getEthereumProvider();
+    if (!eth || typeof eth.request !== "function") {
+      throw new Error("A compatible wallet is required to sign this decision.");
+    }
+    var providerLabel =
+      eth.isMetaMask && !eth.isBraveWallet
+        ? "MetaMask"
+        : eth.isBraveWallet
+          ? "Brave Wallet"
+          : "injected wallet";
+    var accounts = await eth.request({ method: "eth_requestAccounts" });
+    if (!accounts || !accounts.length) {
+      throw new Error(
+        "No account from " + providerLabel + ". Unlock it and connect this site."
+      );
+    }
+    var expected = expectedSigner(form);
+    if (expected) {
+      for (var i = 0; i < accounts.length; i++) {
+        if (normalizeAccount(accounts[i]) === expected) {
+          return accounts[i];
+        }
+      }
+      throw new Error(
+        "Form requires " +
+          expected +
+          " but " +
+          providerLabel +
+          " only exposed: " +
+          accounts.map(normalizeAccount).join(", ") +
+          ". Open THAT wallet extension (not a different panel), connect the " +
+          "required account to this site. If Brave Wallet and MetaMask both " +
+          "exist, disable Brave Wallet or set MetaMask as default."
+      );
+    }
+    var selected = normalizeAccount(eth.selectedAddress);
+    if (selected) {
+      for (var j = 0; j < accounts.length; j++) {
+        if (normalizeAccount(accounts[j]) === selected) {
+          return accounts[j];
+        }
+      }
+    }
+    return accounts[0];
   }
 
   function parseTypedData(form) {
@@ -83,8 +181,15 @@
     if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-signed-form")) {
       return;
     }
-    // Allow pre-filled signatures (manual entry / automated tests).
-    if (fieldValue(form, "signature") && fieldValue(form, "event_id")) {
+
+    // Never trust a pre-filled signature when the server declared a required
+    // signer — stale Operator signatures were the main multi-account footgun.
+    var mustReselect = !!expectedSigner(form);
+    if (
+      !mustReselect &&
+      fieldValue(form, "signature") &&
+      fieldValue(form, "event_id")
+    ) {
       return;
     }
 
@@ -92,6 +197,9 @@
     event.stopPropagation();
 
     try {
+      // Drop any leftover signature from a previous attempt.
+      setField(form, "signature", "");
+
       setStatus(form, "Preparing wallet signature…");
       var typedData = parseTypedData(form);
       if (!typedData) {
@@ -106,29 +214,36 @@
         typedData.message.eventId = randomBytes32();
       }
 
-      if (!global.ethereum || typeof global.ethereum.request !== "function") {
-        throw new Error("A compatible wallet is required to sign this decision.");
-      }
       setStatus(form, "Requesting wallet account…");
-      var accounts = await global.ethereum.request({ method: "eth_requestAccounts" });
-      var account = accounts && accounts[0];
-      if (!account) {
-        throw new Error("No wallet account available.");
+      var account = await resolveSignerAccount(form);
+      var expected = expectedSigner(form);
+      if (expected && normalizeAccount(account) !== expected) {
+        throw new Error(
+          "Refusing to sign: resolved " +
+            normalizeAccount(account) +
+            " but form requires " +
+            expected
+        );
       }
-      setStatus(form, "Sign the typed data in your wallet…");
+      setStatus(
+        form,
+        "Sign in MetaMask as " +
+          account +
+          " (must match registered role wallet). Check the address IN THE SIGN POPUP, not only the header."
+      );
+      if (typedData.message.eventId) {
+        setField(form, "event_id", typedData.message.eventId);
+      }
       var signature = await signTypedData(account, typedData);
-      setField(form, "event_id", typedData.message.eventId);
+      signature = normalizeSignatureHex(signature);
       setField(form, "signature", signature);
-      setStatus(form, "Submitting…");
+      setStatus(form, "Submitting as " + account + " …");
       form.removeEventListener("submit", handleSignedSubmit);
-      // Native submit skips listeners we just unbound.
       HTMLFormElement.prototype.submit.call(form);
     } catch (err) {
       var msg = (err && err.message) || String(err);
       setStatus(form, msg);
-      if (!form.querySelector("[data-signing-status]")) {
-        global.alert(msg);
-      }
+      global.alert(msg);
     }
   }
 
@@ -146,8 +261,8 @@
     handleSignedSubmit: handleSignedSubmit,
     parseTypedData: parseTypedData,
     randomBytes32: randomBytes32,
+    resolveSignerAccount: resolveSignerAccount,
   };
-  // Back-compat alias used by some templates/tests.
   global.signTypedData = signTypedData;
 
   if (document.readyState === "loading") {

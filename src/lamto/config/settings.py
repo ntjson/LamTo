@@ -274,6 +274,13 @@ CSRF_COOKIE_SAMESITE = "Lax"
 # Secure cookies when not in DEBUG (production / deploy-check).
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+# Required when the browser Origin is a reverse-proxy / Cloudflare tunnel host
+# (Django 4+ Origin check). Comma-separated full origins, e.g. https://xyz.trycloudflare.com
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
+]
 
 # MFA / re-auth
 LAMTO_REAUTH_MAX_AGE_SECONDS = int(os.getenv("LAMTO_REAUTH_MAX_AGE_SECONDS", "300"))

@@ -49,10 +49,19 @@
   <div class="signed-box">
     <h2>Accept work (signed)</h2>
     <p class="hint">Review the snapshot, then sign with your wallet via eth_signTypedData_v4.</p>
-    <form method="post" class="stack-form" data-signed-form>
+    {% if expected_signer %}
+    <p class="hint">Registered signer: <code>{{ expected_signer }}</code> (payment recorder wallet).</p>
+    {% endif %}
+    <form method="post" class="stack-form" data-signed-form id="accept-form"
+          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
       {% csrf_token %}
       {{ accept_form.as_p }}
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+      {% if typed_data %}
+      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+      <p class="hint" data-signing-status>MetaMask will sign typed data. Leave Signature empty. Mainnet + correct Connected account.</p>
+      {% else %}
+      <p class="hint" data-signing-status>No typed data — fill document IDs (invoice/acceptance pairs) then reload, or ask ops for pilot doc IDs.</p>
+      {% endif %}
       <button type="submit" class="button">Submit acceptance</button>
     </form>
   </div>

@@ -24,6 +24,29 @@ class AppLocalizationsVi extends AppLocalizations {
   String get loginSubmit => 'Đăng nhập';
 
   @override
+  String get apiBaseUrlTitle => 'Máy chủ API';
+
+  @override
+  String get apiBaseUrlLabel => 'URL API';
+
+  @override
+  String get apiBaseUrlHelp =>
+      'Dán URL Cloudflare tunnel (https://….trycloudflare.com). Đổi URL không cần cài APK mới. Lưu xong sẽ đăng xuất.';
+
+  @override
+  String get apiBaseUrlSave => 'Lưu URL';
+
+  @override
+  String get apiBaseUrlReset => 'Mặc định';
+
+  @override
+  String get apiBaseUrlInvalid =>
+      'URL không hợp lệ. Cần dạng https://… hoặc http://…';
+
+  @override
+  String get apiBaseUrlSaved => 'Đã lưu URL máy chủ.';
+
+  @override
   String get occupancyPickerTitle => 'Chọn căn hộ của bạn';
 
   @override

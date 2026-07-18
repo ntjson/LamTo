@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/failure.dart';
 import '../../l10n/app_localizations.dart';
+import '../settings/api_base_url_tile.dart';
 import 'session_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -80,6 +81,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               onPressed: _busy ? null : () => _submit(l10n),
               child: Text(l10n.loginSubmit),
             ),
+            const SizedBox(height: 24),
+            const ApiBaseUrlTile(),
           ],
         ),
       ),

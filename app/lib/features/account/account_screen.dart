@@ -6,6 +6,7 @@ import '../../core/failure.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/session_controller.dart';
+import '../settings/api_base_url_tile.dart';
 import '../transparency/transparency_repository.dart';
 
 /// The five resident notification categories (server defaults absent rows to
@@ -106,6 +107,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ],
             for (final category in residentPreferenceCategories(l10n))
               _prefRow(l10n, category, serverPrefs[category.code]),
+            const SizedBox(height: 24),
+            const ApiBaseUrlTile(),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: () =>

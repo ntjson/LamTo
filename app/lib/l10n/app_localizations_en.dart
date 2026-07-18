@@ -24,6 +24,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginSubmit => 'Sign in';
 
   @override
+  String get apiBaseUrlTitle => 'API server';
+
+  @override
+  String get apiBaseUrlLabel => 'API URL';
+
+  @override
+  String get apiBaseUrlHelp =>
+      'Paste your Cloudflare tunnel URL (https://….trycloudflare.com). No APK rebuild needed when the tunnel changes. Saving signs you out.';
+
+  @override
+  String get apiBaseUrlSave => 'Save URL';
+
+  @override
+  String get apiBaseUrlReset => 'Default';
+
+  @override
+  String get apiBaseUrlInvalid => 'Invalid URL. Use https://… or http://…';
+
+  @override
+  String get apiBaseUrlSaved => 'Server URL saved.';
+
+  @override
   String get occupancyPickerTitle => 'Choose your home';
 
   @override

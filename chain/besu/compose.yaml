@@ -61,7 +61,7 @@ services:
       - |
         BOOT="$${NODE1_ENODE:-}"
         if [ -n "$$BOOT" ]; then
-          BOOT_DOCKER=$$(printf '%s\n' "$$BOOT" | sed 's/@[^:]*:/@validator1:/')
+          # Besu 25+ requires an IP in bootnode URLs (not Docker DNS names).
           exec /opt/besu/bin/besu \
             --data-path=/data \
             --genesis-file=/config/genesis.json \
@@ -73,7 +73,7 @@ services:
             --p2p-host=0.0.0.0 \
             --p2p-port=30303 \
             --min-gas-price=0 \
-            --bootnodes=$$BOOT_DOCKER \
+            --bootnodes=$$BOOT \
             --discovery-enabled=true
         fi
         exec /opt/besu/bin/besu \
@@ -109,7 +109,7 @@ services:
       - |
         BOOT="$${NODE1_ENODE:-}"
         if [ -n "$$BOOT" ]; then
-          BOOT_DOCKER=$$(printf '%s\n' "$$BOOT" | sed 's/@[^:]*:/@validator1:/')
+          # Besu 25+ requires an IP in bootnode URLs (not Docker DNS names).
           exec /opt/besu/bin/besu \
             --data-path=/data \
             --genesis-file=/config/genesis.json \
@@ -121,7 +121,7 @@ services:
             --p2p-host=0.0.0.0 \
             --p2p-port=30303 \
             --min-gas-price=0 \
-            --bootnodes=$$BOOT_DOCKER \
+            --bootnodes=$$BOOT \
             --discovery-enabled=true
         fi
         exec /opt/besu/bin/besu \
@@ -157,7 +157,7 @@ services:
       - |
         BOOT="$${NODE1_ENODE:-}"
         if [ -n "$$BOOT" ]; then
-          BOOT_DOCKER=$$(printf '%s\n' "$$BOOT" | sed 's/@[^:]*:/@validator1:/')
+          # Besu 25+ requires an IP in bootnode URLs (not Docker DNS names).
           exec /opt/besu/bin/besu \
             --data-path=/data \
             --genesis-file=/config/genesis.json \
@@ -169,7 +169,7 @@ services:
             --p2p-host=0.0.0.0 \
             --p2p-port=30303 \
             --min-gas-price=0 \
-            --bootnodes=$$BOOT_DOCKER \
+            --bootnodes=$$BOOT \
             --discovery-enabled=true
         fi
         exec /opt/besu/bin/besu \

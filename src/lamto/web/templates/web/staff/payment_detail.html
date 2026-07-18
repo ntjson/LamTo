@@ -42,11 +42,20 @@
   {% if can_record and record_form %}
   <div class="signed-box">
     <h2>Record payment (signed)</h2>
-    <form method="post" class="stack-form" data-signed-form>
+    {% if expected_signer %}
+    <p class="hint">Registered signer: <code>{{ expected_signer }}</code></p>
+    {% endif %}
+    <form method="post" class="stack-form" data-signed-form id="record-payment-form"
+          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
       {% csrf_token %}
       <input type="hidden" name="action" value="record">
       {{ record_form.as_p }}
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+      {% if typed_data %}
+      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+      <p class="hint" data-signing-status>Leave Signature empty; MetaMask signs. Amount must equal actual cost.</p>
+      {% else %}
+      <p class="hint" data-signing-status>No typed data — fill proof original/redacted IDs then reload.</p>
+      {% endif %}
       <button type="submit" class="button">Record payment</button>
     </form>
   </div>
@@ -55,11 +64,20 @@
   {% if can_verify and verify_form %}
   <div class="signed-box">
     <h2>Payment verification (signed)</h2>
-    <form method="post" class="stack-form" data-signed-form>
+    {% if expected_signer %}
+    <p class="hint">Registered signer: <code>{{ expected_signer }}</code></p>
+    {% endif %}
+    <form method="post" class="stack-form" data-signed-form id="verify-payment-form"
+          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
       {% csrf_token %}
       <input type="hidden" name="action" value="verify">
       {{ verify_form.as_p }}
+      {% if typed_data %}
+      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+      <p class="hint" data-signing-status>Leave Signature empty; MetaMask signs with verifier wallet.</p>
+      {% else %}
       <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+      {% endif %}
       <button type="submit" class="button">Verify payment</button>
     </form>
   </div>

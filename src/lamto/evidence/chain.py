@@ -13,6 +13,7 @@ from eth_account import Account
 from eth_utils import to_checksum_address
 from web3 import Web3
 from web3.exceptions import TimeExhausted
+from web3.middleware import ExtraDataToPOAMiddleware
 
 # Stable PostgreSQL advisory-lock keys shared by worker replicas.
 RELAYER_NONCE_LOCK_KEY = 0x4C414D54_4F524C59  # "LAMTORLY"
@@ -116,6 +117,14 @@ class EvidenceRegistryClient:
         path = Path(abi_path) if abi_path is not None else _default_abi_path()
         self.abi = _load_abi(path)
         self.w3 = w3 or Web3(Web3.HTTPProvider(self.rpc_url))
+        # Besu QBFT embeds validator votes in extraData (>32 bytes); without this
+        # middleware eth_getBlockByNumber fails with ExtraDataLengthError.
+        if ExtraDataToPOAMiddleware not in self.w3.middleware_onion:
+            try:
+                self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+            except ValueError:
+                # Already present under another identity.
+                pass
         self.contract = self.w3.eth.contract(address=self.contract_address, abi=self.abi)
         self.last_receipt: dict[str, Any] | None = None
 
@@ -185,6 +194,28 @@ class EvidenceRegistryClient:
             )
         return tx_hash
 
+    def _fee_fields(self) -> dict[str, int]:
+        """Pick legacy gasPrice vs EIP-1559 fees from the active fork.
+
+        Local Besu QBFT is Berlin-only (no londonBlock / baseFeePerGas).
+        EIP-1559 type-2 txs are rejected with "Invalid transaction type".
+        """
+        latest = self.w3.eth.get_block("latest")
+        base_fee = latest.get("baseFeePerGas") if hasattr(latest, "get") else None
+        if base_fee is None and hasattr(latest, "baseFeePerGas"):
+            base_fee = latest.baseFeePerGas
+        if base_fee is not None:
+            priority = self.w3.to_wei(1, "gwei")
+            return {
+                "maxFeePerGas": int(base_fee) * 2 + priority,
+                "maxPriorityFeePerGas": priority,
+            }
+        # Pre-London / Berlin: type-0 legacy only.
+        gas_price = self.w3.eth.gas_price
+        if gas_price is None or int(gas_price) == 0:
+            gas_price = self.w3.to_wei(1, "gwei")
+        return {"gasPrice": int(gas_price)}
+
     def _send_locked(self, *, account, function, lock_key: int) -> str:
         """Allocate nonce under a shared advisory lock, then send_raw_transaction."""
         with connection.cursor() as cursor:
@@ -197,8 +228,7 @@ class EvidenceRegistryClient:
                         "nonce": nonce,
                         "chainId": self.chain_id,
                         "gas": 500_000,
-                        "maxFeePerGas": self.w3.to_wei(2, "gwei"),
-                        "maxPriorityFeePerGas": self.w3.to_wei(1, "gwei"),
+                        **self._fee_fields(),
                     }
                 )
                 signed = account.sign_transaction(tx)
@@ -227,30 +257,35 @@ class EvidenceRegistryClient:
 
 
 def _receipt_to_dict(receipt) -> dict[str, Any]:
-    if hasattr(receipt, "items"):
-        items = receipt.items()
-    else:
-        items = dict(receipt).items()
-    result: dict[str, Any] = {}
-    for key, value in items:
+    """Convert web3 AttributeDict / HexBytes receipt into JSON-safe dict."""
+
+    def convert(value):
+        if value is None or isinstance(value, (str, int, bool, float)):
+            return value
+        if isinstance(value, (bytes, bytearray)):
+            return "0x" + bytes(value).hex()
+        # HexBytes and other hex-able non-strings
         if hasattr(value, "hex") and not isinstance(value, (str, int, bool)):
-            result[key] = value.hex()
-            if not str(result[key]).startswith("0x"):
-                result[key] = "0x" + result[key]
-        elif isinstance(value, (bytes, bytearray)):
-            result[key] = "0x" + bytes(value).hex()
-        elif isinstance(value, list):
-            result[key] = [
-                (
-                    "0x" + bytes(item).hex()
-                    if isinstance(item, (bytes, bytearray))
-                    else item
-                )
-                for item in value
-            ]
-        else:
-            result[key] = value
-    if "status" in result:
+            try:
+                hexed = value.hex()
+                if isinstance(hexed, str):
+                    return hexed if hexed.startswith("0x") else "0x" + hexed
+            except Exception:
+                pass
+        if isinstance(value, dict) or hasattr(value, "items"):
+            try:
+                items = value.items()
+            except Exception:
+                items = dict(value).items()
+            return {str(k): convert(v) for k, v in items}
+        if isinstance(value, (list, tuple)):
+            return [convert(item) for item in value]
+        return value
+
+    result = convert(receipt)
+    if not isinstance(result, dict):
+        result = dict(result)
+    if "status" in result and result["status"] is not None:
         result["status"] = int(result["status"])
     if "blockNumber" in result and result["blockNumber"] is not None:
         result["blockNumber"] = int(result["blockNumber"])

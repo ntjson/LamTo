@@ -25,11 +25,36 @@
     <h2>Signed decision</h2>
     <p class="hint">Canonical snapshot hash: <code>{{ version.snapshot_hash }}</code></p>
     <pre id="snapshot-json">{{ version.snapshot }}</pre>
-    <form method="post" class="stack-form" data-signed-form>
+    <p class="hint">
+      Event id and Signature are hidden and automatic. Fill Reason + Decision only,
+      then Submit so MetaMask can sign. Changing Decision reloads typed data.
+    </p>
+    <form method="post" class="stack-form" data-signed-form id="decision-form"
+          {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
       {% csrf_token %}
       <input type="hidden" name="action" value="decide">
+      {% if expected_signer %}
+      <p class="hint">Registered signer for this role: <code>{{ expected_signer }}</code> — MetaMask must use this account.</p>
+      {% endif %}
+      {% if form.non_field_errors %}
+      <ul class="messages" role="alert">
+        {% for err in form.non_field_errors %}
+        <li class="message message-error">{{ err }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% for field in form %}
+        {% if field.errors %}
+        <p class="message message-error" role="alert"><strong>{{ field.label }}:</strong> {{ field.errors|striptags }}</p>
+        {% endif %}
+      {% endfor %}
       {{ form.as_p }}
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
+      {% if typed_data %}
+      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
+      <p class="hint" data-signing-status>MetaMask will sign typed data (Mainnet / chainId 1). Select the wallet for <strong>this login role</strong> (Board ≈ 0x9e3e…, Resident rep ≈ 0x090b…). Clear Signature before re-submitting after an error.</p>
+      {% else %}
+      <p class="hint" data-signing-status>No typed data available (already decided, wrong role, or missing board step).</p>
+      {% endif %}
       <button type="submit" class="button">Submit decision</button>
     </form>
   </div>
@@ -38,16 +63,53 @@
   {% if can_publish and publish_form %}
   <div class="signed-box">
     <h2>Prepare publication (signed)</h2>
-    <p class="hint">Publish verified spending to the resident ledger. Requires ledger.publish.</p>
-    <form method="post" class="stack-form" data-signed-form>
+    <p class="hint">
+      Publish verified spending to the resident ledger.
+      <strong>Do not type Event id, Signature, or Publication id</strong> —
+      they are filled automatically. Only Reason is optional text.
+    </p>
+    {% if publish_expected_signer %}
+    <p class="hint">Registered publisher wallet: <code>{{ publish_expected_signer }}</code></p>
+    {% endif %}
+    <form method="post" class="stack-form" data-signed-form id="publish-form"
+          {% if publish_expected_signer %}data-expected-signer="{{ publish_expected_signer }}"{% endif %}>
       {% csrf_token %}
       <input type="hidden" name="action" value="publish">
       {{ publish_form.as_p }}
-      <p class="hint" data-signing-status>Wallet will sign via eth_signTypedData_v4 when typed data is provided.</p>
-      <button type="submit" class="button">Prepare publication</button>
+      {% if publish_typed_data %}
+      <script type="application/json" data-typed-data>{{ publish_typed_data|safe }}</script>
+      <p class="hint" data-signing-status>
+        Ready: click <strong>Prepare publication</strong> → MetaMask Sign with publisher wallet
+        (Mainnet). No IDs to type.
+      </p>
+      {% else %}
+      <p class="hint" data-signing-status role="alert">
+        Publication not ready to sign (gates failed — see message above).
+      </p>
+      {% endif %}
+      <button type="submit" class="button" {% if not publish_typed_data %}disabled{% endif %}>
+        Prepare publication
+      </button>
     </form>
   </div>
   {% endif %}
 </section>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% if can_approve and form and version %}
+<script>
+(function () {
+  var form = document.getElementById("decision-form");
+  if (!form) return;
+  var decision = form.querySelector('[name="decision"]');
+  if (!decision) return;
+  decision.addEventListener("change", function () {
+    var url = new URL(window.location.href);
+    url.searchParams.set("decision", decision.value);
+    window.location.href = url.toString();
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}

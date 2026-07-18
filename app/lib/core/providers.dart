@@ -6,10 +6,13 @@ import '../features/auth/session_controller.dart';
 import '../features/push/push_registrar.dart';
 import '../features/push/push_token_source.dart';
 import '../features/transparency/transparency_repository.dart';
+import 'api_base_url.dart';
 import 'api_client.dart';
 import 'occupancy.dart';
 import 'occupancy_store.dart';
 import 'token_store.dart';
+
+export 'api_base_url.dart';
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
 final occupancyHolderProvider =
@@ -31,9 +34,11 @@ final sessionEstablishedProvider = Provider<bool>((ref) {
 });
 
 final dioProvider = Provider<Dio>((ref) {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
   return buildDio(
     store: ref.watch(tokenStoreProvider),
     occupancy: ref.watch(occupancyHolderProvider),
+    baseUrl: baseUrl,
     signalSessionLoss: () => ref.read(sessionEstablishedProvider),
     onUnauthorized: () => ref.invalidate(sessionControllerProvider),
   );

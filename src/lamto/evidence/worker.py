@@ -22,8 +22,15 @@ LEASE_SECONDS = 180
 def _json_safe(value):
     if isinstance(value, (bytes, bytearray)):
         return "0x" + bytes(value).hex()
-    if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
+    # AttributeDict and other Mapping-like receipt fields (not always real dict).
+    if isinstance(value, dict) or (
+        hasattr(value, "items") and not isinstance(value, (str, bytes, bytearray))
+    ):
+        try:
+            items = value.items()
+        except Exception:
+            return value
+        return {str(k): _json_safe(v) for k, v in items}
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
     if hasattr(value, "hex") and not isinstance(value, (str, int, bool, float)):

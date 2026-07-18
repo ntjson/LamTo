@@ -128,6 +128,48 @@ abstract class AppLocalizations {
   /// **'Sign in'**
   String get loginSubmit;
 
+  /// No description provided for @apiBaseUrlTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API server'**
+  String get apiBaseUrlTitle;
+
+  /// No description provided for @apiBaseUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'API URL'**
+  String get apiBaseUrlLabel;
+
+  /// No description provided for @apiBaseUrlHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste your Cloudflare tunnel URL (https://….trycloudflare.com). No APK rebuild needed when the tunnel changes. Saving signs you out.'**
+  String get apiBaseUrlHelp;
+
+  /// No description provided for @apiBaseUrlSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save URL'**
+  String get apiBaseUrlSave;
+
+  /// No description provided for @apiBaseUrlReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get apiBaseUrlReset;
+
+  /// No description provided for @apiBaseUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid URL. Use https://… or http://…'**
+  String get apiBaseUrlInvalid;
+
+  /// No description provided for @apiBaseUrlSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Server URL saved.'**
+  String get apiBaseUrlSaved;
+
   /// No description provided for @occupancyPickerTitle.
   ///
   /// In en, this message translates to:

@@ -34,7 +34,13 @@ class MembershipSwitchForm(forms.Form):
 class ConfirmTriageForm(forms.Form):
     category = forms.CharField(max_length=128, widget=forms.TextInput(attrs={"class": "input"}))
     urgency = forms.ChoiceField(
-        choices=[("LOW", "Low"), ("MEDIUM", "Medium"), ("HIGH", "High"), ("CRITICAL", "Critical")],
+        # Must match lamto.maintenance.ai.URGENCIES / confirm_triage.
+        choices=[
+            ("LOW", "Low"),
+            ("MEDIUM", "Medium"),
+            ("HIGH", "High"),
+            ("EMERGENCY", "Emergency"),
+        ],
         widget=forms.Select(attrs={"class": "input"}),
     )
     location = forms.ModelChoiceField(
@@ -110,18 +116,30 @@ class CompleteWorkOrderForm(forms.Form):
 class SignedDecisionForm(forms.Form):
     """Common fields for wallet-signed domain actions."""
 
-    event_id = forms.CharField(
-        max_length=66,
-        widget=forms.TextInput(attrs={"class": "input", "autocomplete": "off"}),
-    )
+    # Do not emit HTML5 required= on signature: wallet-signing.js fills it on
+    # submit via MetaMask. Server-side validation still requires the field.
+    use_required_attribute = False
+
+    # Hidden: pilots must not type event ids / signatures. Server + MetaMask own them.
+    event_id = forms.CharField(max_length=66, widget=forms.HiddenInput())
     signature = forms.CharField(
         max_length=132,
-        widget=forms.TextInput(attrs={"class": "input", "autocomplete": "off"}),
+        required=False,
+        widget=forms.HiddenInput(),
     )
     reason = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={"class": "input", "rows": 2}),
     )
+
+    def clean_signature(self):
+        value = (self.cleaned_data.get("signature") or "").strip()
+        if not value:
+            raise forms.ValidationError(
+                "Signature is required. Connect MetaMask and submit again, "
+                "or paste a valid hex signature."
+            )
+        return value
 
 
 class ProposalDecisionForm(SignedDecisionForm):
@@ -182,22 +200,35 @@ class RecordPaymentForm(SignedDecisionForm):
     )
     proof_original_id = forms.IntegerField(widget=forms.NumberInput(attrs={"class": "input"}))
     proof_redacted_id = forms.IntegerField(widget=forms.NumberInput(attrs={"class": "input"}))
-    payment_id = forms.IntegerField(
-        required=False, widget=forms.NumberInput(attrs={"class": "input"})
-    )
+    payment_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
+    # Must match the timestamp baked into EIP-712 typed data shown to MetaMask.
+    # Using timezone.now() again on POST would change the payload hash and make
+    # ecrecover return a random "signed as" address for a valid recorder signature.
+    completed_at = forms.CharField(widget=forms.HiddenInput())
+    # Document version ids stay as number inputs only if empty — prefilled hidden when set
+    # (still NumberInput so ops can override pilot IDs if needed).
 
     def save(self, acceptance, membership, proof_original, proof_redacted, completed_at=None):
         from django.utils import timezone
+        from django.utils.dateparse import parse_datetime
         from lamto.finance.payments import allocate_payment_id
 
         payment_id = self.cleaned_data.get("payment_id") or allocate_payment_id()
+        pinned = completed_at
+        if pinned is None:
+            raw = (self.cleaned_data.get("completed_at") or "").strip()
+            pinned = parse_datetime(raw) if raw else None
+        if pinned is not None and timezone.is_naive(pinned):
+            pinned = timezone.make_aware(pinned, timezone.utc)
+        if pinned is None:
+            pinned = timezone.now()
         return record_payment(
             acceptance,
             membership,
             self.cleaned_data["bank_reference"],
             self.cleaned_data["amount_vnd"],
             self.cleaned_data["external_status"],
-            completed_at or timezone.now(),
+            pinned,
             proof_original,
             proof_redacted,
             self.cleaned_data["signature"],
@@ -305,19 +336,27 @@ class NotificationPreferenceForm(forms.Form):
 class PreparePublicationForm(SignedDecisionForm):
     """Board ledger publication (signed)."""
 
-    publication_id = forms.IntegerField(
-        required=False, min_value=1, widget=forms.NumberInput(attrs={"class": "input"})
-    )
+    publication_id = forms.IntegerField(min_value=1, widget=forms.HiddenInput())
+    # Must match EIP-712 publication_timestamp baked into typed data.
+    publication_timestamp = forms.CharField(widget=forms.HiddenInput())
 
     def save(self, proposal, membership):
+        from django.utils import timezone
+        from django.utils.dateparse import parse_datetime
+
         from lamto.finance.publication import prepare_publication
 
+        raw = (self.cleaned_data.get("publication_timestamp") or "").strip()
+        ts = parse_datetime(raw) if raw else None
+        if ts is not None and timezone.is_naive(ts):
+            ts = timezone.make_aware(ts, timezone.utc)
         return prepare_publication(
             proposal,
             membership,
             self.cleaned_data["signature"],
             self.cleaned_data["event_id"],
             publication_id=self.cleaned_data.get("publication_id") or None,
+            timestamp=ts,
         )
 
 

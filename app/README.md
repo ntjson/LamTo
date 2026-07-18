@@ -22,6 +22,14 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 Android emulators reach the host at `10.0.2.2`; iOS simulators and Linux desktop
 use `http://127.0.0.1:8000`.
 
+### Runtime API URL (no APK rebuild)
+
+`--dart-define=API_BASE_URL=...` is only the **default**. On the login screen
+(and Account tab), expand **Máy chủ API**, paste a new base URL (for example a
+fresh `https://….trycloudflare.com`), and save. The value is stored in
+`SharedPreferences`; the next login uses it. Saving signs the user out so tokens
+are not reused against the wrong host.
+
 Firebase platform config (`google-services.json` / `GoogleService-Info.plist`) is
 **not** committed. Without it, push degrades to a no-op (see
 [`docs/ops/push-smoke-checklist.md`](../docs/ops/push-smoke-checklist.md)).

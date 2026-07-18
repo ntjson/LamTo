@@ -67,7 +67,8 @@
     {% block content %}{% endblock %}
   </main>
 
-  <script src="{% static 'web/wallet-signing.js' %}"></script>
+  {# Cache-bust: service worker previously froze an old wallet-signing.js #}
+  <script src="{% static 'web/wallet-signing.js' %}?v=4"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>
