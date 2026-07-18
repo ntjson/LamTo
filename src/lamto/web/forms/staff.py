@@ -128,6 +128,16 @@ class CompleteWorkOrderForm(forms.Form):
             document__kind=Document.Kind.AFTER_PHOTO
         )
 
+        def _label(obj):
+            return (
+                f"{obj.filename} (v{obj.version})"
+                if getattr(obj, "filename", None)
+                else str(obj.pk)
+            )
+
+        self.fields["before_versions"].label_from_instance = _label
+        self.fields["after_versions"].label_from_instance = _label
+
     def save(self, work_order, maintenance_user):
         return complete_work_order(
             work_order,
