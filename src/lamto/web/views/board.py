@@ -94,7 +94,17 @@ def payment_list(request):
         raise PermissionDenied("payment access")
     building_id = membership.organization.building_id
     status = request.GET.get("status") or ""
+    status_groups = {
+        "completed": (PaymentEvidence.ExternalStatus.COMPLETED,),
+        "attention": (
+            PaymentEvidence.ExternalStatus.FAILED,
+            PaymentEvidence.ExternalStatus.REVERSED,
+        ),
+    }
     valid_status = status in PaymentEvidence.ExternalStatus.values
+    active_group = status if status in status_groups else next(
+        (group for group, values in status_groups.items() if status in values), ""
+    )
     record_list = (
         prepare_record_list(
             request,
@@ -113,7 +123,9 @@ def payment_list(request):
         acceptance__work_order__case__building_id=building_id,
         verification__isnull=True,
     )
-    if valid_status:
+    if status in status_groups:
+        verify_qs = verify_qs.filter(external_status__in=status_groups[status])
+    elif valid_status:
         verify_qs = verify_qs.filter(external_status=status)
     verify_list = (
         prepare_record_list(
@@ -131,8 +143,8 @@ def payment_list(request):
     record_items = [
         {
             "url": f"/s/payments/record/{a.pk}/",
-            "title": f"Acceptance #{a.pk} · {a.actual_cost_vnd} VND"
-            f" · {a.work_order.case.category}",
+            "title": f"Acceptance #{a.pk} · {a.work_order.case.category}",
+            "amount_vnd": a.actual_cost_vnd,
             "status": None,
             "deadline": None,
             "next_action": "Record payment",
@@ -142,8 +154,8 @@ def payment_list(request):
     verify_items = [
         {
             "url": f"/s/payments/verify/{p.pk}/",
-            "title": f"Payment #{p.pk} · {p.amount_vnd} VND"
-            f" · {p.acceptance.work_order.case.category}",
+            "title": f"Payment #{p.pk} · {p.acceptance.work_order.case.category}",
+            "amount_vnd": p.amount_vnd,
             "status": p.get_external_status_display(),
             "deadline": None,
             "next_action": "Verify against bank statement",
@@ -151,8 +163,8 @@ def payment_list(request):
         for p in (verify_list["page"].object_list if verify_list else [])
     ]
     filters = [
-        {"label": label, "value": value, "active": valid_status and value == status}
-        for value, label in PaymentEvidence.ExternalStatus.choices
+        {"label": label, "value": value, "active": value == active_group}
+        for value, label in (("completed", "Completed"), ("attention", "Needs review"))
     ]
     return render(
         request,
@@ -171,7 +183,7 @@ def payment_list(request):
             search_label="Search payments",
             search_placeholder="ID, bank reference, or category…",
             filters=filters,
-            filters_active=valid_status,
+            filters_active=valid_status or status in status_groups,
             filter_param="status",
             can_record=PAYMENT_RECORD in caps,
             can_verify=PAYMENT_VERIFY in caps,

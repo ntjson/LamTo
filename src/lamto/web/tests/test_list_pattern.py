@@ -117,8 +117,26 @@ class ListPatternTests(TestCase):
         self.assertContains(resp, "filter-bar")
 
         filtered = self.client.get(reverse("web:work-order-list"), {"status": "ASSIGNED"})
-        self.assertContains(filtered, "ASSIGNED")
+        self.assertContains(filtered, "Assigned")
         self.assertNotContains(filtered, "COMPLETED")
+
+    def test_work_list_groups_status_filters_by_workflow(self):
+        building, _loc, user, membership, case = self._case_world(
+            email_prefix="work-groups"
+        )
+        active = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
+        done = self._make_work(building, case, user, WorkOrder.Status.CLOSED)
+        self._login(user, membership)
+
+        response = self.client.get(reverse("web:work-order-list"))
+        for label in ("Active", "Awaiting acceptance", "Done"):
+            self.assertContains(response, label)
+
+        filtered = self.client.get(
+            reverse("web:work-order-list"), {"status": "active"}
+        )
+        self.assertContains(filtered, f"Work order #{active.pk}")
+        self.assertNotContains(filtered, f"Work order #{done.pk}")
 
     def test_case_list_filters_active_cases_by_urgency(self):
         building, location, user, membership, high_case = self._case_world(
@@ -173,6 +191,12 @@ class ListPatternTests(TestCase):
         cleared = self.client.get(reverse("web:case-list"))
         self.assertContains(cleared, f"Case #{low_case.pk}")
 
+        urgent = self.client.get(reverse("web:case-list"), {"status": "urgent"})
+        self.assertContains(urgent, f"Case #{high_case.pk}")
+        self.assertNotContains(urgent, f"Case #{low_case.pk}")
+        self.assertContains(urgent, "Routine")
+        self.assertContains(urgent, "Urgent")
+
     def test_proposal_list_filters_by_status(self):
         building, _loc, user, membership, case = self._case_world(
             email_prefix="prop",
@@ -216,6 +240,14 @@ class ListPatternTests(TestCase):
         )
         self.assertContains(filtered, f"Proposal #{draft.pk}")
         self.assertNotContains(filtered, f"Proposal #{in_review.pk}")
+
+        review = self.client.get(
+            reverse("web:proposal-list"), {"status": "review"}
+        )
+        self.assertNotContains(review, f"Proposal #{draft.pk}")
+        self.assertContains(review, f"Proposal #{in_review.pk}")
+        for label in ("Preparing", "Review", "Authorized"):
+            self.assertContains(review, label)
 
     def test_payment_list_filters_verify_queue_by_external_status(self):
         """Filter chips on payment list narrow verify-queue by external_status."""

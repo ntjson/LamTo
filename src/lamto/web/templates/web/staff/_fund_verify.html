@@ -1,7 +1,8 @@
+{% load humanize %}
 <h1>Verify fund source #{{ entry.pk }}</h1>
 <dl class="detail-list">
   <div><dt>Type</dt><dd>{{ entry.get_entry_type_display }}</dd></div>
-  <div><dt>Amount</dt><dd>{{ entry.amount_vnd }} VND</dd></div>
+  <div><dt>Amount</dt><dd>{{ entry.amount_vnd|intcomma }} VND</dd></div>
   <div><dt>Recorded</dt><dd>{{ entry.recorded_at }}</dd></div>
 </dl>
 {% if already_verified %}
@@ -10,12 +11,13 @@
 <div class="workflow-section">
   <h2>Sign verification</h2>
   <p class="hint">A source recorder cannot verify their own source.</p>
-  <form method="post" class="stack-form" data-signed-form>
+  <form method="post" class="stack-form" data-signed-form data-review-form>
     {% csrf_token %}
     {{ verify_form.as_p }}
     <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
     <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign this independent verification.</p>
     <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+    {% include "web/staff/_review_summary.html" with review_kind="fund_verify" review_id="fund-verify" %}
     <button type="submit" class="button button-primary">Verify source</button>
   </form>
 </div>

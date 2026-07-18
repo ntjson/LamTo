@@ -1,4 +1,5 @@
 {% extends "web/staff/shell.html" %}
+{% load humanize %}
 {% block title %}Audit search · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
@@ -36,7 +37,7 @@
 <section class="panel">
   <h2>Published expense #{{ entry.pk }}</h2>
   <dl class="detail-list detail-list-wide">
-    <div><dt>Actual cost</dt><dd>{{ entry.actual_cost_vnd }} VND</dd></div>
+    <div><dt>Actual cost</dt><dd>{{ entry.actual_cost_vnd|intcomma }} VND</dd></div>
     <div><dt>Contractor</dt><dd>{{ entry.contractor_name }}</dd></div>
     <div><dt>Maintenance case</dt><dd>Case #{{ entry.case_id }}</dd></div>
     <div><dt>Work order</dt><dd>Work order #{{ entry.work_order_id }}</dd></div>

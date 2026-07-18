@@ -9,21 +9,11 @@
       <p class="hint">Open resident reports awaiting triage, and active maintenance cases with their next step and deadline.</p>
     </div>
   </div>
-  {% if filters %}
-  <div class="filter-bar" role="group" aria-label="Filter by urgency">
-    {% for f in filters %}
-    <a class="chip {% if f.active %}chip-active{% endif %}"
-       {% if f.active %}aria-current="true"{% endif %}
-       href="?{{ filter_param }}={{ f.value }}{% if case_list.query %}&amp;q={{ case_list.query|urlencode }}{% endif %}{% if case_list.sort %}&amp;sort={{ case_list.sort }}{% endif %}">{{ f.label }}</a>
-    {% endfor %}
-    <a class="chip {% if not filters_active %}chip-active{% endif %}" {% if not filters_active %}aria-current="true"{% endif %} href="?{% if case_list.query %}q={{ case_list.query|urlencode }}{% endif %}{% if case_list.sort %}&amp;sort={{ case_list.sort }}{% endif %}">All</a>
-  </div>
-  {% endif %}
   {% include "web/staff/_list_toolbar.html" with list_meta=case_list %}
   <h2>Open reports</h2>
   {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label="Open report pages" empty_label="No open reports." filters=None filters_active=False only %}
   <h2>Active cases</h2>
-  {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label="Active case pages" empty_label="No active cases." filters=None filters_active=False only %}
+  {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label="Active case pages" empty_label="No active cases." filters=filters filters_active=filters_active filter_param=filter_param only %}
 </section>
 {% else %}
 <section class="panel">

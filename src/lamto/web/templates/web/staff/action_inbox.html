@@ -1,4 +1,5 @@
 {% extends "web/staff/shell.html" %}
+{% load humanize %}
 {% block title %}Action inbox · LamTo{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="inbox-heading">
@@ -11,6 +12,7 @@
   </div>
 
   <form method="get" class="queue-toolbar" role="search">
+    {% if active_status %}<input type="hidden" name="status" value="{{ active_status }}">{% endif %}
     <label for="inbox-search">Search tasks
       <input id="inbox-search" name="q" value="{{ inbox_query }}" placeholder="Case, work order, payment…">
     </label>
@@ -22,17 +24,15 @@
         {% endfor %}
       </select>
     </label>
-    <label for="inbox-status">Queue
-      <select id="inbox-status" name="status">
-        <option value="">All queues</option>
-        {% for filter in status_filters %}
-        <option value="{{ filter.value }}" {% if active_status == filter.value %}selected{% endif %}>{{ filter.label }}</option>
-        {% endfor %}
-      </select>
-    </label>
     <button type="submit" class="button button-secondary">Apply filters</button>
     {% if inbox_query or active_kind or active_status %}<a class="text-link clear-filters" href="{% url 'web:action-inbox' %}">Clear</a>{% endif %}
   </form>
+  <nav class="filter-bar" aria-label="Filter by workflow">
+    <a class="chip {% if not active_status %}chip-active{% endif %}" {% if not active_status %}aria-current="true"{% endif %} href="?{% if inbox_query %}q={{ inbox_query|urlencode }}{% endif %}{% if active_kind %}&amp;kind={{ active_kind|urlencode }}{% endif %}">All</a>
+    {% for filter in status_filters %}
+    <a class="chip {% if active_status == filter.value %}chip-active{% endif %}" {% if active_status == filter.value %}aria-current="true"{% endif %} href="?status={{ filter.value }}{% if inbox_query %}&amp;q={{ inbox_query|urlencode }}{% endif %}{% if active_kind %}&amp;kind={{ active_kind|urlencode }}{% endif %}">{{ filter.label }}</a>
+    {% endfor %}
+  </nav>
 
   {% if action_groups %}
   <div class="task-queue">
@@ -45,9 +45,9 @@
           <a class="task-row" href="{{ item.url }}">
             <span class="task-action">{{ item.title }}</span>
             <span class="task-subject">{{ item.summary }}</span>
+            <span class="task-amount">{% if item.amount_vnd != None %}{{ item.amount_vnd|intcomma }} VND{% else %}—{% endif %}</span>
             <span class="task-meta">
-              <span>Responsible: {{ membership.get_role_display }}</span>
-              <span>{% if item.deadline_at %}Deadline: {{ item.deadline_at }}{% else %}No deadline set{% endif %}</span>
+              <span>{% if item.deadline_at %}Deadline {{ item.deadline_at|date:"M j, Y H:i" }}{% else %}No deadline set{% endif %}</span>
             </span>
           </a>
         </li>

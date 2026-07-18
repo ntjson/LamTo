@@ -40,8 +40,18 @@ def work_order_list(request):
     if membership.role == OrganizationMembership.Role.MAINTENANCE:
         qs = qs.filter(assignee=request.user)
     status = request.GET.get("status") or ""
+    status_groups = {
+        "active": (WorkOrder.Status.ASSIGNED, WorkOrder.Status.IN_PROGRESS),
+        "acceptance": (WorkOrder.Status.AWAITING_ACCEPTANCE,),
+        "done": (WorkOrder.Status.ACCEPTED, WorkOrder.Status.CLOSED, WorkOrder.Status.CANCELLED),
+    }
     valid_status = status in WorkOrder.Status.values
-    if valid_status:
+    active_group = status if status in status_groups else next(
+        (group for group, values in status_groups.items() if status in values), ""
+    )
+    if status in status_groups:
+        qs = qs.filter(status__in=status_groups[status])
+    elif valid_status:
         qs = qs.filter(status=status)
     list_meta = prepare_record_list(
         request,
@@ -69,8 +79,12 @@ def work_order_list(request):
         for wo in list_meta["page"].object_list
     ]
     filters = [
-        {"label": label, "value": value, "active": valid_status and value == status}
-        for value, label in WorkOrder.Status.choices
+        {"label": label, "value": value, "active": value == active_group}
+        for value, label in (
+            ("active", "Active"),
+            ("acceptance", "Awaiting acceptance"),
+            ("done", "Done"),
+        )
     ]
     return render(
         request,
@@ -85,7 +99,7 @@ def work_order_list(request):
             list_meta=list_meta,
             search_label="Search work orders",
             filters=filters,
-            filters_active=valid_status,
+            filters_active=valid_status or status in status_groups,
             filter_param="status",
             empty_label="No work orders.",
         ),

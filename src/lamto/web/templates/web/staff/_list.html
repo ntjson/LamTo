@@ -1,12 +1,12 @@
 {% if filters %}
-<div class="filter-bar" role="group" aria-label="Filter by status">
+<nav class="filter-bar" aria-label="Filter by workflow">
+  <a class="chip {% if not filters_active %}chip-active{% endif %}" {% if not filters_active %}aria-current="true"{% endif %} href="?{% if list_meta.query %}q={{ list_meta.query|urlencode }}{% endif %}{% if list_meta.sort %}&amp;sort={{ list_meta.sort }}{% endif %}">All</a>
   {% for f in filters %}
   <a class="chip {% if f.active %}chip-active{% endif %}"
      {% if f.active %}aria-current="true"{% endif %}
      href="?{{ filter_param }}={{ f.value }}{% if list_meta.query %}&amp;q={{ list_meta.query|urlencode }}{% endif %}{% if list_meta.sort %}&amp;sort={{ list_meta.sort }}{% endif %}">{{ f.label }}</a>
   {% endfor %}
-  <a class="chip {% if not filters_active %}chip-active{% endif %}" {% if not filters_active %}aria-current="true"{% endif %} href="?{% if list_meta.query %}q={{ list_meta.query|urlencode }}{% endif %}{% if list_meta.sort %}&amp;sort={{ list_meta.sort }}{% endif %}">All</a>
-</div>
+</nav>
 {% endif %}
 {% if list_meta %}
 <p class="queue-count">{{ list_meta.page.paginator.count }} result{{ list_meta.page.paginator.count|pluralize }}{% if list_meta.query %} for “{{ list_meta.query }}”{% endif %}</p>

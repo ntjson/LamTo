@@ -62,6 +62,7 @@ class ActionItem:
     url: str
     priority: int = 50
     deadline_at: datetime | None = None
+    amount_vnd: int | None = None
 
 
 def _has(membership, code: str) -> bool:
@@ -317,11 +318,12 @@ def _proposal_approval_items(membership, building_id: int) -> list[ActionItem]:
             ActionItem(
                 kind="proposal_approval",
                 title=title,
-                summary=f"Proposal #{proposal.pk} · {version.amount_vnd} VND",
+                summary=f"Proposal #{proposal.pk}",
                 target_type="Proposal",
                 target_id=proposal.pk,
                 url=reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
                 priority=20 if stage == ApprovalDecision.Stage.BOARD else 22,
+                amount_vnd=version.amount_vnd,
             )
         )
     return items
@@ -428,11 +430,12 @@ def _payment_record_items(building_id: int) -> list[ActionItem]:
             ActionItem(
                 kind="payment_record",
                 title="Record payment",
-                summary=f"Work order #{acceptance.work_order_id} · {acceptance.actual_cost_vnd} VND",
+                summary=f"Work order #{acceptance.work_order_id}",
                 target_type="AcceptanceRecord",
                 target_id=acceptance.pk,
                 url=reverse("web:payment-record-detail", kwargs={"pk": acceptance.pk}),
                 priority=16,
+                amount_vnd=acceptance.actual_cost_vnd,
             )
         )
     return items
@@ -453,11 +456,12 @@ def _payment_verify_items(building_id: int) -> list[ActionItem]:
             ActionItem(
                 kind="payment_verification",
                 title="Payment verification",
-                summary=f"Payment #{payment.pk} · {payment.amount_vnd} VND",
+                summary=f"Payment #{payment.pk}",
                 target_type="PaymentEvidence",
                 target_id=payment.pk,
                 url=reverse("web:payment-verify-detail", kwargs={"pk": payment.pk}),
                 priority=14,
+                amount_vnd=payment.amount_vnd,
             )
         )
     return items
@@ -494,6 +498,7 @@ def _pending_publication_items(building_id: int) -> list[ActionItem]:
                 target_id=proposal.pk,
                 url=reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
                 priority=17,
+                amount_vnd=verification.payment.amount_vnd,
             )
         )
     # Snapshots waiting finalize (settled outbox)

@@ -1,17 +1,19 @@
+{% load humanize %}
 <section class="panel">
   {% if mode == "record" %}
   <h1>Record fund source</h1>
   {% if sign_form %}
   <div class="workflow-section">
     <h2>Review and sign</h2>
-    <p class="hint">{{ sign_form.entry_type.value }} · {{ sign_form.amount_vnd.value }} VND</p>
-    <form method="post" class="stack-form" data-signed-form>
+    <p class="hint">{{ sign_form.entry_type.value }} · {{ sign_form.amount_vnd.value|intcomma }} VND</p>
+    <form method="post" class="stack-form" data-signed-form data-review-form>
       {% csrf_token %}
       <input type="hidden" name="action" value="submit">
       {{ sign_form.as_p }}
       <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
       <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign this fund source record.</p>
       <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+      {% include "web/staff/_review_summary.html" with review_kind="fund_record" review_id="fund-record" %}
       <button type="submit" class="button button-primary">Record source</button>
     </form>
   </div>

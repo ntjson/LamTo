@@ -221,6 +221,16 @@
     if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-signed-form")) {
       return;
     }
+    var submitControl = form.querySelector('[type="submit"]');
+    if (
+      submitControl &&
+      submitControl.getAttribute("aria-disabled") === "true"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      setStatus(form, "This action is not ready. Review the unmet checks above.");
+      return;
+    }
 
     // Never trust a pre-filled signature when the server declared a required
     // signer — stale Operator signatures were the main multi-account footgun.
@@ -286,6 +296,14 @@
   }
 
 
+  function formatVnd(value) {
+    var text = String(value == null ? "" : value).trim();
+    if (!/^-?\d+$/.test(text)) return text;
+    var sign = text.charAt(0) === "-" ? "-" : "";
+    var digits = sign ? text.slice(1) : text;
+    return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
   function bindReviewSummary(form) {
     if (!form.hasAttribute("data-review-form")) return;
     form.querySelectorAll("[data-review-value]").forEach(function (target) {
@@ -293,7 +311,10 @@
       if (!field) return;
       var update = function () {
         var option = field.selectedOptions && field.selectedOptions[0];
-        target.textContent = option ? option.textContent.trim() : field.value;
+        var value = option ? option.textContent.trim() : field.value;
+        target.textContent = target.dataset.reviewValue.endsWith("_vnd")
+          ? formatVnd(value)
+          : value;
       };
       field.addEventListener("input", update);
       field.addEventListener("change", update);
@@ -331,6 +352,7 @@
     handleSignedSubmit: handleSignedSubmit,
     bindTypedDataOptions: bindTypedDataOptions,
     bindReviewSummary: bindReviewSummary,
+    formatVnd: formatVnd,
     parseTypedData: parseTypedData,
     randomBytes32: randomBytes32,
     resolveSignerAccount: resolveSignerAccount,

@@ -81,7 +81,11 @@ def case_list(request):
     from lamto.maintenance.ai import URGENCIES
 
     status = request.GET.get("status") or ""
+    urgency_groups = {"routine": ("LOW", "MEDIUM"), "urgent": ("HIGH", "EMERGENCY")}
     valid_status = status in URGENCIES
+    active_group = status if status in urgency_groups else next(
+        (group for group, values in urgency_groups.items() if status in values), ""
+    )
     from django.db.models import Count
 
     report_list = prepare_record_list(
@@ -98,7 +102,9 @@ def case_list(request):
         .select_related("location")
         .annotate(work_count=Count("work_orders"))
     )
-    if valid_status:
+    if status in urgency_groups:
+        cases_qs = cases_qs.filter(urgency__in=urgency_groups[status])
+    elif valid_status:
         cases_qs = cases_qs.filter(urgency=status)
     case_list = prepare_record_list(
         request,
@@ -138,8 +144,8 @@ def case_list(request):
         for c in case_list["page"].object_list
     ]
     filters = [
-        {"label": urgency_labels[u], "value": u, "active": valid_status and u == status}
-        for u in ("LOW", "MEDIUM", "HIGH", "EMERGENCY")
+        {"label": label, "value": value, "active": value == active_group}
+        for value, label in (("routine", "Routine"), ("urgent", "Urgent"))
     ]
     return render(
         request,
@@ -156,7 +162,7 @@ def case_list(request):
             case_list=case_list,
             search_label="Search reports and cases",
             filters=filters,
-            filters_active=valid_status,
+            filters_active=valid_status or status in urgency_groups,
             filter_param="status",
         ),
     )
@@ -300,9 +306,19 @@ def proposal_list(request):
 
     building_id = membership.organization.building_id
     status = request.GET.get("status") or ""
+    status_groups = {
+        "preparing": (Proposal.Status.DRAFT, Proposal.Status.REJECTED),
+        "review": (Proposal.Status.IN_REVIEW, Proposal.Status.EMERGENCY_EVIDENCE),
+        "authorized": (Proposal.Status.NORMAL_AUTHORIZED,),
+    }
     valid_status = status in Proposal.Status.values
+    active_group = status if status in status_groups else next(
+        (group for group, values in status_groups.items() if status in values), ""
+    )
     proposals_qs = Proposal.objects.filter(work_order__case__building_id=building_id)
-    if valid_status:
+    if status in status_groups:
+        proposals_qs = proposals_qs.filter(status__in=status_groups[status])
+    elif valid_status:
         proposals_qs = proposals_qs.filter(status=status)
     list_meta = prepare_record_list(
         request,
@@ -326,10 +342,10 @@ def proposal_list(request):
             "title": f"Proposal #{p.pk} · {p.work_order.case.category}"
             + (
                 f" · {p.current_version.contractor_name}"
-                f" · {p.current_version.amount_vnd} VND"
                 if p.current_version
                 else ""
             ),
+            "amount_vnd": p.current_version.amount_vnd if p.current_version else None,
             "status": p.get_status_display(),
             "deadline": None,
             "next_action": next_actions.get(p.status, ""),
@@ -337,8 +353,12 @@ def proposal_list(request):
         for p in list_meta["page"].object_list
     ]
     filters = [
-        {"label": label, "value": value, "active": valid_status and value == status}
-        for value, label in Proposal.Status.choices
+        {"label": label, "value": value, "active": value == active_group}
+        for value, label in (
+            ("preparing", "Preparing"),
+            ("review", "Review"),
+            ("authorized", "Authorized"),
+        )
     ]
     return render(
         request,
@@ -355,7 +375,7 @@ def proposal_list(request):
             search_label="Search proposals",
             search_placeholder="ID, contractor, or category…",
             filters=filters,
-            filters_active=valid_status,
+            filters_active=valid_status or status in status_groups,
             filter_param="status",
             can_publish=LEDGER_PUBLISH in caps,
             publish_only=LEDGER_PUBLISH in caps

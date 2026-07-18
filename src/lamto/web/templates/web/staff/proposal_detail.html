@@ -1,4 +1,5 @@
 {% extends "web/staff/shell.html" %}
+{% load humanize %}
 {% block title %}{% if list_mode %}Proposals{% else %}Proposal #{{ proposal.pk }}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
@@ -22,7 +23,7 @@
       <dl class="detail-list detail-list-wide">
         <div><dt>Status</dt><dd>{{ proposal.get_status_display }}</dd></div>
         {% if version %}
-        <div><dt>Amount</dt><dd>{{ version.amount_vnd }} VND</dd></div>
+        <div><dt>Amount</dt><dd>{{ version.amount_vnd|intcomma }} VND</dd></div>
         <div><dt>Contractor</dt><dd>{{ version.contractor_name }}</dd></div>
         <div><dt>Maintenance case</dt><dd>{{ proposal.work_order.case.category }} · Case #{{ proposal.work_order.case_id }}</dd></div>
         <div><dt>Work order</dt><dd><a href="{% url 'web:work-order-detail' proposal.work_order_id %}">#{{ proposal.work_order_id }}</a></dd></div>
@@ -79,39 +80,7 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">This decision is not ready to sign. Check the required prior approval.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <section class="review-summary" aria-labelledby="review-summary-heading-decide">
-  <h3 class="review-summary-title" id="review-summary-heading-decide">What you are signing</h3>
-  <dl class="detail-list review-summary-list">
-    <div>
-      <dt>Action</dt>
-      <dd data-decision-label>Approve proposal</dd>
-    </div>
-    <div>
-      <dt>Acting as</dt>
-      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
-    </div>
-    <div>
-      <dt>Proposed amount</dt>
-      <dd>{{ version.amount_vnd }} VND</dd>
-    </div>
-    <div>
-      <dt>Contractor</dt>
-      <dd>{{ version.contractor_name }}</dd>
-    </div>
-    <div>
-      <dt>Decision</dt>
-      <dd data-review-value="decision">—</dd>
-    </div>
-    <div>
-      <dt>Consequence</dt>
-      <dd>Your signed decision is append-only. Approval advances dual control; rejection returns the proposal for correction.</dd>
-    </div>
-    <div>
-      <dt>What happens next</dt>
-      <dd>If approved, the next required role continues dual control or the proposal becomes eligible for work and later payment. If rejected, the operator corrects and resubmits.</dd>
-    </div>
-  </dl>
-</section>
+          {% include "web/staff/_review_summary.html" with review_kind="proposal_decide" review_id="proposal-decide" %}
           <div class="form-actions">
             <button type="submit" class="button button-primary" data-decision-submit>Sign and approve proposal</button>
             <a class="button button-secondary" href="{% url 'web:proposal-list' %}">Cancel</a>
@@ -136,29 +105,9 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Publication is not ready. Review the unmet checks above.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <section class="review-summary" aria-labelledby="review-summary-heading-publish">
-  <h3 class="review-summary-title" id="review-summary-heading-publish">What you are signing</h3>
-  <dl class="detail-list review-summary-list">
-    <div>
-      <dt>Action</dt>
-      <dd>Publish to resident ledger</dd>
-    </div>
-    <div>
-      <dt>Acting as</dt>
-      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
-    </div>
-    <div>
-      <dt>Consequence</dt>
-      <dd>Prepares an append-only publication snapshot for the resident ledger. Residents will see the verified expense once it is confirmed on the public chain.</dd>
-    </div>
-    <div>
-      <dt>What happens next</dt>
-      <dd>The publication is confirmed on the public chain and the expense appears on the resident ledger.</dd>
-    </div>
-  </dl>
-</section>
+          {% include "web/staff/_review_summary.html" with review_kind="proposal_publish" review_id="proposal-publish" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not publish_typed_data %}disabled{% endif %}>
+            <button type="submit" class="button button-primary" {% if not publish_typed_data %}aria-disabled="true"{% endif %}>
               Sign and publish to resident ledger
             </button>
             <a class="button button-secondary" href="{% url 'web:proposal-list' %}">Cancel</a>

@@ -1,5 +1,6 @@
 import json
 import inspect
+import re
 import subprocess
 from pathlib import Path
 
@@ -158,6 +159,7 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
                 "work_order_detail.html",
                 "proposal_detail.html",
                 "payment_detail.html",
+                "_review_summary.html",
             )
         )
         self.assertIn("What you are signing", templates)
@@ -166,6 +168,91 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         self.assertIn("Sign and accept work", templates)
         self.assertIn("Sign and record payment", templates)
         self.assertIn("bindReviewSummary", WALLET_JS.read_text(encoding="utf-8"))
+
+    def test_signing_forms_share_an_accessible_review_summary(self):
+        partial_name = 'staff/_review_summary.html'
+        for name in (
+            "_fund_forms.html",
+            "proposal_create.html",
+            "work_order_detail.html",
+            "proposal_detail.html",
+            "payment_detail.html",
+        ):
+            source = (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
+            self.assertIn(partial_name, source)
+
+        partial = (STAFF_TEMPLATES / "_review_summary.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('class="review-summary"', partial)
+        self.assertIn('aria-live="polite"', partial)
+        self.assertIn("What happens next", partial)
+
+        templates = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in STAFF_TEMPLATES.glob("*.html")
+            if path.name != "_review_summary.html"
+        )
+        self.assertNotIn('<section class="review-summary"', templates)
+
+    def test_staff_vnd_values_are_humanized_in_templates_and_review_js(self):
+        for path in STAFF_TEMPLATES.glob("*.html"):
+            source = path.read_text(encoding="utf-8")
+            rendered_vnd = re.findall(r"{{[^}]*_vnd[^}]*}}", source)
+            for expression in rendered_vnd:
+                self.assertIn(
+                    "|intcomma",
+                    expression,
+                    f"{path.name} leaves a VND amount unformatted: {expression}",
+                )
+
+        wallet = WALLET_JS.read_text(encoding="utf-8")
+        self.assertIn("formatVnd", wallet)
+        self.assertIn('endsWith("_vnd")', wallet)
+
+        script = f"""
+const fs = require('fs');
+const vm = require('vm');
+const document = {{ readyState: 'complete', querySelectorAll: () => [] }};
+const window = {{ document }};
+vm.runInNewContext(fs.readFileSync({json.dumps(str(WALLET_JS))}, 'utf8'), {{
+  window, document, globalThis: {{}}
+}});
+if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
+  process.exit(1);
+}}
+"""
+        result = subprocess.run(
+            ["node", "-e", script], capture_output=True, text=True, check=False
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_not_ready_signing_controls_remain_focusable(self):
+        templates = "\n".join(
+            path.read_text(encoding="utf-8") for path in STAFF_TEMPLATES.glob("*.html")
+        )
+        self.assertNotRegex(templates, r"\{% if not [^%]+ %\}disabled\{% endif %\}")
+        self.assertIn('aria-disabled="true"', templates)
+
+        wallet = WALLET_JS.read_text(encoding="utf-8")
+        self.assertIn('getAttribute("aria-disabled") === "true"', wallet)
+
+    def test_lists_use_cards_and_cases_reuse_the_shared_list(self):
+        shared_list = (STAFF_TEMPLATES / "_list.html").read_text(encoding="utf-8")
+        cases = (STAFF_TEMPLATES / "case_detail.html").read_text(encoding="utf-8")
+        css = APP_CSS.read_text(encoding="utf-8")
+
+        self.assertIn('class="card-list"', shared_list)
+        self.assertIn('class="card-link"', shared_list)
+        self.assertIn("staff/_list.html", cases)
+        self.assertNotIn('<div class="filter-bar"', cases)
+        self.assertNotIn(".record-row", css)
+
+    def test_ops_attention_states_link_to_the_exception_queue_without_dead_branches(self):
+        ops = (STAFF_TEMPLATES / "ops_health.html").read_text(encoding="utf-8")
+        self.assertEqual(ops.count("Needs attention</a>"), 5)
+        self.assertIn("status=exceptions", ops)
+        self.assertNotRegex(ops, r"\{% if health\.[^%]+ %\}\s*<div><dt>")
 
     def test_fund_and_ops_use_product_specific_hierarchy(self):
         fund = (STAFF_TEMPLATES / "fund_detail.html").read_text(encoding="utf-8")

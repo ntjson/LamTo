@@ -1,4 +1,5 @@
 {% extends "web/staff/shell.html" %}
+{% load humanize %}
 {% block title %}{% if list_mode %}Payments{% elif payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
@@ -9,15 +10,6 @@
       <p class="hint">Accepted work waiting for payment, and recorded payments waiting for independent verification.</p>
     </div>
   </div>
-  {% if filters %}
-  <div class="filter-bar" role="group" aria-label="Filter by status">
-    {% for f in filters %}
-    <a class="chip {% if f.active %}chip-active{% endif %}" {% if f.active %}aria-current="true"{% endif %}
-       href="?{{ filter_param }}={{ f.value }}{% if verify_list.query %}&amp;q={{ verify_list.query|urlencode }}{% endif %}">{{ f.label }}</a>
-    {% endfor %}
-    <a class="chip {% if not filters_active %}chip-active{% endif %}" {% if not filters_active %}aria-current="true"{% endif %} href="?{% if verify_list.query %}q={{ verify_list.query|urlencode }}{% endif %}">All</a>
-  </div>
-  {% endif %}
   {% include "web/staff/_list_toolbar.html" with list_meta=verify_list|default:record_list %}
   {% if can_record %}
   <h2>Record payment</h2>
@@ -25,7 +17,7 @@
   {% endif %}
   {% if can_verify %}
   <h2>Payment verification</h2>
-  {% include "web/staff/_list.html" with items=verify_items list_meta=verify_list pagination_label="Verification queue pages" empty_label="No recorded payments are waiting for verification." filters=None filters_active=False only %}
+  {% include "web/staff/_list.html" with items=verify_items list_meta=verify_list pagination_label="Verification queue pages" empty_label="No recorded payments are waiting for verification." filters=filters filters_active=filters_active filter_param=filter_param only %}
   {% endif %}
 </section>
 {% else %}
@@ -36,10 +28,10 @@
     <div class="record-summary">
       <p class="lede">Work order #{{ acceptance.work_order_id }} · {{ acceptance.work_order.case.category }}</p>
       <dl class="detail-list detail-list-wide">
-        <div><dt>Actual work cost</dt><dd>{{ acceptance.actual_cost_vnd }} VND</dd></div>
+        <div><dt>Actual work cost</dt><dd>{{ acceptance.actual_cost_vnd|intcomma }} VND</dd></div>
         {% if payment %}
         <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
-        <div><dt>Recorded amount</dt><dd>{{ payment.amount_vnd }} VND</dd></div>
+        <div><dt>Recorded amount</dt><dd>{{ payment.amount_vnd|intcomma }} VND</dd></div>
         <div><dt>Payment status</dt><dd>{{ payment.get_external_status_display }}</dd></div>
         <div><dt>Evidence</dt><dd>Original and resident-safe payment proof linked</dd></div>
         {% else %}
@@ -78,45 +70,9 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Payment is not ready. Link both versions of the payment proof, then try again.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <section class="review-summary" aria-labelledby="review-summary-heading-record">
-  <h3 class="review-summary-title" id="review-summary-heading-record">What you are signing</h3>
-  <dl class="detail-list review-summary-list">
-    <div>
-      <dt>Action</dt>
-      <dd>Record payment</dd>
-    </div>
-    <div>
-      <dt>Acting as</dt>
-      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
-    </div>
-    <div>
-      <dt>Amount (VND)</dt>
-      <dd data-review-value="amount_vnd">—</dd>
-    </div>
-    <div>
-      <dt>Bank reference</dt>
-      <dd data-review-value="bank_reference">—</dd>
-    </div>
-    <div>
-      <dt>Payment proof</dt>
-      <dd data-review-value="proof_pair">—</dd>
-    </div>
-    <div>
-      <dt>External status</dt>
-      <dd data-review-value="external_status">—</dd>
-    </div>
-    <div>
-      <dt>Consequence</dt>
-      <dd>Creates an append-only payment evidence record. Amount must match accepted work cost; bank proof is linked permanently.</dd>
-    </div>
-    <div>
-      <dt>What happens next</dt>
-      <dd>A different role verifies the payment before publication becomes eligible.</dd>
-    </div>
-  </dl>
-</section>
+          {% include "web/staff/_review_summary.html" with review_kind="payment_record" review_id="payment-record" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Sign and record payment</button>
+            <button type="submit" class="button button-primary" {% if not typed_data %}aria-disabled="true"{% endif %}>Sign and record payment</button>
             <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
           </div>
         </form>
@@ -139,41 +95,9 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Verification is not ready. Review the payment status and evidence.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <section class="review-summary" aria-labelledby="review-summary-heading-verify">
-  <h3 class="review-summary-title" id="review-summary-heading-verify">What you are signing</h3>
-  <dl class="detail-list review-summary-list">
-    <div>
-      <dt>Action</dt>
-      <dd>Verify payment</dd>
-    </div>
-    <div>
-      <dt>Acting as</dt>
-      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
-    </div>
-    <div>
-      <dt>Recorded amount</dt>
-      <dd>{{ payment.amount_vnd }} VND</dd>
-    </div>
-    <div>
-      <dt>Bank reference</dt>
-      <dd>{{ payment.bank_reference }}</dd>
-    </div>
-    <div>
-      <dt>Verification decision</dt>
-      <dd data-review-value="decision">—</dd>
-    </div>
-    <div>
-      <dt>Consequence</dt>
-      <dd>Appends a dual-control verification decision. Verified payments become eligible for resident ledger publication.</dd>
-    </div>
-    <div>
-      <dt>What happens next</dt>
-      <dd>An eligible publisher prepares the resident-facing ledger entry.</dd>
-    </div>
-  </dl>
-</section>
+          {% include "web/staff/_review_summary.html" with review_kind="payment_verify" review_id="payment-verify" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Sign and verify payment</button>
+            <button type="submit" class="button button-primary" {% if not typed_data %}aria-disabled="true"{% endif %}>Sign and verify payment</button>
             <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
           </div>
         </form>

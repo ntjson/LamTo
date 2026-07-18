@@ -400,6 +400,10 @@ h3 {
   font-size: 0.75rem;
 }
 
+a.status {
+  text-decoration: none;
+}
+
 .button,
 button.button {
   display: inline-flex;
@@ -418,6 +422,11 @@ button.button {
     border-color 180ms cubic-bezier(0.25, 1, 0.5, 1),
     color 180ms cubic-bezier(0.25, 1, 0.5, 1),
     transform 180ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .button-primary {
@@ -486,7 +495,7 @@ button.button:disabled {
   flex-wrap: wrap;
   align-items: end;
   gap: var(--space-3);
-  margin: var(--space-5) 0 var(--space-6);
+  margin: var(--space-4) 0;
 }
 
 .queue-toolbar label {
@@ -511,11 +520,11 @@ button.button:disabled {
 .task-queue,
 .task-group {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-3);
 }
 
 .task-group + .task-group {
-  margin-top: var(--space-6);
+  margin-top: var(--space-4);
 }
 
 .task-list {
@@ -533,7 +542,7 @@ button.button:disabled {
   display: grid;
   gap: var(--space-2);
   min-height: var(--touch);
-  padding: var(--space-4) 0;
+  padding: var(--space-3) 0;
   color: inherit;
   text-decoration: none;
 }
@@ -543,13 +552,19 @@ button.button:disabled {
 }
 
 .task-action {
-  color: var(--color-brand);
+  color: var(--color-ink);
   font-weight: 700;
 }
 
 .task-subject {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.task-amount {
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .task-meta {
@@ -707,7 +722,7 @@ code {
 
 @media (min-width: 720px) {
   .stat-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .site-main {
@@ -720,6 +735,17 @@ code {
 
   .detail-list.detail-list-wide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-row {
+    grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 2fr) minmax(8rem, 0.8fr) minmax(10rem, 1fr);
+    gap: var(--space-4);
+    align-items: center;
+  }
+
+  .task-meta {
+    justify-content: flex-end;
+    text-align: end;
   }
 }
 

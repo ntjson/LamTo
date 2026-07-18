@@ -1,4 +1,5 @@
 {% extends "web/staff/shell.html" %}
+{% load humanize %}
 {% block title %}Create proposal · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
@@ -8,15 +9,16 @@
   {% if sign_form %}
   <div class="workflow-section">
     <h2>Review and sign</h2>
-    <p class="hint">Amount {{ sign_form.amount_vnd.value }} VND · {{ sign_form.contractor_name.value }}</p>
+    <p class="hint">Amount {{ sign_form.amount_vnd.value|intcomma }} VND · {{ sign_form.contractor_name.value }}</p>
     <p class="hint">The quotation is uploaded and frozen. Sign with your wallet to submit for Board review.</p>
-    <form method="post" class="stack-form" data-signed-form>
+    <form method="post" class="stack-form" data-signed-form data-review-form>
       {% csrf_token %}
       <input type="hidden" name="action" value="submit">
       {{ sign_form.as_p }}
       <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
       <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign and send this proposal for Board review.</p>
       <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+      {% include "web/staff/_review_summary.html" with review_kind="proposal_create" review_id="proposal-create" %}
       <button type="submit" class="button button-primary">Submit proposal</button>
     </form>
   </div>

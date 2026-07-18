@@ -1,4 +1,5 @@
 {% extends "web/staff/shell.html" %}
+{% load humanize %}
 {% block title %}Fund · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
@@ -10,17 +11,17 @@
     {% endif %}
   </div>
   <p class="balance-value">
-    <span class="amount">{{ balance_vnd }}</span>
-    <span class="currency">VND verified</span>
+    <span class="amount">{{ balance_vnd|intcomma }}</span>
+    <span class="currency">VND</span>
   </p>
   <dl class="stat-grid">
     <div>
       <dt>Inflows (30d)</dt>
-      <dd>{{ period_inflows }} VND</dd>
+      <dd>{{ period_inflows|intcomma }} VND</dd>
     </div>
     <div>
       <dt>Outflows (30d)</dt>
-      <dd>{{ period_outflows }} VND</dd>
+      <dd>{{ period_outflows|intcomma }} VND</dd>
     </div>
   </dl>
 
@@ -30,7 +31,7 @@
     <ul class="card-list">
       {% for entry in entries %}
       <li>
-        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
+        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd|intcomma }} VND</p>
         <p class="card-meta">Recorded {{ entry.recorded_at }}</p>
       </li>
       {% empty %}
@@ -46,7 +47,7 @@
     <ul class="card-list">
       {% for entry in pending_verification %}
       <li>
-        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
+        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd|intcomma }} VND</p>
         <p class="card-meta">
           Recorded {{ entry.recorded_at }}
           {% if can_verify %}
@@ -68,7 +69,7 @@
       <li>
         <a class="card-link" href="{% url 'web:proposal-detail' proposal.pk %}">
           <p class="card-title">Proposal #{{ proposal.pk }}
-            {% if proposal.current_version %}· {{ proposal.current_version.amount_vnd }} VND{% endif %}</p>
+            {% if proposal.current_version %}· {{ proposal.current_version.amount_vnd|intcomma }} VND{% endif %}</p>
         </a>
       </li>
       {% empty %}

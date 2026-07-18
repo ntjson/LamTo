@@ -92,41 +92,9 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Acceptance is not ready. Link complete invoice and acceptance document pairs, then try again.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <section class="review-summary" aria-labelledby="review-summary-heading-accept">
-  <h3 class="review-summary-title" id="review-summary-heading-accept">What you are signing</h3>
-  <dl class="detail-list review-summary-list">
-    <div>
-      <dt>Action</dt>
-      <dd>Accept work</dd>
-    </div>
-    <div>
-      <dt>Acting as</dt>
-      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
-    </div>
-    <div>
-      <dt>Actual cost (VND)</dt>
-      <dd data-review-value="actual_cost_vnd">—</dd>
-    </div>
-    <div>
-      <dt>Invoice evidence</dt>
-      <dd data-review-value="invoice_pair">—</dd>
-    </div>
-    <div>
-      <dt>Acceptance evidence</dt>
-      <dd data-review-value="acceptance_pair">—</dd>
-    </div>
-    <div>
-      <dt>Consequence</dt>
-      <dd>Creates an append-only acceptance record tied to invoice and acceptance evidence. The actual cost becomes the basis for payment.</dd>
-    </div>
-    <div>
-      <dt>What happens next</dt>
-      <dd>A payment recorder signs the matching bank transfer against this acceptance.</dd>
-    </div>
-  </dl>
-</section>
+          {% include "web/staff/_review_summary.html" with review_kind="work_accept" review_id="work-accept" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Sign and accept work</button>
+            <button type="submit" class="button button-primary" {% if not typed_data %}aria-disabled="true"{% endif %}>Sign and accept work</button>
             <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
           </div>
         </form>
@@ -141,27 +109,7 @@
           {{ emergency_form.as_p }}
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the emergency reason before signing.</p>
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <section class="review-summary" aria-labelledby="review-summary-heading-emergency">
-  <h3 class="review-summary-title" id="review-summary-heading-emergency">What you are signing</h3>
-  <dl class="detail-list review-summary-list">
-    <div>
-      <dt>Action</dt>
-      <dd>Authorize emergency work</dd>
-    </div>
-    <div>
-      <dt>Acting as</dt>
-      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
-    </div>
-    <div>
-      <dt>Consequence</dt>
-      <dd>Records an emergency authorization on this work order. Normal proposal gates may be bypassed under the emergency path.</dd>
-    </div>
-    <div>
-      <dt>What happens next</dt>
-      <dd>Resident representative or board must later ratify or reject the emergency authorization.</dd>
-    </div>
-  </dl>
-</section>
+          {% include "web/staff/_review_summary.html" with review_kind="emergency_authorize" review_id="emergency-authorize" %}
           <div class="form-actions">
             <button type="submit" class="button button-primary">Sign and authorize emergency work</button>
             <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
@@ -178,31 +126,7 @@
           {{ emergency_decide_form.as_p }}
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the outcome before signing.</p>
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <section class="review-summary" aria-labelledby="review-summary-heading-ratify">
-  <h3 class="review-summary-title" id="review-summary-heading-ratify">What you are signing</h3>
-  <dl class="detail-list review-summary-list">
-    <div>
-      <dt>Action</dt>
-      <dd>Record emergency ratification</dd>
-    </div>
-    <div>
-      <dt>Acting as</dt>
-      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
-    </div>
-    <div>
-      <dt>Outcome</dt>
-      <dd data-review-value="decision">—</dd>
-    </div>
-    <div>
-      <dt>Consequence</dt>
-      <dd>Appends a signed ratification or rejection of the emergency authorization to the evidence chain.</dd>
-    </div>
-    <div>
-      <dt>What happens next</dt>
-      <dd>Work continues under the ratified emergency path, or returns to the normal proposal route if rejected.</dd>
-    </div>
-  </dl>
-</section>
+          {% include "web/staff/_review_summary.html" with review_kind="emergency_decide" review_id="emergency-decide" %}
           <div class="form-actions">
             <button type="submit" class="button button-primary">Sign and record ratification</button>
             <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>

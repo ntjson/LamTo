@@ -1,0 +1,47 @@
+{% load humanize %}
+<section class="review-summary" aria-labelledby="review-summary-heading-{{ review_id }}" aria-live="polite" aria-atomic="false">
+  <h3 class="review-summary-title" id="review-summary-heading-{{ review_id }}">What you are signing</h3>
+  <dl class="detail-list review-summary-list">
+    <div><dt>Action</dt><dd{% if review_kind == "proposal_decide" %} data-decision-label{% endif %}>
+      {% if review_kind == "fund_record" %}Record fund source{% elif review_kind == "fund_verify" %}Verify fund source{% elif review_kind == "proposal_create" %}Submit proposal{% elif review_kind == "proposal_decide" %}Approve proposal{% elif review_kind == "proposal_publish" %}Publish to resident ledger{% elif review_kind == "work_accept" %}Accept work{% elif review_kind == "emergency_authorize" %}Authorize emergency work{% elif review_kind == "emergency_decide" %}Record emergency ratification{% elif review_kind == "payment_record" %}Record payment{% elif review_kind == "payment_verify" %}Verify payment{% endif %}
+    </dd></div>
+    <div><dt>Acting as</dt><dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd></div>
+
+    {% if review_kind == "fund_record" %}
+    <div><dt>Source type</dt><dd>{{ sign_form.entry_type.value }}</dd></div>
+    <div><dt>Amount</dt><dd>{{ sign_form.amount_vnd.value|intcomma }} VND</dd></div>
+    {% elif review_kind == "fund_verify" %}
+    <div><dt>Source type</dt><dd>{{ entry.get_entry_type_display }}</dd></div>
+    <div><dt>Amount</dt><dd>{{ entry.amount_vnd|intcomma }} VND</dd></div>
+    {% elif review_kind == "proposal_create" %}
+    <div><dt>Proposed amount</dt><dd>{{ sign_form.amount_vnd.value|intcomma }} VND</dd></div>
+    <div><dt>Contractor</dt><dd>{{ sign_form.contractor_name.value }}</dd></div>
+    {% elif review_kind == "proposal_decide" %}
+    <div><dt>Proposed amount</dt><dd>{{ version.amount_vnd|intcomma }} VND</dd></div>
+    <div><dt>Contractor</dt><dd>{{ version.contractor_name }}</dd></div>
+    <div><dt>Decision</dt><dd data-review-value="decision">—</dd></div>
+    {% elif review_kind == "work_accept" %}
+    <div><dt>Actual cost</dt><dd data-review-value="actual_cost_vnd">—</dd></div>
+    <div><dt>Invoice evidence</dt><dd data-review-value="invoice_pair">—</dd></div>
+    <div><dt>Acceptance evidence</dt><dd data-review-value="acceptance_pair">—</dd></div>
+    {% elif review_kind == "emergency_decide" %}
+    <div><dt>Outcome</dt><dd data-review-value="decision">—</dd></div>
+    {% elif review_kind == "payment_record" %}
+    <div><dt>Amount</dt><dd data-review-value="amount_vnd">—</dd></div>
+    <div><dt>Bank reference</dt><dd data-review-value="bank_reference">—</dd></div>
+    <div><dt>Payment proof</dt><dd data-review-value="proof_pair">—</dd></div>
+    <div><dt>External status</dt><dd data-review-value="external_status">—</dd></div>
+    {% elif review_kind == "payment_verify" %}
+    <div><dt>Recorded amount</dt><dd>{{ payment.amount_vnd|intcomma }} VND</dd></div>
+    <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
+    <div><dt>Verification decision</dt><dd data-review-value="decision">—</dd></div>
+    {% endif %}
+
+    <div><dt>Consequence</dt><dd>
+      {% if review_kind == "fund_record" %}Creates an append-only fund source record tied to the uploaded evidence.{% elif review_kind == "fund_verify" %}Adds an independent verification; the recorder cannot verify their own source.{% elif review_kind == "proposal_create" %}Freezes the quotation and submits this spending proposal for Board review.{% elif review_kind == "proposal_decide" %}Your append-only decision advances dual control or returns the proposal for correction.{% elif review_kind == "proposal_publish" %}Prepares an append-only resident-ledger snapshot for public-chain confirmation.{% elif review_kind == "work_accept" %}Accepts the completed work and makes its actual cost the basis for payment.{% elif review_kind == "emergency_authorize" %}Records an emergency authorization that may bypass normal proposal gates.{% elif review_kind == "emergency_decide" %}Appends a ratification or rejection to the emergency evidence chain.{% elif review_kind == "payment_record" %}Creates an append-only payment record tied permanently to the bank proof.{% elif review_kind == "payment_verify" %}Appends an independent verification decision to the payment evidence.{% endif %}
+    </dd></div>
+    <div><dt>What happens next</dt><dd>
+      {% if review_kind == "fund_record" %}A different fund role verifies the source before it affects the verified balance.{% elif review_kind == "fund_verify" %}The source becomes part of the verified maintenance-fund balance.{% elif review_kind == "proposal_create" %}The Board reviews the amount, contractor, quotation, and purpose.{% elif review_kind == "proposal_decide" %}Approval continues dual control; rejection returns the proposal for correction.{% elif review_kind == "proposal_publish" %}After public-chain confirmation, residents can see the verified expense.{% elif review_kind == "work_accept" %}A payment recorder signs the matching bank transfer.{% elif review_kind == "emergency_authorize" %}A resident representative or Board member later ratifies or rejects it.{% elif review_kind == "emergency_decide" %}Work continues under the emergency path or returns to the normal proposal route.{% elif review_kind == "payment_record" %}A different role verifies the payment before publication.{% elif review_kind == "payment_verify" %}An eligible publisher prepares the resident-facing ledger entry.{% endif %}
+    </dd></div>
+  </dl>
+</section>
