@@ -4,21 +4,102 @@
 <section class="panel" aria-labelledby="ops-health-heading">
   <h1 id="ops-health-heading">Ops health</h1>
   <p class="hint">Technical snapshot for tech administrators. Prefer <code>?format=json</code> for automation.</p>
-  <dl class="detail-list">
-    <div><dt>Queue age (seconds)</dt><dd>{{ health.queue_age_seconds|default:"—" }}</dd></div>
-    <div><dt>Queue count</dt><dd>{{ health.queue_count }}</dd></div>
-    <div><dt>Anchoring backend</dt><dd>{{ health.anchoring_backend }}</dd></div>
-    <div><dt>Quarantined files</dt><dd>{{ health.quarantined_files }}</dd></div>
-    <div><dt>Notification failures</dt><dd>{{ health.notification_failures }}</dd></div>
-    <div><dt>Push failures</dt><dd>{{ health.push_failures }}</dd></div>
-    <div><dt>Push sent (FCM success)</dt><dd>{{ health.push_sent_success }}</dd></div>
-    <div><dt>Push suppressed (not FCM success)</dt><dd>{{ health.push_suppressed }}</dd></div>
-    <div><dt>Inactive devices (dead tokens)</dt><dd>{{ health.dead_devices }}</dd></div>
-    <div><dt>Stale device max inactive age (days)</dt><dd>{{ health.stale_device_max_inactive_days }}</dd></div>
-    <div><dt>Integrity mismatches</dt><dd>{{ health.integrity_mismatches }}</dd></div>
-    <div><dt>Last confirmed block</dt><dd>{{ health.last_confirmed_block|default:"—" }}</dd></div>
-    <div><dt>Last confirmed at</dt><dd>{{ health.last_confirmed_at|default:"—" }}</dd></div>
-    <div><dt>Generated at</dt><dd>{{ health.generated_at }}</dd></div>
-  </dl>
+
+  <div class="workflow-section" id="queue-health">
+    <h2>Queue</h2>
+    {% if health.queue_count %}
+    <p class="status status-warning"><span class="status-icon" aria-hidden="true">●</span> Needs attention</p>
+    {% else %}
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    {% endif %}
+    <dl class="detail-list">
+      {% if health.queue_count %}
+      <div><dt>Queue count</dt><dd>{{ health.queue_count }}</dd></div>
+      <div><dt>Queue age (seconds)</dt><dd>{{ health.queue_age_seconds|default:"—" }}</dd></div>
+      {% else %}
+      <div><dt>Queue age (seconds)</dt><dd>{{ health.queue_age_seconds|default:"—" }}</dd></div>
+      <div><dt>Queue count</dt><dd>{{ health.queue_count }}</dd></div>
+      {% endif %}
+    </dl>
+  </div>
+
+  <div class="workflow-section" id="integrity-health">
+    <h2>Evidence integrity</h2>
+    {% if health.integrity_mismatches or health.quarantined_files %}
+    <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> Needs attention</p>
+    {% else %}
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    {% endif %}
+    <dl class="detail-list">
+      {% if health.integrity_mismatches or health.quarantined_files %}
+      <div><dt>Integrity mismatches</dt><dd>{{ health.integrity_mismatches }}</dd></div>
+      <div><dt>Quarantined files</dt><dd>{{ health.quarantined_files }}</dd></div>
+      {% else %}
+      <div><dt>Integrity mismatches</dt><dd>{{ health.integrity_mismatches }}</dd></div>
+      <div><dt>Quarantined files</dt><dd>{{ health.quarantined_files }}</dd></div>
+      {% endif %}
+    </dl>
+  </div>
+
+  <div class="workflow-section" id="notification-health">
+    <h2>Notifications</h2>
+    {% if health.notification_failures or health.push_failures %}
+    <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> Needs attention</p>
+    {% else %}
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    {% endif %}
+    <dl class="detail-list">
+      {% if health.notification_failures or health.push_failures %}
+      <div><dt>Notification failures</dt><dd>{{ health.notification_failures }}</dd></div>
+      <div><dt>Push failures</dt><dd>{{ health.push_failures }}</dd></div>
+      <div><dt>Push sent (FCM success)</dt><dd>{{ health.push_sent_success }}</dd></div>
+      <div><dt>Push suppressed (not FCM success)</dt><dd>{{ health.push_suppressed }}</dd></div>
+      {% else %}
+      <div><dt>Notification failures</dt><dd>{{ health.notification_failures }}</dd></div>
+      <div><dt>Push failures</dt><dd>{{ health.push_failures }}</dd></div>
+      <div><dt>Push sent (FCM success)</dt><dd>{{ health.push_sent_success }}</dd></div>
+      <div><dt>Push suppressed (not FCM success)</dt><dd>{{ health.push_suppressed }}</dd></div>
+      {% endif %}
+    </dl>
+  </div>
+
+  <div class="workflow-section" id="device-health">
+    <h2>Devices</h2>
+    {% if health.dead_devices %}
+    <p class="status status-warning"><span class="status-icon" aria-hidden="true">●</span> Needs attention</p>
+    {% else %}
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    {% endif %}
+    <dl class="detail-list">
+      {% if health.dead_devices %}
+      <div><dt>Inactive devices (dead tokens)</dt><dd>{{ health.dead_devices }}</dd></div>
+      <div><dt>Stale device max inactive age (days)</dt><dd>{{ health.stale_device_max_inactive_days }}</dd></div>
+      {% else %}
+      <div><dt>Inactive devices (dead tokens)</dt><dd>{{ health.dead_devices }}</dd></div>
+      <div><dt>Stale device max inactive age (days)</dt><dd>{{ health.stale_device_max_inactive_days }}</dd></div>
+      {% endif %}
+    </dl>
+  </div>
+
+  <div class="workflow-section" id="anchoring-health">
+    <h2>Anchoring</h2>
+    {% if not health.last_confirmed_block %}
+    <p class="status status-warning"><span class="status-icon" aria-hidden="true">●</span> Needs attention</p>
+    {% else %}
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    {% endif %}
+    <dl class="detail-list">
+      <div><dt>Anchoring backend</dt><dd>{{ health.anchoring_backend }}</dd></div>
+      <div><dt>Last confirmed block</dt><dd>{{ health.last_confirmed_block|default:"—" }}</dd></div>
+      <div><dt>Last confirmed at</dt><dd>{{ health.last_confirmed_at|default:"—" }}</dd></div>
+    </dl>
+  </div>
+
+  <div class="workflow-section">
+    <h2>Snapshot</h2>
+    <dl class="detail-list">
+      <div><dt>Generated at</dt><dd>{{ health.generated_at }}</dd></div>
+    </dl>
+  </div>
 </section>
 {% endblock %}

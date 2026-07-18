@@ -264,6 +264,18 @@ h3 {
   margin-top: 0;
 }
 
+.workflow-section > h2 {
+  margin-top: 0;
+}
+
+.workflow-section > .status {
+  margin: 0 0 var(--space-3);
+}
+
+.panel > .workflow-section:first-of-type {
+  margin-top: var(--space-5);
+}
+
 .technical-proof {
   margin-top: var(--space-5);
 }

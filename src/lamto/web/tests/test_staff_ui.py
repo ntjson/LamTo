@@ -167,6 +167,16 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         self.assertIn("Sign and record payment", templates)
         self.assertIn("bindReviewSummary", WALLET_JS.read_text(encoding="utf-8"))
 
+    def test_fund_and_ops_use_product_specific_hierarchy(self):
+        fund = (STAFF_TEMPLATES / "fund_detail.html").read_text(encoding="utf-8")
+        ops = (STAFF_TEMPLATES / "ops_health.html").read_text(encoding="utf-8")
+        self.assertIn('class="balance-value"', fund)
+        self.assertIn('class="amount"', fund)
+        for section_id in (
+            "queue-health", "integrity-health", "notification-health", "device-health", "anchoring-health"
+        ):
+            self.assertIn(f'id="{section_id}"', ops)
+
 
 class AccountabilityChainTests(SimpleTestCase):
     def test_chain_marks_prior_current_and_upcoming_stages(self):

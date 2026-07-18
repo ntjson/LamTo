@@ -2,69 +2,78 @@
 {% block title %}Fund · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
-<section class="panel">
+<section class="panel" aria-labelledby="fund-heading">
   <div class="panel-header">
-    <h1>Maintenance fund</h1>
+    <h1 id="fund-heading">Maintenance fund</h1>
     {% if can_record %}
     <a class="button button-secondary" href="{% url 'web:fund-record' %}">Record source</a>
     {% endif %}
   </div>
-  <dl class="detail-list">
-    <div><dt>Verified balance</dt><dd>{{ balance_vnd }} VND</dd></div>
-    <div><dt>Inflows (30d)</dt><dd>{{ period_inflows }} VND</dd></div>
-    <div><dt>Outflows (30d)</dt><dd>{{ period_outflows }} VND</dd></div>
+  <p class="balance-value">
+    <span class="amount">{{ balance_vnd }}</span>
+    <span class="currency">VND verified</span>
+  </p>
+  <dl class="stat-grid">
+    <div>
+      <dt>Inflows (30d)</dt>
+      <dd>{{ period_inflows }} VND</dd>
+    </div>
+    <div>
+      <dt>Outflows (30d)</dt>
+      <dd>{{ period_outflows }} VND</dd>
+    </div>
   </dl>
-</section>
 
-<section class="panel">
-  <h2>Verified entries</h2>
-  <ul class="card-list">
-    {% for entry in entries %}
-    <li>
-      <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
-      <p class="card-meta">Recorded {{ entry.recorded_at }}</p>
-    </li>
-    {% empty %}
-    <li><p>No verified entries.</p></li>
-    {% endfor %}
-  </ul>
-</section>
+  <div class="workflow-section">
+    <h2>Verified entries</h2>
+    <ul class="card-list">
+      {% for entry in entries %}
+      <li>
+        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
+        <p class="card-meta">Recorded {{ entry.recorded_at }}</p>
+      </li>
+      {% empty %}
+      <li><p>No verified entries.</p></li>
+      {% endfor %}
+    </ul>
+  </div>
 
-<section class="panel">
-  <h2>Pending fund verification</h2>
-  <p class="hint">Source entries recorded but not yet verified. Separate from verified entries.</p>
-  <ul class="card-list">
-    {% for entry in pending_verification %}
-    <li>
-      <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
-      <p class="card-meta">
-        Recorded {{ entry.recorded_at }}
-        {% if can_verify %}
-        · <a href="{% url 'web:fund-verify' entry.pk %}">Verify</a>
-        {% endif %}
-      </p>
-    </li>
-    {% empty %}
-    <li><p>No entries awaiting verification.</p></li>
-    {% endfor %}
-  </ul>
-</section>
+  <div class="workflow-section">
+    <h2>Pending fund verification</h2>
+    <p class="hint">Source entries recorded but not yet verified. Separate from verified entries.</p>
+    <ul class="card-list">
+      {% for entry in pending_verification %}
+      <li>
+        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd }} VND</p>
+        <p class="card-meta">
+          Recorded {{ entry.recorded_at }}
+          {% if can_verify %}
+          · <a href="{% url 'web:fund-verify' entry.pk %}">Verify</a>
+          {% endif %}
+        </p>
+      </li>
+      {% empty %}
+      <li><p>No entries awaiting verification.</p></li>
+      {% endfor %}
+    </ul>
+  </div>
 
-<section class="panel">
-  <h2>Pending reconciliation</h2>
-  <p class="hint">Publication-eligible (settled verified payment chain) but not yet published to the resident ledger.</p>
-  <ul class="card-list">
-    {% for proposal in pending %}
-    <li>
-      <a class="card-link" href="{% url 'web:proposal-detail' proposal.pk %}">
-        <p class="card-title">Proposal #{{ proposal.pk }}
-          {% if proposal.current_version %}· {{ proposal.current_version.amount_vnd }} VND{% endif %}</p>
-      </a>
-    </li>
-    {% empty %}
-    <li><p>Nothing awaiting publication.</p></li>
-    {% endfor %}
-  </ul>
+  <div class="workflow-section">
+    <h2>Pending reconciliation</h2>
+    <p class="hint">Publication-eligible (settled verified payment chain) but not yet published to the resident ledger.</p>
+    <ul class="card-list">
+      {% for proposal in pending %}
+      <li>
+        <a class="card-link" href="{% url 'web:proposal-detail' proposal.pk %}">
+          <p class="card-title">Proposal #{{ proposal.pk }}
+            {% if proposal.current_version %}· {{ proposal.current_version.amount_vnd }} VND{% endif %}</p>
+        </a>
+      </li>
+      {% empty %}
+      <li><p>Nothing awaiting publication.</p></li>
+      {% endfor %}
+    </ul>
+  </div>
 </section>
 {% else %}
 {% include "web/staff/_fund_forms.html" %}
