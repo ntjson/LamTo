@@ -45,6 +45,14 @@
     {% endfor %}
   </nav>
 
+  {% if nav_active == "finance" and finance_nav_items %}
+  <nav class="finance-nav" aria-label="Finance">
+    {% for item in finance_nav_items %}
+    <a href="{% url item.url_name %}"{% if finance_active == item.active_key %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
   {% if messages %}
   <ul class="messages" role="status">
     {% for message in messages %}

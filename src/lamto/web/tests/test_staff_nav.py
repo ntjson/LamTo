@@ -7,11 +7,16 @@ from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 
-from lamto.accounts.capabilities import FUND_RECORD, PAYMENT_VERIFY, PROPOSAL_APPROVE
+from lamto.accounts.capabilities import (
+    FUND_RECORD,
+    FUND_VERIFY,
+    PAYMENT_VERIFY,
+    PROPOSAL_APPROVE,
+)
 from lamto.accounts.models import Building, Organization, OrganizationMembership
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.accounts.services import grant_capability
-from lamto.web.staff import nav_items_for
+from lamto.web.staff import finance_nav_items_for, nav_items_for
 
 
 class NavStructureTests(TestCase):
@@ -50,6 +55,23 @@ class NavStructureTests(TestCase):
         self.assertNotIn("Ledger", labels)
         for label in ("Inbox", "Finance"):
             self.assertIn(label, labels)
+
+    def test_finance_subnavigation_is_capability_filtered(self):
+        board = self._board()
+        grant_capability(board, PROPOSAL_APPROVE)
+        grant_capability(board, PAYMENT_VERIFY)
+        self.assertEqual(
+            [item["label"] for item in finance_nav_items_for(board)],
+            ["Proposals", "Payments"],
+        )
+
+    def test_fund_only_membership_gets_only_fund_destination(self):
+        board = self._board()
+        grant_capability(board, FUND_VERIFY)
+        self.assertEqual(
+            finance_nav_items_for(board),
+            [{"label": "Fund", "url_name": "web:fund-home", "active_key": "fund"}],
+        )
 
 
 @override_settings(ROOT_URLCONF="lamto.config.urls")

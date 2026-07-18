@@ -726,6 +726,29 @@ code {
   background: var(--color-brand);
 }
 
+
+.finance-nav,
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.finance-nav {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.finance-nav a,
+.back-link {
+  min-height: var(--touch);
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+}
+
 .membership-bar {
   display: flex;
   flex-wrap: wrap;

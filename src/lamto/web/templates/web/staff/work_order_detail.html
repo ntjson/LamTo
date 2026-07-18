@@ -8,6 +8,7 @@
 </section>
 {% else %}
 <section class="panel">
+  <p><a class="back-link" href="{% url 'web:work-order-list' %}">Back to work orders</a></p>
   <h1>Work order #{{ work_order.pk }}</h1>
   <div class="record-layout">
     <div class="record-summary">
@@ -42,7 +43,10 @@
         <form method="post" class="stack-form">
           {% csrf_token %}
           <input type="hidden" name="action" value="start">
-          <button type="submit" class="button button-primary">Start work</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Start work</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}
@@ -57,7 +61,10 @@
           <p class="hint">Link the before and after document versions already uploaded for this work order.</p>
           <label>Before version IDs <input class="input" name="before_version_ids" multiple></label>
           <label>After version IDs <input class="input" name="after_version_ids" multiple></label>
-          <button type="submit" class="button button-primary">Complete work</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Complete work</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}
@@ -77,7 +84,10 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Acceptance is not ready. Link complete invoice and acceptance document pairs, then try again.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Accept work</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Accept work</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}
@@ -90,7 +100,10 @@
           {{ emergency_form.as_p }}
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the emergency reason before signing.</p>
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <button type="submit" class="button button-primary">Authorize emergency</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Authorize emergency</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}
@@ -103,7 +116,10 @@
           {{ emergency_decide_form.as_p }}
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the outcome before signing.</p>
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <button type="submit" class="button button-primary">Submit outcome</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Submit outcome</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}

@@ -141,12 +141,29 @@ def nav_items_for(membership) -> list[dict]:
     return items
 
 
+
+
+def finance_nav_items_for(membership) -> list[dict[str, str]]:
+    caps = capabilities_for(membership)
+    destinations = (
+        ("Proposals", "web:proposal-list", "proposals", {"proposal.create", "proposal.approve", "ledger.publish"}),
+        ("Payments", "web:payment-list", "payments", {"payment.record", "payment.verify"}),
+        ("Fund", "web:fund-home", "fund", {"fund.record", "fund.verify", "ledger.publish"}),
+    )
+    return [
+        {"label": label, "url_name": url_name, "active_key": active_key}
+        for label, url_name, active_key, required in destinations
+        if caps & required
+    ]
+
+
 def staff_context(request, membership, memberships, *, nav_active=None, **extra):
     return {
         "membership": membership,
         "memberships": memberships,
         "nav_items": nav_items_for(membership),
         "nav_active": nav_active,
+        "finance_nav_items": finance_nav_items_for(membership),
         "capabilities": capabilities_for(membership),
         **extra,
     }

@@ -2,6 +2,7 @@
 {% block title %}Audit search · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
+  <p><a class="back-link" href="{% url 'web:action-inbox' %}">Back to inbox</a></p>
   <h1>Audit search</h1>
   <p class="hint">Trace a published expense to its maintenance case, work, decisions, documents, and integrity result.</p>
   <form method="get" class="stack-form form-measure">
@@ -79,7 +80,10 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="verify">
       <input type="hidden" name="entry" value="{{ entry.pk }}">
-      <button type="submit" class="button button-primary">Run integrity check</button>
+      <div class="form-actions">
+        <button type="submit" class="button button-primary">Run integrity check</button>
+        <a class="button button-secondary" href="{% url 'web:action-inbox' %}">Cancel</a>
+      </div>
     </form>
   </div>
 </section>

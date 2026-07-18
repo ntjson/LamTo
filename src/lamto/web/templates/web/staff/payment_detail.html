@@ -24,6 +24,7 @@
 </section>
 {% else %}
 <section class="panel">
+  <p><a class="back-link" href="{% url 'web:payment-list' %}">Back to payments</a></p>
   <h1>{% if payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %}</h1>
   <div class="record-layout">
     <div class="record-summary">
@@ -67,7 +68,10 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Payment is not ready. Link both versions of the payment proof, then try again.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Record payment</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Record payment</button>
+            <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}
@@ -88,7 +92,10 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Verification is not ready. Review the payment status and evidence.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Verify payment</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Verify payment</button>
+            <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}

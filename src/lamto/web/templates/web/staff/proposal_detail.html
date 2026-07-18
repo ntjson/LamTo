@@ -8,6 +8,7 @@
 </section>
 {% else %}
 <section class="panel">
+  <p><a class="back-link" href="{% url 'web:proposal-list' %}">Back to proposals</a></p>
   <h1>Proposal #{{ proposal.pk }}</h1>
   <div class="record-layout">
     <div class="record-summary">
@@ -68,7 +69,10 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">This decision is not ready to sign. Check the required prior approval.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <button type="submit" class="button button-primary">Submit decision</button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Submit decision</button>
+            <a class="button button-secondary" href="{% url 'web:proposal-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}
@@ -89,9 +93,12 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Publication is not ready. Review the unmet checks above.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          <button type="submit" class="button button-primary" {% if not publish_typed_data %}disabled{% endif %}>
-            Prepare publication
-          </button>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary" {% if not publish_typed_data %}disabled{% endif %}>
+              Prepare publication
+            </button>
+            <a class="button button-secondary" href="{% url 'web:proposal-list' %}">Cancel</a>
+          </div>
         </form>
       </div>
       {% endif %}
