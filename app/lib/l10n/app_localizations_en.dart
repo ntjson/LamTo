@@ -24,6 +24,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginSubmit => 'Sign in';
 
   @override
+  String get loginMissingFields =>
+      'Enter your phone/email and password. Nothing was submitted.';
+
+  @override
+  String get loginShowPassword => 'Show password';
+
+  @override
+  String get loginHidePassword => 'Hide password';
+
+  @override
   String get apiBaseUrlTitle => 'API server';
 
   @override
@@ -47,9 +57,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get occupancyPickerTitle => 'Choose your home';
-
-  @override
-  String get bootstrapRetry => 'Retry';
 
   @override
   String get signOut => 'Sign out';
@@ -177,6 +184,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusResolved => 'Resolved';
 
   @override
+  String issueDetailTitle(int id) {
+    return 'Report #$id';
+  }
+
+  @override
   String get timelineSubmitted => 'Report submitted';
 
   @override
@@ -265,6 +277,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerTitle => 'Building ledger';
 
   @override
+  String get ledgerDetailTitle => 'Expenditure details';
+
+  @override
   String get ledgerEmpty => 'No published spending for this period.';
 
   @override
@@ -340,8 +355,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get evidenceChain => 'Anchored on the blockchain';
 
   @override
-  String get evidenceLocal =>
-      'Signed and hash-locked — blockchain anchoring is off for this deployment';
+  String get evidenceLocal => 'Signed — blockchain anchoring off';
 
   @override
   String get evidencePending => 'Waiting for blockchain anchoring';

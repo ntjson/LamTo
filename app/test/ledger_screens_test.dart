@@ -106,7 +106,7 @@ void main() {
     await tester.pumpWidget(_host(const Scaffold(body: LedgerScreen()), repo));
     await tester.pumpAndSettle();
     expect(find.text('Acme Co'), findsOneWidget);
-    expect(find.textContaining('Đã ký và khóa băm'), findsOneWidget);
+    expect(find.textContaining('Đã ký — chưa bật neo'), findsOneWidget);
 
     // Choosing a year re-queries with the filter; empty period shows copy.
     final year = DateTime.now().year;

@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-import '../../core/failure.dart';
+import '../../core/error_retry.dart';
 import '../../core/format.dart';
+import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../transparency/transparency_repository.dart';
 import 'evidence_labels.dart';
@@ -21,25 +22,32 @@ class LedgerDetailScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final detail = ref.watch(ledgerDetailProvider(entryId));
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.ledgerTitle)),
-      body: switch (detail) {
-        AsyncData(:final value) => _body(context, l10n, value),
-        AsyncError(:final error) => Center(
-            child: Text(failureMessage(Failure.fromObject(error), l10n)),
+      appBar: AppBar(title: Text(l10n.ledgerDetailTitle)),
+      body: PageBody(
+        child: switch (detail) {
+          AsyncData(:final value) => _body(context, l10n, value),
+          AsyncError(:final error) => Center(
+            child: ErrorRetry(
+              error: error,
+              onRetry: () => ref.invalidate(ledgerDetailProvider(entryId)),
+            ),
           ),
-        _ => const Center(child: CircularProgressIndicator.adaptive()),
-      },
+          _ => const Center(child: CircularProgressIndicator.adaptive()),
+        },
+      ),
     );
   }
 
   Widget _body(
-      BuildContext context, AppLocalizations l10n, LedgerEntryDetail entry) {
+    BuildContext context,
+    AppLocalizations l10n,
+    LedgerEntryDetail entry,
+  ) {
     final date = DateFormat('dd/MM/yyyy').format(entry.publishedAt.toLocal());
     final verification = entry.verification;
-    final mono = Theme.of(context)
-        .textTheme
-        .bodySmall
-        ?.copyWith(fontFamily: 'monospace');
+    final mono = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace');
     final titleStyle = Theme.of(context).textTheme.titleMedium;
 
     return ListView(
@@ -49,8 +57,10 @@ class LedgerDetailScreen extends ConsumerWidget {
         if (entry.whatWasFixed.isNotEmpty) ...[
           Text(l10n.ledgerWhatFixed, style: titleStyle),
           const SizedBox(height: 4),
-          Text(entry.whatWasFixed,
-              style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            entry.whatWasFixed,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 12),
         ],
         if (entry.why.isNotEmpty) ...[
@@ -65,8 +75,10 @@ class LedgerDetailScreen extends ConsumerWidget {
         const SizedBox(height: 4),
         Text(l10n.ledgerPublishedOn(date)),
         const SizedBox(height: 12),
-        Text('${l10n.ledgerAmount}: ${formatVnd(entry.actualCostVnd)}',
-            style: titleStyle),
+        Text(
+          '${l10n.ledgerAmount}: ${formatVnd(entry.actualCostVnd)}',
+          style: titleStyle,
+        ),
         if (entry.approvers.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(l10n.ledgerApprovers, style: titleStyle),
@@ -95,8 +107,11 @@ class LedgerDetailScreen extends ConsumerWidget {
               minTileHeight: 48,
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.change_circle_outlined),
-              title: Text(correction.reason,
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
+              title: Text(
+                correction.reason,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               subtitle: Text(correction.status),
             ),
         ],
@@ -109,8 +124,11 @@ class LedgerDetailScreen extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.description_outlined),
               title: Text(doc.label),
-              subtitle: Text(doc.filename,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                doc.filename,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
         ],
         const SizedBox(height: 16),
@@ -128,8 +146,10 @@ class LedgerDetailScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(l10n.ledgerProofEvents,
-                    style: Theme.of(context).textTheme.labelLarge),
+                child: Text(
+                  l10n.ledgerProofEvents,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ),
             ),
             for (final event in entry.proof.events)

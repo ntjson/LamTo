@@ -18,6 +18,30 @@ void main() {
     expect(theme.brightness, Brightness.dark);
   });
 
+  testWidgets('statusToneColors follows theme brightness', (tester) async {
+    late BuildContext ctx;
+    Widget probe(Brightness b) => MaterialApp(
+      theme: lamToTheme(b),
+      home: Builder(
+        builder: (c) {
+          ctx = c;
+          return const SizedBox();
+        },
+      ),
+    );
+
+    await tester.pumpWidget(probe(Brightness.light));
+    expect(statusToneColors(ctx, StatusTone.success).fg, LamToColors.success);
+
+    await tester.pumpWidget(probe(Brightness.dark));
+    // MaterialApp animates theme changes; settle so the dark theme applies.
+    await tester.pumpAndSettle();
+    expect(
+      statusToneColors(ctx, StatusTone.success).fg,
+      LamToColorsDark.success,
+    );
+  });
+
   test('moneyTextStyle uses tabular figures', () {
     final theme = lamToTheme(Brightness.light);
     final style = moneyTextStyle(theme.textTheme);

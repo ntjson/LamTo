@@ -10,9 +10,13 @@ class LamToColors {
   static const muted = Color(0xFF5B6577);
   static const border = Color(0xFFD7DCE8);
   static const success = Color(0xFF0F7A45);
+  static const successBg = Color(0xFFE7F6EE);
   static const warning = Color(0xFF9A6700);
+  static const warningBg = Color(0xFFFFF6DD);
   static const error = Color(0xFFB42318);
+  static const errorBg = Color(0xFFFEF3F2);
   static const info = Color(0xFF175CD3);
+  static const infoBg = Color(0xFFEFF8FF);
 }
 
 /// Complete dark-theme tokens (clarification #6).
@@ -23,7 +27,101 @@ class LamToColorsDark {
   static const muted = Color(0xFFA0A8B8);
   static const border = Color(0xFF3A4158);
   static const onPrimary = Color(0xFFFFFFFF);
+  // Semantic tones for Night surfaces: deep tinted chip fills with light ink
+  // (the light pastels would glare on Night Ground and fail contrast).
+  static const success = Color(0xFF66D19E);
+  static const successBg = Color(0xFF163425);
+  static const warning = Color(0xFFE2B44C);
+  static const warningBg = Color(0xFF362C10);
+  static const error = Color(0xFFF2938C);
+  static const errorBg = Color(0xFF3B1B18);
+  static const info = Color(0xFF7CB5F5);
+  static const infoBg = Color(0xFF14273D);
 }
+
+/// DESIGN.md semantic roles (Separate States Rule: always paired with a
+/// text label, never color alone).
+enum StatusTone { success, warning, error, info }
+
+/// Resolves a tone to brightness-correct chip colors.
+({Color bg, Color fg}) statusToneColors(BuildContext context, StatusTone tone) {
+  final dark = Theme.of(context).brightness == Brightness.dark;
+  return switch (tone) {
+    StatusTone.success when dark => (
+      bg: LamToColorsDark.successBg,
+      fg: LamToColorsDark.success,
+    ),
+    StatusTone.success => (bg: LamToColors.successBg, fg: LamToColors.success),
+    StatusTone.warning when dark => (
+      bg: LamToColorsDark.warningBg,
+      fg: LamToColorsDark.warning,
+    ),
+    StatusTone.warning => (bg: LamToColors.warningBg, fg: LamToColors.warning),
+    StatusTone.error when dark => (
+      bg: LamToColorsDark.errorBg,
+      fg: LamToColorsDark.error,
+    ),
+    StatusTone.error => (bg: LamToColors.errorBg, fg: LamToColors.error),
+    StatusTone.info when dark => (
+      bg: LamToColorsDark.infoBg,
+      fg: LamToColorsDark.info,
+    ),
+    StatusTone.info => (bg: LamToColors.infoBg, fg: LamToColors.info),
+  };
+}
+
+/// DESIGN.md status-chip: pill, semantic bg + ink, label (+ optional icon).
+/// The one chip vocabulary for report status and evidence state.
+class StatusChip extends StatelessWidget {
+  const StatusChip({
+    required this.tone,
+    required this.label,
+    this.icon,
+    super.key,
+  });
+
+  final StatusTone tone;
+  final String label;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = statusToneColors(context, tone);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colors.bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: colors.fg),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: colors.fg,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tabular-figure body style for amounts inside list rows. Full Record Ink on
+/// purpose: financial figures are primary copy (DESIGN.md), not muted metadata.
+TextStyle? listAmountStyle(BuildContext context) =>
+    Theme.of(context).textTheme.bodyMedium?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
 
 /// Money / VND text style with real tabular figures (DESIGN.md).
 TextStyle moneyTextStyle(TextTheme base, {Color? color}) {
@@ -45,7 +143,9 @@ ThemeData lamToTheme(Brightness brightness) {
     brightness: brightness,
     primary: LamToColors.primary,
     onPrimary: LamToColors.onPrimary,
-    error: LamToColors.error,
+    // Dark keeps the derived light-tone error: #B42318 on Night Ground is
+    // ~2.8:1, below the WCAG AA baseline for error text.
+    error: isDark ? null : LamToColors.error,
     surface: surface,
     onSurface: onSurface,
     outline: outline,

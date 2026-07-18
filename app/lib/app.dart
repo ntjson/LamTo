@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import 'core/error_retry.dart';
 import 'core/failure.dart';
 import 'core/occupancy.dart';
 import 'core/providers.dart';
@@ -52,6 +55,7 @@ class _AppRouterState extends ConsumerState<AppRouter> {
   /// Last push-open payload waiting for [SessionAuthenticated] (last-wins).
   Map<String, String>? _pendingPush;
   bool _pushWired = false;
+  StreamSubscription<Map<String, String>>? _pushSub;
 
   @override
   void initState() {
@@ -65,7 +69,7 @@ class _AppRouterState extends ConsumerState<AppRouter> {
     final source = ref.read(pushTokenSourceProvider);
     final initial = await source.initialMessageData();
     if (initial != null) _openPush(initial);
-    source.onMessageOpened.listen(_openPush);
+    _pushSub = source.onMessageOpened.listen(_openPush);
   }
 
   bool get _isAuthenticated {
@@ -101,19 +105,23 @@ class _AppRouterState extends ConsumerState<AppRouter> {
     final navigator = Navigator.of(context);
     switch (link) {
       case DeepLinkReport(:final id):
-        navigator.push(MaterialPageRoute(
-            builder: (_) => IssueDetailScreen(reportId: id)));
+        navigator.push(
+          MaterialPageRoute(builder: (_) => IssueDetailScreen(reportId: id)),
+        );
       case DeepLinkLedger(:final id):
-        navigator.push(MaterialPageRoute(
-            builder: (_) => LedgerDetailScreen(entryId: id)));
+        navigator.push(
+          MaterialPageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),
+        );
       case DeepLinkFeed():
-        navigator.push(MaterialPageRoute(
-            builder: (_) => const NotificationsScreen()));
+        navigator.push(
+          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        );
     }
   }
 
   @override
   void dispose() {
+    _pushSub?.cancel();
     _listened?.removeListener(_onOccupancyChanged);
     super.dispose();
   }
@@ -146,20 +154,20 @@ class _AppRouterState extends ConsumerState<AppRouter> {
 
     return switch (session) {
       AsyncData(:final value) => switch (value) {
-          SessionUnauthenticated() => const LoginScreen(),
-          SessionAuthenticated(:final me) => _routeAuthenticated(me, holder),
-          SessionBootstrapError(:final failure) => BootstrapErrorScreen(
-              failure: failure,
-              onRetry: () => ref.invalidate(sessionControllerProvider),
-            ),
-        },
-      AsyncError(:final error) => BootstrapErrorScreen(
-          failure: error is Failure ? error : Failure(code: 'server_error'),
+        SessionUnauthenticated() => const LoginScreen(),
+        SessionAuthenticated(:final me) => _routeAuthenticated(me, holder),
+        SessionBootstrapError(:final failure) => BootstrapErrorScreen(
+          failure: failure,
           onRetry: () => ref.invalidate(sessionControllerProvider),
         ),
+      },
+      AsyncError(:final error) => BootstrapErrorScreen(
+        failure: error is Failure ? error : Failure(code: 'server_error'),
+        onRetry: () => ref.invalidate(sessionControllerProvider),
+      ),
       _ => const Scaffold(
-          body: Center(child: CircularProgressIndicator.adaptive()),
-        ),
+        body: Center(child: CircularProgressIndicator.adaptive()),
+      ),
     };
   }
 
@@ -192,20 +200,9 @@ class BootstrapErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(failureMessage(failure, l10n), textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: onRetry, child: Text(l10n.bootstrapRetry)),
-            ],
-          ),
-        ),
+        child: ErrorRetry(error: failure, onRetry: onRetry),
       ),
     );
   }

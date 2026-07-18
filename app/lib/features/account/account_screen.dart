@@ -12,14 +12,14 @@ import '../transparency/transparency_repository.dart';
 /// The five resident notification categories (server defaults absent rows to
 /// enabled). Labels resolve through l10n.
 List<({String code, String label})> residentPreferenceCategories(
-        AppLocalizations l10n) =>
-    [
-      (code: 'report.receipt', label: l10n.prefReportReceipt),
-      (code: 'triage.status', label: l10n.prefTriageStatus),
-      (code: 'work.completed', label: l10n.prefWorkCompleted),
-      (code: 'ledger.publication', label: l10n.prefLedgerPublication),
-      (code: 'correction.status', label: l10n.prefCorrectionStatus),
-    ];
+  AppLocalizations l10n,
+) => [
+  (code: 'report.receipt', label: l10n.prefReportReceipt),
+  (code: 'triage.status', label: l10n.prefTriageStatus),
+  (code: 'work.completed', label: l10n.prefWorkCompleted),
+  (code: 'ledger.publication', label: l10n.prefLedgerPublication),
+  (code: 'correction.status', label: l10n.prefCorrectionStatus),
+];
 
 /// Account tab (spec 6.3(7)). Body-only: the shell owns chrome.
 class AccountScreen extends ConsumerStatefulWidget {
@@ -62,14 +62,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(me.displayName,
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(me.displayName, style: Theme.of(context).textTheme.titleLarge),
             Text(me.email, style: Theme.of(context).textTheme.bodySmall),
             if (me.phone != null && me.phone!.isNotEmpty)
               Text(me.phone!, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 24),
-            Text(l10n.accountOccupancies,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n.accountOccupancies,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             RadioGroup<int>(
               groupValue: holder.occupancyId,
               onChanged: (id) {
@@ -86,23 +87,25 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       contentPadding: EdgeInsets.zero,
                       value: occupancy.id,
                       title: Text(
-                          '${occupancy.buildingName} · ${occupancy.unitLabel}'),
+                        '${occupancy.buildingName} · ${occupancy.unitLabel}',
+                      ),
                     ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            Text(l10n.accountPreferences,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n.accountPreferences,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             if (_prefError != null) ...[
               const SizedBox(height: 8),
               Text(
                 _prefError!,
                 key: const Key('account_pref_error'),
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).colorScheme.error),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
             ],
             for (final category in residentPreferenceCategories(l10n))
@@ -110,13 +113,21 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             const SizedBox(height: 24),
             const ApiBaseUrlTile(),
             const SizedBox(height: 24),
-            FilledButton(
+            // Session actions, not the tab's primary CTA: outlined/text, never
+            // the filled Accountability Indigo reserved for primary actions.
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
               onPressed: () =>
                   ref.read(sessionControllerProvider.notifier).signOut(),
               child: Text(l10n.signOut),
             ),
             const SizedBox(height: 8),
-            OutlinedButton(
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
               onPressed: () => ref
                   .read(sessionControllerProvider.notifier)
                   .signOut(allDevices: true),
@@ -128,28 +139,56 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
-  Widget _prefRow(AppLocalizations l10n, ({String code, String label}) category,
-      NotificationPreference? server) {
+  Widget _prefRow(
+    AppLocalizations l10n,
+    ({String code, String label}) category,
+    NotificationPreference? server,
+  ) {
     final email = _email[category.code] ?? server?.emailEnabled ?? true;
     final push = _push[category.code] ?? server?.pushEnabled ?? true;
+    // Wrap, not Row: at large system text scale the fixed labels + switches
+    // exceed compact widths and a Row would clip (PRODUCT.md: system text
+    // scaling without clipping). Controls fall to their own line instead.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 4,
         children: [
-          Expanded(child: Text(category.label)),
-          Text(l10n.accountPrefEmail,
-              style: Theme.of(context).textTheme.labelSmall),
-          Switch.adaptive(
-            key: Key('email_${category.code}'),
-            value: email,
-            onChanged: (value) => _patch(category.code, email: value),
-          ),
-          Text(l10n.accountPrefPush,
-              style: Theme.of(context).textTheme.labelSmall),
-          Switch.adaptive(
-            key: Key('push_${category.code}'),
-            value: push,
-            onChanged: (value) => _patch(category.code, push: value),
+          Text(category.label),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ExcludeSemantics(
+                child: Text(
+                  l10n.accountPrefEmail,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              Semantics(
+                label: '${category.label} · ${l10n.accountPrefEmail}',
+                child: Switch.adaptive(
+                  key: Key('email_${category.code}'),
+                  value: email,
+                  onChanged: (value) => _patch(category.code, email: value),
+                ),
+              ),
+              ExcludeSemantics(
+                child: Text(
+                  l10n.accountPrefPush,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              Semantics(
+                label: '${category.label} · ${l10n.accountPrefPush}',
+                child: Switch.adaptive(
+                  key: Key('push_${category.code}'),
+                  value: push,
+                  onChanged: (value) => _patch(category.code, push: value),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -163,7 +202,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       _prefError = null;
     });
     try {
-      await ref.read(transparencyRepositoryProvider).updatePreference(
+      await ref
+          .read(transparencyRepositoryProvider)
+          .updatePreference(
             eventCode: code,
             emailEnabled: email,
             pushEnabled: push,

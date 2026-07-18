@@ -24,6 +24,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get loginSubmit => 'Đăng nhập';
 
   @override
+  String get loginMissingFields =>
+      'Vui lòng nhập số điện thoại/email và mật khẩu. Chưa có gì được gửi đi.';
+
+  @override
+  String get loginShowPassword => 'Hiện mật khẩu';
+
+  @override
+  String get loginHidePassword => 'Ẩn mật khẩu';
+
+  @override
   String get apiBaseUrlTitle => 'Máy chủ API';
 
   @override
@@ -48,9 +58,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get occupancyPickerTitle => 'Chọn căn hộ của bạn';
-
-  @override
-  String get bootstrapRetry => 'Thử lại';
 
   @override
   String get signOut => 'Đăng xuất';
@@ -177,6 +184,11 @@ class AppLocalizationsVi extends AppLocalizations {
   String get statusResolved => 'Đã xử lý';
 
   @override
+  String issueDetailTitle(int id) {
+    return 'Phản ánh #$id';
+  }
+
+  @override
   String get timelineSubmitted => 'Đã gửi phản ánh';
 
   @override
@@ -265,6 +277,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get ledgerTitle => 'Sổ quỹ tòa nhà';
 
   @override
+  String get ledgerDetailTitle => 'Chi tiết khoản chi';
+
+  @override
   String get ledgerEmpty => 'Không có khoản chi nào trong kỳ này.';
 
   @override
@@ -340,8 +355,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get evidenceChain => 'Đã neo trên blockchain';
 
   @override
-  String get evidenceLocal =>
-      'Đã ký và khóa băm — hệ thống này chưa bật neo blockchain';
+  String get evidenceLocal => 'Đã ký — chưa bật neo blockchain';
 
   @override
   String get evidencePending => 'Đang chờ neo blockchain';

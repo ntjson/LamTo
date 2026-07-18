@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-import '../../core/failure.dart';
+import '../../core/error_retry.dart';
 import '../../core/format.dart';
+import '../../core/load_more_button.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
 import '../transparency/transparency_repository.dart';
 import 'evidence_labels.dart';
@@ -32,7 +34,11 @@ class LedgerListController extends AsyncNotifier<List<LedgerEntryList>> {
     year = newYear;
     month = newMonth;
     ref.invalidateSelf();
-    await future;
+    // The list area renders the failure with its own retry; the chip tap
+    // must not escape as an unhandled zone error.
+    try {
+      await future;
+    } catch (_) {}
   }
 
   Future<void> loadMore() async {
@@ -42,6 +48,9 @@ class LedgerListController extends AsyncNotifier<List<LedgerEntryList>> {
     final page = await ref
         .read(transparencyRepositoryProvider)
         .listLedger(cursor: cursor, year: year, month: month);
+    // A refresh or period change may have replaced the list while this page
+    // was in flight; appending onto the stale snapshot would clobber it.
+    if (!identical(state.value, current)) return;
     _nextCursor = cursorFromNext(page.next);
     state = AsyncData([...current, ...page.results]);
   }
@@ -49,7 +58,35 @@ class LedgerListController extends AsyncNotifier<List<LedgerEntryList>> {
 
 final ledgerListProvider =
     AsyncNotifierProvider<LedgerListController, List<LedgerEntryList>>(
-        LedgerListController.new);
+      LedgerListController.new,
+    );
+
+/// DESIGN.md filter-chip: Quiet Surface at rest, Accountability Indigo with
+/// on-primary ink when selected (never a semantic state color).
+class _PeriodChip extends StatelessWidget {
+  const _PeriodChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      selectedColor: scheme.primary,
+      checkmarkColor: scheme.onPrimary,
+      labelStyle: selected ? TextStyle(color: scheme.onPrimary) : null,
+      onSelected: (_) => onSelected(),
+    );
+  }
+}
 
 /// Ledger tab (spec 6.3(6)). Body-only: the shell owns chrome.
 class LedgerScreen extends ConsumerWidget {
@@ -65,48 +102,65 @@ class LedgerScreen extends ConsumerWidget {
 
     return Material(
       color: Colors.transparent,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(l10n.ledgerTitle,
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          // Period filter: "All" + recent years (spec 6.3(6) period filters).
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: Text(l10n.ledgerAllTime),
-                selected: controller.year == null,
-                onSelected: (_) => controller.setPeriod(),
-              ),
-              for (final y in years)
-                ChoiceChip(
-                  label: Text('$y'),
-                  selected: controller.year == y,
-                  onSelected: (_) => controller.setPeriod(newYear: y),
+      child: RefreshIndicator.adaptive(
+        onRefresh: () async {
+          // The error branch below is the retry surface; a failed refresh
+          // must not escape as an unhandled zone error.
+          ref.invalidate(ledgerListProvider);
+          try {
+            await ref.read(ledgerListProvider.future);
+          } catch (_) {}
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              l10n.ledgerTitle,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            // Period filter: "All" + recent years (spec 6.3(6) period filters).
+            Wrap(
+              spacing: 8,
+              children: [
+                _PeriodChip(
+                  label: l10n.ledgerAllTime,
+                  selected: controller.year == null,
+                  onSelected: () => controller.setPeriod(),
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          switch (entries) {
-            AsyncData(:final value) when value.isEmpty =>
-              Padding(
+                for (final y in years)
+                  _PeriodChip(
+                    label: '$y',
+                    selected: controller.year == y,
+                    onSelected: () => controller.setPeriod(newYear: y),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            switch (entries) {
+              AsyncData(:final value) when value.isEmpty => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Text(l10n.ledgerEmpty),
               ),
-            AsyncData(:final value) => Column(
+              AsyncData(:final value) => Column(
                 children: [
                   for (final entry in value)
                     ListTile(
                       minTileHeight: 64,
                       contentPadding: EdgeInsets.zero,
-                      title: Text(entry.contractorName,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      title: Text(
+                        entry.contractorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(formatVnd(entry.actualCostVnd)),
+                          Text(
+                            formatVnd(entry.actualCostVnd),
+                            style: listAmountStyle(context),
+                          ),
                           const SizedBox(height: 4),
                           EvidenceBadge(level: entry.evidenceLevel),
                         ],
@@ -114,26 +168,28 @@ class LedgerScreen extends ConsumerWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              LedgerDetailScreen(entryId: entry.id),
+                          builder: (_) => LedgerDetailScreen(entryId: entry.id),
                         ),
                       ),
                     ),
                   if (controller.hasMore)
-                    OutlinedButton(
-                      onPressed: controller.loadMore,
-                      child: Text(l10n.ledgerLoadMore),
+                    LoadMoreButton(
+                      label: l10n.ledgerLoadMore,
+                      onLoadMore: controller.loadMore,
                     ),
                 ],
               ),
-            AsyncError(:final error) =>
-              Text(failureMessage(Failure.fromObject(error), l10n)),
-            _ => const Padding(
+              AsyncError(:final error) => ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(ledgerListProvider),
+              ),
+              _ => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Center(child: CircularProgressIndicator.adaptive()),
               ),
-          },
-        ],
+            },
+          ],
+        ),
       ),
     );
   }

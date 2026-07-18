@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-import '../../core/failure.dart';
+import '../../core/error_retry.dart';
+import '../../core/load_more_button.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
@@ -42,8 +43,12 @@ class MyReportsController extends AsyncNotifier<List<ReportSummary>> {
     final cursor = _nextCursor;
     final current = state.value;
     if (cursor == null || current == null) return;
-    final page =
-        await ref.read(reportsRepositoryProvider).listReports(cursor: cursor);
+    final page = await ref
+        .read(reportsRepositoryProvider)
+        .listReports(cursor: cursor);
+    // A refresh may have replaced the list while this page was in flight;
+    // appending onto the stale snapshot would clobber the fresh state.
+    if (!identical(state.value, current)) return;
     _nextCursor = cursorFromNext(page.next);
     state = AsyncData([...current, ...page.results]);
   }
@@ -51,7 +56,8 @@ class MyReportsController extends AsyncNotifier<List<ReportSummary>> {
 
 final myReportsProvider =
     AsyncNotifierProvider<MyReportsController, List<ReportSummary>>(
-        MyReportsController.new);
+      MyReportsController.new,
+    );
 
 /// Issues tab body: user-global "My issues" / "Việc của tôi" list with
 /// semantic status chips, pull-to-refresh, and load-more (spec §6.3(5)).
@@ -77,80 +83,79 @@ class MyIssuesScreen extends ConsumerWidget {
     );
     final body = switch (reports) {
       AsyncData(:final value) => RefreshIndicator.adaptive(
-          onRefresh: () => ref.refresh(myReportsProvider.future),
-          child: value.isEmpty
-              ? ListView(
-                  children: [
-                    title,
-                    const SizedBox(height: 120),
-                    Center(child: Text(l10n.issuesEmpty)),
-                  ],
-                )
-              : ListView(
-                  children: [
-                    title,
-                    for (final report in value)
-                      ListTile(
-                        minTileHeight: 64,
-                        title: Text(
-                          report.text,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          report.locationPathSnapshot,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: Chip(
-                          visualDensity: VisualDensity.compact,
-                          // DESIGN.md success-bg / info-bg tokens.
-                          backgroundColor: report.status == 'RESOLVED'
-                              ? const Color(0xFFE7F6EE)
-                              : const Color(0xFFEFF8FF),
-                          label: Text(
-                            reportStatusLabel(report.status, l10n),
-                            style: TextStyle(
-                              color: report.status == 'RESOLVED'
-                                  ? LamToColors.success
-                                  : LamToColors.info,
-                            ),
-                          ),
-                        ),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                IssueDetailScreen(reportId: report.id),
-                          ),
+        onRefresh: () async {
+          // The error branch below is the retry surface; a failed refresh
+          // must not escape as an unhandled zone error.
+          ref.invalidate(myReportsProvider);
+          try {
+            await ref.read(myReportsProvider.future);
+          } catch (_) {}
+        },
+        child: value.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  title,
+                  const SizedBox(height: 120),
+                  Center(child: Text(l10n.issuesEmpty)),
+                ],
+              )
+            : ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  title,
+                  for (final report in value)
+                    ListTile(
+                      minTileHeight: 64,
+                      title: Text(
+                        report.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        report.locationPathSnapshot,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: StatusChip(
+                        tone: report.status == 'RESOLVED'
+                            ? StatusTone.success
+                            : StatusTone.info,
+                        label: reportStatusLabel(report.status, l10n),
+                      ),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              IssueDetailScreen(reportId: report.id),
                         ),
                       ),
-                    if (ref.read(myReportsProvider.notifier).hasMore)
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: OutlinedButton(
-                          onPressed: () =>
-                              ref.read(myReportsProvider.notifier).loadMore(),
-                          child: Text(l10n.issuesLoadMore),
-                        ),
-                      ),
-                  ],
-                ),
-        ),
+                    ),
+                  if (ref.read(myReportsProvider.notifier).hasMore)
+                    LoadMoreButton(
+                      label: l10n.issuesLoadMore,
+                      onLoadMore: ref.read(myReportsProvider.notifier).loadMore,
+                    ),
+                ],
+              ),
+      ),
       AsyncError(:final error) => ListView(
-          children: [
-            title,
-            const SizedBox(height: 48),
-            Center(child: Text(failureMessage(Failure.fromObject(error), l10n))),
-          ],
-        ),
+        children: [
+          title,
+          const SizedBox(height: 48),
+          ErrorRetry(
+            error: error,
+            onRetry: () => ref.invalidate(myReportsProvider),
+          ),
+        ],
+      ),
       _ => ListView(
-          children: [
-            title,
-            const SizedBox(height: 48),
-            const Center(child: CircularProgressIndicator.adaptive()),
-          ],
-        ),
+        children: [
+          title,
+          const SizedBox(height: 48),
+          const Center(child: CircularProgressIndicator.adaptive()),
+        ],
+      ),
     };
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,

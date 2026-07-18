@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-import '../../core/failure.dart';
+import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import '../ledger/ledger_detail_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../reports/issue_detail_screen.dart';
@@ -27,20 +28,27 @@ class HomeScreen extends ConsumerWidget {
       color: Colors.transparent,
       child: RefreshIndicator.adaptive(
         onRefresh: () async {
-          await Future.wait([
-            ref.refresh(fundSummaryProvider.future),
-            ref.refresh(recentSpendingProvider.future),
-            ref.refresh(myReportsProvider.future),
-          ]);
+          // Each section renders its own AsyncError; a failed refresh must
+          // not escape as an unhandled zone error.
+          try {
+            await Future.wait([
+              ref.refresh(fundSummaryProvider.future),
+              ref.refresh(recentSpendingProvider.future),
+              ref.refresh(myReportsProvider.future),
+            ]);
+          } catch (_) {}
         },
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(l10n.homeFundTitle,
-                      style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    l10n.homeFundTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                 ),
                 IconButton(
                   iconSize: 28,
@@ -49,36 +57,47 @@ class HomeScreen extends ConsumerWidget {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen()),
+                      builder: (_) => const NotificationsScreen(),
+                    ),
                   ),
                 ),
               ],
             ),
             switch (fund) {
               AsyncData(:final value) => _fundBlock(context, l10n, value),
-              AsyncError(:final error) =>
-                Text(failureMessage(Failure.fromObject(error), l10n)),
+              AsyncError(:final error) => ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(fundSummaryProvider),
+              ),
               _ => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator.adaptive()),
-                ),
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator.adaptive()),
+              ),
             },
             const SizedBox(height: 24),
-            Text(l10n.homeActiveReports,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n.homeActiveReports,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             switch (reports) {
               AsyncData(:final value) => _activeReports(context, l10n, value),
-              AsyncError(:final error) =>
-                Text(failureMessage(Failure.fromObject(error), l10n)),
+              AsyncError(:final error) => ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(myReportsProvider),
+              ),
               _ => const SizedBox.shrink(),
             },
             const SizedBox(height: 24),
-            Text(l10n.homeRecentSpending,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n.homeRecentSpending,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             switch (spending) {
               AsyncData(:final value) => _recentSpending(context, l10n, value),
-              AsyncError(:final error) =>
-                Text(failureMessage(Failure.fromObject(error), l10n)),
+              AsyncError(:final error) => ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(recentSpendingProvider),
+              ),
               _ => const SizedBox.shrink(),
             },
           ],
@@ -89,7 +108,10 @@ class HomeScreen extends ConsumerWidget {
 
   /// DESIGN.md fund-balance signature: large tabular amount + stat grid.
   Widget _fundBlock(
-      BuildContext context, AppLocalizations l10n, FundSummary fund) {
+    BuildContext context,
+    AppLocalizations l10n,
+    FundSummary fund,
+  ) {
     final amountStyle = Theme.of(context).textTheme.headlineMedium?.copyWith(
       fontWeight: FontWeight.w700,
       fontFeatures: const [FontFeature.tabularFigures()],
@@ -102,12 +124,16 @@ class HomeScreen extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-              child: Text('${l10n.homeFundInflows}: '
-                  '${formatVnd(fund.periodInflowsVnd)}'),
+              child: Text(
+                '${l10n.homeFundInflows}: '
+                '${formatVnd(fund.periodInflowsVnd)}',
+              ),
             ),
             Expanded(
-              child: Text('${l10n.homeFundOutflows}: '
-                  '${formatVnd(fund.periodOutflowsVnd)}'),
+              child: Text(
+                '${l10n.homeFundOutflows}: '
+                '${formatVnd(fund.periodOutflowsVnd)}',
+              ),
             ),
           ],
         ),
@@ -116,10 +142,15 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _activeReports(
-      BuildContext context, AppLocalizations l10n, List<ReportSummary> all) {
+    BuildContext context,
+    AppLocalizations l10n,
+    List<ReportSummary> all,
+  ) {
     // A3: shared helper — not a bare inline magic string.
-    final open =
-        all.where((r) => isActiveReportStatus(r.status)).take(3).toList();
+    final open = all
+        .where((r) => isActiveReportStatus(r.status))
+        .take(3)
+        .toList();
     if (open.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -132,22 +163,29 @@ class HomeScreen extends ConsumerWidget {
           ListTile(
             minTileHeight: 56,
             contentPadding: EdgeInsets.zero,
-            title: Text(report.text,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+            title: Text(
+              report.text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             subtitle: Text(reportStatusLabel(report.status, l10n)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) => IssueDetailScreen(reportId: report.id)),
+                builder: (_) => IssueDetailScreen(reportId: report.id),
+              ),
             ),
           ),
       ],
     );
   }
 
-  Widget _recentSpending(BuildContext context, AppLocalizations l10n,
-      List<LedgerEntryList> entries) {
+  Widget _recentSpending(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<LedgerEntryList> entries,
+  ) {
     if (entries.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -160,14 +198,21 @@ class HomeScreen extends ConsumerWidget {
           ListTile(
             minTileHeight: 56,
             contentPadding: EdgeInsets.zero,
-            title: Text(entry.contractorName,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(formatVnd(entry.actualCostVnd)),
+            title: Text(
+              entry.contractorName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              formatVnd(entry.actualCostVnd),
+              style: listAmountStyle(context),
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) => LedgerDetailScreen(entryId: entry.id)),
+                builder: (_) => LedgerDetailScreen(entryId: entry.id),
+              ),
             ),
           ),
       ],

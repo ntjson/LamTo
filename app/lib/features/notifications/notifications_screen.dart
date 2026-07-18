@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-import '../../core/failure.dart';
+import '../../core/error_retry.dart';
+import '../../core/load_more_button.dart';
+import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../ledger/ledger_detail_screen.dart';
@@ -18,8 +20,9 @@ class NotificationsController extends AsyncNotifier<List<NotificationFeed>> {
   @override
   Future<List<NotificationFeed>> build() async {
     ref.watch(occupancyScopedProviders);
-    final page =
-        await ref.read(transparencyRepositoryProvider).listNotifications();
+    final page = await ref
+        .read(transparencyRepositoryProvider)
+        .listNotifications();
     _nextCursor = cursorFromNext(page.next);
     return page.results.toList();
   }
@@ -31,6 +34,9 @@ class NotificationsController extends AsyncNotifier<List<NotificationFeed>> {
     final page = await ref
         .read(transparencyRepositoryProvider)
         .listNotifications(cursor: cursor);
+    // A refresh may have replaced the list while this page was in flight;
+    // appending onto the stale snapshot would clobber the fresh state.
+    if (!identical(state.value, current)) return;
     _nextCursor = cursorFromNext(page.next);
     state = AsyncData([...current, ...page.results]);
   }
@@ -60,7 +66,8 @@ class NotificationsController extends AsyncNotifier<List<NotificationFeed>> {
 
 final notificationsProvider =
     AsyncNotifierProvider<NotificationsController, List<NotificationFeed>>(
-        NotificationsController.new);
+      NotificationsController.new,
+    );
 
 /// Notifications feed (spec 6.3(8)): list, mark-read, allowlisted deep links.
 class NotificationsScreen extends ConsumerWidget {
@@ -74,13 +81,25 @@ class NotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.notificationsTitle)),
-      body: switch (notices) {
-        AsyncData(:final value) when value.isEmpty =>
-          Center(child: Text(l10n.notificationsEmpty)),
-        AsyncData(:final value) => RefreshIndicator.adaptive(
-            onRefresh: () => ref.refresh(notificationsProvider.future),
+      body: PageBody(
+        child: switch (notices) {
+          AsyncData(:final value) => RefreshIndicator.adaptive(
+            onRefresh: () async {
+              // The error branch below is the retry surface; a failed refresh
+              // must not escape as an unhandled zone error.
+              ref.invalidate(notificationsProvider);
+              try {
+                await ref.read(notificationsProvider.future);
+              } catch (_) {}
+            },
             child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               children: [
+                if (value.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 120),
+                    child: Center(child: Text(l10n.notificationsEmpty)),
+                  ),
                 for (final notice in value)
                   ListTile(
                     minTileHeight: 64,
@@ -95,31 +114,38 @@ class NotificationsScreen extends ConsumerWidget {
                           ? const TextStyle(fontWeight: FontWeight.w600)
                           : null,
                     ),
-                    subtitle: Text(notice.body,
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(
+                      notice.body,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     onTap: () => _open(context, controller, notice),
                   ),
                 if (controller.hasMore)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: OutlinedButton(
-                      onPressed: controller.loadMore,
-                      child: Text(l10n.notificationsLoadMore),
-                    ),
+                  LoadMoreButton(
+                    label: l10n.notificationsLoadMore,
+                    onLoadMore: controller.loadMore,
                   ),
               ],
             ),
           ),
-        AsyncError(:final error) => Center(
-            child: Text(failureMessage(Failure.fromObject(error), l10n)),
+          AsyncError(:final error) => Center(
+            child: ErrorRetry(
+              error: error,
+              onRetry: () => ref.invalidate(notificationsProvider),
+            ),
           ),
-        _ => const Center(child: CircularProgressIndicator.adaptive()),
-      },
+          _ => const Center(child: CircularProgressIndicator.adaptive()),
+        },
+      ),
     );
   }
 
-  void _open(BuildContext context, NotificationsController controller,
-      NotificationFeed notice) {
+  void _open(
+    BuildContext context,
+    NotificationsController controller,
+    NotificationFeed notice,
+  ) {
     controller.markRead(notice);
     switch (parseEventKey(notice.eventKey)) {
       case DeepLinkReport(:final id):

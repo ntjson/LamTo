@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import 'session_controller.dart';
 
 class OccupancyPickerScreen extends ConsumerWidget {
-  const OccupancyPickerScreen({required this.me, super.key}) : emptyState = false;
+  const OccupancyPickerScreen({required this.me, super.key})
+    : emptyState = false;
 
   /// Zero-occupancy: authenticated but no linked home (dedicated empty state).
-  const OccupancyPickerScreen.empty({super.key})
-      : me = null,
-        emptyState = true;
+  const OccupancyPickerScreen.empty({super.key}) : me = null, emptyState = true;
 
   final Me? me;
   final bool emptyState;
@@ -27,17 +27,19 @@ class OccupancyPickerScreen extends ConsumerWidget {
     final current = me!;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.occupancyPickerTitle)),
-      body: ListView(
-        children: current.occupancies.map((Occupancy o) {
-          return ListTile(
-            title: Text('${o.buildingName} · ${o.unitLabel}'),
-            onTap: () async {
-              await ref
-                  .read(sessionControllerProvider.notifier)
-                  .selectOccupancy(current, o.id);
-            },
-          );
-        }).toList(),
+      body: PageBody(
+        child: ListView(
+          children: current.occupancies.map((Occupancy o) {
+            return ListTile(
+              title: Text('${o.buildingName} · ${o.unitLabel}'),
+              onTap: () async {
+                await ref
+                    .read(sessionControllerProvider.notifier)
+                    .selectOccupancy(current, o.id);
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -53,22 +55,21 @@ class _NoOccupancyScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.noOccupancyTitle)),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              l10n.noOccupancyBody,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: onSignOut,
-              child: Text(l10n.signOut),
-            ),
-          ],
+      body: PageBody(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                l10n.noOccupancyBody,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(onPressed: onSignOut, child: Text(l10n.signOut)),
+            ],
+          ),
         ),
       ),
     );

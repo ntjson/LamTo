@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-import '../../core/failure.dart';
+import '../../core/error_retry.dart';
+import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import 'reports_repository.dart';
 
@@ -33,26 +34,18 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
       },
       child: Scaffold(
         appBar: AppBar(title: Text(parent?.name ?? l10n.locationPickerTitle)),
-        body: switch (locations) {
-          AsyncData(:final value) => _list(context, l10n, value, parent),
-          AsyncError(:final error) => Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(failureMessage(
-                    error is Failure ? error : Failure(code: 'server_error'),
-                    l10n,
-                  )),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: () => ref.invalidate(locationsProvider),
-                    child: Text(l10n.commonRetry),
-                  ),
-                ],
+        body: PageBody(
+          child: switch (locations) {
+            AsyncData(:final value) => _list(context, l10n, value, parent),
+            AsyncError(:final error) => Center(
+              child: ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(locationsProvider),
               ),
             ),
-          _ => const Center(child: CircularProgressIndicator.adaptive()),
-        },
+            _ => const Center(child: CircularProgressIndicator.adaptive()),
+          },
+        ),
       ),
     );
   }
@@ -63,8 +56,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
     List<Location> all,
     Location? parent,
   ) {
-    final children =
-        all.where((loc) => loc.parentId == parent?.id).toList();
+    final children = all.where((loc) => loc.parentId == parent?.id).toList();
     final hasChildren = {
       for (final loc in all)
         if (loc.parentId != null) loc.parentId!,

@@ -117,12 +117,33 @@ void main() {
   });
 
   testWidgets('Android shell uses NavigationBar', (tester) async {
+    // Compact width: the default 800px test view now gets a NavigationRail.
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final previous = debugDefaultTargetPlatformOverride;
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await _pump(tester, me: _meWith(1));
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.byType(CupertinoTabBar), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
+  });
+
+  testWidgets('Android shell uses NavigationRail at expanded width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      await _pump(tester, me: _meWith(1));
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = previous;
     }

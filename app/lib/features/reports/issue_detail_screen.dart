@@ -4,8 +4,11 @@ import 'package:intl/intl.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/authenticated_image.dart';
+import '../../core/error_retry.dart';
 import '../../core/failure.dart';
+import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import 'reports_repository.dart';
 
 String workStatusLabel(String status, AppLocalizations l10n) =>
@@ -19,7 +22,8 @@ String workStatusLabel(String status, AppLocalizations l10n) =>
       _ => status,
     };
 
-String _date(DateTime value) => DateFormat('dd/MM/yyyy').format(value.toLocal());
+String _date(DateTime value) =>
+    DateFormat('dd/MM/yyyy').format(value.toLocal());
 
 class IssueDetailScreen extends ConsumerWidget {
   const IssueDetailScreen({required this.reportId, super.key});
@@ -30,41 +34,63 @@ class IssueDetailScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final detail = ref.watch(reportDetailProvider(reportId));
     return Scaffold(
-      appBar: AppBar(title: Text('#$reportId')),
-      body: switch (detail) {
-        AsyncData(:final value) => _body(context, ref, l10n, value),
-        AsyncError(:final error) => Center(
-            child: Text(failureMessage(Failure.fromObject(error), l10n)),
+      appBar: AppBar(title: Text(l10n.issueDetailTitle(reportId))),
+      body: PageBody(
+        child: switch (detail) {
+          AsyncData(:final value) => _body(context, ref, l10n, value),
+          AsyncError(:final error) => Center(
+            child: ErrorRetry(
+              error: error,
+              onRetry: () => ref.invalidate(reportDetailProvider(reportId)),
+            ),
           ),
-        _ => const Center(child: CircularProgressIndicator.adaptive()),
-      },
+          _ => const Center(child: CircularProgressIndicator.adaptive()),
+        },
+      ),
     );
   }
 
-  Widget _body(BuildContext context, WidgetRef ref, AppLocalizations l10n,
-      ReportDetail report) {
-    final steps = <(IconData, String)>[
-      (Icons.send_outlined,
-          '${l10n.timelineSubmitted} · ${_date(report.createdAt)}'),
+  Widget _body(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l10n,
+    ReportDetail report,
+  ) {
+    // Tone only where states differ (pending vs done); default ink elsewhere
+    // so color keeps carrying meaning (DESIGN.md Separate States Rule).
+    final steps = <(IconData, String, StatusTone?)>[
+      (
+        Icons.send_outlined,
+        '${l10n.timelineSubmitted} · ${_date(report.createdAt)}',
+        null,
+      ),
       if (report.triageStatus == 'SUCCEEDED' ||
           report.triageStatus == 'NEEDS_MANUAL' ||
           report.cases.isNotEmpty)
-        (Icons.fact_check_outlined, l10n.timelineTriageDone)
+        (Icons.fact_check_outlined, l10n.timelineTriageDone, null)
       else
-        (Icons.hourglass_empty, l10n.timelineTriagePending),
+        (Icons.hourglass_empty, l10n.timelineTriagePending, StatusTone.warning),
       for (final caseItem in report.cases) ...[
-        (Icons.folder_open_outlined, l10n.timelineCase(caseItem.category)),
+        (
+          Icons.folder_open_outlined,
+          l10n.timelineCase(caseItem.category),
+          null,
+        ),
         for (final work in caseItem.workOrders) ...[
           (
             Icons.build_outlined,
             l10n.timelineWork(
               workStatusLabel(work.status, l10n),
               _date(work.deadlineAt),
-            )
+            ),
+            null,
           ),
           if (work.completedAt != null)
-            (Icons.check_circle_outline,
-                '${l10n.timelineCompleted} · ${_date(work.completedAt!)}'),
+            (
+              Icons.check_circle_outline,
+              '${l10n.timelineCompleted} · ${_date(work.completedAt!)}',
+              StatusTone.success,
+            ),
         ],
       ],
     ];
@@ -79,8 +105,10 @@ class IssueDetailScreen extends ConsumerWidget {
       children: [
         Text(report.text, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
-        Text('${report.locationPathSnapshot} · ${report.unitLabel}',
-            style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          '${report.locationPathSnapshot} · ${report.unitLabel}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         if (report.photos.isNotEmpty) ...[
           const SizedBox(height: 12),
           SizedBox(
@@ -93,8 +121,11 @@ class IssueDetailScreen extends ConsumerWidget {
                     padding: const EdgeInsets.only(right: 8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: AuthenticatedImage(photo.downloadUrl,
-                          width: 96, height: 96),
+                      child: AuthenticatedImage(
+                        photo.downloadUrl,
+                        width: 96,
+                        height: 96,
+                      ),
                     ),
                   ),
               ],
@@ -102,11 +133,14 @@ class IssueDetailScreen extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 16),
-        for (final (icon, label) in steps)
+        for (final (icon, label, tone) in steps)
           ListTile(
             minTileHeight: 48,
             contentPadding: EdgeInsets.zero,
-            leading: Icon(icon),
+            leading: Icon(
+              icon,
+              color: tone == null ? null : statusToneColors(context, tone).fg,
+            ),
             title: Text(label),
           ),
         for (final work in rateable)
@@ -122,8 +156,12 @@ class IssueDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openRateSheet(BuildContext context, WidgetRef ref,
-      AppLocalizations l10n, int workOrderId) async {
+  Future<void> _openRateSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l10n,
+    int workOrderId,
+  ) async {
     final rated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -131,8 +169,9 @@ class IssueDetailScreen extends ConsumerWidget {
     );
     if (rated == true && context.mounted) {
       ref.invalidate(reportDetailProvider(reportId));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.rateThanks)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.rateThanks)));
     }
   }
 }
@@ -171,8 +210,10 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.rateWorkTitle,
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            l10n.rateWorkTitle,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -180,10 +221,8 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
               for (var star = 1; star <= 5; star++)
                 IconButton(
                   iconSize: 40, // >=44pt effective target with padding
-                  icon: Icon(
-                      star <= _score ? Icons.star : Icons.star_border),
-                  onPressed:
-                      _busy ? null : () => setState(() => _score = star),
+                  icon: Icon(star <= _score ? Icons.star : Icons.star_border),
+                  onPressed: _busy ? null : () => setState(() => _score = star),
                 ),
             ],
           ),
@@ -194,9 +233,10 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(_error!,
-                style:
-                    TextStyle(color: Theme.of(context).colorScheme.error)),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ],
           const SizedBox(height: 8),
           FilledButton(
@@ -215,7 +255,9 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
       _error = null;
     });
     try {
-      await ref.read(reportsRepositoryProvider).rateWork(
+      await ref
+          .read(reportsRepositoryProvider)
+          .rateWork(
             workOrderId: widget.workOrderId,
             score: _score,
             comment: _comment.text.trim(),

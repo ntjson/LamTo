@@ -128,6 +128,24 @@ abstract class AppLocalizations {
   /// **'Sign in'**
   String get loginSubmit;
 
+  /// No description provided for @loginMissingFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone/email and password. Nothing was submitted.'**
+  String get loginMissingFields;
+
+  /// No description provided for @loginShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get loginShowPassword;
+
+  /// No description provided for @loginHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get loginHidePassword;
+
   /// No description provided for @apiBaseUrlTitle.
   ///
   /// In en, this message translates to:
@@ -175,12 +193,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose your home'**
   String get occupancyPickerTitle;
-
-  /// No description provided for @bootstrapRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get bootstrapRetry;
 
   /// No description provided for @signOut.
   ///
@@ -410,6 +422,12 @@ abstract class AppLocalizations {
   /// **'Resolved'**
   String get statusResolved;
 
+  /// No description provided for @issueDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report #{id}'**
+  String issueDetailTitle(int id);
+
   /// No description provided for @timelineSubmitted.
   ///
   /// In en, this message translates to:
@@ -578,6 +596,12 @@ abstract class AppLocalizations {
   /// **'Building ledger'**
   String get ledgerTitle;
 
+  /// No description provided for @ledgerDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenditure details'**
+  String get ledgerDetailTitle;
+
   /// No description provided for @ledgerEmpty.
   ///
   /// In en, this message translates to:
@@ -707,7 +731,7 @@ abstract class AppLocalizations {
   /// No description provided for @evidenceLocal.
   ///
   /// In en, this message translates to:
-  /// **'Signed and hash-locked — blockchain anchoring is off for this deployment'**
+  /// **'Signed — blockchain anchoring off'**
   String get evidenceLocal;
 
   /// No description provided for @evidencePending.

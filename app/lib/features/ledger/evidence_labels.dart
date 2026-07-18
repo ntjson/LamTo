@@ -30,30 +30,12 @@ String approverLine(String role, String name, AppLocalizations l10n) =>
       _ => l10n.ledgerApproverGeneric(name),
     };
 
-typedef _Style = ({Color bg, Color fg, IconData icon});
-
-_Style _styleFor(String level) => switch (level) {
-      'CHAIN_CONFIRMED' => (
-          bg: const Color(0xFFE7F6EE), // DESIGN.md success-bg
-          fg: LamToColors.success,
-          icon: Icons.verified_outlined,
-        ),
-      'MISMATCH' => (
-          bg: const Color(0xFFFEF3F2), // error-bg
-          fg: LamToColors.error,
-          icon: Icons.error_outline,
-        ),
-      'LOCAL_SIGNED' => (
-          bg: const Color(0xFFEFF8FF), // info-bg
-          fg: LamToColors.info,
-          icon: Icons.lock_outline,
-        ),
-      _ => (
-          bg: const Color(0xFFFFF6DD), // warning-bg
-          fg: LamToColors.warning,
-          icon: Icons.hourglass_empty,
-        ),
-    };
+(StatusTone, IconData) _styleFor(String level) => switch (level) {
+  'CHAIN_CONFIRMED' => (StatusTone.success, Icons.verified_outlined),
+  'MISMATCH' => (StatusTone.error, Icons.error_outline),
+  'LOCAL_SIGNED' => (StatusTone.info, Icons.lock_outline),
+  _ => (StatusTone.warning, Icons.hourglass_empty),
+};
 
 class EvidenceBadge extends StatelessWidget {
   const EvidenceBadge({required this.level, super.key});
@@ -62,30 +44,11 @@ class EvidenceBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final style = _styleFor(level);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: style.bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(style.icon, size: 16, color: style.fg),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              evidenceLevelLabel(level, l10n),
-              style: TextStyle(
-                color: style.fg,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final (tone, icon) = _styleFor(level);
+    return StatusChip(
+      tone: tone,
+      icon: icon,
+      label: evidenceLevelLabel(level, l10n),
     );
   }
 }

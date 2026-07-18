@@ -61,6 +61,6 @@ void main() {
     expect(repo.read, [9]);
     // Landed on the pushed ledger detail scaffold (its own AppBar title).
     await tester.pumpAndSettle();
-    expect(find.text('Sổ quỹ tòa nhà'), findsOneWidget);
+    expect(find.text('Chi tiết khoản chi'), findsOneWidget);
   });
 }

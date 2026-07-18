@@ -72,11 +72,23 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
       future: _futureFor(dio),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data?.data != null) {
+          final data = snapshot.data!.data!;
+          // Dio already hands back a Uint8List for ResponseType.bytes; reusing
+          // it keeps MemoryImage's cache key stable across rebuilds (a fresh
+          // copy per build would force a full JPEG re-decode every frame).
+          final bytes = data is Uint8List ? data : Uint8List.fromList(data);
+          final width = widget.width;
           return Image.memory(
-            Uint8List.fromList(snapshot.data!.data!),
-            width: widget.width,
+            bytes,
+            width: width,
             height: widget.height,
             fit: BoxFit.cover,
+            // Decode at display size, not the server's full resolution: a
+            // 2048px photo decoded for a 96px thumb costs ~16 MB and jank.
+            cacheWidth: width == null
+                ? null
+                : (width * MediaQuery.devicePixelRatioOf(context)).round(),
+            gaplessPlayback: true,
           );
         }
         if (snapshot.hasError) {

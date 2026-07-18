@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../account/account_screen.dart';
 import '../home/home_screen.dart';
@@ -9,8 +10,9 @@ import '../ledger/ledger_screen.dart';
 import '../reports/my_issues_screen.dart';
 import '../reports/report_form_screen.dart';
 
-/// Platform-adaptive tab shell: Material NavigationBar on Android,
-/// CupertinoTabBar on iOS; same five tab slots (clarification #7).
+/// Platform-adaptive tab shell: Material NavigationBar (compact) or
+/// NavigationRail (expanded width) on Android, CupertinoTabBar on iOS;
+/// same five tab slots (clarification #7).
 ///
 /// iOS uses [CupertinoTabController] as the single source of truth for the
 /// selected tab so bar and body cannot diverge.
@@ -40,12 +42,12 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   List<Widget> get _bodies => [
-        const HomeScreen(),
-        const ReportFormScreen(),
-        const MyIssuesScreen(),
-        const LedgerScreen(),
-        const AccountScreen(),
-      ];
+    const HomeScreen(),
+    const ReportFormScreen(),
+    const MyIssuesScreen(),
+    const LedgerScreen(),
+    const AccountScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -81,37 +83,55 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
         tabBuilder: (context, index) => CupertinoPageScaffold(
-          child: SafeArea(child: bodies[index]),
+          child: SafeArea(child: PageBody(child: bodies[index])),
+        ),
+      );
+    }
+
+    final destinations = [
+      (Icons.home_outlined, l10n.tabHome),
+      (Icons.add_circle_outline, l10n.tabReport),
+      (Icons.list_alt_outlined, l10n.tabIssues),
+      (Icons.account_balance_outlined, l10n.tabLedger),
+      (Icons.person_outline, l10n.tabAccount),
+    ];
+    final expanded = MediaQuery.sizeOf(context).width >= kExpandedWidthMin;
+
+    if (expanded) {
+      // Medium/expanded window class: navigation rail instead of a
+      // stretched phone bottom bar (Material 3 adaptive navigation).
+      return Scaffold(
+        body: SafeArea(
+          child: Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _index,
+                onDestinationSelected: (i) => setState(() => _index = i),
+                labelType: NavigationRailLabelType.all,
+                destinations: [
+                  for (final (icon, label) in destinations)
+                    NavigationRailDestination(
+                      icon: Icon(icon),
+                      label: Text(label),
+                    ),
+                ],
+              ),
+              const VerticalDivider(width: 1, thickness: 1),
+              Expanded(child: PageBody(child: bodies[_index])),
+            ],
+          ),
         ),
       );
     }
 
     return Scaffold(
-      body: bodies[_index],
+      body: SafeArea(child: bodies[_index]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            label: l10n.tabHome,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.add_circle_outline),
-            label: l10n.tabReport,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.list_alt_outlined),
-            label: l10n.tabIssues,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.account_balance_outlined),
-            label: l10n.tabLedger,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline),
-            label: l10n.tabAccount,
-          ),
+          for (final (icon, label) in destinations)
+            NavigationDestination(icon: Icon(icon), label: label),
         ],
       ),
     );
