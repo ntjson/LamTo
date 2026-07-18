@@ -48,6 +48,10 @@ body {
   padding-bottom: calc(var(--nav-height) + var(--space-4));
 }
 
+body.no-bottom-nav {
+  padding-bottom: 0;
+}
+
 p {
   text-wrap: pretty;
 }

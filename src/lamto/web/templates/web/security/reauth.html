@@ -1,4 +1,6 @@
 {% extends "web/base.html" %}
+{% block body_class %}no-bottom-nav{% endblock %}
+{% block bottom_nav %}{% endblock %}
 {% block title %}{% if break_glass %}Break-glass · LamTo{% elif break_glass_consent %}Authorize break-glass · LamTo{% else %}Re-authenticate · LamTo{% endif %}{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="reauth-heading">

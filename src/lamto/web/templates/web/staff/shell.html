@@ -43,7 +43,6 @@
        {% if nav_active == item.label|lower or nav_active == 'work' and item.url_name == 'web:work-order-list' or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}aria-current="page"{% endif %}
        href="{% url item.url_name %}">{{ item.label }}</a>
     {% endfor %}
-    <a class="{% if nav_active == 'account' %}is-active{% endif %}" {% if nav_active == 'account' %}aria-current="page"{% endif %} href="{% url 'web:account' %}">Account</a>
   </nav>
 
   {% if messages %}

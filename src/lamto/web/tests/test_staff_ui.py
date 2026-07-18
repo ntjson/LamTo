@@ -132,6 +132,25 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
             f"stdout={result.stdout!r} stderr={result.stderr!r}",
         )
 
+    def test_staff_shell_has_no_account_destination(self):
+        shell = (STAFF_TEMPLATES / "shell.html").read_text(encoding="utf-8")
+        self.assertNotIn("web:account", shell)
+        self.assertNotIn(">Account</a>", shell)
+
+    def test_authentication_pages_suppress_resident_navigation(self):
+        base = (WEB_ROOT / "templates" / "web" / "base.html").read_text(encoding="utf-8")
+        self.assertIn("{% block bottom_nav %}", base)
+        self.assertIn("{% block body_class %}", base)
+        for relative in ("resident/login.html", "security/mfa_setup.html", "security/reauth.html"):
+            source = (WEB_ROOT / "templates" / "web" / relative).read_text(encoding="utf-8")
+            self.assertIn("{% block bottom_nav %}{% endblock %}", source)
+            self.assertIn("{% block body_class %}no-bottom-nav{% endblock %}", source)
+
+    def test_authenticated_resident_navigation_remains_in_base(self):
+        base = (WEB_ROOT / "templates" / "web" / "base.html").read_text(encoding="utf-8")
+        self.assertIn('class="bottom-nav"', base)
+        self.assertIn("web:account", base)
+
 
 class ActionInboxUiTests(SimpleTestCase):
     def _item(self, number, *, kind="payment_verification", priority=20, deadline=None):
