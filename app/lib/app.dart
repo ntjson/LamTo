@@ -10,6 +10,7 @@ import 'core/failure.dart';
 import 'core/occupancy.dart';
 import 'core/providers.dart';
 import 'features/auth/login_screen.dart';
+import 'features/settings/api_base_url_tile.dart';
 import 'features/auth/occupancy_picker_screen.dart';
 import 'features/auth/session_controller.dart';
 import 'features/ledger/ledger_detail_screen.dart';
@@ -189,7 +190,10 @@ class _AppRouterState extends ConsumerState<AppRouter> {
 }
 
 /// Retryable bootstrap failure UI (clarification #1).
-class BootstrapErrorScreen extends StatelessWidget {
+///
+/// Also exposes API URL editor + sign-out so a dead tunnel / wrong host does
+/// not trap the resident on "Retry" only (saved token + unreachable /me).
+class BootstrapErrorScreen extends ConsumerWidget {
   const BootstrapErrorScreen({
     required this.failure,
     required this.onRetry,
@@ -199,10 +203,33 @@ class BootstrapErrorScreen extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      body: Center(
-        child: ErrorRetry(error: failure, onRetry: onRetry),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ErrorRetry(error: failure, onRetry: onRetry),
+                  const SizedBox(height: 16),
+                  // Expanded so tunnel URL is visible without hunting.
+                  const ApiBaseUrlTile(initiallyExpanded: true),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () =>
+                        ref.read(sessionControllerProvider.notifier).signOut(),
+                    child: Text(l10n.signOut),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
