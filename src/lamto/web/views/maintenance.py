@@ -12,6 +12,7 @@ from lamto.maintenance.models import WorkOrder
 from lamto.maintenance.workorders import start_work_order
 from lamto.web.forms.staff import CompleteWorkOrderForm
 from lamto.web.staff import resolve_active_membership, staff_context
+from lamto.web.views.staff_common import accountability_chain
 
 
 def _require_maintenance(membership):
@@ -135,5 +136,6 @@ def work_order_detail(request, pk):
             work_order=work_order,
             form=form,
             is_assignee=work_order.assignee_id == request.user.pk,
+            accountability_stages=accountability_chain("work"),
         ),
     )

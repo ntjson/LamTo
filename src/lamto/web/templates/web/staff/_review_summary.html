@@ -1,0 +1,49 @@
+{% comment %}
+Rigorous signed review: Action, Acting as, optional review rows, Consequence, What happens next.
+Optional: decision_label_bind (bool), review_row_N_label/value/field for N=1..4.
+{% endcomment %}
+<section class="review-summary" aria-labelledby="review-summary-heading-{{ review_id|default:'default' }}">
+  <h3 class="review-summary-title" id="review-summary-heading-{{ review_id|default:'default' }}">What you are signing</h3>
+  <dl class="detail-list review-summary-list">
+    <div>
+      <dt>Action</dt>
+      <dd{% if decision_label_bind %} data-decision-label{% endif %}>{{ action_label }}</dd>
+    </div>
+    <div>
+      <dt>Acting as</dt>
+      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
+    </div>
+    {% if review_row_1_label %}
+    <div>
+      <dt>{{ review_row_1_label }}</dt>
+      <dd{% if review_row_1_field %} data-review-value="{{ review_row_1_field }}"{% endif %}>{{ review_row_1_value|default:"—" }}</dd>
+    </div>
+    {% endif %}
+    {% if review_row_2_label %}
+    <div>
+      <dt>{{ review_row_2_label }}</dt>
+      <dd{% if review_row_2_field %} data-review-value="{{ review_row_2_field }}"{% endif %}>{{ review_row_2_value|default:"—" }}</dd>
+    </div>
+    {% endif %}
+    {% if review_row_3_label %}
+    <div>
+      <dt>{{ review_row_3_label }}</dt>
+      <dd{% if review_row_3_field %} data-review-value="{{ review_row_3_field }}"{% endif %}>{{ review_row_3_value|default:"—" }}</dd>
+    </div>
+    {% endif %}
+    {% if review_row_4_label %}
+    <div>
+      <dt>{{ review_row_4_label }}</dt>
+      <dd{% if review_row_4_field %} data-review-value="{{ review_row_4_field }}"{% endif %}>{{ review_row_4_value|default:"—" }}</dd>
+    </div>
+    {% endif %}
+    <div>
+      <dt>Consequence</dt>
+      <dd>{{ consequence }}</dd>
+    </div>
+    <div>
+      <dt>What happens next</dt>
+      <dd>{{ what_next }}</dd>
+    </div>
+  </dl>
+</section>

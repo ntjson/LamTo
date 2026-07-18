@@ -22,6 +22,7 @@ from lamto.web.forms.staff import (
     VerifyPaymentForm,
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.views.staff_common import accountability_chain
 from lamto.web.staff_signing import document_pair_options, selected_pair
 
 
@@ -309,6 +310,7 @@ def payment_record_detail(request, pk):
             can_verify=False,
             typed_data=typed_data,
             expected_signer=expected_signer,
+            accountability_stages=accountability_chain("payment"),
         ),
     )
 
@@ -426,6 +428,7 @@ def payment_verify_detail(request, pk):
             can_verify=can_verify,
             typed_data=typed_data,
             expected_signer=expected_signer,
+            accountability_stages=accountability_chain("payment"),
         ),
     )
 
@@ -575,6 +578,7 @@ def accept_work(request, pk):
             list_mode=False,
             typed_data=typed_data,
             expected_signer=expected_signer,
+            accountability_stages=accountability_chain("acceptance"),
         ),
     )
 
@@ -615,5 +619,6 @@ def emergency_authorize(request, pk):
             work_order=work_order,
             emergency_form=form,
             list_mode=False,
+            accountability_stages=accountability_chain("work"),
         ),
     )

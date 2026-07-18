@@ -41,6 +41,10 @@
         {% endif %}
       </dl>
 
+      {% if accountability_stages %}
+      {% include "web/staff/_accountability_chain.html" %}
+      {% endif %}
+
       {% if expected_signer %}
       <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
         <summary>Technical proof</summary>
@@ -56,7 +60,7 @@
       <div class="workflow-section">
         <h2>Record payment</h2>
         <p>Confirm the bank reference, amount, result, and linked payment proof. The amount must match the accepted work cost.</p>
-        <form method="post" class="stack-form" data-signed-form id="record-payment-form"
+        <form method="post" class="stack-form" data-signed-form data-review-form id="record-payment-form"
               {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
           {% csrf_token %}
           <input type="hidden" name="action" value="record">
@@ -68,8 +72,45 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Payment is not ready. Link both versions of the payment proof, then try again.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <section class="review-summary" aria-labelledby="review-summary-heading-record">
+  <h3 class="review-summary-title" id="review-summary-heading-record">What you are signing</h3>
+  <dl class="detail-list review-summary-list">
+    <div>
+      <dt>Action</dt>
+      <dd>Record payment</dd>
+    </div>
+    <div>
+      <dt>Acting as</dt>
+      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
+    </div>
+    <div>
+      <dt>Amount (VND)</dt>
+      <dd data-review-value="amount_vnd">—</dd>
+    </div>
+    <div>
+      <dt>Bank reference</dt>
+      <dd data-review-value="bank_reference">—</dd>
+    </div>
+    <div>
+      <dt>Payment proof</dt>
+      <dd data-review-value="proof_pair">—</dd>
+    </div>
+    <div>
+      <dt>External status</dt>
+      <dd data-review-value="external_status">—</dd>
+    </div>
+    <div>
+      <dt>Consequence</dt>
+      <dd>Creates an append-only payment evidence record. Amount must match accepted work cost; bank proof is linked permanently.</dd>
+    </div>
+    <div>
+      <dt>What happens next</dt>
+      <dd>A different role verifies the payment before publication becomes eligible.</dd>
+    </div>
+  </dl>
+</section>
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Record payment</button>
+            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Sign and record payment</button>
             <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
           </div>
         </form>
@@ -80,7 +121,7 @@
       <div class="workflow-section">
         <h2>Verify payment</h2>
         <p>Compare the recorded payment with the accepted work and bank evidence. Verification makes it eligible for publication.</p>
-        <form method="post" class="stack-form" data-signed-form id="verify-payment-form"
+        <form method="post" class="stack-form" data-signed-form data-review-form id="verify-payment-form"
               {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
           {% csrf_token %}
           <input type="hidden" name="action" value="verify">
@@ -92,8 +133,41 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Verification is not ready. Review the payment status and evidence.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <section class="review-summary" aria-labelledby="review-summary-heading-verify">
+  <h3 class="review-summary-title" id="review-summary-heading-verify">What you are signing</h3>
+  <dl class="detail-list review-summary-list">
+    <div>
+      <dt>Action</dt>
+      <dd>Verify payment</dd>
+    </div>
+    <div>
+      <dt>Acting as</dt>
+      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
+    </div>
+    <div>
+      <dt>Recorded amount</dt>
+      <dd>{{ payment.amount_vnd }} VND</dd>
+    </div>
+    <div>
+      <dt>Bank reference</dt>
+      <dd>{{ payment.bank_reference }}</dd>
+    </div>
+    <div>
+      <dt>Verification decision</dt>
+      <dd data-review-value="decision">—</dd>
+    </div>
+    <div>
+      <dt>Consequence</dt>
+      <dd>Appends a dual-control verification decision. Verified payments become eligible for resident ledger publication.</dd>
+    </div>
+    <div>
+      <dt>What happens next</dt>
+      <dd>An eligible publisher prepares the resident-facing ledger entry.</dd>
+    </div>
+  </dl>
+</section>
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Verify payment</button>
+            <button type="submit" class="button button-primary" {% if not typed_data %}disabled{% endif %}>Sign and verify payment</button>
             <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
           </div>
         </form>

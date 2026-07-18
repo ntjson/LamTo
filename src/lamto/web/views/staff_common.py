@@ -121,3 +121,35 @@ def switch_membership(request):
 @require_GET
 def staff_home(request):
     return redirect("web:action-inbox")
+
+
+ACCOUNTABILITY_STAGES = (
+    ("report", "Report"),
+    ("triage", "Triage"),
+    ("work", "Work"),
+    ("proposal", "Proposal and approval"),
+    ("acceptance", "Acceptance"),
+    ("payment", "Payment"),
+    ("publication", "Publication"),
+)
+
+
+def accountability_chain(current: str, *, blocked: bool = False):
+    """Return ordered accountability stages with complete/current/upcoming/blocked state."""
+    current_index = [key for key, _ in ACCOUNTABILITY_STAGES].index(current)
+    return [
+        {
+            "key": key,
+            "label": label,
+            "state": (
+                "blocked"
+                if index == current_index and blocked
+                else "current"
+                if index == current_index
+                else "complete"
+                if index < current_index
+                else "upcoming"
+            ),
+        }
+        for index, (key, label) in enumerate(ACCOUNTABILITY_STAGES)
+    ]

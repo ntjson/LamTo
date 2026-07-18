@@ -809,3 +809,79 @@ code {
   background: var(--color-warning-bg);
   color: var(--color-warning);
 }
+
+
+/* Accountability chain — ordered stages, text labels carry meaning */
+.accountability-chain {
+  margin: var(--space-5) 0 0;
+}
+
+.accountability-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.accountability-stage {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.accountability-stage-label {
+  font-weight: 600;
+}
+
+.accountability-stage-state {
+  text-transform: capitalize;
+  color: var(--color-muted);
+}
+
+.accountability-stage-complete {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border-color: transparent;
+}
+
+.accountability-stage-current {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+  border-color: transparent;
+}
+
+.accountability-stage-blocked {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border-color: transparent;
+}
+
+.accountability-stage-upcoming {
+  color: var(--color-muted);
+  background: transparent;
+}
+
+/* Border-only review summary — no cards/shadows */
+.review-summary {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  box-shadow: none;
+}
+
+.review-summary-title {
+  margin: 0 0 var(--space-3);
+  font-size: 1rem;
+}
+
+.review-summary-list {
+  margin: 0;
+}

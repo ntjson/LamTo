@@ -151,6 +151,49 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         self.assertIn('class="bottom-nav"', base)
         self.assertIn("web:account", base)
 
+    def test_signed_actions_have_rigorous_review_summaries(self):
+        templates = "\n".join(
+            (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
+            for name in (
+                "work_order_detail.html",
+                "proposal_detail.html",
+                "payment_detail.html",
+            )
+        )
+        self.assertIn("What you are signing", templates)
+        self.assertIn("What happens next", templates)
+        self.assertIn("Sign and approve proposal", templates)
+        self.assertIn("Sign and accept work", templates)
+        self.assertIn("Sign and record payment", templates)
+        self.assertIn("bindReviewSummary", WALLET_JS.read_text(encoding="utf-8"))
+
+
+class AccountabilityChainTests(SimpleTestCase):
+    def test_chain_marks_prior_current_and_upcoming_stages(self):
+        chain = staff_common.accountability_chain("payment")
+        self.assertEqual(
+            [step["state"] for step in chain],
+            [
+                "complete",
+                "complete",
+                "complete",
+                "complete",
+                "complete",
+                "current",
+                "upcoming",
+            ],
+        )
+
+    def test_detail_templates_include_shared_chain(self):
+        for name in (
+            "work_order_detail.html",
+            "proposal_detail.html",
+            "payment_detail.html",
+            "audit_search.html",
+        ):
+            source = (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
+            self.assertIn("staff/_accountability_chain.html", source)
+
 
 class ActionInboxUiTests(SimpleTestCase):
     def _item(self, number, *, kind="payment_verification", priority=20, deadline=None):

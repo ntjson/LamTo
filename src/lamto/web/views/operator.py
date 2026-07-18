@@ -45,6 +45,7 @@ from lamto.web.forms.staff import (
     SignProposalForm,
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.views.staff_common import accountability_chain
 from lamto.web.staff_signing import new_event_id, upload_document_pair
 
 
@@ -526,6 +527,7 @@ def proposal_detail(request, pk):
             expected_signer=expected_signer,
             publish_typed_data=publish_typed_data,
             publish_expected_signer=publish_expected_signer,
+            accountability_stages=accountability_chain("proposal"),
         ),
     )
 

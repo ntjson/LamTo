@@ -285,11 +285,42 @@
     }
   }
 
+
+  function bindReviewSummary(form) {
+    if (!form.hasAttribute("data-review-form")) return;
+    form.querySelectorAll("[data-review-value]").forEach(function (target) {
+      var field = form.elements.namedItem(target.dataset.reviewValue);
+      if (!field) return;
+      var update = function () {
+        var option = field.selectedOptions && field.selectedOptions[0];
+        target.textContent = option ? option.textContent.trim() : field.value;
+      };
+      field.addEventListener("input", update);
+      field.addEventListener("change", update);
+      update();
+    });
+    var decision = form.elements.namedItem("decision");
+    var label = form.querySelector("[data-decision-label]");
+    var submit = form.querySelector("[data-decision-submit]");
+    if (decision && label && submit) {
+      var updateDecision = function () {
+        var approving = decision.value === "APPROVE";
+        label.textContent = approving ? "Approve proposal" : "Reject for correction";
+        submit.textContent = approving
+          ? "Sign and approve proposal"
+          : "Sign and reject for correction";
+      };
+      decision.addEventListener("change", updateDecision);
+      updateDecision();
+    }
+  }
+
   function bindSignedForms(root) {
     var scope = root || document;
     var forms = scope.querySelectorAll("form[data-signed-form]");
     for (var i = 0; i < forms.length; i++) {
       bindTypedDataOptions(forms[i]);
+      bindReviewSummary(forms[i]);
       forms[i].addEventListener("submit", handleSignedSubmit);
     }
   }
@@ -299,6 +330,7 @@
     bindSignedForms: bindSignedForms,
     handleSignedSubmit: handleSignedSubmit,
     bindTypedDataOptions: bindTypedDataOptions,
+    bindReviewSummary: bindReviewSummary,
     parseTypedData: parseTypedData,
     randomBytes32: randomBytes32,
     resolveSignerAccount: resolveSignerAccount,

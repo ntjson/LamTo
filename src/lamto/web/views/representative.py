@@ -11,6 +11,7 @@ from lamto.finance.models import EmergencyAuthorization
 from lamto.web.forms.staff import EmergencyDecideForm
 from lamto.accounts.security import require_recent_auth
 from lamto.web.staff import require_staff_capability, staff_context
+from lamto.web.views.staff_common import accountability_chain
 
 
 @login_required
@@ -49,5 +50,6 @@ def emergency_decide(request, pk):
             work_order=authorization.work_order,
             emergency_decide_form=form,
             list_mode=False,
+            accountability_stages=accountability_chain("work"),
         ),
     )

@@ -44,6 +44,10 @@
     <div><dt>Recomputed fund balance</dt><dd>{% if recomputed_balance is not None %}{{ recomputed_balance }} VND{% else %}Unavailable{% endif %}</dd></div>
   </dl>
 
+  {% if accountability_stages %}
+  {% include "web/staff/_accountability_chain.html" %}
+  {% endif %}
+
   <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
     <summary>Technical proof</summary>
     <h3>Document hashes</h3>

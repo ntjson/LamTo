@@ -24,6 +24,10 @@
         {% endif %}
       </dl>
 
+      {% if accountability_stages %}
+      {% include "web/staff/_accountability_chain.html" %}
+      {% endif %}
+
       {% if version %}
       <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
         <summary>Technical proof</summary>
@@ -48,7 +52,7 @@
           Acting as {{ membership.get_role_display }}, approve to send this proposal to the next required step,
           or reject it for correction. Your reason and decision become part of the evidence chain.
         </p>
-        <form method="post" class="stack-form" data-signed-form id="decision-form"
+        <form method="post" class="stack-form" data-signed-form data-review-form id="decision-form"
               {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
           {% csrf_token %}
           <input type="hidden" name="action" value="decide">
@@ -69,8 +73,41 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">This decision is not ready to sign. Check the required prior approval.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <section class="review-summary" aria-labelledby="review-summary-heading-decide">
+  <h3 class="review-summary-title" id="review-summary-heading-decide">What you are signing</h3>
+  <dl class="detail-list review-summary-list">
+    <div>
+      <dt>Action</dt>
+      <dd data-decision-label>Approve proposal</dd>
+    </div>
+    <div>
+      <dt>Acting as</dt>
+      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
+    </div>
+    <div>
+      <dt>Proposed amount</dt>
+      <dd>{{ version.amount_vnd }} VND</dd>
+    </div>
+    <div>
+      <dt>Contractor</dt>
+      <dd>{{ version.contractor_name }}</dd>
+    </div>
+    <div>
+      <dt>Decision</dt>
+      <dd data-review-value="decision">—</dd>
+    </div>
+    <div>
+      <dt>Consequence</dt>
+      <dd>Your signed decision is append-only. Approval advances dual control; rejection returns the proposal for correction.</dd>
+    </div>
+    <div>
+      <dt>What happens next</dt>
+      <dd>If approved, the next required role continues dual control or the proposal becomes eligible for work and later payment. If rejected, the operator corrects and resubmits.</dd>
+    </div>
+  </dl>
+</section>
           <div class="form-actions">
-            <button type="submit" class="button button-primary">Submit decision</button>
+            <button type="submit" class="button button-primary" data-decision-submit>Sign and approve proposal</button>
             <a class="button button-secondary" href="{% url 'web:proposal-list' %}">Cancel</a>
           </div>
         </form>
@@ -81,7 +118,7 @@
       <div class="workflow-section">
         <h2>Prepare publication</h2>
         <p>Publish the verified outcome to the resident ledger. LamTo records the proof fields automatically.</p>
-        <form method="post" class="stack-form" data-signed-form id="publish-form"
+        <form method="post" class="stack-form" data-signed-form data-review-form id="publish-form"
               {% if publish_expected_signer %}data-expected-signer="{{ publish_expected_signer }}"{% endif %}>
           {% csrf_token %}
           <input type="hidden" name="action" value="publish">
@@ -93,9 +130,30 @@
           <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Publication is not ready. Review the unmet checks above.</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
+          <section class="review-summary" aria-labelledby="review-summary-heading-publish">
+  <h3 class="review-summary-title" id="review-summary-heading-publish">What you are signing</h3>
+  <dl class="detail-list review-summary-list">
+    <div>
+      <dt>Action</dt>
+      <dd>Publish to resident ledger</dd>
+    </div>
+    <div>
+      <dt>Acting as</dt>
+      <dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd>
+    </div>
+    <div>
+      <dt>Consequence</dt>
+      <dd>Prepares an append-only publication snapshot for the resident ledger. Residents will see the verified expense once anchoring completes.</dd>
+    </div>
+    <div>
+      <dt>What happens next</dt>
+      <dd>The outbox anchors the publication and the expense appears on the resident ledger.</dd>
+    </div>
+  </dl>
+</section>
           <div class="form-actions">
             <button type="submit" class="button button-primary" {% if not publish_typed_data %}disabled{% endif %}>
-              Prepare publication
+              Sign and publish to resident ledger
             </button>
             <a class="button button-secondary" href="{% url 'web:proposal-list' %}">Cancel</a>
           </div>
