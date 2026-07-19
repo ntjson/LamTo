@@ -25,58 +25,85 @@
     </div>
   </dl>
 
+  {% if pending_verification %}
+  <div class="workflow-section workflow-primary">
+    <h2>Verify fund sources</h2>
+    <p class="hint">Source entries recorded but not yet verified — your primary job on this fund.</p>
+    <ul class="task-list">
+      {% for entry in pending_verification %}
+      <li>
+        {% if can_verify %}
+        <a class="task-row" href="{% url 'web:fund-verify' entry.pk %}">
+          <span class="task-action">Verify source</span>
+          <span class="task-subject">#{{ entry.pk }} · {{ entry.get_entry_type_display }}</span>
+          <span class="task-amount">{{ entry.amount_vnd|intcomma }} VND</span>
+          <span class="task-meta"><span>Recorded {{ entry.recorded_at }}</span></span>
+        </a>
+        {% else %}
+        <div class="task-row task-row-simple">
+          <span class="task-subject">#{{ entry.pk }} · {{ entry.get_entry_type_display }}</span>
+          <span class="task-amount">{{ entry.amount_vnd|intcomma }} VND</span>
+          <span class="task-meta"><span>Recorded {{ entry.recorded_at }}</span></span>
+        </div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% elif pending %}
+  <div class="workflow-section workflow-primary">
+    <h2>Publish settled expenses</h2>
+    <p class="hint">Publication-eligible payments waiting to appear on the resident ledger.</p>
+    <ul class="task-list">
+      {% for proposal in pending %}
+      <li>
+        <a class="task-row" href="{% url 'web:proposal-detail' proposal.pk %}">
+          <span class="task-action">Prepare publication</span>
+          <span class="task-subject">Proposal #{{ proposal.pk }}</span>
+          <span class="task-amount">{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">No amount recorded</span><span aria-hidden="true">—</span>{% endif %}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   <div class="workflow-section">
     <h2>Verified entries</h2>
     <p class="queue-count">{{ entries_list.page.paginator.count }} entr{{ entries_list.page.paginator.count|pluralize:"y,ies" }}</p>
-    <ul class="card-list">
+    <ul class="task-list">
       {% for entry in entries %}
       <li>
-        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd|intcomma }} VND</p>
-        <p class="card-meta">Recorded {{ entry.recorded_at }}</p>
+        <div class="task-row task-row-simple">
+          <span class="task-subject">#{{ entry.pk }} · {{ entry.get_entry_type_display }}</span>
+          <span class="task-amount">{{ entry.amount_vnd|intcomma }} VND</span>
+          <span class="task-meta"><span>Recorded {{ entry.recorded_at }}</span></span>
+        </div>
       </li>
       {% empty %}
-      <li><p>No verified entries.</p></li>
+      <li class="empty-state"><p>No verified entries.</p></li>
       {% endfor %}
     </ul>
     {% include "web/staff/_pagination.html" with list_meta=entries_list pagination_label="Verified entry pages" %}
   </div>
 
-  <div class="workflow-section">
-    <h2>Pending fund verification</h2>
-    <p class="hint">Source entries recorded but not yet verified. Separate from verified entries.</p>
-    <ul class="card-list">
-      {% for entry in pending_verification %}
-      <li>
-        <p class="card-title">#{{ entry.pk }} · {{ entry.get_entry_type_display }} · {{ entry.amount_vnd|intcomma }} VND</p>
-        <p class="card-meta">
-          Recorded {{ entry.recorded_at }}
-          {% if can_verify %}
-          · <a href="{% url 'web:fund-verify' entry.pk %}">Verify</a>
-          {% endif %}
-        </p>
-      </li>
-      {% empty %}
-      <li><p>No entries awaiting verification.</p></li>
-      {% endfor %}
-    </ul>
-  </div>
-
+  {% if pending_verification and pending %}
   <div class="workflow-section">
     <h2>Pending reconciliation</h2>
-    <p class="hint">Publication-eligible (settled verified payment chain) but not yet published to the resident ledger.</p>
-    <ul class="card-list">
+    <p class="hint">Publication-eligible but not yet published to the resident ledger.</p>
+    <ul class="task-list">
       {% for proposal in pending %}
       <li>
-        <a class="card-link" href="{% url 'web:proposal-detail' proposal.pk %}">
-          <p class="card-title">Proposal #{{ proposal.pk }}
-            {% if proposal.current_version %}· {{ proposal.current_version.amount_vnd|intcomma }} VND{% endif %}</p>
+        <a class="task-row" href="{% url 'web:proposal-detail' proposal.pk %}">
+          <span class="task-action">Prepare publication</span>
+          <span class="task-subject">Proposal #{{ proposal.pk }}</span>
+          <span class="task-amount">{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">No amount recorded</span><span aria-hidden="true">—</span>{% endif %}</span>
         </a>
       </li>
-      {% empty %}
-      <li><p>Nothing awaiting publication.</p></li>
       {% endfor %}
     </ul>
   </div>
+  {% endif %}
 </section>
 {% else %}
 {% include "web/staff/_fund_forms.html" %}

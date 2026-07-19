@@ -211,21 +211,47 @@ STAGE_STATE_LABELS = {
     "upcoming": "Not started",
 }
 
+# Proposal statuses that clear the proposal stage.
+_PROPOSAL_APPROVED = frozenset({"NORMAL_AUTHORIZED", "EMERGENCY_EVIDENCE"})
+_WORK_DONE = frozenset({"AWAITING_ACCEPTANCE", "ACCEPTED", "CLOSED"})
+_WORK_CLOSED = frozenset({"ACCEPTED", "CLOSED"})
 
-def accountability_chain(current: str, *, blocked: bool = False):
-    """Return ordered accountability stages with complete/current/upcoming/blocked state."""
-    current_index = [key for key, _ in ACCOUNTABILITY_STAGES].index(current)
+
+def deadline_tone(deadline_at, *, now=None) -> str:
+    """Neutral by default; amber near due (48h); red when past due."""
+    if deadline_at is None:
+        return "neutral"
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    now = now or timezone.now()
+    if timezone.is_naive(deadline_at):
+        deadline_at = timezone.make_aware(deadline_at, timezone.utc)
+    if deadline_at < now:
+        return "overdue"
+    if deadline_at <= now + timedelta(hours=48):
+        return "soon"
+    return "neutral"
+
+
+def accountability_chain(current: str | None, *, blocked: bool = False):
+    """Return ordered stages for an explicit current key (or all-complete when None)."""
+    keys = [key for key, _ in ACCOUNTABILITY_STAGES]
+    if current is None:
+        current_index = len(keys)
+    else:
+        current_index = keys.index(current)
     stages = []
     for index, (key, label) in enumerate(ACCOUNTABILITY_STAGES):
-        state = (
-            "blocked"
-            if index == current_index and blocked
-            else "current"
-            if index == current_index
-            else "complete"
-            if index < current_index
-            else "upcoming"
-        )
+        if index == current_index and blocked:
+            state = "blocked"
+        elif index == current_index:
+            state = "current"
+        elif index < current_index:
+            state = "complete"
+        else:
+            state = "upcoming"
         stages.append(
             {
                 "key": key,
@@ -235,3 +261,148 @@ def accountability_chain(current: str, *, blocked: bool = False):
             }
         )
     return stages
+
+
+def _related_or_none(obj, attr: str):
+    if obj is None:
+        return None
+    from django.core.exceptions import ObjectDoesNotExist
+
+    try:
+        return getattr(obj, attr)
+    except ObjectDoesNotExist:
+        return None
+
+
+def resolve_accountability_stage(
+    source=None,
+    *,
+    work_order=None,
+    proposal=None,
+    payment=None,
+    acceptance=None,
+    entry=None,
+    case=None,
+    published: bool | None = None,
+) -> tuple[str | None, bool]:
+    """Derive (current_stage_key, blocked) from real case/proposal state.
+
+    Returns ``(None, False)`` when every stage is complete (published, or a
+    non-spending work order already closed). Pass ``published`` to skip the
+    ledger lookup (tests and pre-resolved views).
+    """
+    from lamto.finance.models import PublishedLedgerEntry
+    from lamto.finance.models.execution import AcceptanceRecord, PaymentEvidence
+    from lamto.finance.models.proposals import Proposal
+    from lamto.maintenance.models import MaintenanceCase, WorkOrder
+
+    if source is not None:
+        if isinstance(source, PublishedLedgerEntry):
+            entry = source
+        elif isinstance(source, PaymentEvidence):
+            payment = source
+        elif isinstance(source, AcceptanceRecord):
+            acceptance = source
+        elif isinstance(source, Proposal):
+            proposal = source
+        elif isinstance(source, WorkOrder):
+            work_order = source
+        elif isinstance(source, MaintenanceCase):
+            case = source
+
+    if entry is not None:
+        return None, False
+
+    if payment is None and acceptance is not None:
+        payment = _related_or_none(acceptance, "payment")
+    if acceptance is None and payment is not None:
+        acceptance = getattr(payment, "acceptance", None)
+    if work_order is None and acceptance is not None:
+        work_order = getattr(acceptance, "work_order", None)
+    if work_order is None and proposal is not None:
+        work_order = getattr(proposal, "work_order", None)
+    if work_order is None and payment is not None:
+        acc = getattr(payment, "acceptance", None)
+        work_order = getattr(acc, "work_order", None) if acc is not None else None
+    if proposal is None and work_order is not None:
+        proposal = _related_or_none(work_order, "proposal")
+    if acceptance is None and work_order is not None:
+        acceptance = _related_or_none(work_order, "acceptance")
+    if payment is None and acceptance is not None:
+        payment = _related_or_none(acceptance, "payment")
+
+    if work_order is not None:
+        if published is None:
+            published = False
+            pk = getattr(work_order, "pk", None)
+            if pk is not None:
+                published = PublishedLedgerEntry.objects.filter(
+                    work_order_id=pk
+                ).exists()
+            if not published and proposal is not None and getattr(proposal, "pk", None):
+                published = PublishedLedgerEntry.objects.filter(
+                    proposal_id=proposal.pk
+                ).exists()
+            if not published and payment is not None and getattr(payment, "pk", None):
+                published = PublishedLedgerEntry.objects.filter(
+                    payment_id=payment.pk
+                ).exists()
+        if published:
+            return None, False
+
+        if payment is not None:
+            return "publication", False
+
+        status = getattr(work_order, "status", "")
+        requires_spending = bool(getattr(work_order, "requires_spending", False))
+        if acceptance is not None or status in _WORK_CLOSED:
+            if not requires_spending:
+                return None, False
+            return "payment", False
+
+        proposal_status = getattr(proposal, "status", None) if proposal else None
+        approved = proposal_status in _PROPOSAL_APPROVED
+        rejected = proposal_status == Proposal.Status.REJECTED or proposal_status == "REJECTED"
+        if approved:
+            return "acceptance", False
+
+        if requires_spending:
+            if rejected:
+                return "proposal", True
+            if proposal is not None or status in _WORK_DONE:
+                return "proposal", False
+            return "work", False
+
+        if status == WorkOrder.Status.AWAITING_ACCEPTANCE or status == "AWAITING_ACCEPTANCE":
+            return "acceptance", False
+        if status == WorkOrder.Status.CANCELLED or status == "CANCELLED":
+            return "work", True
+        return "work", False
+
+    if case is not None:
+        latest = None
+        work_orders = getattr(case, "work_orders", None)
+        if work_orders is not None and hasattr(work_orders, "order_by"):
+            latest = work_orders.order_by("-created_at", "-pk").first()
+        if latest is not None:
+            return resolve_accountability_stage(
+                work_order=latest, published=published
+            )
+        return "work", False
+
+    if proposal is not None:
+        return resolve_accountability_stage(
+            proposal=proposal,
+            work_order=getattr(proposal, "work_order", None),
+            published=published,
+        )
+
+    return "report", False
+
+
+def accountability_chain_for(source=None, *, blocked: bool | None = None, **kwargs):
+    """Compute the chain from a domain record instead of a hard-coded page stage."""
+    current, derived_blocked = resolve_accountability_stage(source, **kwargs)
+    return accountability_chain(
+        current, blocked=derived_blocked if blocked is None else blocked
+    )

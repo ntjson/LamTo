@@ -14,7 +14,7 @@
     {% endif %}
     <dl class="detail-list">
       <div><dt>Queue count</dt><dd>{{ health.queue_count }}</dd></div>
-      <div><dt>Queue age (seconds)</dt><dd>{{ health.queue_age_seconds|default:"—" }}</dd></div>
+      <div><dt>Queue age (seconds)</dt><dd>{% if health.queue_age_seconds != None %}{{ health.queue_age_seconds }}{% else %}<span class="sr-only">Not available</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
     </dl>
   </div>
 
@@ -68,8 +68,8 @@
     {% endif %}
     <dl class="detail-list">
       <div><dt>Anchoring backend</dt><dd>{{ health.anchoring_backend }}</dd></div>
-      <div><dt>Last confirmed block</dt><dd>{{ health.last_confirmed_block|default:"—" }}</dd></div>
-      <div><dt>Last confirmed at</dt><dd>{{ health.last_confirmed_at|default:"—" }}</dd></div>
+      <div><dt>Last confirmed block</dt><dd>{% if health.last_confirmed_block %}{{ health.last_confirmed_block }}{% else %}<span class="sr-only">Not confirmed</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
+      <div><dt>Last confirmed at</dt><dd>{% if health.last_confirmed_at %}{{ health.last_confirmed_at }}{% else %}<span class="sr-only">Not confirmed</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
     </dl>
   </div>
 

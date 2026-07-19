@@ -12,7 +12,7 @@ from lamto.maintenance.models import WorkOrder
 from lamto.maintenance.workorders import start_work_order
 from lamto.web.forms.staff import CompleteWorkOrderForm
 from lamto.web.staff import resolve_active_membership, staff_context
-from lamto.web.views.staff_common import accountability_chain, prepare_record_list
+from lamto.web.views.staff_common import accountability_chain_for, prepare_record_list
 
 
 def _require_maintenance(membership):
@@ -68,12 +68,15 @@ def work_order_list(request):
         WorkOrder.Status.AWAITING_ACCEPTANCE: "Accept completed work",
         WorkOrder.Status.ACCEPTED: "Record payment",
     }
+    from lamto.web.views.staff_common import deadline_tone
+
     items = [
         {
             "url": f"/s/work/{wo.pk}/",
             "title": f"Work order #{wo.pk} · {wo.case.category}",
             "status": wo.get_status_display(),
             "deadline": wo.deadline_at,
+            "deadline_tone": deadline_tone(wo.deadline_at),
             "next_action": next_actions.get(wo.status, ""),
         }
         for wo in list_meta["page"].object_list
@@ -182,6 +185,6 @@ def work_order_detail(request, pk):
             work_order=work_order,
             form=form,
             is_assignee=work_order.assignee_id == request.user.pk,
-            accountability_stages=accountability_chain("work"),
+            accountability_stages=accountability_chain_for(work_order),
         ),
     )

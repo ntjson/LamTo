@@ -8,7 +8,7 @@
   <p class="hint">Trace a published expense to its maintenance case, work, decisions, documents, and integrity result.</p>
   <form method="get" class="stack-form form-measure">
     <label for="entry">Published ledger entry ID
-      <input class="input" id="entry" name="entry" value="{{ search_entry_id }}" inputmode="numeric">
+      <input class="input" id="entry" name="entry" value="{{ search_entry_id }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
     </label>
     <button type="submit" class="button button-primary">Search</button>
   </form>
@@ -25,8 +25,8 @@
   <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
     <summary>Technical proof</summary>
     <dl class="detail-list">
-      <div><dt>Event ID</dt><dd><code class="hash">{{ outbox_event.event_id }}</code></dd></div>
-      <div><dt>Transaction</dt><dd><code class="hash">{{ outbox_event.transaction_hash|default:"Not confirmed" }}</code></dd></div>
+      <div><dt>Event ID</dt><dd>{% include "web/staff/_hash_value.html" with value=outbox_event.event_id label="Event ID" %}</dd></div>
+      <div><dt>Transaction</dt><dd>{% if outbox_event.transaction_hash %}{% include "web/staff/_hash_value.html" with value=outbox_event.transaction_hash label="Transaction hash" %}{% else %}Not confirmed{% endif %}</dd></div>
       <div><dt>Last error</dt><dd>{{ outbox_event.last_error|default:"None" }}</dd></div>
     </dl>
   </details>
@@ -55,19 +55,24 @@
     <h3>Document hashes</h3>
     <ul class="proof-list">
       {% for doc in doc_hashes %}
-      <li><strong>{{ doc.variant }} · {{ doc.filename }}</strong><code class="hash">{{ doc.sha256 }}</code></li>
+      <li>
+        <strong>{{ doc.variant }} · {{ doc.filename }}</strong>
+        {% include "web/staff/_hash_value.html" with value=doc.sha256 label="SHA-256" %}
+      </li>
       {% empty %}<li>No document hashes recorded.</li>{% endfor %}
     </ul>
 
     <h3>Signer addresses</h3>
     <ul class="proof-list">
-      {% for addr in signer_addresses %}<li><code class="hash">{{ addr }}</code></li>
+      {% for addr in signer_addresses %}
+      <li>{% include "web/staff/_hash_value.html" with value=addr label="Signer address" %}</li>
       {% empty %}<li>No signer addresses recorded.</li>{% endfor %}
     </ul>
 
     <h3>Transaction IDs</h3>
     <ul class="proof-list">
-      {% for tx in transaction_ids %}<li><code class="hash">{{ tx }}</code></li>
+      {% for tx in transaction_ids %}
+      <li>{% include "web/staff/_hash_value.html" with value=tx label="Transaction hash" %}</li>
       {% empty %}<li>No transaction IDs recorded.</li>{% endfor %}
     </ul>
 

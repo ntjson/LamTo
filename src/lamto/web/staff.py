@@ -104,17 +104,38 @@ def nav_items_for(membership) -> list[dict]:
     caps = capabilities_for(membership)
     role = membership.role
     Role = OrganizationMembership.Role
-    items: list[dict] = [{"label": "Inbox", "url_name": "web:action-inbox", "capability": None}]
+    items: list[dict] = [
+        {
+            "label": "Inbox",
+            "url_name": "web:action-inbox",
+            "capability": None,
+            "active_key": "inbox",
+        }
+    ]
 
     if "report.triage" in caps:
-        items.append({"label": "Cases", "url_name": "web:case-list", "capability": "report.triage"})
+        items.append(
+            {
+                "label": "Cases",
+                "url_name": "web:case-list",
+                "capability": "report.triage",
+                "active_key": "cases",
+            }
+        )
 
     # Work: operators (assign), board acceptors (accept), and maintenance.
     # Preserves the pre-Plan-4 behavior where work.accept also surfaced Work.
     if caps & {"work.assign", "work.accept"} or role == Role.MAINTENANCE:
-        maintenance_only = role == Role.MAINTENANCE and not (caps & {"work.assign", "work.accept"})
+        maintenance_only = role == Role.MAINTENANCE and not (
+            caps & {"work.assign", "work.accept"}
+        )
         items.append(
-            {"label": "My work" if maintenance_only else "Work", "url_name": "web:work-order-list", "capability": None}
+            {
+                "label": "My work" if maintenance_only else "Work",
+                "url_name": "web:work-order-list",
+                "capability": None,
+                "active_key": "work",
+            }
         )
 
     # Finance groups proposals · payments · fund; appears once, landing on the
@@ -130,13 +151,34 @@ def nav_items_for(membership) -> list[dict]:
             finance_url = "web:payment-list"
         else:
             finance_url = "web:fund-home"
-        items.append({"label": "Finance", "url_name": finance_url, "capability": None})
+        items.append(
+            {
+                "label": "Finance",
+                "url_name": finance_url,
+                "capability": None,
+                "active_key": "finance",
+            }
+        )
 
     if role == Role.AUDITOR or "audit.export" in caps:
-        items.append({"label": "Audit", "url_name": "web:audit-search", "capability": "audit.export"})
+        items.append(
+            {
+                "label": "Audit",
+                "url_name": "web:audit-search",
+                "capability": "audit.export",
+                "active_key": "audit",
+            }
+        )
 
     if role == Role.TECH_ADMIN:
-        items.append({"label": "Ops", "url_name": "web:ops-health", "capability": "tech.admin"})
+        items.append(
+            {
+                "label": "Ops",
+                "url_name": "web:ops-health",
+                "capability": "tech.admin",
+                "active_key": "ops",
+            }
+        )
 
     return items
 
@@ -158,10 +200,13 @@ def finance_nav_items_for(membership) -> list[dict[str, str]]:
 
 
 def staff_context(request, membership, memberships, *, nav_active=None, **extra):
+    nav_items = nav_items_for(membership)
+    for item in nav_items:
+        item["is_active"] = bool(nav_active) and item.get("active_key") == nav_active
     return {
         "membership": membership,
         "memberships": memberships,
-        "nav_items": nav_items_for(membership),
+        "nav_items": nav_items,
         "nav_active": nav_active,
         "finance_nav_items": finance_nav_items_for(membership),
         "capabilities": capabilities_for(membership),

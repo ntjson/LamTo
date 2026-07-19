@@ -39,11 +39,11 @@
       <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
         <summary>Technical proof</summary>
         <dl class="detail-list">
-          <div><dt>Snapshot hash</dt><dd><code class="hash">{{ version.snapshot_hash }}</code></dd></div>
+          <div><dt>Snapshot hash</dt><dd>{% include "web/staff/_hash_value.html" with value=version.snapshot_hash label="Snapshot hash" %}</dd></div>
           <div><dt>Verification</dt><dd>{{ version.verification_label|default:"Not yet verified" }}</dd></div>
           <div><dt>Mode</dt><dd>{{ proposal.mode }}</dd></div>
-          {% if expected_signer %}<div><dt>Registered decision wallet</dt><dd><code class="hash">{{ expected_signer }}</code></dd></div>{% endif %}
-          {% if publish_expected_signer %}<div><dt>Registered publisher wallet</dt><dd><code class="hash">{{ publish_expected_signer }}</code></dd></div>{% endif %}
+          {% if expected_signer %}<div><dt>Registered decision wallet</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label="Wallet address" %}</dd></div>{% endif %}
+          {% if publish_expected_signer %}<div><dt>Registered publisher wallet</dt><dd>{% include "web/staff/_hash_value.html" with value=publish_expected_signer label="Publisher wallet" %}</dd></div>{% endif %}
         </dl>
         <h3>Signed snapshot</h3>
         <pre id="snapshot-json">{{ version.snapshot }}</pre>

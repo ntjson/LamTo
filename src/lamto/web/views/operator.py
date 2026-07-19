@@ -46,7 +46,7 @@ from lamto.web.forms.staff import (
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.views.staff_common import (
-    accountability_chain,
+    accountability_chain_for,
     prepare_record_list,
     signed_action_failure,
 )
@@ -121,12 +121,15 @@ def case_list(request):
         "HIGH": "High",
         "EMERGENCY": "Emergency",
     }
+    from lamto.web.views.staff_common import deadline_tone
+
     report_items = [
         {
             "url": f"/s/reports/{r.pk}/",
             "title": r.text,
             "status": r.get_status_display(),
             "deadline": None,
+            "deadline_tone": "neutral",
             "next_action": "Confirm triage",
         }
         for r in report_list["page"].object_list
@@ -137,6 +140,7 @@ def case_list(request):
             "title": f"Case #{c.pk} · {c.category} · {c.location.name}",
             "status": urgency_labels.get(c.urgency, c.urgency.title()),
             "deadline": c.deadline_at,
+            "deadline_tone": deadline_tone(c.deadline_at),
             "next_action": (
                 "Create work order" if c.work_count == 0 else "Follow work in progress"
             ),
@@ -348,6 +352,7 @@ def proposal_list(request):
             "amount_vnd": p.current_version.amount_vnd if p.current_version else None,
             "status": p.get_status_display(),
             "deadline": None,
+            "deadline_tone": "neutral",
             "next_action": next_actions.get(p.status, ""),
         }
         for p in list_meta["page"].object_list
@@ -423,7 +428,7 @@ def proposal_detail(request, pk):
             require_staff_capability(request, LEDGER_PUBLISH)
             if publish_form.is_valid():
                 try:
-                    publish_form.save(proposal, membership)
+                    snapshot = publish_form.save(proposal, membership)
                 except (ValidationError, PermissionDenied) as error:
                     signed_action_failure(
                         request,
@@ -432,9 +437,24 @@ def proposal_detail(request, pk):
                         next_step="Check the publication details, then sign again.",
                     )
                 else:
+                    event_ref = getattr(
+                        getattr(snapshot, "outbox_event", None), "event_id", ""
+                    ) or publish_form.cleaned_data.get("event_id", "")
+                    short_ref = (
+                        f"{event_ref[:10]}…"
+                        if event_ref and len(event_ref) > 12
+                        else event_ref or f"snapshot #{snapshot.pk}"
+                    )
+                    amount = (
+                        proposal.current_version.amount_vnd
+                        if proposal.current_version_id
+                        else None
+                    )
+                    amount_bit = f" ({amount:,} VND)" if amount is not None else ""
                     messages.success(
                         request,
-                        "Publication snapshot prepared. Once independently confirmed, "
+                        f"Published proposal #{proposal.pk}{amount_bit}. "
+                        f"Receipt anchor {short_ref}. Once independently confirmed, "
                         "residents see this verified expense on the public ledger.",
                     )
                     return redirect("web:proposal-detail", pk=proposal.pk)
@@ -616,7 +636,7 @@ def proposal_detail(request, pk):
             expected_signer=expected_signer,
             publish_typed_data=publish_typed_data,
             publish_expected_signer=publish_expected_signer,
-            accountability_stages=accountability_chain("proposal"),
+            accountability_stages=accountability_chain_for(proposal),
         ),
     )
 

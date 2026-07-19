@@ -9,11 +9,15 @@
       <p class="hint">Open resident reports awaiting triage, and active maintenance cases with their next step and deadline.</p>
     </div>
   </div>
-  {% include "web/staff/_list_toolbar.html" with list_meta=case_list %}
-  <h2>Open reports</h2>
-  {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label="Open report pages" empty_label="No open reports." filters=None filters_active=False only %}
-  <h2>Active cases</h2>
-  {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label="Active case pages" empty_label="No active cases." filters=filters filters_active=filters_active filter_param=filter_param only %}
+  {% include "web/staff/_list_toolbar.html" with list_meta=case_list filters=filters filters_active=filters_active filter_param=filter_param %}
+  <div class="workflow-section">
+    <h2>Open reports</h2>
+    {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label="Open report pages" empty_label="No open reports." only %}
+  </div>
+  <div class="workflow-section">
+    <h2>Active cases</h2>
+    {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label="Active case pages" empty_label="No active cases." only %}
+  </div>
 </section>
 {% else %}
 <section class="panel">
@@ -33,15 +37,16 @@
     <div><dt>Deadline</dt><dd>{{ case.deadline_at }}</dd></div>
   </dl>
   <h2>Work orders</h2>
-  <ul class="card-list">
+  <ul class="task-list">
     {% for wo in work_orders %}
     <li>
-      <a class="card-link" href="{% url 'web:work-order-detail' wo.pk %}">
-        Work order #{{ wo.pk }} · {{ wo.get_status_display }}
+      <a class="task-row task-row-simple" href="{% url 'web:work-order-detail' wo.pk %}">
+        <span class="task-action">Open work order</span>
+        <span class="task-subject">Work order #{{ wo.pk }} · {{ wo.get_status_display }}</span>
       </a>
     </li>
     {% empty %}
-    <li><p>No work orders yet.</p></li>
+    <li class="empty-state"><p>No work orders yet.</p></li>
     {% endfor %}
   </ul>
   {% if work_form %}

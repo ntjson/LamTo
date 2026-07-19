@@ -1,8 +1,17 @@
 <form method="get" class="queue-toolbar" role="search">
-  {% for f in filters %}{% if f.active %}<input type="hidden" name="{{ filter_param }}" value="{{ f.value }}">{% endif %}{% endfor %}
   <label for="record-search">{{ search_label|default:"Search records" }}
     <input id="record-search" name="q" value="{{ list_meta.query }}" placeholder="{{ search_placeholder|default:'ID, category, or name…' }}">
   </label>
+  {% if filters %}
+  <label for="record-filter">Workflow
+    <select id="record-filter" name="{{ filter_param|default:'status' }}">
+      <option value="">All</option>
+      {% for f in filters %}
+      <option value="{{ f.value }}" {% if f.active %}selected{% endif %}>{{ f.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
   {% if list_meta.sort_options|length > 1 %}
   <label for="record-sort">Sort by
     <select id="record-sort" name="sort">
@@ -13,5 +22,5 @@
   </label>
   {% endif %}
   <button type="submit" class="button button-secondary">Apply filters</button>
-  {% if list_meta.query or list_meta.sort %}<a class="text-link clear-filters" href="?">Clear filters</a>{% endif %}
+  {% if list_meta.query or list_meta.sort or filters_active %}<a class="text-link clear-filters" href="?">Clear filters</a>{% endif %}
 </form>

@@ -14,7 +14,7 @@ from lamto.finance.fund import fund_balance
 from lamto.finance.integrity import verify_published_entry
 from lamto.finance.models import PublishedLedgerEntry, VerificationObservation
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
-from lamto.web.views.staff_common import accountability_chain
+from lamto.web.views.staff_common import accountability_chain_for
 
 
 def _require_auditor(membership):
@@ -165,7 +165,7 @@ def audit_search(request):
             ),
             search_entry_id=entry_id or "",
             accountability_stages=(
-                accountability_chain("publication") if entry is not None else None
+                accountability_chain_for(entry) if entry is not None else None
             ),
         ),
     )

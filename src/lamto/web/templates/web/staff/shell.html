@@ -39,8 +39,8 @@
 
   <nav class="staff-nav" role="navigation" aria-label="Staff">
     {% for item in nav_items %}
-    <a class="{% if nav_active == item.label|lower or nav_active == 'work' and item.url_name == 'web:work-order-list' or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}is-active{% endif %}"
-       {% if nav_active == item.label|lower or nav_active == 'work' and item.url_name == 'web:work-order-list' or nav_active == 'inbox' and item.url_name == 'web:action-inbox' %}aria-current="page"{% endif %}
+    <a class="{% if item.is_active %}is-active{% endif %}"
+       {% if item.is_active %}aria-current="page"{% endif %}
        href="{% url item.url_name %}">{{ item.label }}</a>
     {% endfor %}
   </nav>
@@ -54,9 +54,9 @@
   {% endif %}
 
   {% if messages %}
-  <ul class="messages" role="status">
+  <ul class="messages">
     {% for message in messages %}
-    <li class="message message-{{ message.tags }}">{{ message }}</li>
+    <li class="message message-{{ message.tags }}" role="{% if 'error' in message.tags %}alert{% else %}status{% endif %}">{{ message }}</li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -66,7 +66,7 @@
   </main>
 
   {# Cache-bust: service worker previously froze an old wallet-signing.js #}
-  <script src="{% static 'web/wallet-signing.js' %}?v=7"></script>
+  <script src="{% static 'web/wallet-signing.js' %}?v=8"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

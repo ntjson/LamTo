@@ -36,7 +36,7 @@
       <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
         <summary>Technical proof</summary>
         <dl class="detail-list">
-          <div><dt>Registered acceptance wallet</dt><dd><code class="hash">{{ expected_signer }}</code></dd></div>
+          <div><dt>Registered acceptance wallet</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label="Wallet address" %}</dd></div>
         </dl>
       </details>
       {% endif %}

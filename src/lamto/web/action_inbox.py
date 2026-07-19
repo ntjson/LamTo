@@ -64,6 +64,12 @@ class ActionItem:
     deadline_at: datetime | None = None
     amount_vnd: int | None = None
 
+    @property
+    def deadline_tone(self) -> str:
+        from lamto.web.views.staff_common import deadline_tone
+
+        return deadline_tone(self.deadline_at)
+
 
 def _has(membership, code: str) -> bool:
     if membership is None or not membership.active:

@@ -19,22 +19,22 @@
     {% elif review_kind == "proposal_decide" %}
     <div><dt>Proposed amount</dt><dd>{{ version.amount_vnd|intcomma }} VND</dd></div>
     <div><dt>Contractor</dt><dd>{{ version.contractor_name }}</dd></div>
-    <div><dt>Decision</dt><dd data-review-value="decision">—</dd></div>
+    <div><dt>Decision</dt><dd data-review-value="decision"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
     {% elif review_kind == "work_accept" %}
-    <div><dt>Actual cost</dt><dd data-review-value="actual_cost_vnd">—</dd></div>
-    <div><dt>Invoice evidence</dt><dd data-review-value="invoice_pair">—</dd></div>
-    <div><dt>Acceptance evidence</dt><dd data-review-value="acceptance_pair">—</dd></div>
+    <div><dt>Actual cost</dt><dd data-review-value="actual_cost_vnd"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
+    <div><dt>Invoice evidence</dt><dd data-review-value="invoice_pair"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
+    <div><dt>Acceptance evidence</dt><dd data-review-value="acceptance_pair"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
     {% elif review_kind == "emergency_decide" %}
-    <div><dt>Outcome</dt><dd data-review-value="decision">—</dd></div>
+    <div><dt>Outcome</dt><dd data-review-value="decision"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
     {% elif review_kind == "payment_record" %}
-    <div><dt>Amount</dt><dd data-review-value="amount_vnd">—</dd></div>
-    <div><dt>Bank reference</dt><dd data-review-value="bank_reference">—</dd></div>
-    <div><dt>Payment proof</dt><dd data-review-value="proof_pair">—</dd></div>
-    <div><dt>External status</dt><dd data-review-value="external_status">—</dd></div>
+    <div><dt>Amount</dt><dd data-review-value="amount_vnd"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
+    <div><dt>Bank reference</dt><dd data-review-value="bank_reference"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
+    <div><dt>Payment proof</dt><dd data-review-value="proof_pair"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
+    <div><dt>External status</dt><dd data-review-value="external_status"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
     {% elif review_kind == "payment_verify" %}
     <div><dt>Recorded amount</dt><dd>{{ payment.amount_vnd|intcomma }} VND</dd></div>
     <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
-    <div><dt>Verification decision</dt><dd data-review-value="decision">—</dd></div>
+    <div><dt>Verification decision</dt><dd data-review-value="decision"><span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span></dd></div>
     {% endif %}
 
     <div><dt>Consequence</dt><dd>

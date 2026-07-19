@@ -10,14 +10,18 @@
       <p class="hint">Accepted work waiting for payment, and recorded payments waiting for independent verification.</p>
     </div>
   </div>
-  {% include "web/staff/_list_toolbar.html" with list_meta=verify_list|default:record_list %}
+  {% include "web/staff/_list_toolbar.html" with list_meta=verify_list|default:record_list filters=filters filters_active=filters_active filter_param=filter_param %}
   {% if can_record %}
-  <h2>Record payment</h2>
-  {% include "web/staff/_list.html" with items=record_items list_meta=record_list pagination_label="Record queue pages" empty_label="No accepted work is waiting for payment recording." filters=None filters_active=False only %}
+  <div class="workflow-section">
+    <h2>Record payment</h2>
+    {% include "web/staff/_list.html" with items=record_items list_meta=record_list pagination_label="Record queue pages" empty_label="No accepted work is waiting for payment recording." filters=None filters_active=False only %}
+  </div>
   {% endif %}
   {% if can_verify %}
-  <h2>Payment verification</h2>
-  {% include "web/staff/_list.html" with items=verify_items list_meta=verify_list pagination_label="Verification queue pages" empty_label="No recorded payments are waiting for verification." filters=filters filters_active=filters_active filter_param=filter_param only %}
+  <div class="workflow-section">
+    <h2>Payment verification</h2>
+    {% include "web/staff/_list.html" with items=verify_items list_meta=verify_list pagination_label="Verification queue pages" empty_label="No recorded payments are waiting for verification." only %}
+  </div>
   {% endif %}
 </section>
 {% else %}
@@ -33,7 +37,13 @@
         <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
         <div><dt>Recorded amount</dt><dd>{{ payment.amount_vnd|intcomma }} VND</dd></div>
         <div><dt>Payment status</dt><dd>{{ payment.get_external_status_display }}</dd></div>
-        <div><dt>Evidence</dt><dd>Original and resident-safe payment proof linked</dd></div>
+        <div><dt>Evidence</dt><dd>
+          {% if ledger_entry %}
+          <a href="{% url 'web:audit-search' %}?entry={{ ledger_entry.pk }}">Open ledger entry #{{ ledger_entry.pk }}</a>
+          {% else %}
+          Original and resident-safe payment proof on record
+          {% endif %}
+        </dd></div>
         {% else %}
         <div><dt>Payment status</dt><dd>Not yet recorded</dd></div>
         {% endif %}
@@ -43,12 +53,31 @@
       {% include "web/staff/_accountability_chain.html" %}
       {% endif %}
 
-      {% if expected_signer %}
+      {% if expected_signer or payment_doc_hashes or payment_signer or payment_tx %}
       <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
         <summary>Technical proof</summary>
         <dl class="detail-list">
-          <div><dt>Registered wallet</dt><dd><code class="hash">{{ expected_signer }}</code></dd></div>
+          {% if expected_signer %}
+          <div><dt>Registered wallet</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label="Wallet address" %}</dd></div>
+          {% endif %}
+          {% if payment_signer %}
+          <div><dt>Payment signer</dt><dd>{% include "web/staff/_hash_value.html" with value=payment_signer label="Signer address" %}</dd></div>
+          {% endif %}
+          {% if payment_tx %}
+          <div><dt>Payment transaction</dt><dd>{% include "web/staff/_hash_value.html" with value=payment_tx label="Transaction hash" %}</dd></div>
+          {% endif %}
         </dl>
+        {% if payment_doc_hashes %}
+        <h3>Document hashes</h3>
+        <ul class="proof-list">
+          {% for doc in payment_doc_hashes %}
+          <li>
+            <strong>{{ doc.variant }} · {{ doc.filename }}</strong>
+            {% include "web/staff/_hash_value.html" with value=doc.sha256 label="SHA-256" %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
       </details>
       {% endif %}
     </div>

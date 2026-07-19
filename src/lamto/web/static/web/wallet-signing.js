@@ -311,10 +311,15 @@
       if (!field) return;
       var update = function () {
         var option = field.selectedOptions && field.selectedOptions[0];
-        var value = option ? option.textContent.trim() : field.value;
+        var raw = option ? option.textContent.trim() : field.value;
+        if (raw === "" || raw == null) {
+          target.innerHTML =
+            '<span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span>';
+          return;
+        }
         target.textContent = target.dataset.reviewValue.endsWith("_vnd")
-          ? formatVnd(value)
-          : value;
+          ? formatVnd(raw)
+          : raw;
       };
       field.addEventListener("input", update);
       field.addEventListener("change", update);
@@ -346,9 +351,43 @@
     }
   }
 
+  function bindCopyButtons(root) {
+    var scope = root || document;
+    var buttons = scope.querySelectorAll("[data-copy]");
+    for (var i = 0; i < buttons.length; i++) {
+      if (buttons[i].dataset.copyBound === "1") continue;
+      buttons[i].dataset.copyBound = "1";
+      buttons[i].addEventListener("click", function (event) {
+        var btn = event.currentTarget;
+        var value = btn.getAttribute("data-copy") || "";
+        var baseLabel = btn.getAttribute("aria-label") || "Copy";
+        function done(ok) {
+          var previous = btn.textContent;
+          var nextLabel = ok ? "Copied" : "Copy failed";
+          btn.textContent = nextLabel;
+          btn.setAttribute("aria-label", nextLabel);
+          global.setTimeout(function () {
+            btn.textContent = previous;
+            btn.setAttribute("aria-label", baseLabel);
+          }, 1500);
+        }
+        if (global.navigator && global.navigator.clipboard && global.navigator.clipboard.writeText) {
+          global.navigator.clipboard.writeText(value).then(function () {
+            done(true);
+          }).catch(function () {
+            done(false);
+          });
+          return;
+        }
+        done(false);
+      });
+    }
+  }
+
   global.LamToWalletSigning = {
     signTypedData: signTypedData,
     bindSignedForms: bindSignedForms,
+    bindCopyButtons: bindCopyButtons,
     handleSignedSubmit: handleSignedSubmit,
     bindTypedDataOptions: bindTypedDataOptions,
     bindReviewSummary: bindReviewSummary,
@@ -362,8 +401,10 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
       bindSignedForms(document);
+      bindCopyButtons(document);
     });
   } else {
     bindSignedForms(document);
+    bindCopyButtons(document);
   }
 })(typeof window !== "undefined" ? window : globalThis);

@@ -23,7 +23,7 @@ from lamto.web.forms.staff import (
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.views.staff_common import (
-    accountability_chain,
+    accountability_chain_for,
     prepare_record_list,
     signed_action_failure,
 )
@@ -147,6 +147,7 @@ def payment_list(request):
             "amount_vnd": a.actual_cost_vnd,
             "status": None,
             "deadline": None,
+            "deadline_tone": "neutral",
             "next_action": "Record payment",
         }
         for a in (record_list["page"].object_list if record_list else [])
@@ -158,6 +159,7 @@ def payment_list(request):
             "amount_vnd": p.amount_vnd,
             "status": p.get_external_status_display(),
             "deadline": None,
+            "deadline_tone": "neutral",
             "next_action": "Verify against bank statement",
         }
         for p in (verify_list["page"].object_list if verify_list else [])
@@ -182,8 +184,10 @@ def payment_list(request):
             verify_list=verify_list,
             search_label="Search payments",
             search_placeholder="ID, bank reference, or category…",
-            filters=filters,
-            filters_active=valid_status or status in status_groups,
+            filters=filters if PAYMENT_VERIFY in caps else None,
+            filters_active=(valid_status or status in status_groups)
+            if PAYMENT_VERIFY in caps
+            else False,
             filter_param="status",
             can_record=PAYMENT_RECORD in caps,
             can_verify=PAYMENT_VERIFY in caps,
@@ -248,8 +252,9 @@ def payment_record_detail(request, pk):
             else:
                 messages.success(
                     request,
-                    "Payment recorded. An independent verifier now checks it "
-                    "against the bank statement.",
+                    f"Payment #{payment.pk} recorded ({payment.amount_vnd:,} VND, "
+                    f"ref {payment.bank_reference}). An independent verifier now "
+                    "checks it against the bank statement.",
                 )
                 return redirect("web:payment-verify-detail", pk=payment.pk)
 
@@ -356,7 +361,7 @@ def payment_record_detail(request, pk):
             can_verify=False,
             typed_data=typed_data,
             expected_signer=expected_signer,
-            accountability_stages=accountability_chain("payment"),
+            accountability_stages=accountability_chain_for(acceptance),
         ),
     )
 
@@ -376,12 +381,17 @@ def payment_verify_detail(request, pk):
     if PAYMENT_VERIFY not in caps and PAYMENT_RECORD not in caps:
         raise PermissionDenied("payment access")
     building_id = membership.organization.building_id
+    from lamto.finance.models import PublishedLedgerEntry
+
     payment = get_object_or_404(
         PaymentEvidence.objects.select_related(
             "acceptance__work_order",
             "recorder",
             "verification",
             "outbox_event",
+            "wallet",
+            "proof_original",
+            "proof_redacted",
         ),
         pk=pk,
         acceptance__work_order__case__building_id=building_id,
@@ -392,6 +402,25 @@ def payment_verify_detail(request, pk):
     verify_form = VerifyPaymentForm(request.POST or None) if can_verify else None
     typed_data = None
     expected_signer = ""
+    ledger_entry = (
+        PublishedLedgerEntry.objects.filter(payment_id=payment.pk)
+        .only("pk")
+        .first()
+    )
+    payment_doc_hashes = []
+    for version in (payment.proof_original, payment.proof_redacted):
+        if version is not None:
+            payment_doc_hashes.append(
+                {
+                    "filename": version.filename,
+                    "variant": version.variant,
+                    "sha256": version.sha256,
+                }
+            )
+    payment_signer = payment.wallet.address if payment.wallet_id else ""
+    payment_tx = ""
+    if payment.outbox_event_id and payment.outbox_event.transaction_hash:
+        payment_tx = payment.outbox_event.transaction_hash
 
     if request.method == "POST" and verify_form is not None and can_verify:
         require_staff_capability(request, PAYMENT_VERIFY)
@@ -410,7 +439,7 @@ def payment_verify_detail(request, pk):
             else:
                 messages.success(
                     request,
-                    "Payment verification recorded in the evidence chain. "
+                    f"Payment #{payment.pk} verified in the evidence chain. "
                     "The expense can now be published to residents.",
                 )
                 return redirect("web:payment-verify-detail", pk=payment.pk)
@@ -478,7 +507,11 @@ def payment_verify_detail(request, pk):
             can_verify=can_verify,
             typed_data=typed_data,
             expected_signer=expected_signer,
-            accountability_stages=accountability_chain("payment"),
+            ledger_entry=ledger_entry,
+            payment_doc_hashes=payment_doc_hashes,
+            payment_signer=payment_signer,
+            payment_tx=payment_tx,
+            accountability_stages=accountability_chain_for(payment),
         ),
     )
 
@@ -632,7 +665,7 @@ def accept_work(request, pk):
             list_mode=False,
             typed_data=typed_data,
             expected_signer=expected_signer,
-            accountability_stages=accountability_chain("acceptance"),
+            accountability_stages=accountability_chain_for(work_order),
         ),
     )
 
@@ -677,6 +710,6 @@ def emergency_authorize(request, pk):
             work_order=work_order,
             emergency_form=form,
             list_mode=False,
-            accountability_stages=accountability_chain("work"),
+            accountability_stages=accountability_chain_for(work_order),
         ),
     )

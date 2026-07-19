@@ -237,16 +237,40 @@ if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
         wallet = WALLET_JS.read_text(encoding="utf-8")
         self.assertIn('getAttribute("aria-disabled") === "true"', wallet)
 
-    def test_lists_use_cards_and_cases_reuse_the_shared_list(self):
+    def test_lists_use_task_rows_and_cases_reuse_the_shared_list(self):
         shared_list = (STAFF_TEMPLATES / "_list.html").read_text(encoding="utf-8")
         cases = (STAFF_TEMPLATES / "case_detail.html").read_text(encoding="utf-8")
+        shell = (STAFF_TEMPLATES / "shell.html").read_text(encoding="utf-8")
         css = APP_CSS.read_text(encoding="utf-8")
+        inbox = (STAFF_TEMPLATES / "action_inbox.html").read_text(encoding="utf-8")
+        toolbar = (STAFF_TEMPLATES / "_list_toolbar.html").read_text(encoding="utf-8")
 
-        self.assertIn('class="card-list"', shared_list)
-        self.assertIn('class="card-link"', shared_list)
+        self.assertIn('class="task-list"', shared_list)
+        self.assertIn('class="task-row"', shared_list)
+        self.assertNotIn("card-link", shared_list)
         self.assertIn("staff/_list.html", cases)
-        self.assertNotIn('<div class="filter-bar"', cases)
+        self.assertNotIn("filter-bar", cases)
+        self.assertNotIn("filter-bar", inbox)
+        self.assertIn('name="status"', inbox)
+        self.assertIn("Apply filters", toolbar)
+        self.assertIn('item.is_active', shell)
+        self.assertIn('role="{% if \'error\' in message.tags %}alert{% else %}status{% endif %}"', shell)
+        self.assertIn("No amount recorded", shared_list)
+        self.assertIn("deadline-soon", css)
+        self.assertIn("deadline-overdue", css)
+        self.assertIn("--color-surface-muted", css)
+        self.assertIn("--color-focus-on-dark", css)
+        self.assertIn(".staff-nav a:focus-visible", css)
+        self.assertIn("min-height: var(--touch)", css)
         self.assertNotIn(".record-row", css)
+
+    def test_payment_detail_links_ledger_evidence(self):
+        payment = (STAFF_TEMPLATES / "payment_detail.html").read_text(encoding="utf-8")
+        self.assertIn("web:audit-search", payment)
+        self.assertIn("ledger_entry.pk", payment)
+        self.assertIn("payment_doc_hashes", payment)
+        self.assertIn("staff/_hash_value.html", payment)
+        self.assertIn("data-copy", (STAFF_TEMPLATES / "_hash_value.html").read_text(encoding="utf-8"))
 
     def test_ops_attention_states_link_to_the_exception_queue_without_dead_branches(self):
         ops = (STAFF_TEMPLATES / "ops_health.html").read_text(encoding="utf-8")
@@ -281,6 +305,129 @@ class AccountabilityChainTests(SimpleTestCase):
             ],
         )
 
+    def test_published_marks_every_stage_complete(self):
+        chain = staff_common.accountability_chain(None)
+        self.assertEqual({step["state"] for step in chain}, {"complete"})
+
+    def _states(self, **kwargs):
+        return [
+            step["state"]
+            for step in staff_common.accountability_chain_for(published=False, **kwargs)
+        ]
+
+    def test_stage_work_in_progress_spending(self):
+        from types import SimpleNamespace
+
+        wo = SimpleNamespace(
+            pk=1, status="IN_PROGRESS", requires_spending=True, proposal=None, acceptance=None
+        )
+        self.assertEqual(
+            self._states(work_order=wo),
+            ["complete", "complete", "current", "upcoming", "upcoming", "upcoming", "upcoming"],
+        )
+
+    def test_stage_proposal_after_work_done_without_approval(self):
+        from types import SimpleNamespace
+
+        wo = SimpleNamespace(
+            pk=1,
+            status="AWAITING_ACCEPTANCE",
+            requires_spending=True,
+            proposal=None,
+            acceptance=None,
+        )
+        self.assertEqual(
+            self._states(work_order=wo),
+            ["complete", "complete", "complete", "current", "upcoming", "upcoming", "upcoming"],
+        )
+
+    def test_stage_acceptance_after_proposal_approved(self):
+        from types import SimpleNamespace
+
+        proposal = SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED")
+        wo = SimpleNamespace(
+            pk=1,
+            status="AWAITING_ACCEPTANCE",
+            requires_spending=True,
+            proposal=proposal,
+            acceptance=None,
+        )
+        self.assertEqual(
+            self._states(work_order=wo, proposal=proposal),
+            ["complete", "complete", "complete", "complete", "current", "upcoming", "upcoming"],
+        )
+
+    def test_stage_payment_after_acceptance(self):
+        from types import SimpleNamespace
+
+        acceptance = SimpleNamespace(pk=3, payment=None)
+        wo = SimpleNamespace(
+            pk=1,
+            status="ACCEPTED",
+            requires_spending=True,
+            proposal=SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED"),
+            acceptance=acceptance,
+        )
+        self.assertEqual(
+            self._states(work_order=wo, acceptance=acceptance),
+            ["complete", "complete", "complete", "complete", "complete", "current", "upcoming"],
+        )
+
+    def test_stage_publication_after_payment_recorded(self):
+        from types import SimpleNamespace
+
+        payment = SimpleNamespace(pk=4)
+        acceptance = SimpleNamespace(pk=3, payment=payment)
+        wo = SimpleNamespace(
+            pk=1,
+            status="ACCEPTED",
+            requires_spending=True,
+            proposal=SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED"),
+            acceptance=acceptance,
+        )
+        payment.acceptance = acceptance
+        acceptance.work_order = wo
+        self.assertEqual(
+            self._states(payment=payment),
+            ["complete", "complete", "complete", "complete", "complete", "complete", "current"],
+        )
+
+    def test_stage_all_complete_when_published(self):
+        from types import SimpleNamespace
+
+        wo = SimpleNamespace(
+            pk=1, status="CLOSED", requires_spending=True, proposal=None, acceptance=None
+        )
+        chain = staff_common.accountability_chain_for(work_order=wo, published=True)
+        self.assertEqual({step["state"] for step in chain}, {"complete"})
+
+    def test_stage_rejected_proposal_is_blocked(self):
+        from types import SimpleNamespace
+
+        proposal = SimpleNamespace(pk=2, status="REJECTED")
+        wo = SimpleNamespace(
+            pk=1,
+            status="IN_PROGRESS",
+            requires_spending=True,
+            proposal=proposal,
+            acceptance=None,
+        )
+        chain = staff_common.accountability_chain_for(
+            work_order=wo, proposal=proposal, published=False
+        )
+        self.assertEqual(
+            [step["state"] for step in chain],
+            ["complete", "complete", "complete", "blocked", "upcoming", "upcoming", "upcoming"],
+        )
+
+    def test_deadline_tone_is_proportional(self):
+        from datetime import timedelta
+
+        now = timezone.now()
+        self.assertEqual(staff_common.deadline_tone(now + timedelta(days=7), now=now), "neutral")
+        self.assertEqual(staff_common.deadline_tone(now + timedelta(hours=12), now=now), "soon")
+        self.assertEqual(staff_common.deadline_tone(now - timedelta(hours=1), now=now), "overdue")
+
     def test_detail_templates_include_shared_chain(self):
         for name in (
             "work_order_detail.html",
@@ -290,6 +437,18 @@ class AccountabilityChainTests(SimpleTestCase):
         ):
             source = (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
             self.assertIn("staff/_accountability_chain.html", source)
+
+    def test_views_derive_chain_from_records(self):
+        for path in (
+            WEB_ROOT / "views" / "operator.py",
+            WEB_ROOT / "views" / "board.py",
+            WEB_ROOT / "views" / "maintenance.py",
+            WEB_ROOT / "views" / "auditor.py",
+            WEB_ROOT / "views" / "representative.py",
+        ):
+            source = path.read_text(encoding="utf-8")
+            self.assertIn("accountability_chain_for", source)
+            self.assertNotRegex(source, r'accountability_chain\("')
 
 
 class ActionInboxUiTests(SimpleTestCase):
