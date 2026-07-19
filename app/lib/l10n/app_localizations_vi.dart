@@ -145,6 +145,19 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reportSubmit => 'Gửi phản ánh';
 
   @override
+  String get reportSubmitting => 'Đang gửi…';
+
+  @override
+  String get reportDraftSaving => 'Đang lưu bản nháp…';
+
+  @override
+  String get reportDraftSaved => 'Đã lưu bản nháp';
+
+  @override
+  String get reportDraftSaveFailed =>
+      'Chưa lưu được bản nháp. Nội dung vẫn còn trên màn hình; hãy kiểm tra thiết bị rồi thử lại.';
+
+  @override
   String get reportSubmitted => 'Phản ánh của bạn đã được ghi nhận.';
 
   @override
@@ -167,6 +180,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get reportAnother => 'Gửi phản ánh khác';
+
+  @override
+  String get reportEnableNotifications => 'Nhận thông báo cập nhật';
 
   @override
   String get issuesTitle => 'Việc của tôi';
@@ -217,6 +233,11 @@ class AppLocalizationsVi extends AppLocalizations {
   String get rateWorkTitle => 'Công việc thế nào?';
 
   @override
+  String rateStarLabel(int score) {
+    return '$score trên 5 sao';
+  }
+
+  @override
   String get rateCommentLabel => 'Nhận xét (không bắt buộc)';
 
   @override
@@ -263,6 +284,12 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get homeNoSpending => 'Chưa có khoản chi nào được công bố.';
+
+  @override
+  String get homeReportsLoading => 'Đang tải phản ánh…';
+
+  @override
+  String get homeSpendingLoading => 'Đang tải khoản chi…';
 
   @override
   String get notificationsTitle => 'Thông báo';
@@ -337,10 +364,62 @@ class AppLocalizationsVi extends AppLocalizations {
   String get ledgerNotVerified => 'Thanh toán chưa được xác nhận';
 
   @override
+  String get ledgerConclusionVerified => 'Khoản chi này đã được xác minh';
+
+  @override
+  String get ledgerConclusionVerifiedBody =>
+      'Chứng từ thanh toán và tính toàn vẹn của bản ghi đã được xác nhận độc lập.';
+
+  @override
+  String get ledgerConclusionUnverified =>
+      'Khoản chi này chưa được xác minh đầy đủ';
+
+  @override
+  String get ledgerConclusionUnverifiedBody =>
+      'Khoản chi đã được công bố nhưng còn bước xác minh chưa hoàn tất. Xem chuỗi trách nhiệm bên dưới.';
+
+  @override
+  String get ledgerChainTitle => 'Chuỗi trách nhiệm';
+
+  @override
+  String get ledgerChainHint =>
+      'Mở để xem khoản chi đi từ phản ánh đến xác minh như thế nào';
+
+  @override
+  String get ledgerChainReports => 'Phản ánh và lý do';
+
+  @override
+  String get ledgerChainWork => 'Công việc đã hoàn thành';
+
+  @override
+  String get ledgerChainApprovals => 'Phê duyệt';
+
+  @override
+  String get ledgerChainPayment => 'Chứng từ thanh toán';
+
+  @override
+  String get ledgerChainVerification => 'Xác minh độc lập';
+
+  @override
   String get ledgerCorrections => 'Điều chỉnh';
 
   @override
   String get ledgerDocuments => 'Tài liệu (đã che thông tin)';
+
+  @override
+  String get ledgerDocumentOpen => 'Xem hoặc tải xuống';
+
+  @override
+  String get ledgerDocumentOffline =>
+      'Bạn đang ngoại tuyến. Tài liệu chưa được tải. Kết nối mạng rồi thử lại.';
+
+  @override
+  String get ledgerDocumentUnauthorized =>
+      'Bạn không có quyền mở tài liệu này. Tệp chưa được tải xuống.';
+
+  @override
+  String get ledgerDocumentFailure =>
+      'Không mở được tài liệu. Tệp chưa được tải xuống; vui lòng thử lại.';
 
   @override
   String get ledgerProofTitle => 'Chi tiết xác thực';

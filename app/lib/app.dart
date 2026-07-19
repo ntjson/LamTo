@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import 'core/adaptive_page_route.dart';
 import 'core/error_retry.dart';
 import 'core/failure.dart';
 import 'core/occupancy.dart';
@@ -107,15 +108,15 @@ class _AppRouterState extends ConsumerState<AppRouter> {
     switch (link) {
       case DeepLinkReport(:final id):
         navigator.push(
-          MaterialPageRoute(builder: (_) => IssueDetailScreen(reportId: id)),
+          adaptivePageRoute(builder: (_) => IssueDetailScreen(reportId: id)),
         );
       case DeepLinkLedger(:final id):
         navigator.push(
-          MaterialPageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),
+          adaptivePageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),
         );
       case DeepLinkFeed():
         navigator.push(
-          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          adaptivePageRoute(builder: (_) => const NotificationsScreen()),
         );
     }
   }

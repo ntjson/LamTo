@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// DESIGN.md light tokens. Accountability Indigo is primary (≤10% of a screen).
 class LamToColors {
@@ -118,10 +119,10 @@ class StatusChip extends StatelessWidget {
 
 /// Tabular-figure body style for amounts inside list rows. Full Record Ink on
 /// purpose: financial figures are primary copy (DESIGN.md), not muted metadata.
-TextStyle? listAmountStyle(BuildContext context) =>
-    Theme.of(context).textTheme.bodyMedium?.copyWith(
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
+TextStyle? listAmountStyle(BuildContext context) => Theme.of(context)
+    .textTheme
+    .bodyMedium
+    ?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
 
 /// Money / VND text style with real tabular figures (DESIGN.md).
 TextStyle moneyTextStyle(TextTheme base, {Color? color}) {
@@ -150,13 +151,9 @@ ThemeData lamToTheme(Brightness brightness) {
     onSurface: onSurface,
     outline: outline,
   );
-  final baseText = Typography.material2021(platform: TargetPlatform.android)
-      .black
-      .apply(
-        bodyColor: onSurface,
-        displayColor: onSurface,
-        fontFamilyFallback: const ['Roboto'],
-      );
+  final baseText = Typography.material2021(
+    platform: defaultTargetPlatform,
+  ).black.apply(bodyColor: onSurface, displayColor: onSurface);
   final textTheme = baseText.copyWith(
     titleMedium: moneyTextStyle(baseText, color: onSurface),
   );

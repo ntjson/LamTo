@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:built_collection/built_collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,9 +21,13 @@ abstract final class TransparencyApiPaths {
 
 abstract class TransparencyRepository {
   Future<FundSummary> fetchFundSummary();
-  Future<PaginatedLedgerEntryListList> listLedger(
-      {String? cursor, int? year, int? month});
+  Future<PaginatedLedgerEntryListList> listLedger({
+    String? cursor,
+    int? year,
+    int? month,
+  });
   Future<LedgerEntryDetail> fetchLedgerEntry(int id);
+  Future<Uint8List> fetchDocument(String downloadUrl);
   Future<PaginatedNotificationFeedList> listNotifications({String? cursor});
   Future<void> markNotificationRead(int id);
   Future<Device> registerDevice({
@@ -42,13 +48,15 @@ abstract class TransparencyRepository {
 /// (token + X-LamTo-Occupancy interceptors already installed).
 class DioTransparencyRepository implements TransparencyRepository {
   DioTransparencyRepository(Dio dio)
-      : _ledger = LedgerApi(dio, standardSerializers),
-        _fund = FundApi(dio, standardSerializers),
-        _notifications = NotificationsApi(dio, standardSerializers),
-        _devices = DevicesApi(dio, standardSerializers),
-        _me = MeApi(dio, standardSerializers);
+    : _ledger = LedgerApi(dio, standardSerializers),
+      _documents = DocumentsApi(dio, standardSerializers),
+      _fund = FundApi(dio, standardSerializers),
+      _notifications = NotificationsApi(dio, standardSerializers),
+      _devices = DevicesApi(dio, standardSerializers),
+      _me = MeApi(dio, standardSerializers);
 
   final LedgerApi _ledger;
+  final DocumentsApi _documents;
   final FundApi _fund;
   final NotificationsApi _notifications;
   final DevicesApi _devices;
@@ -61,10 +69,16 @@ class DioTransparencyRepository implements TransparencyRepository {
   }
 
   @override
-  Future<PaginatedLedgerEntryListList> listLedger(
-      {String? cursor, int? year, int? month}) async {
-    final res =
-        await _ledger.ledgerList(cursor: cursor, year: year, month: month);
+  Future<PaginatedLedgerEntryListList> listLedger({
+    String? cursor,
+    int? year,
+    int? month,
+  }) async {
+    final res = await _ledger.ledgerList(
+      cursor: cursor,
+      year: year,
+      month: month,
+    );
     return res.data!;
   }
 
@@ -75,8 +89,19 @@ class DioTransparencyRepository implements TransparencyRepository {
   }
 
   @override
-  Future<PaginatedNotificationFeedList> listNotifications(
-      {String? cursor}) async {
+  Future<Uint8List> fetchDocument(String downloadUrl) async {
+    final segments = Uri.parse(downloadUrl).pathSegments;
+    if (segments.isEmpty || segments.last.isEmpty) {
+      throw StateError('Document URL has no access token');
+    }
+    final res = await _documents.documentsRetrieve(token: segments.last);
+    return res.data!;
+  }
+
+  @override
+  Future<PaginatedNotificationFeedList> listNotifications({
+    String? cursor,
+  }) async {
     final res = await _notifications.notificationsList(cursor: cursor);
     return res.data!;
   }
@@ -119,16 +144,17 @@ class DioTransparencyRepository implements TransparencyRepository {
     final res = await _me.meNotificationPreferencesPartialUpdate(
       patchedNotificationPreferenceUpdateRequest:
           PatchedNotificationPreferenceUpdateRequest(
-        (b) => b
-          ..preferences = ListBuilder<NotificationPreferenceUpdateItemRequest>([
-            NotificationPreferenceUpdateItemRequest(
-              (i) => i
-                ..eventCode = eventCode
-                ..emailEnabled = emailEnabled
-                ..pushEnabled = pushEnabled,
-            ),
-          ]),
-      ),
+            (b) => b
+              ..preferences =
+                  ListBuilder<NotificationPreferenceUpdateItemRequest>([
+                    NotificationPreferenceUpdateItemRequest(
+                      (i) => i
+                        ..eventCode = eventCode
+                        ..emailEnabled = emailEnabled
+                        ..pushEnabled = pushEnabled,
+                    ),
+                  ]),
+          ),
     );
     return res.data!.toList();
   }
@@ -147,14 +173,13 @@ final fundSummaryProvider = FutureProvider.autoDispose<FundSummary>((ref) {
 /// First few published entries for the Home "recent spending" block.
 final recentSpendingProvider =
     FutureProvider.autoDispose<List<LedgerEntryList>>((ref) async {
-  ref.watch(occupancyScopedProviders);
-  final page =
-      await ref.watch(transparencyRepositoryProvider).listLedger();
-  return page.results.take(3).toList();
-});
+      ref.watch(occupancyScopedProviders);
+      final page = await ref.watch(transparencyRepositoryProvider).listLedger();
+      return page.results.take(3).toList();
+    });
 
-final ledgerDetailProvider =
-    FutureProvider.autoDispose.family<LedgerEntryDetail, int>((ref, id) {
-  ref.watch(occupancyScopedProviders);
-  return ref.watch(transparencyRepositoryProvider).fetchLedgerEntry(id);
-});
+final ledgerDetailProvider = FutureProvider.autoDispose
+    .family<LedgerEntryDetail, int>((ref, id) {
+      ref.watch(occupancyScopedProviders);
+      return ref.watch(transparencyRepositoryProvider).fetchLedgerEntry(id);
+    });

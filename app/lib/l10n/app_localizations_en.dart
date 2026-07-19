@@ -145,6 +145,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportSubmit => 'Send report';
 
   @override
+  String get reportSubmitting => 'Sending…';
+
+  @override
+  String get reportDraftSaving => 'Saving draft…';
+
+  @override
+  String get reportDraftSaved => 'Draft saved';
+
+  @override
+  String get reportDraftSaveFailed =>
+      'The draft could not be saved. Your text is still on screen; check your device and try again.';
+
+  @override
   String get reportSubmitted => 'Your report was received.';
 
   @override
@@ -167,6 +180,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportAnother => 'Report another issue';
+
+  @override
+  String get reportEnableNotifications => 'Get update notifications';
 
   @override
   String get issuesTitle => 'My issues';
@@ -217,6 +233,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rateWorkTitle => 'How was the work?';
 
   @override
+  String rateStarLabel(int score) {
+    return '$score out of 5 stars';
+  }
+
+  @override
   String get rateCommentLabel => 'Comment (optional)';
 
   @override
@@ -263,6 +284,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeNoSpending => 'No published spending yet.';
+
+  @override
+  String get homeReportsLoading => 'Loading reports…';
+
+  @override
+  String get homeSpendingLoading => 'Loading spending…';
 
   @override
   String get notificationsTitle => 'Notifications';
@@ -337,10 +364,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerNotVerified => 'Payment not yet verified';
 
   @override
+  String get ledgerConclusionVerified => 'This expense has been verified';
+
+  @override
+  String get ledgerConclusionVerifiedBody =>
+      'The payment evidence and record integrity were independently confirmed.';
+
+  @override
+  String get ledgerConclusionUnverified => 'This expense is not fully verified';
+
+  @override
+  String get ledgerConclusionUnverifiedBody =>
+      'The expense was published, but a verification step is incomplete. Review the accountability chain below.';
+
+  @override
+  String get ledgerChainTitle => 'Accountability chain';
+
+  @override
+  String get ledgerChainHint =>
+      'Open to see how the expense moves from report to verification';
+
+  @override
+  String get ledgerChainReports => 'Reports and rationale';
+
+  @override
+  String get ledgerChainWork => 'Work completed';
+
+  @override
+  String get ledgerChainApprovals => 'Approvals';
+
+  @override
+  String get ledgerChainPayment => 'Payment evidence';
+
+  @override
+  String get ledgerChainVerification => 'Independent verification';
+
+  @override
   String get ledgerCorrections => 'Corrections';
 
   @override
   String get ledgerDocuments => 'Redacted documents';
+
+  @override
+  String get ledgerDocumentOpen => 'Preview or download';
+
+  @override
+  String get ledgerDocumentOffline =>
+      'You are offline. The document was not downloaded. Reconnect and try again.';
+
+  @override
+  String get ledgerDocumentUnauthorized =>
+      'You are not authorized to open this document. No file was downloaded.';
+
+  @override
+  String get ledgerDocumentFailure =>
+      'The document could not be opened. No file was downloaded; please try again.';
 
   @override
   String get ledgerProofTitle => 'Verification details';

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_page_route.dart';
 import '../../core/failure.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -18,6 +19,9 @@ import 'reports_repository.dart';
 const maxReportPhotos = 5; // spec 6.3
 const _maxPhotoEdge = 2048.0; // spec 6.3: client-side max edge before upload
 const _photoQuality = 85;
+
+enum _DraftSaveState { idle, saving, saved, failed }
+
 const _autosaveDebounce = Duration(milliseconds: 300);
 
 /// Spec 6.3 report compose: required text + location, ≤5 photos, draft
@@ -40,10 +44,14 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   ReportDraft _draft = ReportDraft.fresh();
   bool _restored = false;
   bool _busy = false;
+  bool _pushBusy = false;
+  bool _pushRequested = false;
+  _DraftSaveState _draftSaveState = _DraftSaveState.idle;
   String? _notice;
   SubmitOutcome? _outcome;
   Timer? _autosaveTimer;
   Future<void>? _pendingPersist;
+
   /// Cached for dispose flush — [ref] is unsafe after unmount (Riverpod).
   ReportDraftStore? _draftStore;
   int? _cachedOccupancyId;
@@ -110,10 +118,24 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   void _onTextChanged() {
     if (_committed) return;
     _draft = _draft.copyWith(text: _text.text);
+    _draftSaveState = _DraftSaveState.saving;
+    if (_restored && mounted) setState(() {});
     // Debounce UI-triggered saves (~300ms); store still serializes writes.
     _autosaveTimer?.cancel();
-    _autosaveTimer = Timer(_autosaveDebounce, () {
-      _pendingPersist = _persist();
+    _autosaveTimer = Timer(_autosaveDebounce, () async {
+      _autosaveTimer = null;
+      final operation = _persist();
+      _pendingPersist = operation;
+      try {
+        await operation;
+        if (mounted && identical(_pendingPersist, operation)) {
+          setState(() => _draftSaveState = _DraftSaveState.saved);
+        }
+      } catch (_) {
+        if (mounted && identical(_pendingPersist, operation)) {
+          setState(() => _draftSaveState = _DraftSaveState.failed);
+        }
+      }
     });
   }
 
@@ -139,7 +161,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     if (_committed || _busy) return;
     final location = await Navigator.push<Location>(
       context,
-      MaterialPageRoute(builder: (_) => const LocationPickerScreen()),
+      adaptivePageRoute(builder: (_) => const LocationPickerScreen()),
     );
     if (location == null) return;
     setState(() {
@@ -207,10 +229,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     }
     if (!mounted) return;
     setState(() {
-      _draft = _draft.copyWith(photoPaths: [
-        ..._draft.photoPaths,
-        ...owned,
-      ]);
+      _draft = _draft.copyWith(photoPaths: [..._draft.photoPaths, ...owned]);
     });
     await _persist();
   }
@@ -266,15 +285,6 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           );
         }
       });
-      // Spec 7.5: request push consent right after the first successful
-      // report submission — never as an app-launch ambush. Fire-and-forget.
-      // A4: OS permission is requested at most once per install.
-      final registrar = ref.read(pushRegistrarProvider);
-      unawaited(
-        registrar
-            .registerAfterConsent()
-            .then((_) => registrar.watchTokenRefresh()),
-      );
     } on ReportConflictException {
       // Already submitted with different content: mint a fresh ref so the
       // edited draft becomes a NEW report on the next send (spec 3.5).
@@ -283,14 +293,27 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
       if (mounted) setState(() => _notice = l10n.reportConflict);
     } catch (e) {
       if (mounted) {
-        setState(() => _notice = failureMessage(
-              e is Failure ? e : Failure.fromObject(e),
-              l10n,
-            ));
+        setState(
+          () => _notice = failureMessage(
+            e is Failure ? e : Failure.fromObject(e),
+            l10n,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _requestPushConsent() async {
+    if (_pushBusy || _pushRequested) return;
+    setState(() => _pushBusy = true);
+    await ref.read(pushRegistrarProvider).registerAfterConsent();
+    if (!mounted) return;
+    setState(() {
+      _pushBusy = false;
+      _pushRequested = true;
+    });
   }
 
   Future<void> _retryPhoto(PhotoUpload photo, AppLocalizations l10n) async {
@@ -316,7 +339,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     final outcome = _outcome;
     if (outcome == null) return;
     Navigator.of(context).push(
-      MaterialPageRoute(
+      adaptivePageRoute(
         builder: (_) => IssueDetailScreen(reportId: outcome.reportId),
       ),
     );
@@ -342,7 +365,8 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     if (!_restored) {
       return const Center(child: CircularProgressIndicator.adaptive());
     }
-    final failedPhotos = _outcome?.photos
+    final failedPhotos =
+        _outcome?.photos
             .where((p) => p.status == PhotoUploadStatus.failed)
             .toList() ??
         const <PhotoUpload>[];
@@ -365,6 +389,18 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             enabled: !editingLocked,
             decoration: InputDecoration(labelText: l10n.reportTextLabel),
           ),
+          if (_draftSaveState != _DraftSaveState.idle) ...[
+            const SizedBox(height: 8),
+            Semantics(
+              liveRegion: true,
+              child: Text(switch (_draftSaveState) {
+                _DraftSaveState.saving => l10n.reportDraftSaving,
+                _DraftSaveState.saved => l10n.reportDraftSaved,
+                _DraftSaveState.failed => l10n.reportDraftSaveFailed,
+                _DraftSaveState.idle => '',
+              }, style: Theme.of(context).textTheme.bodySmall),
+            ),
+          ],
           const SizedBox(height: 12),
           ListTile(
             minTileHeight: 56,
@@ -390,8 +426,10 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             children: [
               for (final path in _draft.photoPaths)
                 InputChip(
-                  label: Text(path.split('/').last,
-                      overflow: TextOverflow.ellipsis),
+                  label: Text(
+                    path.split('/').last,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   onDeleted: editingLocked ? null : () => _removePhoto(path),
                 ),
               if (!_committed && _draft.photoPaths.length < maxReportPhotos)
@@ -400,15 +438,23 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
                   label: Text(l10n.reportAddPhoto),
                   // ≥48dp touch target (spec §6.2/§6.4).
                   materialTapTargetSize: MaterialTapTargetSize.padded,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
                   onPressed: _busy ? null : () => _addPhoto(l10n),
                 ),
             ],
           ),
           if (_notice != null) ...[
             const SizedBox(height: 16),
-            Text(_notice!, style: Theme.of(context).textTheme.bodyMedium),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _notice!,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
           ],
           for (final photo in failedPhotos)
             ListTile(
@@ -422,6 +468,17 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             ),
           if (_committed) ...[
             const SizedBox(height: 16),
+            if (!_pushRequested)
+              FilledButton.tonalIcon(
+                onPressed: _pushBusy ? null : _requestPushConsent,
+                icon: _pushBusy
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.notifications_outlined),
+                label: Text(l10n.reportEnableNotifications),
+              ),
             TextButton(
               style: TextButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
@@ -441,7 +498,19 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _busy ? null : () => _submit(l10n),
-              child: Text(l10n.reportSubmit),
+              child: _busy
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(l10n.reportSubmitting),
+                      ],
+                    )
+                  : Text(l10n.reportSubmit),
             ),
           ],
         ],

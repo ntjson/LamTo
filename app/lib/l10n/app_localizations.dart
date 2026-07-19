@@ -350,6 +350,30 @@ abstract class AppLocalizations {
   /// **'Send report'**
   String get reportSubmit;
 
+  /// No description provided for @reportSubmitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get reportSubmitting;
+
+  /// No description provided for @reportDraftSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving draft…'**
+  String get reportDraftSaving;
+
+  /// No description provided for @reportDraftSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft saved'**
+  String get reportDraftSaved;
+
+  /// No description provided for @reportDraftSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The draft could not be saved. Your text is still on screen; check your device and try again.'**
+  String get reportDraftSaveFailed;
+
   /// No description provided for @reportSubmitted.
   ///
   /// In en, this message translates to:
@@ -391,6 +415,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Report another issue'**
   String get reportAnother;
+
+  /// No description provided for @reportEnableNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Get update notifications'**
+  String get reportEnableNotifications;
 
   /// No description provided for @issuesTitle.
   ///
@@ -475,6 +505,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'How was the work?'**
   String get rateWorkTitle;
+
+  /// No description provided for @rateStarLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{score} out of 5 stars'**
+  String rateStarLabel(int score);
 
   /// No description provided for @rateCommentLabel.
   ///
@@ -571,6 +607,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No published spending yet.'**
   String get homeNoSpending;
+
+  /// No description provided for @homeReportsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading reports…'**
+  String get homeReportsLoading;
+
+  /// No description provided for @homeSpendingLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading spending…'**
+  String get homeSpendingLoading;
 
   /// No description provided for @notificationsTitle.
   ///
@@ -692,6 +740,72 @@ abstract class AppLocalizations {
   /// **'Payment not yet verified'**
   String get ledgerNotVerified;
 
+  /// No description provided for @ledgerConclusionVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'This expense has been verified'**
+  String get ledgerConclusionVerified;
+
+  /// No description provided for @ledgerConclusionVerifiedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The payment evidence and record integrity were independently confirmed.'**
+  String get ledgerConclusionVerifiedBody;
+
+  /// No description provided for @ledgerConclusionUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'This expense is not fully verified'**
+  String get ledgerConclusionUnverified;
+
+  /// No description provided for @ledgerConclusionUnverifiedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The expense was published, but a verification step is incomplete. Review the accountability chain below.'**
+  String get ledgerConclusionUnverifiedBody;
+
+  /// No description provided for @ledgerChainTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accountability chain'**
+  String get ledgerChainTitle;
+
+  /// No description provided for @ledgerChainHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open to see how the expense moves from report to verification'**
+  String get ledgerChainHint;
+
+  /// No description provided for @ledgerChainReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports and rationale'**
+  String get ledgerChainReports;
+
+  /// No description provided for @ledgerChainWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Work completed'**
+  String get ledgerChainWork;
+
+  /// No description provided for @ledgerChainApprovals.
+  ///
+  /// In en, this message translates to:
+  /// **'Approvals'**
+  String get ledgerChainApprovals;
+
+  /// No description provided for @ledgerChainPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment evidence'**
+  String get ledgerChainPayment;
+
+  /// No description provided for @ledgerChainVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Independent verification'**
+  String get ledgerChainVerification;
+
   /// No description provided for @ledgerCorrections.
   ///
   /// In en, this message translates to:
@@ -703,6 +817,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Redacted documents'**
   String get ledgerDocuments;
+
+  /// No description provided for @ledgerDocumentOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview or download'**
+  String get ledgerDocumentOpen;
+
+  /// No description provided for @ledgerDocumentOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'You are offline. The document was not downloaded. Reconnect and try again.'**
+  String get ledgerDocumentOffline;
+
+  /// No description provided for @ledgerDocumentUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not authorized to open this document. No file was downloaded.'**
+  String get ledgerDocumentUnauthorized;
+
+  /// No description provided for @ledgerDocumentFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'The document could not be opened. No file was downloaded; please try again.'**
+  String get ledgerDocumentFailure;
 
   /// No description provided for @ledgerProofTitle.
   ///

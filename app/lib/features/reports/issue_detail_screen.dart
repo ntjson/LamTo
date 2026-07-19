@@ -219,10 +219,18 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               for (var star = 1; star <= 5; star++)
-                IconButton(
-                  iconSize: 40, // >=44pt effective target with padding
-                  icon: Icon(star <= _score ? Icons.star : Icons.star_border),
-                  onPressed: _busy ? null : () => setState(() => _score = star),
+                Semantics(
+                  label: l10n.rateStarLabel(star),
+                  button: true,
+                  selected: star == _score,
+                  excludeSemantics: true,
+                  child: IconButton(
+                    iconSize: 40, // >=44pt effective target with padding
+                    icon: Icon(star <= _score ? Icons.star : Icons.star_border),
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() => _score = star),
+                  ),
                 ),
             ],
           ),

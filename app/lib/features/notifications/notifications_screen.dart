@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_page_route.dart';
 import '../../core/error_retry.dart';
 import '../../core/load_more_button.dart';
 import '../../core/page_body.dart';
@@ -151,12 +152,12 @@ class NotificationsScreen extends ConsumerWidget {
       case DeepLinkReport(:final id):
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => IssueDetailScreen(reportId: id)),
+          adaptivePageRoute(builder: (_) => IssueDetailScreen(reportId: id)),
         );
       case DeepLinkLedger(:final id):
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),
+          adaptivePageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),
         );
       case DeepLinkFeed():
         break; // already on the feed

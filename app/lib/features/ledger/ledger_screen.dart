@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_page_route.dart';
 import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../core/load_more_button.dart';
@@ -167,7 +168,7 @@ class LedgerScreen extends ConsumerWidget {
                       ),
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        adaptivePageRoute(
                           builder: (_) => LedgerDetailScreen(entryId: entry.id),
                         ),
                       ),

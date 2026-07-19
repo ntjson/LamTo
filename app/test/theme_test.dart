@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/theme.dart';
 
@@ -16,6 +17,22 @@ void main() {
     expect(theme.colorScheme.outline, LamToColorsDark.border);
     expect(theme.scaffoldBackgroundColor, LamToColorsDark.bg);
     expect(theme.brightness, Brightness.dark);
+  });
+
+  test('iOS theme follows platform typography', () {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final theme = lamToTheme(Brightness.light);
+      expect(
+        theme.textTheme.bodyMedium?.fontFamily,
+        Typography.material2021(
+          platform: TargetPlatform.iOS,
+        ).black.bodyMedium?.fontFamily,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
   });
 
   testWidgets('statusToneColors follows theme brightness', (tester) async {

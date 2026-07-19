@@ -9,6 +9,7 @@ import 'package:lamto/app.dart';
 import 'package:lamto/core/providers.dart';
 import 'package:lamto/core/token_store.dart';
 import 'package:lamto/features/auth/auth_repository.dart';
+import 'package:lamto/features/notifications/notifications_screen.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -46,24 +47,24 @@ class _Repo implements AuthRepository {
 }
 
 Me _meWith(int occupancies) => Me((b) {
-      final list = ListBuilder<Occupancy>();
-      for (var i = 0; i < occupancies; i++) {
-        list.add(
-          Occupancy(
-            (o) => o
-              ..id = i + 1
-              ..unitLabel = 'A-${i + 1}'
-              ..buildingName = 'Toa A',
-          ),
-        );
-      }
-      b
-        ..displayName = 'R'
-        ..email = 'r@example.com'
-        ..phone = null
-        ..occupancies = list
-        ..notificationPreferences = ListBuilder<NotificationPreference>();
-    });
+  final list = ListBuilder<Occupancy>();
+  for (var i = 0; i < occupancies; i++) {
+    list.add(
+      Occupancy(
+        (o) => o
+          ..id = i + 1
+          ..unitLabel = 'A-${i + 1}'
+          ..buildingName = 'Toa A',
+      ),
+    );
+  }
+  b
+    ..displayName = 'R'
+    ..email = 'r@example.com'
+    ..phone = null
+    ..occupancies = list
+    ..notificationPreferences = ListBuilder<NotificationPreference>();
+});
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -75,7 +76,9 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        tokenStoreProvider.overrideWithValue(_FakeStore(token ?? (me != null ? 't' : null))),
+        tokenStoreProvider.overrideWithValue(
+          _FakeStore(token ?? (me != null ? 't' : null)),
+        ),
         authRepositoryProvider.overrideWithValue(_Repo(me, error: fetchError)),
       ],
       child: const LamToApp(),
@@ -126,6 +129,11 @@ void main() {
     try {
       await _pump(tester, me: _meWith(1));
       expect(find.byType(NavigationBar), findsOneWidget);
+      expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).destinations,
+        hasLength(4),
+      );
+      expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byType(CupertinoTabBar), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = previous;
@@ -143,6 +151,11 @@ void main() {
     try {
       await _pump(tester, me: _meWith(1));
       expect(find.byType(NavigationRail), findsOneWidget);
+      expect(
+        tester.widget<NavigationRail>(find.byType(NavigationRail)).destinations,
+        hasLength(4),
+      );
+      expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = previous;
@@ -155,6 +168,27 @@ void main() {
     try {
       await _pump(tester, me: _meWith(1));
       expect(find.byType(CupertinoTabBar), findsOneWidget);
+      expect(
+        tester.widget<CupertinoTabBar>(find.byType(CupertinoTabBar)).items,
+        hasLength(4),
+      );
+      expect(find.byIcon(CupertinoIcons.add), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
+  });
+
+  testWidgets('iOS detail navigation uses a Cupertino route', (tester) async {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await _pump(tester, me: _meWith(1));
+      await tester.tap(find.byIcon(Icons.notifications_outlined));
+      await tester.pumpAndSettle();
+      final route = ModalRoute.of(
+        tester.element(find.byType(NotificationsScreen)),
+      );
+      expect(route, isA<CupertinoPageRoute<void>>());
     } finally {
       debugDefaultTargetPlatformOverride = previous;
     }
@@ -198,11 +232,11 @@ void main() {
       );
       expect(scaffold.controller, isNotNull);
       expect(scaffold.controller!.index, 0);
-      // Tap second tab via bar; controller is single source of truth.
-      await tester.tap(find.text('Phản ánh'));
+      // Tap second destination via bar; Report is now a primary action.
+      await tester.tap(find.text('Việc của tôi'));
       await tester.pumpAndSettle();
       expect(scaffold.controller!.index, 1);
-      expect(find.text('Phản ánh'), findsWidgets);
+      expect(find.text('Việc của tôi'), findsWidgets);
     } finally {
       debugDefaultTargetPlatformOverride = previous;
     }

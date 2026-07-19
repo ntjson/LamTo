@@ -12,7 +12,8 @@ import '../reports/report_form_screen.dart';
 
 /// Platform-adaptive tab shell: Material NavigationBar (compact) or
 /// NavigationRail (expanded width) on Android, CupertinoTabBar on iOS;
-/// same five tab slots (clarification #7).
+/// Report creation is a task, so it is exposed as the platform primary action
+/// instead of consuming a destination.
 ///
 /// iOS uses [CupertinoTabController] as the single source of truth for the
 /// selected tab so bar and body cannot diverge.
@@ -43,11 +44,35 @@ class _HomeShellState extends State<HomeShell> {
 
   List<Widget> get _bodies => [
     const HomeScreen(),
-    const ReportFormScreen(),
     const MyIssuesScreen(),
     const LedgerScreen(),
     const AccountScreen(),
   ];
+
+  void _openReport() {
+    final l10n = AppLocalizations.of(context)!;
+    final isIos = defaultTargetPlatform == TargetPlatform.iOS;
+    Navigator.of(context).push(
+      isIos
+          ? CupertinoPageRoute<void>(
+              builder: (_) => CupertinoPageScaffold(
+                navigationBar: CupertinoNavigationBar(
+                  middle: Text(l10n.reportFormTitle),
+                ),
+                child: const SafeArea(
+                  top: false,
+                  child: PageBody(child: ReportFormScreen()),
+                ),
+              ),
+            )
+          : MaterialPageRoute<void>(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: Text(l10n.reportFormTitle)),
+                body: const PageBody(child: ReportFormScreen()),
+              ),
+            ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,10 +90,6 @@ class _HomeShellState extends State<HomeShell> {
               label: l10n.tabHome,
             ),
             BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.add_circled),
-              label: l10n.tabReport,
-            ),
-            BottomNavigationBarItem(
               icon: const Icon(CupertinoIcons.list_bullet),
               label: l10n.tabIssues,
             ),
@@ -83,6 +104,26 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
         tabBuilder: (context, index) => CupertinoPageScaffold(
+          navigationBar: CupertinoNavigationBar(
+            middle: Text(
+              [
+                l10n.tabHome,
+                l10n.tabIssues,
+                l10n.tabLedger,
+                l10n.tabAccount,
+              ][index],
+            ),
+            trailing: Semantics(
+              label: l10n.tabReport,
+              button: true,
+              excludeSemantics: true,
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _openReport,
+                child: const Icon(CupertinoIcons.add),
+              ),
+            ),
+          ),
           child: SafeArea(child: PageBody(child: bodies[index])),
         ),
       );
@@ -90,7 +131,6 @@ class _HomeShellState extends State<HomeShell> {
 
     final destinations = [
       (Icons.home_outlined, l10n.tabHome),
-      (Icons.add_circle_outline, l10n.tabReport),
       (Icons.list_alt_outlined, l10n.tabIssues),
       (Icons.account_balance_outlined, l10n.tabLedger),
       (Icons.person_outline, l10n.tabAccount),
@@ -101,6 +141,11 @@ class _HomeShellState extends State<HomeShell> {
       // Medium/expanded window class: navigation rail instead of a
       // stretched phone bottom bar (Material 3 adaptive navigation).
       return Scaffold(
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openReport,
+          icon: const Icon(Icons.add),
+          label: Text(l10n.tabReport),
+        ),
         body: SafeArea(
           child: Row(
             children: [
@@ -126,6 +171,11 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       body: SafeArea(child: bodies[_index]),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openReport,
+        tooltip: l10n.tabReport,
+        child: const Icon(Icons.add),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),

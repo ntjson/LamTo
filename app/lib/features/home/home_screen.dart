@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_page_route.dart';
 import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../l10n/app_localizations.dart';
@@ -56,7 +57,7 @@ class HomeScreen extends ConsumerWidget {
                   tooltip: l10n.notificationsTitle,
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    adaptivePageRoute(
                       builder: (_) => const NotificationsScreen(),
                     ),
                   ),
@@ -85,7 +86,7 @@ class HomeScreen extends ConsumerWidget {
                 error: error,
                 onRetry: () => ref.invalidate(myReportsProvider),
               ),
-              _ => const SizedBox.shrink(),
+              _ => _SectionLoading(label: l10n.homeReportsLoading),
             },
             const SizedBox(height: 24),
             Text(
@@ -98,7 +99,7 @@ class HomeScreen extends ConsumerWidget {
                 error: error,
                 onRetry: () => ref.invalidate(recentSpendingProvider),
               ),
-              _ => const SizedBox.shrink(),
+              _ => _SectionLoading(label: l10n.homeSpendingLoading),
             },
           ],
         ),
@@ -121,22 +122,39 @@ class HomeScreen extends ConsumerWidget {
       children: [
         Text(formatVnd(fund.balanceVnd), style: amountStyle),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
+        if (MediaQuery.textScalerOf(context).scale(1) >= 1.5)
+          Column(
+            key: const Key('fund-period-stats-stacked'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
                 '${l10n.homeFundInflows}: '
                 '${formatVnd(fund.periodInflowsVnd)}',
               ),
-            ),
-            Expanded(
-              child: Text(
+              const SizedBox(height: 4),
+              Text(
                 '${l10n.homeFundOutflows}: '
                 '${formatVnd(fund.periodOutflowsVnd)}',
               ),
-            ),
-          ],
-        ),
+            ],
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${l10n.homeFundInflows}: '
+                  '${formatVnd(fund.periodInflowsVnd)}',
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  '${l10n.homeFundOutflows}: '
+                  '${formatVnd(fund.periodOutflowsVnd)}',
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -172,7 +190,7 @@ class HomeScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
+              adaptivePageRoute(
                 builder: (_) => IssueDetailScreen(reportId: report.id),
               ),
             ),
@@ -210,7 +228,7 @@ class HomeScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
+              adaptivePageRoute(
                 builder: (_) => LedgerDetailScreen(entryId: entry.id),
               ),
             ),
@@ -218,4 +236,27 @@ class HomeScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _SectionLoading extends StatelessWidget {
+  const _SectionLoading({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Semantics(
+      liveRegion: true,
+      child: Row(
+        children: [
+          const SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label)),
+        ],
+      ),
+    ),
+  );
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,39 +11,41 @@ import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 FundSummary _fund() => FundSummary(
-      (b) => b
-        ..balanceVnd = 1500000
-        ..periodDays = 30
-        ..periodInflowsVnd = 200000
-        ..periodOutflowsVnd = 50000,
-    );
+  (b) => b
+    ..balanceVnd = 1500000
+    ..periodDays = 30
+    ..periodInflowsVnd = 200000
+    ..periodOutflowsVnd = 50000,
+);
 
 LedgerEntryList _entry(int id) => LedgerEntryList(
-      (b) => b
-        ..id = id
-        ..contractorName = 'Acme Co'
-        ..actualCostVnd = 900000
-        ..publishedAt = DateTime.utc(2026, 7, 10)
-        ..integrityStatus = 'VERIFIED'
-        ..evidenceLevel = 'CHAIN_CONFIRMED',
-    );
+  (b) => b
+    ..id = id
+    ..contractorName = 'Acme Co'
+    ..actualCostVnd = 900000
+    ..publishedAt = DateTime.utc(2026, 7, 10)
+    ..integrityStatus = 'VERIFIED'
+    ..evidenceLevel = 'CHAIN_CONFIRMED',
+);
 
 ReportSummary _report(String text, String status) => ReportSummary(
-      (b) => b
-        ..id = 1
-        ..text = text
-        ..status = status
-        ..locationPathSnapshot = 'B / Hall'
-        ..createdAt = DateTime.utc(2026, 7, 9),
-    );
+  (b) => b
+    ..id = 1
+    ..text = text
+    ..status = status
+    ..locationPathSnapshot = 'B / Hall'
+    ..createdAt = DateTime.utc(2026, 7, 9),
+);
 
 class _FakeReports implements ReportsRepository {
   @override
   Future<PaginatedReportSummaryList> listReports({String? cursor}) async =>
       PaginatedReportSummaryList(
         (b) => b
-          ..results = ListBuilder<ReportSummary>(
-              [_report('Thang máy kêu', 'OPEN'), _report('Đèn hỏng', 'RESOLVED')]),
+          ..results = ListBuilder<ReportSummary>([
+            _report('Thang máy kêu', 'OPEN'),
+            _report('Đèn hỏng', 'RESOLVED'),
+          ]),
       );
 
   @override
@@ -59,36 +63,70 @@ class _ThrowingReports implements ReportsRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _PendingReports implements ReportsRepository {
+  final pending = Completer<PaginatedReportSummaryList>();
+
+  @override
+  Future<PaginatedReportSummaryList> listReports({String? cursor}) =>
+      pending.future;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _FakeTransparency implements TransparencyRepository {
   @override
   Future<FundSummary> fetchFundSummary() async => _fund();
 
   @override
-  Future<PaginatedLedgerEntryListList> listLedger(
-          {String? cursor, int? year, int? month}) async =>
-      PaginatedLedgerEntryListList(
-        (b) => b..results = ListBuilder<LedgerEntryList>([_entry(1)]),
-      );
+  Future<PaginatedLedgerEntryListList> listLedger({
+    String? cursor,
+    int? year,
+    int? month,
+  }) async => PaginatedLedgerEntryListList(
+    (b) => b..results = ListBuilder<LedgerEntryList>([_entry(1)]),
+  );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _PendingTransparency implements TransparencyRepository {
+  final fund = Completer<FundSummary>();
+  final ledger = Completer<PaginatedLedgerEntryListList>();
+
+  @override
+  Future<FundSummary> fetchFundSummary() => fund.future;
+
+  @override
+  Future<PaginatedLedgerEntryListList> listLedger({
+    String? cursor,
+    int? year,
+    int? month,
+  }) => ledger.future;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
-  testWidgets('home shows fund block, open reports only, recent spending',
-      (tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        reportsRepositoryProvider.overrideWithValue(_FakeReports()),
-        transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('vi'),
-        home: const Scaffold(body: HomeScreen()),
+  testWidgets('home shows fund block, open reports only, recent spending', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const Scaffold(body: HomeScreen()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Quỹ bảo trì'), findsOneWidget);
@@ -100,37 +138,95 @@ void main() {
   });
 
   testWidgets(
-      'home active-reports AsyncError shows resident failure copy, not empty',
-      (tester) async {
-    // Riverpod 3 auto-retries Exceptions; disable so AsyncError surfaces
-    // immediately (production still retries then settles on AsyncError).
-    await tester.pumpWidget(ProviderScope(
-      retry: (_, _) => null,
-      overrides: [
-        reportsRepositoryProvider.overrideWithValue(_ThrowingReports()),
-        transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('vi'),
-        home: const Scaffold(body: HomeScreen()),
+    'home active-reports AsyncError shows resident failure copy, not empty',
+    (tester) async {
+      // Riverpod 3 auto-retries Exceptions; disable so AsyncError surfaces
+      // immediately (production still retries then settles on AsyncError).
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            reportsRepositoryProvider.overrideWithValue(_ThrowingReports()),
+            transparencyRepositoryProvider.overrideWithValue(
+              _FakeTransparency(),
+            ),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('vi'),
+            home: const Scaffold(body: HomeScreen()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Fund / spending still succeed.
+      expect(find.text('Quỹ bảo trì'), findsOneWidget);
+      expect(find.text('1.500.000 ₫'), findsOneWidget);
+      expect(find.text('Acme Co'), findsOneWidget);
+
+      // Active-reports section header + resident-facing errServer (generic throw
+      // → Failure.fromObject → server_error), not a silent empty list.
+      expect(find.text('Phản ánh đang mở'), findsOneWidget);
+      expect(
+        find.text(
+          'Đã có lỗi từ phía hệ thống. Thao tác có thể chưa được lưu. Vui lòng thử lại sau.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('home names section loading states instead of leaving blanks', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reportsRepositoryProvider.overrideWithValue(_PendingReports()),
+          transparencyRepositoryProvider.overrideWithValue(
+            _PendingTransparency(),
+          ),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const Scaffold(body: HomeScreen()),
+        ),
       ),
-    ));
+    );
+    await tester.pump();
+
+    expect(find.text('Đang tải phản ánh…'), findsOneWidget);
+    expect(find.text('Đang tải khoản chi…'), findsOneWidget);
+  });
+
+  testWidgets('fund period stats stack at large text sizes', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: Scaffold(body: HomeScreen()),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    // Fund / spending still succeed.
-    expect(find.text('Quỹ bảo trì'), findsOneWidget);
-    expect(find.text('1.500.000 ₫'), findsOneWidget);
-    expect(find.text('Acme Co'), findsOneWidget);
-
-    // Active-reports section header + resident-facing errServer (generic throw
-    // → Failure.fromObject → server_error), not a silent empty list.
-    expect(find.text('Phản ánh đang mở'), findsOneWidget);
-    expect(
-      find.text(
-          'Đã có lỗi từ phía hệ thống. Thao tác có thể chưa được lưu. Vui lòng thử lại sau.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('fund-period-stats-stacked')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
