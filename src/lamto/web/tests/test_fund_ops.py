@@ -443,3 +443,46 @@ class FundVerifyTests(TestCase):
         ).signature.hex()
         resp = self.client.post(url, {"event_id": event_id, "signature": signature})
         self.assertEqual(resp.status_code, 403)
+
+
+@override_settings(
+    ROOT_URLCONF="lamto.config.urls",
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "private": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+)
+class ActionInboxChartTests(TestCase):
+    def _login(self, seed, role_key):
+        membership = seed.roles[role_key]
+        self.client.force_login(membership.user)
+        device = TOTPDevice.objects.create(
+            user=membership.user, name="t", confirmed=True, key=random_hex()
+        )
+        session = self.client.session
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session[RECENT_REAUTH_KEY] = time.time()
+        session["active_membership_id"] = membership.pk
+        session.save()
+        return membership
+
+    def test_inbox_shows_compact_chart_with_fund_link_for_fund_staff(self):
+        seed = seed_pilot_world(building_name="Inbox Chart B", email_prefix="ich")
+        self._login(seed, "fund_recorder")
+        resp = self.client.get(reverse("web:action-inbox"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="fund-chart-data"')
+        self.assertContains(resp, 'data-compact="1"')
+        self.assertContains(resp, reverse("web:fund-home"))
+        self.assertEqual(len(resp.context["fund_chart_points"]), 6)
+        self.assertTrue(resp.context["fund_link_ok"])
+
+    def test_inbox_chart_without_fund_capability_has_no_fund_link(self):
+        seed = seed_pilot_world(building_name="Inbox Chart D", email_prefix="icd")
+        self._login(seed, "maintenance")
+        resp = self.client.get(reverse("web:action-inbox"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="fund-chart-data"')
+        self.assertNotContains(resp, reverse("web:fund-home"))
+        self.assertFalse(resp.context["fund_link_ok"])
