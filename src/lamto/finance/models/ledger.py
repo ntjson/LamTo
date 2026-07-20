@@ -1,4 +1,6 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 from lamto.accounts.models import Building, OrganizationMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
@@ -90,6 +92,13 @@ class MaintenanceFundEntry(InsertOnlyModel):
     @property
     def created_at(self):
         return self.recorded_at
+
+    def save(self, *args, **kwargs):
+        if self.recorded_at > timezone.now():
+            raise ValidationError(
+                {"recorded_at": "Fund entries cannot be future-dated."}
+            )
+        return super().save(*args, **kwargs)
 
     class Meta:
         constraints = [

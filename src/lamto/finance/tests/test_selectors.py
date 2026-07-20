@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from datetime import timezone as dt_timezone
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
@@ -51,6 +52,16 @@ class FundSelectorTests(TestCase):
         other = Building.objects.create(name="Other Building")
         MaintenanceFund.objects.create(building=other)
         assert verified_fund_entries(other.pk).count() == 0
+
+    def test_fund_entry_rejects_future_recorded_at(self):
+        with self.assertRaises(ValidationError):
+            self._entry(
+                "INFLOW", 1, timezone.now() + timedelta(days=1), "k-future"
+            )
+
+    def test_fund_entry_accepts_current_recorded_at(self):
+        entry = self._entry("INFLOW", 1, timezone.now(), "k-current")
+        assert entry.pk is not None
 
 
 class FundSeriesTests(TestCase):
@@ -124,6 +135,20 @@ class FundSeriesTests(TestCase):
         assert by_start[date(2026, 3, 1)]["outflows_vnd"] == 0
         assert by_start[date(2026, 7, 1)]["outflows_vnd"] == -5_000_000
         assert series[-1]["balance_vnd"] == 0
+
+    def test_positive_corrections_are_inflows_and_negative_corrections_outflows(self):
+        entries = [
+            (self._hcm(2026, 7, 1), "REVERSAL", 5_000_000),
+            (self._hcm(2026, 7, 2), "REPLACEMENT", 2_000_000),
+            (self._hcm(2026, 7, 3), "REVERSAL", -1_000_000),
+            (self._hcm(2026, 7, 4), "REPLACEMENT", -3_000_000),
+        ]
+        july = fund_series_from_entries(
+            entries, range_key="6m", today=self.TODAY
+        )[-1]
+        assert july["inflows_vnd"] == 7_000_000
+        assert july["outflows_vnd"] == -4_000_000
+        assert july["balance_vnd"] == 3_000_000
 
 
 class FundSeriesIntegrationTests(TestCase):

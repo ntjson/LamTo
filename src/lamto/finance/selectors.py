@@ -129,10 +129,6 @@ def fund_series_from_entries(entries, *, range_key, today):
         def bucket_of(day):
             return day.replace(day=1)
 
-    inflow_types = {
-        MaintenanceFundEntry.EntryType.OPENING_BALANCE,
-        MaintenanceFundEntry.EntryType.INFLOW,
-    }
     window_start = starts[0]
     flows = {start: [0, 0] for start in starts}
     balance = 0  # seeded with everything before the window
@@ -144,7 +140,7 @@ def fund_series_from_entries(entries, *, range_key, today):
         slot = flows.get(bucket_of(day))
         if slot is None:
             continue  # future-dated rows fall outside the chart window
-        slot[0 if entry_type in inflow_types else 1] += amount_vnd
+        slot[0 if amount_vnd > 0 else 1] += amount_vnd
     series = []
     for start in starts:
         inflows, outflows = flows[start]
