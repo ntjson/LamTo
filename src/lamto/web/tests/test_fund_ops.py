@@ -210,8 +210,7 @@ class FundHomeTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Maintenance fund")
         self.assertContains(resp, "Verified entries")
-        self.assertContains(resp, "Pending fund verification")
-        self.assertContains(resp, "Pending reconciliation")
+        self.assertContains(resp, "Publish settled expenses")
         # The seeded opening balance is a verified entry.
         self.assertContains(resp, "Opening balance")
 

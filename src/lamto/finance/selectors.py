@@ -105,8 +105,9 @@ def fund_series_from_entries(entries, *, range_key, today):
     """Pure bucketing core for fund_series.
 
     entries iterates (recorded_at aware-datetime, entry_type, amount_vnd).
-    Buckets by the Asia/Ho_Chi_Minh calendar day of recorded_at; amounts keep
-    their stored sign (outflow-types negative), so balance is a plain sum.
+    Buckets by the Asia/Ho_Chi_Minh calendar day of recorded_at; stored signs
+    classify amounts (positive inflow, negative outflow), so balance is a plain
+    sum.
     """
     if range_key not in FUND_SERIES_RANGE_KEYS:
         raise ValueError(f"range_key must be one of {FUND_SERIES_RANGE_KEYS}")
@@ -132,7 +133,7 @@ def fund_series_from_entries(entries, *, range_key, today):
     window_start = starts[0]
     flows = {start: [0, 0] for start in starts}
     balance = 0  # seeded with everything before the window
-    for recorded_at, entry_type, amount_vnd in entries:
+    for recorded_at, _entry_type, amount_vnd in entries:
         day = timezone.localtime(recorded_at).date()
         if day < window_start:
             balance += amount_vnd
