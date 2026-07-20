@@ -51,7 +51,7 @@ try {{
 }} catch (err) {{
   const msg = String(err && err.message ? err.message : err);
   console.log(msg);
-  if (!msg.includes('Secure random')) process.exit(4);
+  if (msg !== 'secureRandomUnavailable') process.exit(4);
   process.exit(0);
 }}
 """
@@ -66,4 +66,4 @@ try {{
             0,
             f"stdout={result.stdout!r} stderr={result.stderr!r}",
         )
-        self.assertIn("Secure random", result.stdout)
+        self.assertEqual(result.stdout.strip(), "secureRandomUnavailable")

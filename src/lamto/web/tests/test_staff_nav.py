@@ -19,6 +19,7 @@ from lamto.accounts.services import grant_capability
 from lamto.web.staff import finance_nav_items_for, nav_items_for
 
 
+@override_settings(LANGUAGE_CODE="en")
 class NavStructureTests(TestCase):
     def _board(self, *caps):
         building = Building.objects.create(name="Nav B")

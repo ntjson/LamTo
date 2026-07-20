@@ -103,18 +103,16 @@ class ListPatternTests(TestCase):
         )
         return building, location, user, membership, case
 
-    def test_work_list_renders_status_chip_and_filters(self):
+    def test_work_list_filters_by_status(self):
         building, _loc, user, membership, case = self._case_world(email_prefix="work")
         self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
-        # Not a WorkOrder.Status member — only appears in list status chips, not filter bar.
         self._make_work(building, case, user, "COMPLETED")
 
         self._login(user, membership)
 
         resp = self.client.get(reverse("web:work-order-list"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "status-chip")
-        self.assertContains(resp, "filter-bar")
+        self.assertContains(resp, "queue-toolbar")
 
         filtered = self.client.get(reverse("web:work-order-list"), {"status": "ASSIGNED"})
         self.assertContains(filtered, "Assigned")
@@ -180,7 +178,7 @@ class ListPatternTests(TestCase):
 
         all_resp = self.client.get(reverse("web:case-list"))
         self.assertEqual(all_resp.status_code, 200)
-        self.assertContains(all_resp, "filter-bar")
+        self.assertContains(all_resp, "queue-toolbar")
         self.assertContains(all_resp, f"Case #{high_case.pk}")
         self.assertContains(all_resp, f"Case #{low_case.pk}")
 
@@ -231,7 +229,7 @@ class ListPatternTests(TestCase):
 
         all_resp = self.client.get(reverse("web:proposal-list"))
         self.assertEqual(all_resp.status_code, 200)
-        self.assertContains(all_resp, "filter-bar")
+        self.assertContains(all_resp, "queue-toolbar")
         self.assertContains(all_resp, f"Proposal #{draft.pk}")
         self.assertContains(all_resp, f"Proposal #{in_review.pk}")
 
@@ -294,7 +292,7 @@ class ListPatternTests(TestCase):
 
             all_resp = self.client.get(reverse("web:payment-list"))
             self.assertEqual(all_resp.status_code, 200)
-            self.assertContains(all_resp, "filter-bar")
+            self.assertContains(all_resp, "queue-toolbar")
             self.assertContains(all_resp, f"Payment #{payment.pk}")
 
             filtered = self.client.get(
