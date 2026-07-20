@@ -1,13 +1,13 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize %}
-{% block title %}Fund · LamTo{% endblock %}
+{% load i18n humanize staff_extras %}
+{% block title %}{% trans "Fund" %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
 <section class="panel" aria-labelledby="fund-heading">
   <div class="panel-header">
-    <h1 id="fund-heading">Maintenance fund</h1>
+    <h1 id="fund-heading">{% trans "Maintenance fund" %}</h1>
     {% if can_record %}
-    <a class="button button-secondary" href="{% url 'web:fund-record' %}">Record source</a>
+    <a class="button button-secondary" href="{% url 'web:fund-record' %}">{% trans "Record source" %}</a>
     {% endif %}
   </div>
   <p class="balance-value">
@@ -16,34 +16,34 @@
   </p>
   <dl class="stat-grid">
     <div>
-      <dt>Inflows (30d)</dt>
+      <dt>{% trans "Inflows (30d)" %}</dt>
       <dd>{{ period_inflows|intcomma }} VND</dd>
     </div>
     <div>
-      <dt>Outflows (30d)</dt>
+      <dt>{% trans "Outflows (30d)" %}</dt>
       <dd>{{ period_outflows|intcomma }} VND</dd>
     </div>
   </dl>
 
   {% if pending_verification %}
   <div class="workflow-section workflow-primary">
-    <h2>Verify fund sources</h2>
-    <p class="hint">Source entries recorded but not yet verified — your primary job on this fund.</p>
+    <h2>{% trans "Verify fund sources" %}</h2>
+    <p class="hint">{% trans "Source entries recorded but not yet verified — your primary job on this fund." %}</p>
     <ul class="task-list">
       {% for entry in pending_verification %}
       <li>
         {% if can_verify %}
         <a class="task-row" href="{% url 'web:fund-verify' entry.pk %}">
-          <span class="task-action">Verify source</span>
+          <span class="task-action">{% trans "Verify source" %}</span>
           <span class="task-subject">#{{ entry.pk }} · {{ entry.get_entry_type_display }}</span>
           <span class="task-amount">{{ entry.amount_vnd|intcomma }} VND</span>
-          <span class="task-meta"><span>Recorded {{ entry.recorded_at }}</span></span>
+          <span class="task-meta"><span>{% trans "Recorded" %} {{ entry.recorded_at|staff_datetime }}</span></span>
         </a>
         {% else %}
         <div class="task-row task-row-simple">
           <span class="task-subject">#{{ entry.pk }} · {{ entry.get_entry_type_display }}</span>
           <span class="task-amount">{{ entry.amount_vnd|intcomma }} VND</span>
-          <span class="task-meta"><span>Recorded {{ entry.recorded_at }}</span></span>
+          <span class="task-meta"><span>{% trans "Recorded" %} {{ entry.recorded_at|staff_datetime }}</span></span>
         </div>
         {% endif %}
       </li>
@@ -52,15 +52,16 @@
   </div>
   {% elif pending %}
   <div class="workflow-section workflow-primary">
-    <h2>Publish settled expenses</h2>
-    <p class="hint">Publication-eligible payments waiting to appear on the resident ledger.</p>
+    <h2>{% trans "Publish settled expenses" %}</h2>
+    <p class="hint">{% trans "Publication-eligible payments waiting to appear on the resident ledger." %}</p>
     <ul class="task-list">
       {% for proposal in pending %}
       <li>
         <a class="task-row" href="{% url 'web:proposal-detail' proposal.pk %}">
-          <span class="task-action">Prepare publication</span>
-          <span class="task-subject">Proposal #{{ proposal.pk }}</span>
-          <span class="task-amount">{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">No amount recorded</span><span aria-hidden="true">—</span>{% endif %}</span>
+          <span class="task-action">{% trans "Prepare publication" %}</span>
+          <span class="task-subject">{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}</span>
+          <span class="task-amount">{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">{% trans "No amount recorded" %}</span><span aria-hidden="true">—</span>{% endif %}</span>
+          <span class="task-meta"></span>
         </a>
       </li>
       {% endfor %}
@@ -69,35 +70,36 @@
   {% endif %}
 
   <div class="workflow-section">
-    <h2>Verified entries</h2>
-    <p class="queue-count">{{ entries_list.page.paginator.count }} entr{{ entries_list.page.paginator.count|pluralize:"y,ies" }}</p>
+    <h2>{% trans "Verified entries" %}</h2>
+    <p class="queue-count">{% staff_entry_count entries_list.page.paginator.count %}</p>
     <ul class="task-list">
       {% for entry in entries %}
       <li>
         <div class="task-row task-row-simple">
           <span class="task-subject">#{{ entry.pk }} · {{ entry.get_entry_type_display }}</span>
           <span class="task-amount">{{ entry.amount_vnd|intcomma }} VND</span>
-          <span class="task-meta"><span>Recorded {{ entry.recorded_at }}</span></span>
+          <span class="task-meta"><span>{% trans "Recorded" %} {{ entry.recorded_at|staff_datetime }}</span></span>
         </div>
       </li>
       {% empty %}
-      <li class="empty-state"><p>No verified entries.</p></li>
+      <li class="empty-state"><p>{% trans "No verified entries." %}</p></li>
       {% endfor %}
     </ul>
-    {% include "web/staff/_pagination.html" with list_meta=entries_list pagination_label="Verified entry pages" %}
+    {% include "web/staff/_pagination.html" with list_meta=entries_list pagination_label=_("Verified entry pages") %}
   </div>
 
   {% if pending_verification and pending %}
   <div class="workflow-section">
-    <h2>Pending reconciliation</h2>
-    <p class="hint">Publication-eligible but not yet published to the resident ledger.</p>
+    <h2>{% trans "Pending reconciliation" %}</h2>
+    <p class="hint">{% trans "Publication-eligible but not yet published to the resident ledger." %}</p>
     <ul class="task-list">
       {% for proposal in pending %}
       <li>
         <a class="task-row" href="{% url 'web:proposal-detail' proposal.pk %}">
-          <span class="task-action">Prepare publication</span>
-          <span class="task-subject">Proposal #{{ proposal.pk }}</span>
-          <span class="task-amount">{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">No amount recorded</span><span aria-hidden="true">—</span>{% endif %}</span>
+          <span class="task-action">{% trans "Prepare publication" %}</span>
+          <span class="task-subject">{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}</span>
+          <span class="task-amount">{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">{% trans "No amount recorded" %}</span><span aria-hidden="true">—</span>{% endif %}</span>
+          <span class="task-meta"></span>
         </a>
       </li>
       {% endfor %}

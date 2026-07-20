@@ -1,33 +1,33 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize %}
-{% block title %}Audit search · LamTo{% endblock %}
+{% load i18n humanize staff_extras %}
+{% block title %}{% trans "Audit search" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
-  <p><a class="back-link" href="{% url 'web:action-inbox' %}">Back to inbox</a></p>
-  <h1>Audit search</h1>
-  <p class="hint">Trace a published expense to its maintenance case, work, decisions, documents, and integrity result.</p>
+  <p><a class="back-link" href="{% url 'web:action-inbox' %}">{% trans "Back to inbox" %}</a></p>
+  <h1>{% trans "Audit search" %}</h1>
+  <p class="hint">{% trans "Trace a published expense to its maintenance case, work, decisions, documents, and integrity result." %}</p>
   <form method="get" class="stack-form form-measure">
-    <label for="entry">Published ledger entry ID
+    <label for="entry">{% trans "Published ledger entry ID" %}
       <input class="input" id="entry" name="entry" value="{{ search_entry_id }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
     </label>
-    <button type="submit" class="button button-primary">Search</button>
+    <button type="submit" class="button button-primary">{% trans "Search" %}</button>
   </form>
 </section>
 
 {% if outbox_event %}
 <section class="panel">
-  <h2>Evidence event #{{ outbox_event.pk }}</h2>
+  <h2>{% blocktrans with id=outbox_event.pk %}Delivery record #{{ id }}{% endblocktrans %}</h2>
   <dl class="detail-list detail-list-wide">
-    <div><dt>Delivery status</dt><dd>{{ outbox_event.get_status_display }}</dd></div>
-    <div><dt>Evidence level</dt><dd>{{ evidence_level_label }}</dd></div>
+    <div><dt>{% trans "Delivery status" %}</dt><dd>{{ outbox_event.get_status_display }}</dd></div>
+    <div><dt>{% trans "Evidence level" %}</dt><dd>{{ evidence_level_label }}</dd></div>
   </dl>
-  <p class="hint">Evidence level is how far this event's proof has progressed: signed locally first, then confirmed on the public chain.</p>
+  <p class="hint">{% trans "Evidence level is how far this event's proof has progressed: signed locally first, then confirmed on the public chain." %}</p>
   <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
-    <summary>Technical proof</summary>
+    <summary>{% trans "Technical proof" %}</summary>
     <dl class="detail-list">
-      <div><dt>Event ID</dt><dd>{% include "web/staff/_hash_value.html" with value=outbox_event.event_id label="Event ID" %}</dd></div>
-      <div><dt>Transaction</dt><dd>{% if outbox_event.transaction_hash %}{% include "web/staff/_hash_value.html" with value=outbox_event.transaction_hash label="Transaction hash" %}{% else %}Not confirmed{% endif %}</dd></div>
-      <div><dt>Last error</dt><dd>{{ outbox_event.last_error|default:"None" }}</dd></div>
+      <div><dt>{% trans "Event ID" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=outbox_event.event_id label=_("Event ID") %}</dd></div>
+      <div><dt>{% trans "Transaction" %}</dt><dd>{% if outbox_event.transaction_hash %}{% include "web/staff/_hash_value.html" with value=outbox_event.transaction_hash label=_("Transaction hash") %}{% else %}{% trans "Not confirmed" %}{% endif %}</dd></div>
+      <div><dt>{% trans "Last error" %}</dt><dd>{{ outbox_event.last_error|default:_("None") }}</dd></div>
     </dl>
   </details>
 </section>
@@ -35,15 +35,15 @@
 
 {% if entry %}
 <section class="panel">
-  <h2>Published expense #{{ entry.pk }}</h2>
+  <h2>{% blocktrans with id=entry.pk %}Published expense #{{ id }}{% endblocktrans %}</h2>
   <dl class="detail-list detail-list-wide">
-    <div><dt>Actual cost</dt><dd>{{ entry.actual_cost_vnd|intcomma }} VND</dd></div>
-    <div><dt>Contractor</dt><dd>{{ entry.contractor_name }}</dd></div>
-    <div><dt>Maintenance case</dt><dd>Case #{{ entry.case_id }}</dd></div>
-    <div><dt>Work order</dt><dd>Work order #{{ entry.work_order_id }}</dd></div>
-    <div><dt>Proposal</dt><dd>Proposal #{{ entry.proposal_id }}</dd></div>
-    <div><dt>Integrity</dt><dd>{{ entry.effective_integrity_status }}</dd></div>
-    <div><dt>Recomputed fund balance</dt><dd>{% if recomputed_balance is not None %}{{ recomputed_balance }} VND{% else %}Unavailable{% endif %}</dd></div>
+    <div><dt>{% trans "Actual cost" %}</dt><dd>{{ entry.actual_cost_vnd|intcomma }} VND</dd></div>
+    <div><dt>{% trans "Contractor" %}</dt><dd>{{ entry.contractor_name }}</dd></div>
+    <div><dt>{% trans "Maintenance case" %}</dt><dd>{% blocktrans with id=entry.case_id %}Case #{{ id }}{% endblocktrans %}</dd></div>
+    <div><dt>{% trans "Work order" %}</dt><dd>{% blocktrans with id=entry.work_order_id %}Work order #{{ id }}{% endblocktrans %}</dd></div>
+    <div><dt>{% trans "Proposal" %}</dt><dd>{% blocktrans with id=entry.proposal_id %}Proposal #{{ id }}{% endblocktrans %}</dd></div>
+    <div><dt>{% trans "Integrity" %}</dt><dd>{{ entry.effective_integrity_status }}</dd></div>
+    <div><dt>{% trans "Recomputed fund balance" %}</dt><dd>{% if recomputed_balance is not None %}{{ recomputed_balance }} VND{% else %}{% trans "Unavailable" %}{% endif %}</dd></div>
   </dl>
 
   {% if accountability_stages %}
@@ -51,54 +51,54 @@
   {% endif %}
 
   <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
-    <summary>Technical proof</summary>
-    <h3>Document hashes</h3>
+    <summary>{% trans "Technical proof" %}</summary>
+    <h3>{% trans "Document hashes" %}</h3>
     <ul class="proof-list">
       {% for doc in doc_hashes %}
       <li>
         <strong>{{ doc.variant }} · {{ doc.filename }}</strong>
         {% include "web/staff/_hash_value.html" with value=doc.sha256 label="SHA-256" %}
       </li>
-      {% empty %}<li>No document hashes recorded.</li>{% endfor %}
+      {% empty %}<li>{% trans "No document hashes recorded." %}</li>{% endfor %}
     </ul>
 
-    <h3>Signer addresses</h3>
+    <h3>{% trans "Signer addresses" %}</h3>
     <ul class="proof-list">
       {% for addr in signer_addresses %}
-      <li>{% include "web/staff/_hash_value.html" with value=addr label="Signer address" %}</li>
-      {% empty %}<li>No signer addresses recorded.</li>{% endfor %}
+      <li>{% include "web/staff/_hash_value.html" with value=addr label=_("Signer address") %}</li>
+      {% empty %}<li>{% trans "No signer addresses recorded." %}</li>{% endfor %}
     </ul>
 
-    <h3>Transaction IDs</h3>
+    <h3>{% trans "Transaction IDs" %}</h3>
     <ul class="proof-list">
       {% for tx in transaction_ids %}
-      <li>{% include "web/staff/_hash_value.html" with value=tx label="Transaction hash" %}</li>
-      {% empty %}<li>No transaction IDs recorded.</li>{% endfor %}
+      <li>{% include "web/staff/_hash_value.html" with value=tx label=_("Transaction hash") %}</li>
+      {% empty %}<li>{% trans "No transaction IDs recorded." %}</li>{% endfor %}
     </ul>
 
-    <h3>Integrity observations</h3>
+    <h3>{% trans "Integrity observations" %}</h3>
     <ul class="proof-list">
       {% for obs in observations %}
-      <li>{{ obs.observed_at }} · {{ obs.result }} · {{ obs.checked_document_hashes|length }} documents · {{ obs.checked_chain_event_ids|length }} events</li>
-      {% empty %}<li>No observations recorded.</li>{% endfor %}
+      <li>{{ obs.observed_at|staff_datetime }} · {{ obs.result }} · {{ obs.checked_document_hashes|length }} {% trans "documents" %} · {{ obs.checked_chain_event_ids|length }} {% trans "events" %}</li>
+      {% empty %}<li>{% trans "No observations recorded." %}</li>{% endfor %}
     </ul>
   </details>
 
   <div class="workflow-section">
-    <h3>Run a fresh check</h3>
-    <p class="hint">This appends a new observation; it does not change the published record.</p>
-    <form method="post" class="stack-form form-measure">
+    <h3>{% trans "Run a fresh check" %}</h3>
+    <p class="hint">{% trans "This appends a new observation; it does not change the published record." %}</p>
+    <form method="post" class="stack-form form-measure" data-busy-on-submit>
       {% csrf_token %}
       <input type="hidden" name="action" value="verify">
       <input type="hidden" name="entry" value="{{ entry.pk }}">
       <div class="form-actions">
-        <button type="submit" class="button button-primary">Run integrity check</button>
-        <a class="button button-secondary" href="{% url 'web:action-inbox' %}">Cancel</a>
+        <button type="submit" class="button button-primary">{% trans "Run integrity check" %}</button>
+        <a class="button button-secondary" href="{% url 'web:action-inbox' %}">{% trans "Cancel" %}</a>
       </div>
     </form>
   </div>
 </section>
 {% elif search_entry_id %}
-<section class="panel"><p class="empty">No ledger entry with that ID exists in this building. Check the ID and search again.</p></section>
+<section class="panel"><p class="empty">{% trans "No ledger entry with that ID exists in this building. Check the ID and search again." %}</p></section>
 {% endif %}
 {% endblock %}

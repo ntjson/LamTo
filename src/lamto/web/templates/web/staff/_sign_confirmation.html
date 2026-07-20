@@ -1,0 +1,21 @@
+{% load i18n %}
+{% if sign_confirmation %}
+<section class="sign-confirmation review-summary" aria-labelledby="sign-confirmation-heading" role="status">
+  <h2 class="review-summary-title" id="sign-confirmation-heading">{% trans "What you signed" %}</h2>
+  {% if sign_confirmation.status_note %}
+  <p class="status status-warning sign-confirmation-status">
+    <span class="status-icon" aria-hidden="true">●</span>
+    {{ sign_confirmation.status_note }}
+  </p>
+  {% endif %}
+  <dl class="detail-list review-summary-list">
+    <div><dt>{% trans "Action" %}</dt><dd>{{ sign_confirmation.action }}</dd></div>
+    <div><dt>{% trans "Acting as" %}</dt><dd>{{ sign_confirmation.acting_as }}</dd></div>
+    {% for row in sign_confirmation.details %}
+    <div><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
+    {% endfor %}
+    <div><dt>{% trans "Consequence" %}</dt><dd>{{ sign_confirmation.consequence }}</dd></div>
+    <div><dt>{% trans "What happens next" %}</dt><dd>{{ sign_confirmation.what_next }}</dd></div>
+  </dl>
+</section>
+{% endif %}

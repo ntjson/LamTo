@@ -247,14 +247,20 @@ if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
 
         self.assertIn('class="task-list"', shared_list)
         self.assertIn('class="task-row"', shared_list)
+        self.assertIn("task-action", shared_list)
+        self.assertIn("No next action", shared_list)
         self.assertNotIn("card-link", shared_list)
         self.assertIn("staff/_list.html", cases)
         self.assertNotIn("filter-bar", cases)
         self.assertNotIn("filter-bar", inbox)
-        self.assertIn('name="status"', inbox)
+        self.assertIn("staff/_list_toolbar.html", inbox)
+        self.assertIn("staff/_pagination.html", inbox)
         self.assertIn("Apply filters", toolbar)
+        self.assertIn("secondary_filters", toolbar)
         self.assertIn('item.is_active', shell)
         self.assertIn('role="{% if \'error\' in message.tags %}alert{% else %}status{% endif %}"', shell)
+        self.assertIn("get_current_language", shell)
+        self.assertIn("lamtoI18n", shell)
         self.assertIn("No amount recorded", shared_list)
         self.assertIn("deadline-soon", css)
         self.assertIn("deadline-overdue", css)
@@ -262,6 +268,9 @@ if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
         self.assertIn("--color-focus-on-dark", css)
         self.assertIn(".staff-nav a:focus-visible", css)
         self.assertIn("min-height: var(--touch)", css)
+        self.assertIn("accountability-stage-pending", css)
+        self.assertIn("#8a5c00", css)
+        self.assertIn("system-ui, -apple-system", css)
         self.assertNotIn(".record-row", css)
 
     def test_payment_detail_links_ledger_evidence(self):
@@ -274,8 +283,10 @@ if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
 
     def test_ops_attention_states_link_to_the_exception_queue_without_dead_branches(self):
         ops = (STAFF_TEMPLATES / "ops_health.html").read_text(encoding="utf-8")
-        self.assertEqual(ops.count("Needs attention</a>"), 5)
+        self.assertIn("queue_needs_attention", ops)
         self.assertIn("status=exceptions", ops)
+        self.assertIn("Review", ops)
+        self.assertNotIn("Needs attention</a>", ops)
         self.assertNotRegex(ops, r"\{% if health\.[^%]+ %\}\s*<div><dt>")
 
     def test_fund_and_ops_use_product_specific_hierarchy(self):
@@ -388,9 +399,40 @@ class AccountabilityChainTests(SimpleTestCase):
         payment.acceptance = acceptance
         acceptance.work_order = wo
         self.assertEqual(
-            self._states(payment=payment),
+            self._states(payment=payment, publication_pending=False),
             ["complete", "complete", "complete", "complete", "complete", "complete", "current"],
         )
+
+    def test_stage_publication_awaiting_confirmation_is_pending_not_complete(self):
+        from types import SimpleNamespace
+
+        payment = SimpleNamespace(pk=4)
+        acceptance = SimpleNamespace(pk=3, payment=payment)
+        proposal = SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED")
+        wo = SimpleNamespace(
+            pk=1,
+            status="ACCEPTED",
+            requires_spending=True,
+            proposal=proposal,
+            acceptance=acceptance,
+        )
+        payment.acceptance = acceptance
+        acceptance.work_order = wo
+        chain = staff_common.accountability_chain_for(
+            payment=payment,
+            proposal=proposal,
+            published=False,
+            publication_pending=True,
+        )
+        self.assertEqual(
+            [step["state"] for step in chain],
+            ["complete", "complete", "complete", "complete", "complete", "complete", "pending"],
+        )
+        self.assertEqual(
+            str(chain[-1]["state_label"]),
+            str(staff_common.STAGE_STATE_LABELS["pending"]),
+        )
+        self.assertNotEqual(chain[-1]["state"], "complete")
 
     def test_stage_all_complete_when_published(self):
         from types import SimpleNamespace
@@ -479,7 +521,10 @@ class ActionInboxUiTests(SimpleTestCase):
         )
         visible = [item for group in result["groups"] for item in group["items"]]
 
-        self.assertEqual([group["label"] for group in result["groups"]], ["Due soon"])
+        self.assertEqual(
+            [str(group["label"]) for group in result["groups"]],
+            [str(dict(staff_common.ACTION_GROUPS)["due_soon"])],
+        )
         self.assertEqual([item.target_id for item in visible], [2])
 
     def test_inbox_paginates_and_exposes_filter_state(self):

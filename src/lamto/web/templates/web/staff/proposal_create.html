@@ -1,34 +1,34 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize %}
-{% block title %}Create proposal · LamTo{% endblock %}
+{% load i18n humanize %}
+{% block title %}{% trans "Create proposal" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
-  <h1>Create proposal · Work order #{{ work_order.pk }}</h1>
-  <p class="hint">Purpose (from case, immutable): {{ work_order.case.category }}</p>
+  <h1>{% blocktrans with id=work_order.pk %}Create proposal · Work order #{{ id }}{% endblocktrans %}</h1>
+  <p class="hint">{% blocktrans with category=work_order.case.category %}Case category (locked on this proposal): {{ category }}{% endblocktrans %}</p>
 
   {% if sign_form %}
   <div class="workflow-section">
-    <h2>Review and sign</h2>
-    <p class="hint">Amount {{ sign_form.amount_vnd.value|intcomma }} VND · {{ sign_form.contractor_name.value }}</p>
-    <p class="hint">The quotation is uploaded and frozen. Sign with your wallet to submit for Board review.</p>
+    <h2>{% trans "Review and sign" %}</h2>
+    <p class="hint">{% blocktrans with amount=sign_form.amount_vnd.value|intcomma name=sign_form.contractor_name.value %}Amount {{ amount }} VND · {{ name }}{% endblocktrans %}</p>
+    <p class="hint">{% trans "The quotation is uploaded and frozen. Sign with your wallet to submit for Board review." %}</p>
     <form method="post" class="stack-form" data-signed-form data-review-form>
       {% csrf_token %}
       <input type="hidden" name="action" value="submit">
       {{ sign_form.as_p }}
       <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign and send this proposal for Board review.</p>
+      <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign and send this proposal for Board review." %}</p>
       <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
       {% include "web/staff/_review_summary.html" with review_kind="proposal_create" review_id="proposal-create" %}
-      <button type="submit" class="button button-primary">Submit proposal</button>
+      <button type="submit" class="button button-primary">{% trans "Submit proposal" %}</button>
     </form>
   </div>
   {% else %}
-  <form method="post" class="stack-form" enctype="multipart/form-data">
+  <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
     {% csrf_token %}
     <input type="hidden" name="action" value="prepare">
     {{ create_form.as_p }}
-    <p class="hint">Upload the quotation original and a redacted copy (PDF). Amounts are integer VND.</p>
-    <button type="submit" class="button button-primary">Prepare proposal</button>
+    <p class="hint">{% trans "Upload the quotation original and a redacted copy (PDF). Amounts are integer VND." %}</p>
+    <button type="submit" class="button button-primary">{% trans "Prepare proposal" %}</button>
   </form>
   {% endif %}
 </section>

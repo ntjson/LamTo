@@ -1,70 +1,72 @@
 {% extends "web/staff/shell.html" %}
-{% block title %}{% if list_mode %}Cases{% elif case %}Case #{{ case.pk }}{% else %}Report #{{ report.pk }}{% endif %} · LamTo{% endblock %}
+{% load i18n staff_extras %}
+{% block title %}{% if list_mode %}{% trans "Cases" %}{% elif case %}{% blocktrans with id=case.pk %}Case #{{ id }}{% endblocktrans %}{% else %}{% blocktrans with id=report.pk %}Report #{{ id }}{% endblocktrans %}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
 <section class="panel" aria-labelledby="cases-heading">
   <div class="panel-header">
     <div>
-      <h1 id="cases-heading">Cases</h1>
-      <p class="hint">Open resident reports awaiting triage, and active maintenance cases with their next step and deadline.</p>
+      <h1 id="cases-heading">{% trans "Cases" %}</h1>
+      <p class="hint">{% trans "Open resident reports awaiting triage, and active maintenance cases with their next step and deadline." %}</p>
     </div>
   </div>
   {% include "web/staff/_list_toolbar.html" with list_meta=case_list filters=filters filters_active=filters_active filter_param=filter_param %}
   <div class="workflow-section">
-    <h2>Open reports</h2>
-    {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label="Open report pages" empty_label="No open reports." only %}
+    <h2>{% trans "Open reports" %}</h2>
+    {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label=_("Open report pages") empty_label=_("No open reports.") only %}
   </div>
   <div class="workflow-section">
-    <h2>Active cases</h2>
-    {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label="Active case pages" empty_label="No active cases." only %}
+    <h2>{% trans "Active cases" %}</h2>
+    {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label=_("Active case pages") empty_label=_("No active cases.") only %}
   </div>
 </section>
 {% else %}
 <section class="panel">
-  <h1>{% if case %}Case #{{ case.pk }}{% else %}Report #{{ report.pk }}{% endif %}</h1>
+  <h1>{% if case %}{% blocktrans with id=case.pk %}Case #{{ id }}{% endblocktrans %}{% else %}{% blocktrans with id=report.pk %}Report #{{ id }}{% endblocktrans %}{% endif %}</h1>
   {% if report %}
   <dl class="detail-list">
-    <div><dt>Report</dt><dd>{{ report.text }}</dd></div>
-    <div><dt>Location</dt><dd>{{ report.location_path_snapshot }}</dd></div>
-    <div><dt>Status</dt><dd>{{ report.get_status_display }}</dd></div>
+    <div><dt>{% trans "Report" %}</dt><dd>{{ report.text }}</dd></div>
+    <div><dt>{% trans "Location" %}</dt><dd>{{ report.location_path_snapshot }}</dd></div>
+    <div><dt>{% trans "Status" %}</dt><dd>{{ report.get_status_display }}</dd></div>
   </dl>
   {% endif %}
   {% if case %}
   <dl class="detail-list">
-    <div><dt>Category</dt><dd>{{ case.category }}</dd></div>
-    <div><dt>Urgency</dt><dd>{{ case.urgency|title }}</dd></div>
-    <div><dt>Department</dt><dd>{{ case.department }}</dd></div>
-    <div><dt>Deadline</dt><dd>{{ case.deadline_at }}</dd></div>
+    <div><dt>{% trans "Category" %}</dt><dd>{{ case.category }}</dd></div>
+    <div><dt>{% trans "Urgency" %}</dt><dd>{{ case.urgency|title }}</dd></div>
+    <div><dt>{% trans "Department" %}</dt><dd>{{ case.department }}</dd></div>
+    <div><dt>{% trans "Deadline" %}</dt><dd>{% if case.deadline_at %}{{ case.deadline_at|staff_datetime }}{% else %}{% trans "Not set" %}{% endif %}</dd></div>
   </dl>
-  <h2>Work orders</h2>
+  <h2>{% trans "Work orders" %}</h2>
   <ul class="task-list">
     {% for wo in work_orders %}
     <li>
       <a class="task-row task-row-simple" href="{% url 'web:work-order-detail' wo.pk %}">
-        <span class="task-action">Open work order</span>
-        <span class="task-subject">Work order #{{ wo.pk }} · {{ wo.get_status_display }}</span>
+        <span class="task-subject">{% blocktrans with id=wo.pk status=wo.get_status_display %}Work order #{{ id }} · {{ status }}{% endblocktrans %}</span>
+        <span class="task-amount"><span class="sr-only">{% trans "No amount recorded" %}</span><span aria-hidden="true">—</span></span>
+        <span class="task-meta"><span class="sr-only">{% trans "Open work order" %}</span></span>
       </a>
     </li>
     {% empty %}
-    <li class="empty-state"><p>No work orders yet.</p></li>
+    <li class="empty-state"><p>{% trans "No work orders yet." %}</p></li>
     {% endfor %}
   </ul>
   {% if work_form %}
-  <h2>Create work order</h2>
-  <form method="post" class="stack-form">
+  <h2>{% trans "Create work order" %}</h2>
+  <form method="post" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
     <input type="hidden" name="action" value="create_work_order">
     {{ work_form.as_p }}
-    <button type="submit" class="button button-primary">Create work order</button>
+    <button type="submit" class="button button-primary">{% trans "Create work order" %}</button>
   </form>
   {% endif %}
   {% elif form %}
-  <h2>Confirm triage</h2>
-  <form method="post" class="stack-form">
+  <h2>{% trans "Confirm triage" %}</h2>
+  <form method="post" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
     <input type="hidden" name="action" value="confirm_triage">
     {{ form.as_p }}
-    <button type="submit" class="button button-primary">Confirm triage</button>
+    <button type="submit" class="button button-primary">{% trans "Confirm triage" %}</button>
   </form>
   {% endif %}
 </section>

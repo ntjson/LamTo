@@ -1,82 +1,102 @@
 {% extends "web/staff/shell.html" %}
-{% block title %}Ops health · LamTo{% endblock %}
+{% load i18n staff_extras %}
+{% block title %}{% trans "Ops health" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="ops-health-heading">
-  <h1 id="ops-health-heading">Ops health</h1>
-  <p class="hint">Technical snapshot for tech administrators. Prefer <code>?format=json</code> for automation.</p>
+  <h1 id="ops-health-heading">{% trans "Ops health" %}</h1>
+  <p class="hint">{% blocktrans %}Technical snapshot for tech administrators. Prefer <code>?format=json</code> for automation.{% endblocktrans %}</p>
 
   <div class="workflow-section" id="queue-health">
-    <h2>Queue</h2>
-    {% if health.queue_count %}
-    <a class="status status-warning" href="{% url 'web:action-inbox' %}?status=exceptions"><span class="status-icon" aria-hidden="true">●</span> Needs attention</a>
+    <h2>{% trans "Evidence delivery queue" %}</h2>
+    {% if health.queue_needs_attention %}
+    <a class="status status-warning" href="{% url 'web:action-inbox' %}?status=exceptions&amp;kind=failed_outbox">
+      <span class="status-icon" aria-hidden="true">●</span>
+      {% if health.queue_failed %}
+      {% blocktrans count counter=health.queue_failed %}Review {{ counter }} failed delivery{% plural %}Review {{ counter }} failed deliveries{% endblocktrans %}
+      {% else %}
+      {% blocktrans with age=health.queue_age_seconds %}Review aging delivery queue (oldest {{ age }}s){% endblocktrans %}
+      {% endif %}
+    </a>
     {% else %}
-    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "Queue healthy" %}</p>
     {% endif %}
     <dl class="detail-list">
-      <div><dt>Queue count</dt><dd>{{ health.queue_count }}</dd></div>
-      <div><dt>Queue age (seconds)</dt><dd>{% if health.queue_age_seconds != None %}{{ health.queue_age_seconds }}{% else %}<span class="sr-only">Not available</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
+      <div><dt>{% trans "Pending items" %}</dt><dd>{{ health.queue_count }}</dd></div>
+      <div><dt>{% trans "Oldest pending item age" %}</dt><dd>{% if health.queue_age_seconds != None %}{% blocktrans with s=health.queue_age_seconds %}{{ s }} seconds{% endblocktrans %}{% else %}<span class="sr-only">{% trans "Not available" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
     </dl>
   </div>
 
   <div class="workflow-section" id="integrity-health">
-    <h2>Evidence integrity</h2>
+    <h2>{% trans "Evidence integrity" %}</h2>
     {% if health.integrity_mismatches or health.quarantined_files %}
-    <a class="status status-mismatch" href="{% url 'web:action-inbox' %}?status=exceptions"><span class="status-icon" aria-hidden="true">●</span> Needs attention</a>
+    <a class="status status-mismatch" href="{% url 'web:action-inbox' %}?status=exceptions&amp;kind=integrity_mismatch">
+      <span class="status-icon" aria-hidden="true">●</span>
+      {% blocktrans count counter=health.integrity_mismatches %}Review {{ counter }} integrity mismatch{% plural %}Review {{ counter }} integrity mismatches{% endblocktrans %}{% if health.quarantined_files %}; {% blocktrans count counter=health.quarantined_files %}{{ counter }} quarantined file{% plural %}{{ counter }} quarantined files{% endblocktrans %}{% endif %}
+    </a>
     {% else %}
-    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "No current failures" %}</p>
     {% endif %}
     <dl class="detail-list">
-      <div><dt>Integrity mismatches</dt><dd>{{ health.integrity_mismatches }}</dd></div>
-      <div><dt>Quarantined files</dt><dd>{{ health.quarantined_files }}</dd></div>
+      <div><dt>{% trans "Integrity mismatches" %}</dt><dd>{{ health.integrity_mismatches }}</dd></div>
+      <div><dt>{% trans "Quarantined files" %}</dt><dd>{{ health.quarantined_files }}</dd></div>
     </dl>
   </div>
 
   <div class="workflow-section" id="notification-health">
-    <h2>Notifications</h2>
+    <h2>{% trans "Notifications" %}</h2>
     {% if health.notification_failures or health.push_failures %}
-    <a class="status status-mismatch" href="{% url 'web:action-inbox' %}?status=exceptions"><span class="status-icon" aria-hidden="true">●</span> Needs attention</a>
+    <a class="status status-mismatch" href="{% url 'web:action-inbox' %}?status=exceptions">
+      <span class="status-icon" aria-hidden="true">●</span>
+      {% blocktrans count counter=health.notification_failures|add:health.push_failures %}Review {{ counter }} notification failure{% plural %}Review {{ counter }} notification failures{% endblocktrans %}
+    </a>
     {% else %}
-    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "No current failures" %}</p>
     {% endif %}
     <dl class="detail-list">
-      <div><dt>Notification failures</dt><dd>{{ health.notification_failures }}</dd></div>
-      <div><dt>Push failures</dt><dd>{{ health.push_failures }}</dd></div>
-      <div><dt>Push notifications delivered</dt><dd>{{ health.push_sent_success }}</dd></div>
-      <div><dt>Push notifications not delivered</dt><dd>{{ health.push_suppressed }}</dd></div>
+      <div><dt>{% trans "Notification failures" %}</dt><dd>{{ health.notification_failures }}</dd></div>
+      <div><dt>{% trans "Push failures" %}</dt><dd>{{ health.push_failures }}</dd></div>
+      <div><dt>{% trans "Push notifications delivered" %}</dt><dd>{{ health.push_sent_success }}</dd></div>
+      <div><dt>{% trans "Push notifications not delivered" %}</dt><dd>{{ health.push_suppressed }}</dd></div>
     </dl>
   </div>
 
   <div class="workflow-section" id="device-health">
-    <h2>Devices</h2>
+    <h2>{% trans "Devices" %}</h2>
     {% if health.dead_devices %}
-    <a class="status status-warning" href="{% url 'web:action-inbox' %}?status=exceptions"><span class="status-icon" aria-hidden="true">●</span> Needs attention</a>
+    <a class="status status-warning" href="{% url 'web:action-inbox' %}?status=exceptions">
+      <span class="status-icon" aria-hidden="true">●</span>
+      {% blocktrans count counter=health.dead_devices %}Review {{ counter }} inactive device{% plural %}Review {{ counter }} inactive devices{% endblocktrans %}
+    </a>
     {% else %}
-    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "No current failures" %}</p>
     {% endif %}
     <dl class="detail-list">
-      <div><dt>Inactive devices (dead tokens)</dt><dd>{{ health.dead_devices }}</dd></div>
-      <div><dt>Stale device max inactive age (days)</dt><dd>{{ health.stale_device_max_inactive_days }}</dd></div>
+      <div><dt>{% trans "Inactive devices (dead tokens)" %}</dt><dd>{{ health.dead_devices }}</dd></div>
+      <div><dt>{% trans "Longest inactive device age (days)" %}</dt><dd>{{ health.stale_device_max_inactive_days }}</dd></div>
     </dl>
   </div>
 
   <div class="workflow-section" id="anchoring-health">
-    <h2>Anchoring</h2>
+    <h2>{% trans "Anchoring" %}</h2>
     {% if not health.last_confirmed_block %}
-    <a class="status status-warning" href="{% url 'web:action-inbox' %}?status=exceptions"><span class="status-icon" aria-hidden="true">●</span> Needs attention</a>
+    <a class="status status-warning" href="{% url 'web:action-inbox' %}?status=exceptions&amp;kind=failed_outbox">
+      <span class="status-icon" aria-hidden="true">●</span>
+      {% trans "Review missing chain confirmation" %}
+    </a>
     {% else %}
-    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> No current failures</p>
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "No current failures" %}</p>
     {% endif %}
     <dl class="detail-list">
-      <div><dt>Anchoring backend</dt><dd>{{ health.anchoring_backend }}</dd></div>
-      <div><dt>Last confirmed block</dt><dd>{% if health.last_confirmed_block %}{{ health.last_confirmed_block }}{% else %}<span class="sr-only">Not confirmed</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
-      <div><dt>Last confirmed at</dt><dd>{% if health.last_confirmed_at %}{{ health.last_confirmed_at }}{% else %}<span class="sr-only">Not confirmed</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
+      <div><dt>{% trans "Anchoring backend" %}</dt><dd>{{ health.anchoring_backend }}</dd></div>
+      <div><dt>{% trans "Last confirmed block" %}</dt><dd>{% if health.last_confirmed_block %}{{ health.last_confirmed_block }}{% else %}<span class="sr-only">{% trans "Not confirmed" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
+      <div><dt>{% trans "Last confirmed at" %}</dt><dd>{% if health.last_confirmed_at %}{{ health.last_confirmed_at }}{% else %}<span class="sr-only">{% trans "Not confirmed" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
     </dl>
   </div>
 
   <div class="workflow-section">
-    <h2>Snapshot</h2>
+    <h2>{% trans "Snapshot" %}</h2>
     <dl class="detail-list">
-      <div><dt>Generated at</dt><dd>{{ health.generated_at }}</dd></div>
+      <div><dt>{% trans "Generated at" %}</dt><dd>{{ health.generated_at }}</dd></div>
     </dl>
   </div>
 </section>

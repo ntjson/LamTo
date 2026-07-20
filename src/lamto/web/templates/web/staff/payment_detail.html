@@ -1,51 +1,51 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize %}
-{% block title %}{% if list_mode %}Payments{% elif payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %} · LamTo{% endblock %}
+{% load i18n humanize %}
+{% block title %}{% if list_mode %}{% trans "Payments" %}{% elif payment %}{% blocktrans with id=payment.pk %}Payment #{{ id }}{% endblocktrans %}{% else %}{% blocktrans with id=acceptance.pk %}Acceptance #{{ id }}{% endblocktrans %}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
 <section class="panel" aria-labelledby="payments-heading">
   <div class="panel-header">
     <div>
-      <h1 id="payments-heading">Payments</h1>
-      <p class="hint">Accepted work waiting for payment, and recorded payments waiting for independent verification.</p>
+      <h1 id="payments-heading">{% trans "Payments" %}</h1>
+      <p class="hint">{% trans "Accepted work waiting for payment, and recorded payments waiting for independent verification." %}</p>
     </div>
   </div>
   {% include "web/staff/_list_toolbar.html" with list_meta=verify_list|default:record_list filters=filters filters_active=filters_active filter_param=filter_param %}
   {% if can_record %}
   <div class="workflow-section">
-    <h2>Record payment</h2>
-    {% include "web/staff/_list.html" with items=record_items list_meta=record_list pagination_label="Record queue pages" empty_label="No accepted work is waiting for payment recording." filters=None filters_active=False only %}
+    <h2>{% trans "Record payment" %}</h2>
+    {% include "web/staff/_list.html" with items=record_items list_meta=record_list pagination_label=_("Record queue pages") empty_label=_("No accepted work is waiting for payment recording.") filters=None filters_active=False only %}
   </div>
   {% endif %}
   {% if can_verify %}
   <div class="workflow-section">
-    <h2>Payment verification</h2>
-    {% include "web/staff/_list.html" with items=verify_items list_meta=verify_list pagination_label="Verification queue pages" empty_label="No recorded payments are waiting for verification." only %}
+    <h2>{% trans "Payment verification" %}</h2>
+    {% include "web/staff/_list.html" with items=verify_items list_meta=verify_list pagination_label=_("Verification queue pages") empty_label=_("No recorded payments are waiting for verification.") only %}
   </div>
   {% endif %}
 </section>
 {% else %}
 <section class="panel">
-  <p><a class="back-link" href="{% url 'web:payment-list' %}">Back to payments</a></p>
-  <h1>{% if payment %}Payment #{{ payment.pk }}{% else %}Acceptance #{{ acceptance.pk }}{% endif %}</h1>
+  <p><a class="back-link" href="{% url 'web:payment-list' %}">{% trans "Back to payments" %}</a></p>
+  <h1>{% if payment %}{% blocktrans with id=payment.pk %}Payment #{{ id }}{% endblocktrans %}{% else %}{% blocktrans with id=acceptance.pk %}Acceptance #{{ id }}{% endblocktrans %}{% endif %}</h1>
   <div class="record-layout">
     <div class="record-summary">
-      <p class="lede">Work order #{{ acceptance.work_order_id }} · {{ acceptance.work_order.case.category }}</p>
+      <p class="lede">{% blocktrans with wid=acceptance.work_order_id cat=acceptance.work_order.case.category %}Work order #{{ wid }} · {{ cat }}{% endblocktrans %}</p>
       <dl class="detail-list detail-list-wide">
-        <div><dt>Actual work cost</dt><dd>{{ acceptance.actual_cost_vnd|intcomma }} VND</dd></div>
+        <div><dt>{% trans "Actual work cost" %}</dt><dd>{{ acceptance.actual_cost_vnd|intcomma }} VND</dd></div>
         {% if payment %}
-        <div><dt>Bank reference</dt><dd>{{ payment.bank_reference }}</dd></div>
-        <div><dt>Recorded amount</dt><dd>{{ payment.amount_vnd|intcomma }} VND</dd></div>
-        <div><dt>Payment status</dt><dd>{{ payment.get_external_status_display }}</dd></div>
-        <div><dt>Evidence</dt><dd>
+        <div><dt>{% trans "Bank reference" %}</dt><dd>{{ payment.bank_reference }}</dd></div>
+        <div><dt>{% trans "Recorded amount" %}</dt><dd>{{ payment.amount_vnd|intcomma }} VND</dd></div>
+        <div><dt>{% trans "Payment status" %}</dt><dd>{{ payment.get_external_status_display }}</dd></div>
+        <div><dt>{% trans "Evidence" %}</dt><dd>
           {% if ledger_entry %}
-          <a href="{% url 'web:audit-search' %}?entry={{ ledger_entry.pk }}">Open ledger entry #{{ ledger_entry.pk }}</a>
+          <a href="{% url 'web:audit-search' %}?entry={{ ledger_entry.pk }}">{% blocktrans with id=ledger_entry.pk %}Open ledger entry #{{ id }}{% endblocktrans %}</a>
           {% else %}
-          Original and resident-safe payment proof on record
+          {% trans "Original and resident-safe payment proof on record" %}
           {% endif %}
         </dd></div>
         {% else %}
-        <div><dt>Payment status</dt><dd>Not yet recorded</dd></div>
+        <div><dt>{% trans "Payment status" %}</dt><dd>{% trans "Not yet recorded" %}</dd></div>
         {% endif %}
       </dl>
 
@@ -55,20 +55,20 @@
 
       {% if expected_signer or payment_doc_hashes or payment_signer or payment_tx %}
       <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
-        <summary>Technical proof</summary>
+        <summary>{% trans "Technical proof" %}</summary>
         <dl class="detail-list">
           {% if expected_signer %}
-          <div><dt>Registered wallet</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label="Wallet address" %}</dd></div>
+          <div><dt>{% trans "Registered wallet" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label=_("Wallet address") %}</dd></div>
           {% endif %}
           {% if payment_signer %}
-          <div><dt>Payment signer</dt><dd>{% include "web/staff/_hash_value.html" with value=payment_signer label="Signer address" %}</dd></div>
+          <div><dt>{% trans "Payment signer" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=payment_signer label=_("Signer address") %}</dd></div>
           {% endif %}
           {% if payment_tx %}
-          <div><dt>Payment transaction</dt><dd>{% include "web/staff/_hash_value.html" with value=payment_tx label="Transaction hash" %}</dd></div>
+          <div><dt>{% trans "Payment transaction" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=payment_tx label=_("Transaction hash") %}</dd></div>
           {% endif %}
         </dl>
         {% if payment_doc_hashes %}
-        <h3>Document hashes</h3>
+        <h3>{% trans "Document hashes" %}</h3>
         <ul class="proof-list">
           {% for doc in payment_doc_hashes %}
           <li>
@@ -85,8 +85,8 @@
     <div class="record-action">
       {% if can_record and record_form %}
       <div class="workflow-section">
-        <h2>Record payment</h2>
-        <p>Confirm the bank reference, amount, result, and linked payment proof. The amount must match the accepted work cost.</p>
+        <h2>{% trans "Record payment" %}</h2>
+        <p>{% trans "Confirm the bank reference, amount, result, and linked payment proof. The amount must match the accepted work cost." %}</p>
         <form method="post" class="stack-form" data-signed-form data-review-form id="record-payment-form"
               {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
           {% csrf_token %}
@@ -94,15 +94,15 @@
           {{ record_form.as_p }}
           {% if typed_data %}
           <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign the payment record with the wallet registered for this role.</p>
+          <p class="hint signing-status" data-signing-status id="record-payment-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign the payment record with the wallet registered for this role." %}</p>
           {% else %}
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Payment is not ready. Link both versions of the payment proof, then try again.</p>
+          <p class="hint signing-status" data-signing-status id="record-payment-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Payment is not ready. Link both versions of the payment proof, then try again." %}</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
           {% include "web/staff/_review_summary.html" with review_kind="payment_record" review_id="payment-record" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}aria-disabled="true"{% endif %}>Sign and record payment</button>
-            <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
+            <button type="submit" class="button button-primary" aria-describedby="record-payment-status" {% if not typed_data %}aria-disabled="true"{% endif %}>{% trans "Sign and record payment" %}</button>
+            <a class="button button-secondary" href="{% url 'web:payment-list' %}">{% trans "Cancel" %}</a>
           </div>
         </form>
       </div>
@@ -110,8 +110,8 @@
 
       {% if can_verify and verify_form %}
       <div class="workflow-section">
-        <h2>Verify payment</h2>
-        <p>Compare the recorded payment with the accepted work and bank evidence. Verification makes it eligible for publication.</p>
+        <h2>{% trans "Verify payment" %}</h2>
+        <p>{% trans "Compare the recorded payment with the accepted work and bank evidence. Verification makes it eligible for publication." %}</p>
         <form method="post" class="stack-form" data-signed-form data-review-form id="verify-payment-form"
               {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
           {% csrf_token %}
@@ -119,15 +119,15 @@
           {{ verify_form.as_p }}
           {% if typed_data %}
           <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign the verification with the wallet registered for this role.</p>
+          <p class="hint signing-status" data-signing-status id="verify-payment-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign the verification with the wallet registered for this role." %}</p>
           {% else %}
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Verification is not ready. Review the payment status and evidence.</p>
+          <p class="hint signing-status" data-signing-status id="verify-payment-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Verification is not ready. Review the payment status and evidence." %}</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
           {% include "web/staff/_review_summary.html" with review_kind="payment_verify" review_id="payment-verify" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}aria-disabled="true"{% endif %}>Sign and verify payment</button>
-            <a class="button button-secondary" href="{% url 'web:payment-list' %}">Cancel</a>
+            <button type="submit" class="button button-primary" aria-describedby="verify-payment-status" {% if not typed_data %}aria-disabled="true"{% endif %}>{% trans "Sign and verify payment" %}</button>
+            <a class="button button-secondary" href="{% url 'web:payment-list' %}">{% trans "Cancel" %}</a>
           </div>
         </form>
       </div>

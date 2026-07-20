@@ -110,9 +110,26 @@ def collect_health_snapshot() -> dict:
         stale_device_max_inactive_days = max(0, (now - oldest_inactive).days)
     quarantined = QuarantinedUpload.objects.count()
 
+    # A non-empty outbox is normal. Warn only when delivery is aging or failing.
+    queue_failed = status_counts.get(
+        BlockchainOutboxEvent.Status.FAILED, 0
+    ) + status_counts.get(BlockchainOutboxEvent.Status.MISMATCH, 0)
+    queue_age_warn_seconds = int(
+        getattr(settings, "OPS_QUEUE_AGE_WARN_SECONDS", 300)
+    )
+    queue_needs_attention = bool(
+        queue_failed
+        or (
+            queue_age_seconds is not None
+            and queue_age_seconds >= queue_age_warn_seconds
+        )
+    )
+
     return {
         "queue_age_seconds": queue_age_seconds,
         "queue_count": pending_outbox.count(),
+        "queue_failed": queue_failed,
+        "queue_needs_attention": queue_needs_attention,
         "outbox_status_counts": status_counts,
         "anchoring_backend": settings.EVIDENCE_ANCHORING_BACKEND,
         "quarantined_files": quarantined,

@@ -13,7 +13,7 @@
   --color-focus-on-dark: #ffffff;
   --color-success: #0f7a45;
   --color-success-bg: #e7f6ee;
-  --color-warning: #9a6700;
+  --color-warning: #8a5c00;
   --color-warning-bg: #fff6dd;
   --color-error: #b42318;
   --color-error-bg: #fef3f2;
@@ -29,7 +29,7 @@
   --radius: 12px;
   --nav-height: 4.25rem;
   --touch: 44px;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--color-ink);
   background: var(--color-bg);
 }
@@ -107,7 +107,65 @@ summary:focus-visible {
 }
 
 .brand-mark {
-  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-brand);
+  line-height: 1;
+}
+
+.brand-mark-svg {
+  display: block;
+}
+
+.membership-switcher {
+  margin: 0;
+}
+
+.membership-switcher-summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.membership-switcher-summary::-webkit-details-marker {
+  display: none;
+}
+
+.membership-switcher-summary::after {
+  content: "▾";
+  margin-inline-start: var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.85em;
+}
+
+.membership-bar-disclosure {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.sign-confirmation {
+  margin-bottom: var(--space-5);
+}
+
+.sign-confirmation-status {
+  margin: 0 0 var(--space-3);
+}
+
+.signing-status-warning {
+  color: var(--color-warning);
+}
+
+.message-warning {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.message-info {
+  color: var(--color-info);
+  background: var(--color-info-bg);
 }
 
 .building-label {
@@ -994,6 +1052,12 @@ code {
 .accountability-stage-blocked {
   color: var(--color-error);
   background: var(--color-error-bg);
+  border-color: transparent;
+}
+
+.accountability-stage-pending {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
   border-color: transparent;
 }
 

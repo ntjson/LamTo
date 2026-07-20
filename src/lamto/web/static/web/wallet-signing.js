@@ -9,13 +9,26 @@
  *
  * When data-expected-signer is set, ALWAYS re-sign with that account (never
  * trust a pre-filled signature or MetaMask's display alone).
+ *
+ * User-facing strings come from window.lamtoI18n (injected by staff shell).
  */
 (function (global) {
   "use strict";
 
+  function t(key, vars) {
+    var catalog = global.lamtoI18n || {};
+    var text = catalog[key] || key;
+    if (vars) {
+      Object.keys(vars).forEach(function (name) {
+        text = text.split("%(" + name + ")s").join(vars[name]);
+      });
+    }
+    return text;
+  }
+
   function randomBytes32() {
     if (!global.crypto || typeof global.crypto.getRandomValues !== "function") {
-      throw new Error("Secure random generator unavailable; cannot sign evidence.");
+      throw new Error(t("secureRandomUnavailable"));
     }
     var bytes = new Uint8Array(32);
     global.crypto.getRandomValues(bytes);
@@ -67,7 +80,7 @@
   async function signTypedData(account, typedData) {
     var eth = getEthereumProvider();
     if (!eth || typeof eth.request !== "function") {
-      throw new Error("A compatible wallet is required to sign this decision.");
+      throw new Error(t("walletRequired"));
     }
     var payload = JSON.parse(JSON.stringify(typedData));
     if (payload.domain && typeof payload.domain.chainId === "string") {
@@ -93,19 +106,17 @@
   async function resolveSignerAccount(form) {
     var eth = getEthereumProvider();
     if (!eth || typeof eth.request !== "function") {
-      throw new Error("A compatible wallet is required to sign this decision.");
+      throw new Error(t("walletRequired"));
     }
     var providerLabel =
       eth.isMetaMask && !eth.isBraveWallet
-        ? "MetaMask"
+        ? t("metaMask")
         : eth.isBraveWallet
-          ? "Brave Wallet"
-          : "injected wallet";
+          ? t("braveWallet")
+          : t("injectedWallet");
     var accounts = await eth.request({ method: "eth_requestAccounts" });
     if (!accounts || !accounts.length) {
-      throw new Error(
-        "No account from " + providerLabel + ". Unlock it and connect this site."
-      );
+      throw new Error(t("noAccountFrom", { provider: providerLabel }));
     }
     var expected = expectedSigner(form);
     if (expected) {
@@ -114,11 +125,7 @@
           return accounts[i];
         }
       }
-      throw new Error(
-        "The wallet registered for this role is not connected. Open that account in " +
-          providerLabel +
-          ", connect it to LamTo, then try again."
-      );
+      throw new Error(t("walletNotConnected", { provider: providerLabel }));
     }
     var selected = normalizeAccount(eth.selectedAddress);
     if (selected) {
@@ -212,7 +219,7 @@
       typedScript.textContent = JSON.stringify(options[decision.value]);
       setField(form, "signature", "");
       setError(form, "");
-      setStatus(form, "Decision updated. Your reason is preserved and ready to sign.");
+      setStatus(form, t("decisionUpdated"));
     });
   }
 
@@ -228,7 +235,7 @@
     ) {
       event.preventDefault();
       event.stopPropagation();
-      setStatus(form, "This action is not ready. Review the unmet checks above.");
+      setStatus(form, t("actionNotReady"));
       return;
     }
 
@@ -252,12 +259,10 @@
       // Drop any leftover signature from a previous attempt.
       setField(form, "signature", "");
 
-      setStatus(form, "Preparing secure evidence…");
+      setStatus(form, t("preparingEvidence"));
       var typedData = parseTypedData(form);
       if (!typedData) {
-        throw new Error(
-          "This action is not ready to sign. Keep your entries and refresh the page; if it persists, contact an administrator."
-        );
+        throw new Error(t("actionNotReadyRefresh"));
       }
       if (!typedData.message) {
         typedData.message = {};
@@ -266,31 +271,26 @@
         typedData.message.eventId = randomBytes32();
       }
 
-      setStatus(form, "Connecting to the wallet registered for this role…");
+      setStatus(form, t("connectingWallet"));
       var account = await resolveSignerAccount(form);
       var expected = expectedSigner(form);
       if (expected && normalizeAccount(account) !== expected) {
-        throw new Error(
-          "The connected wallet does not match the wallet registered for this role. Open the correct account, connect it to LamTo, then try again."
-        );
+        throw new Error(t("walletMismatch"));
       }
-      setStatus(
-        form,
-        "Confirm this action in the wallet registered for your current role."
-      );
+      setStatus(form, t("confirmInWallet"));
       if (typedData.message.eventId) {
         setField(form, "event_id", typedData.message.eventId);
       }
       var signature = await signTypedData(account, typedData);
       signature = normalizeSignatureHex(signature);
       setField(form, "signature", signature);
-      setStatus(form, "Saving your signed action…");
+      setStatus(form, t("savingSigned"));
       form.removeEventListener("submit", handleSignedSubmit);
       HTMLFormElement.prototype.submit.call(form);
     } catch (err) {
       var msg = (err && err.message) || String(err);
-      setStatus(form, "Signing stopped. Your entries are still here.");
-      setError(form, msg + " Check the details above and try again.");
+      setStatus(form, t("signingStopped"));
+      setError(form, msg + " " + t("checkAndRetry"));
       setBusy(form, false);
     }
   }
@@ -314,7 +314,9 @@
         var raw = option ? option.textContent.trim() : field.value;
         if (raw === "" || raw == null) {
           target.innerHTML =
-            '<span class="sr-only">Not entered yet</span><span aria-hidden="true">—</span>';
+            '<span class="sr-only">' +
+            t("notEnteredYet") +
+            '</span><span aria-hidden="true">—</span>';
           return;
         }
         target.textContent = target.dataset.reviewValue.endsWith("_vnd")
@@ -331,10 +333,10 @@
     if (decision && label && submit) {
       var updateDecision = function () {
         var approving = decision.value === "APPROVE";
-        label.textContent = approving ? "Approve proposal" : "Reject for correction";
+        label.textContent = approving ? t("approveProposal") : t("rejectForCorrection");
         submit.textContent = approving
-          ? "Sign and approve proposal"
-          : "Sign and reject for correction";
+          ? t("signAndApprove")
+          : t("signAndReject");
       };
       decision.addEventListener("change", updateDecision);
       updateDecision();
@@ -348,7 +350,18 @@
       bindTypedDataOptions(forms[i]);
       bindReviewSummary(forms[i]);
       forms[i].addEventListener("submit", handleSignedSubmit);
+      annotateMissingWallet(forms[i]);
     }
+  }
+
+  function annotateMissingWallet(form) {
+    if (getEthereumProvider()) return;
+    var hint = form.querySelector("[data-signing-status]");
+    if (!hint) return;
+    var expected = expectedSigner(form);
+    if (!expected && !form.hasAttribute("data-signed-form")) return;
+    hint.textContent = t("walletMissingHint");
+    hint.classList.add("signing-status-warning");
   }
 
   function bindCopyButtons(root) {
@@ -360,12 +373,20 @@
       buttons[i].addEventListener("click", function (event) {
         var btn = event.currentTarget;
         var value = btn.getAttribute("data-copy") || "";
-        var baseLabel = btn.getAttribute("aria-label") || "Copy";
+        var baseLabel = btn.getAttribute("aria-label") || t("copy");
         function done(ok) {
           var previous = btn.textContent;
-          var nextLabel = ok ? "Copied" : "Copy failed";
+          var nextLabel = ok ? t("copied") : t("copyFailed");
           btn.textContent = nextLabel;
           btn.setAttribute("aria-label", nextLabel);
+          if (!ok) {
+            var status = btn.closest("form")
+              ? btn.closest("form").querySelector("[data-signing-status]")
+              : null;
+            if (status) {
+              status.textContent = t("copyFailedHint");
+            }
+          }
           global.setTimeout(function () {
             btn.textContent = previous;
             btn.setAttribute("aria-label", baseLabel);
@@ -384,10 +405,28 @@
     }
   }
 
+  function bindBusyOnSubmit(root) {
+    var scope = root || document;
+    var forms = scope.querySelectorAll("form[data-busy-on-submit]");
+    for (var i = 0; i < forms.length; i++) {
+      if (forms[i].dataset.busyBound === "1") continue;
+      forms[i].dataset.busyBound = "1";
+      forms[i].addEventListener("submit", function (event) {
+        var form = event.currentTarget;
+        if (form.getAttribute("aria-busy") === "true") {
+          event.preventDefault();
+          return;
+        }
+        setBusy(form, true);
+      });
+    }
+  }
+
   global.LamToWalletSigning = {
     signTypedData: signTypedData,
     bindSignedForms: bindSignedForms,
     bindCopyButtons: bindCopyButtons,
+    bindBusyOnSubmit: bindBusyOnSubmit,
     handleSignedSubmit: handleSignedSubmit,
     bindTypedDataOptions: bindTypedDataOptions,
     bindReviewSummary: bindReviewSummary,
@@ -395,6 +434,7 @@
     parseTypedData: parseTypedData,
     randomBytes32: randomBytes32,
     resolveSignerAccount: resolveSignerAccount,
+    t: t,
   };
   global.signTypedData = signTypedData;
 
@@ -402,9 +442,11 @@
     document.addEventListener("DOMContentLoaded", function () {
       bindSignedForms(document);
       bindCopyButtons(document);
+      bindBusyOnSubmit(document);
     });
   } else {
     bindSignedForms(document);
     bindCopyButtons(document);
+    bindBusyOnSubmit(document);
   }
 })(typeof window !== "undefined" ? window : globalThis);

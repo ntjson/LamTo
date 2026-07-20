@@ -13,7 +13,7 @@ colors:
   border: "#d7dce8"
   success: "#0f7a45"
   success-bg: "#e7f6ee"
-  warning: "#9a6700"
+  warning: "#8a5c00"
   warning-bg: "#fff6dd"
   error: "#b42318"
   error-bg: "#fef3f2"
@@ -27,33 +27,33 @@ colors:
   dark-border: "#3a4158"
 typography:
   body:
-    fontFamily: "Segoe UI, system-ui, -apple-system, sans-serif"
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
   headline:
-    fontFamily: "Segoe UI, system-ui, -apple-system, sans-serif"
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.25
   title:
-    fontFamily: "Segoe UI, system-ui, -apple-system, sans-serif"
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "1.15rem"
     fontWeight: 700
     lineHeight: 1.25
   label:
-    fontFamily: "Segoe UI, system-ui, -apple-system, sans-serif"
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "0.85rem"
     fontWeight: 600
     lineHeight: 1.3
   amount:
-    fontFamily: "Segoe UI, system-ui, -apple-system, sans-serif"
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "1.75rem"
     fontWeight: 700
     lineHeight: 1.2
     fontFeature: "tabular-nums"
   nav-label:
-    fontFamily: "Segoe UI, system-ui, -apple-system, sans-serif"
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.2

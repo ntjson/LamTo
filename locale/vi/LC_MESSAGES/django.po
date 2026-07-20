@@ -1,0 +1,131 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nLanguage: vi\nPlural-Forms: nplurals=1; plural=0;\n"
+
+msgid "What you are signing"
+msgstr "Những gì bạn đang ký"
+
+msgid "What you signed"
+msgstr "Những gì bạn đã ký"
+
+msgid "What happens next"
+msgstr "Việc tiếp theo"
+
+msgid "Acting as"
+msgstr "Với tư cách"
+
+msgid "Action"
+msgstr "Hành động"
+
+msgid "Consequence"
+msgstr "Hệ quả"
+
+msgid "Awaiting confirmation"
+msgstr "Đang chờ xác nhận"
+
+msgid "Signed — awaiting independent confirmation"
+msgstr "Đã ký — đang chờ xác nhận độc lập"
+
+msgid "Publication awaiting confirmation"
+msgstr "Công bố đang chờ xác nhận"
+
+msgid "Preparing secure evidence…"
+msgstr "Đang chuẩn bị bằng chứng an toàn…"
+
+msgid "Signing stopped. Your entries are still here."
+msgstr "Đã dừng ký. Thông tin bạn nhập vẫn còn đây."
+
+msgid "A compatible wallet is required to sign this decision."
+msgstr "Cần ví tương thích để ký quyết định này."
+
+msgid "Confirm this action in the wallet registered for your current role."
+msgstr "Xác nhận hành động này trong ví đã đăng ký cho vai trò hiện tại."
+
+msgid "Saving your signed action…"
+msgstr "Đang lưu hành động đã ký…"
+
+msgid "Sign and publish to resident ledger"
+msgstr "Ký và công bố lên sổ cư dân"
+
+msgid "Publish to resident ledger"
+msgstr "Công bố lên sổ cư dân"
+
+msgid "LamTo Staff"
+msgstr "LamTo Nhân sự"
+
+msgid "Skip to content"
+msgstr "Bỏ qua đến nội dung"
+
+msgid "Staff"
+msgstr "Nhân sự"
+
+msgid "Deadline"
+msgstr "Hạn chót"
+
+msgid "Completed"
+msgstr "Hoàn tất"
+
+msgid "Current step"
+msgstr "Bước hiện tại"
+
+msgid "Publication"
+msgstr "Công bố"
+
+msgid "Inbox"
+msgstr "Hộp việc"
+
+msgid "Cases"
+msgstr "Vụ việc"
+
+msgid "Work"
+msgstr "Công việc"
+
+msgid "My work"
+msgstr "Việc của tôi"
+
+msgid "Finance"
+msgstr "Tài chính"
+
+msgid "Audit"
+msgstr "Kiểm toán"
+
+msgid "Ops"
+msgstr "Vận hành"
+
+msgid "Proposals"
+msgstr "Đề xuất"
+
+msgid "Payments"
+msgstr "Thanh toán"
+
+msgid "Fund"
+msgstr "Quỹ"
+
+msgid "Do now"
+msgstr "Làm ngay"
+
+msgid "Due soon"
+msgstr "Sắp đến hạn"
+
+msgid "Exceptions"
+msgstr "Ngoại lệ"
+
+msgid "No next action"
+msgstr "Không có bước tiếp"
+
+msgid "No amount recorded"
+msgstr "Chưa ghi số tiền"
+
+msgid "Apply filters"
+msgstr "Áp dụng bộ lọc"
+
+msgid "Clear filters"
+msgstr "Xóa bộ lọc"
+
+msgid "Action inbox"
+msgstr "Hộp việc"
+
+msgid "Technical proof"
+msgstr "Bằng chứng kỹ thuật"
+
+msgid "Cancel"
+msgstr "Hủy"

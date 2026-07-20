@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
+from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import CapabilityGrant, OrganizationMembership
 from lamto.accounts.security import (
@@ -106,7 +107,7 @@ def nav_items_for(membership) -> list[dict]:
     Role = OrganizationMembership.Role
     items: list[dict] = [
         {
-            "label": "Inbox",
+            "label": _("Inbox"),
             "url_name": "web:action-inbox",
             "capability": None,
             "active_key": "inbox",
@@ -116,7 +117,7 @@ def nav_items_for(membership) -> list[dict]:
     if "report.triage" in caps:
         items.append(
             {
-                "label": "Cases",
+                "label": _("Cases"),
                 "url_name": "web:case-list",
                 "capability": "report.triage",
                 "active_key": "cases",
@@ -131,7 +132,7 @@ def nav_items_for(membership) -> list[dict]:
         )
         items.append(
             {
-                "label": "My work" if maintenance_only else "Work",
+                "label": _("My work") if maintenance_only else _("Work"),
                 "url_name": "web:work-order-list",
                 "capability": None,
                 "active_key": "work",
@@ -153,7 +154,7 @@ def nav_items_for(membership) -> list[dict]:
             finance_url = "web:fund-home"
         items.append(
             {
-                "label": "Finance",
+                "label": _("Finance"),
                 "url_name": finance_url,
                 "capability": None,
                 "active_key": "finance",
@@ -163,7 +164,7 @@ def nav_items_for(membership) -> list[dict]:
     if role == Role.AUDITOR or "audit.export" in caps:
         items.append(
             {
-                "label": "Audit",
+                "label": _("Audit"),
                 "url_name": "web:audit-search",
                 "capability": "audit.export",
                 "active_key": "audit",
@@ -173,7 +174,7 @@ def nav_items_for(membership) -> list[dict]:
     if role == Role.TECH_ADMIN:
         items.append(
             {
-                "label": "Ops",
+                "label": _("Ops"),
                 "url_name": "web:ops-health",
                 "capability": "tech.admin",
                 "active_key": "ops",
@@ -188,9 +189,9 @@ def nav_items_for(membership) -> list[dict]:
 def finance_nav_items_for(membership) -> list[dict[str, str]]:
     caps = capabilities_for(membership)
     destinations = (
-        ("Proposals", "web:proposal-list", "proposals", {"proposal.create", "proposal.approve", "ledger.publish"}),
-        ("Payments", "web:payment-list", "payments", {"payment.record", "payment.verify"}),
-        ("Fund", "web:fund-home", "fund", {"fund.record", "fund.verify", "ledger.publish"}),
+        (_("Proposals"), "web:proposal-list", "proposals", {"proposal.create", "proposal.approve", "ledger.publish"}),
+        (_("Payments"), "web:payment-list", "payments", {"payment.record", "payment.verify"}),
+        (_("Fund"), "web:fund-home", "fund", {"fund.record", "fund.verify", "ledger.publish"}),
     )
     return [
         {"label": label, "url_name": url_name, "active_key": active_key}
@@ -200,16 +201,21 @@ def finance_nav_items_for(membership) -> list[dict[str, str]]:
 
 
 def staff_context(request, membership, memberships, *, nav_active=None, **extra):
+    from lamto.web.views.staff_common import pop_sign_confirmation
+
     nav_items = nav_items_for(membership)
     for item in nav_items:
         item["is_active"] = bool(nav_active) and item.get("active_key") == nav_active
+    sign_confirmation = pop_sign_confirmation(request)
     return {
         "membership": membership,
         "memberships": memberships,
+        "membership_count": len(memberships) if memberships is not None else 0,
         "nav_items": nav_items,
         "nav_active": nav_active,
         "finance_nav_items": finance_nav_items_for(membership),
         "capabilities": capabilities_for(membership),
+        "sign_confirmation": sign_confirmation,
         **extra,
     }
 

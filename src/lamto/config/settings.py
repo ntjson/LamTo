@@ -62,6 +62,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -142,14 +143,26 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
+# Vietnamese-first product surface; English msgids remain the translation source.
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "vi"
+
+LANGUAGES = [
+    ("vi", "Tiếng Việt"),
+    ("en", "English"),
+]
+
+LOCALE_PATHS = [BASE_DIR.parent.parent / "locale"]
 
 TIME_ZONE = "Asia/Ho_Chi_Minh"
 
 USE_I18N = True
 
 USE_TZ = True
+
+# Shared staff/resident datetime display (day-first, 24h, Asia/Ho_Chi_Minh).
+SHORT_DATETIME_FORMAT = r"d/m/Y H:i"
+DATETIME_FORMAT = r"d/m/Y H:i"
 
 
 # Static files (CSS, JavaScript, Images)

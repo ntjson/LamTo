@@ -1,43 +1,54 @@
-{% load static %}
+{% load i18n static %}
+{% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Staff · LamTo{% endblock %}</title>
+  <title>{% block title %}{% trans "Staff" %} · LamTo{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'web/app.css' %}">
   {% block extra_head %}{% endblock %}
 </head>
 <body class="staff">
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">{% trans "Skip to content" %}</a>
   <header class="site-header" role="banner">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">◆</span>
-      <span class="brand-name">LamTo Staff</span>
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="brand-mark-svg" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <rect x="2" y="2" width="18" height="18" rx="4" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M7 15V7h3.2c1.7 0 2.7.9 2.7 2.2 0 1-.5 1.7-1.4 2l1.7 3.8h-2.1l-1.5-3.5H9V15H7zm2-5.2h1c.7 0 1.1-.3 1.1-.9S10.7 8 10 8H9v1.8z" fill="currentColor"/>
+        </svg>
+      </span>
+      <span class="brand-name">{% trans "LamTo Staff" %}</span>
     </div>
-    {% if membership %}
+    {% if membership and membership_count <= 1 %}
     <p class="building-label">
       {{ membership.organization.building.name }} · {{ membership.get_role_display }}
     </p>
+    {% elif membership and membership_count > 1 %}
+    <details class="membership-switcher">
+      <summary class="building-label membership-switcher-summary">
+        {{ membership.organization.building.name }} · {{ membership.get_role_display }}
+      </summary>
+      <div class="membership-bar membership-bar-disclosure" role="region" aria-label="{% trans 'Active membership' %}">
+        <form method="post" action="{% url 'web:switch-membership' %}" class="membership-form" data-busy-on-submit>
+          {% csrf_token %}
+          <label for="active-membership">{% trans "Switch membership" %}</label>
+          <select id="active-membership" name="membership" class="input">
+            {% for m in memberships %}
+            <option value="{{ m.pk }}" {% if membership and m.pk == membership.pk %}selected{% endif %}>
+              {{ m.organization.building.name }} — {{ m.get_role_display }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="button button-secondary">{% trans "Switch" %}</button>
+        </form>
+      </div>
+    </details>
     {% endif %}
   </header>
 
-  <div class="membership-bar" role="region" aria-label="Active membership">
-    <form method="post" action="{% url 'web:switch-membership' %}" class="membership-form">
-      {% csrf_token %}
-      <label for="active-membership">Active membership</label>
-      <select id="active-membership" name="membership" class="input">
-        {% for m in memberships %}
-        <option value="{{ m.pk }}" {% if membership and m.pk == membership.pk %}selected{% endif %}>
-          {{ m.organization.building.name }} — {{ m.get_role_display }}
-        </option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="button button-secondary">Switch</button>
-    </form>
-  </div>
-
-  <nav class="staff-nav" role="navigation" aria-label="Staff">
+  <nav class="staff-nav" role="navigation" aria-label="{% trans 'Staff' %}">
     {% for item in nav_items %}
     <a class="{% if item.is_active %}is-active{% endif %}"
        {% if item.is_active %}aria-current="page"{% endif %}
@@ -46,7 +57,7 @@
   </nav>
 
   {% if nav_active == "finance" and finance_nav_items %}
-  <nav class="finance-nav" aria-label="Finance">
+  <nav class="finance-nav" aria-label="{% trans 'Finance' %}">
     {% for item in finance_nav_items %}
     <a href="{% url item.url_name %}"{% if finance_active == item.active_key %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
     {% endfor %}
@@ -62,11 +73,43 @@
   {% endif %}
 
   <main id="main" class="site-main" role="main">
+    {% include "web/staff/_sign_confirmation.html" %}
     {% block content %}{% endblock %}
   </main>
 
+  <script>
+    window.lamtoI18n = {
+      secureRandomUnavailable: "{% filter escapejs %}{% trans 'Secure random generator unavailable; cannot sign evidence.' %}{% endfilter %}",
+      walletRequired: "{% filter escapejs %}{% trans 'A compatible wallet is required to sign this decision.' %}{% endfilter %}",
+      noAccountFrom: "{% filter escapejs %}{% trans 'No account from %(provider)s. Unlock it and connect this site.' %}{% endfilter %}",
+      walletNotConnected: "{% filter escapejs %}{% trans 'The wallet registered for this role is not connected. Open that account in %(provider)s, connect it to LamTo, then try again.' %}{% endfilter %}",
+      decisionUpdated: "{% filter escapejs %}{% trans 'Decision updated. Your reason is preserved and ready to sign.' %}{% endfilter %}",
+      actionNotReady: "{% filter escapejs %}{% trans 'This action is not ready. Review the unmet checks above.' %}{% endfilter %}",
+      preparingEvidence: "{% filter escapejs %}{% trans 'Preparing secure evidence…' %}{% endfilter %}",
+      actionNotReadyRefresh: "{% filter escapejs %}{% trans 'This action is not ready to sign. Keep your entries and refresh the page; if it persists, contact an administrator.' %}{% endfilter %}",
+      connectingWallet: "{% filter escapejs %}{% trans 'Connecting to the wallet registered for this role…' %}{% endfilter %}",
+      walletMismatch: "{% filter escapejs %}{% trans 'The connected wallet does not match the wallet registered for this role. Open the correct account, connect it to LamTo, then try again.' %}{% endfilter %}",
+      confirmInWallet: "{% filter escapejs %}{% trans 'Confirm this action in the wallet registered for your current role.' %}{% endfilter %}",
+      savingSigned: "{% filter escapejs %}{% trans 'Saving your signed action…' %}{% endfilter %}",
+      signingStopped: "{% filter escapejs %}{% trans 'Signing stopped. Your entries are still here.' %}{% endfilter %}",
+      checkAndRetry: "{% filter escapejs %}{% trans 'Check the details above and try again.' %}{% endfilter %}",
+      notEnteredYet: "{% filter escapejs %}{% trans 'Not entered yet' %}{% endfilter %}",
+      approveProposal: "{% filter escapejs %}{% trans 'Approve proposal' %}{% endfilter %}",
+      rejectForCorrection: "{% filter escapejs %}{% trans 'Reject for correction' %}{% endfilter %}",
+      signAndApprove: "{% filter escapejs %}{% trans 'Sign and approve proposal' %}{% endfilter %}",
+      signAndReject: "{% filter escapejs %}{% trans 'Sign and reject for correction' %}{% endfilter %}",
+      copy: "{% filter escapejs %}{% trans 'Copy' %}{% endfilter %}",
+      copied: "{% filter escapejs %}{% trans 'Copied' %}{% endfilter %}",
+      copyFailed: "{% filter escapejs %}{% trans 'Copy failed' %}{% endfilter %}",
+      copyFailedHint: "{% filter escapejs %}{% trans 'Copy failed. Select the value and copy it manually.' %}{% endfilter %}",
+      metaMask: "MetaMask",
+      braveWallet: "Brave Wallet",
+      injectedWallet: "{% filter escapejs %}{% trans 'injected wallet' %}{% endfilter %}",
+      walletMissingHint: "{% filter escapejs %}{% trans 'No compatible wallet detected. Install or unlock MetaMask (or another injected wallet), then reload this page.' %}{% endfilter %}"
+    };
+  </script>
   {# Cache-bust: service worker previously froze an old wallet-signing.js #}
-  <script src="{% static 'web/wallet-signing.js' %}?v=8"></script>
+  <script src="{% static 'web/wallet-signing.js' %}?v=9"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

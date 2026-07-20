@@ -18,3 +18,5 @@ __pycache__/
 test-results/
 playwright-report/
 skills-lock.json
+.github/skills/
+.github/hooks

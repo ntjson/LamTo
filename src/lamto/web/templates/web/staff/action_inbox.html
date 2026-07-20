@@ -1,39 +1,17 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize %}
-{% block title %}Action inbox · LamTo{% endblock %}
+{% load i18n humanize staff_extras %}
+{% block title %}{% trans "Action inbox" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="inbox-heading">
   <div class="panel-header">
     <div>
-      <h1 id="inbox-heading">Action inbox</h1>
-      <p class="hint">Work assigned to {{ membership.get_role_display }} at {{ membership.organization.building.name }}.</p>
+      <h1 id="inbox-heading">{% trans "Action inbox" %}</h1>
+      <p class="hint">{% blocktrans with role=membership.get_role_display building=membership.organization.building.name %}Work assigned to {{ role }} at {{ building }}.{% endblocktrans %}</p>
     </div>
-    {% if action_page.paginator.count %}<p class="queue-count">{{ action_page.paginator.count }} open task{{ action_page.paginator.count|pluralize }}</p>{% endif %}
+    {% if action_page.paginator.count %}<p class="queue-count">{% staff_task_count action_page.paginator.count %}</p>{% endif %}
   </div>
 
-  <form method="get" class="queue-toolbar" role="search">
-    <label for="inbox-search">Search tasks
-      <input id="inbox-search" name="q" value="{{ inbox_query }}" placeholder="Case, work order, payment…">
-    </label>
-    <label for="inbox-status">Workflow
-      <select id="inbox-status" name="status">
-        <option value="">All</option>
-        {% for filter in status_filters %}
-        <option value="{{ filter.value }}" {% if active_status == filter.value %}selected{% endif %}>{{ filter.label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label for="inbox-kind">Task type
-      <select id="inbox-kind" name="kind">
-        <option value="">All task types</option>
-        {% for filter in kind_filters %}
-        <option value="{{ filter.value }}" {% if active_kind == filter.value %}selected{% endif %}>{{ filter.label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit" class="button button-secondary">Apply filters</button>
-    {% if inbox_query or active_kind or active_status %}<a class="text-link clear-filters" href="{% url 'web:action-inbox' %}">Clear filters</a>{% endif %}
-  </form>
+  {% include "web/staff/_list_toolbar.html" with filter_param="status" %}
 
   {% if action_groups %}
   <div class="task-queue">
@@ -46,12 +24,12 @@
           <a class="task-row" href="{{ item.url }}">
             <span class="task-action">{{ item.title }}</span>
             <span class="task-subject">{{ item.summary }}</span>
-            <span class="task-amount">{% if item.amount_vnd != None %}{{ item.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">No amount recorded</span><span aria-hidden="true">—</span>{% endif %}</span>
+            <span class="task-amount">{% if item.amount_vnd != None %}{{ item.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">{% trans "No amount recorded" %}</span><span aria-hidden="true">—</span>{% endif %}</span>
             <span class="task-meta">
               {% if item.deadline_at %}
-              <span class="deadline-badge deadline-{{ item.deadline_tone }}">Deadline {{ item.deadline_at|date:"M j, Y H:i" }}</span>
+              <span class="deadline-badge deadline-{{ item.deadline_tone }}">{% trans "Deadline" %} {{ item.deadline_at|staff_datetime }}</span>
               {% else %}
-              <span>No deadline set</span>
+              <span>{% trans "No deadline set" %}</span>
               {% endif %}
             </span>
           </a>
@@ -62,22 +40,12 @@
     {% endfor %}
   </div>
 
-  {% if action_page.has_other_pages %}
-  <nav class="pagination" aria-label="Action inbox pages">
-    {% if action_page.has_previous %}
-    <a class="button button-secondary" href="?q={{ inbox_query|urlencode }}&amp;kind={{ active_kind|urlencode }}&amp;status={{ active_status|urlencode }}&amp;page={{ action_page.previous_page_number }}">Previous</a>
-    {% endif %}
-    <span>Page {{ action_page.number }} of {{ action_page.paginator.num_pages }}</span>
-    {% if action_page.has_next %}
-    <a class="button button-secondary" href="?q={{ inbox_query|urlencode }}&amp;kind={{ active_kind|urlencode }}&amp;status={{ active_status|urlencode }}&amp;page={{ action_page.next_page_number }}">Next</a>
-    {% endif %}
-  </nav>
-  {% endif %}
+  {% include "web/staff/_pagination.html" %}
   {% else %}
   <div class="empty-state">
-    <h2>No matching tasks</h2>
-    <p>{% if inbox_query or active_kind or active_status %}Clear the filters to see every open responsibility.{% else %}There is nothing for this membership to act on now.{% endif %}</p>
-    {% if inbox_query or active_kind or active_status %}<a class="button button-secondary" href="{% url 'web:action-inbox' %}">Clear filters</a>{% endif %}
+    <h2>{% trans "No matching tasks" %}</h2>
+    <p>{% if inbox_query or active_kind or active_status %}{% trans "Clear the filters to see every open responsibility." %}{% else %}{% trans "There is nothing for this membership to act on now." %}{% endif %}</p>
+    {% if inbox_query or active_kind or active_status %}<a class="button button-secondary" href="{% url 'web:action-inbox' %}">{% trans "Clear filters" %}</a>{% endif %}
   </div>
   {% endif %}
 </section>

@@ -1,12 +1,13 @@
 {% extends "web/staff/shell.html" %}
-{% block title %}{% if list_mode %}Work orders{% else %}Work order #{{ work_order.pk }}{% endif %} · LamTo{% endblock %}
+{% load i18n staff_extras %}
+{% block title %}{% if list_mode %}{% trans "Work orders" %}{% else %}{% blocktrans with id=work_order.pk %}Work order #{{ id }}{% endblocktrans %}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
 <section class="panel" aria-labelledby="work-heading">
   <div class="panel-header">
     <div>
-      <h1 id="work-heading">Work orders</h1>
-      <p class="hint">Every work order for this building. Each row shows the next step and its deadline.</p>
+      <h1 id="work-heading">{% trans "Work orders" %}</h1>
+      <p class="hint">{% trans "Every work order for this building. Each row shows the next step and its deadline." %}</p>
     </div>
   </div>
   {% include "web/staff/_list_toolbar.html" %}
@@ -14,18 +15,18 @@
 </section>
 {% else %}
 <section class="panel">
-  <p><a class="back-link" href="{% url 'web:work-order-list' %}">Back to work orders</a></p>
-  <h1>Work order #{{ work_order.pk }}</h1>
+  <p><a class="back-link" href="{% url 'web:work-order-list' %}">{% trans "Back to work orders" %}</a></p>
+  <h1>{% blocktrans with id=work_order.pk %}Work order #{{ id }}{% endblocktrans %}</h1>
   <div class="record-layout">
     <div class="record-summary">
-      <p class="lede">{{ work_order.case.category }} · Case #{{ work_order.case_id }}</p>
+      <p class="lede">{{ work_order.case.category }} · {% blocktrans with id=work_order.case_id %}Case #{{ id }}{% endblocktrans %}</p>
       <dl class="detail-list detail-list-wide">
-        <div><dt>Status</dt><dd>{{ work_order.get_status_display }}</dd></div>
-        <div><dt>Authorization</dt><dd>{{ work_order.get_authorization_status_display }}</dd></div>
-        <div><dt>Priority</dt><dd>{{ work_order.priority }}</dd></div>
-        <div><dt>Deadline</dt><dd>{{ work_order.deadline_at|default:"Not set" }}</dd></div>
-        <div><dt>Verification</dt><dd>{{ work_order.verification_label|default:"Not yet verified" }}</dd></div>
-        {% if work_order.emergency %}<div><dt>Emergency</dt><dd>{{ work_order.emergency_label }}</dd></div>{% endif %}
+        <div><dt>{% trans "Status" %}</dt><dd>{{ work_order.get_status_display }}</dd></div>
+        <div><dt>{% trans "Authorization" %}</dt><dd>{{ work_order.get_authorization_status_display }}</dd></div>
+        <div><dt>{% trans "Priority" %}</dt><dd>{{ work_order.priority }}</dd></div>
+        <div><dt>{% trans "Deadline" %}</dt><dd>{% if work_order.deadline_at %}{{ work_order.deadline_at|staff_datetime }}{% else %}{% trans "Not set" %}{% endif %}</dd></div>
+        <div><dt>{% trans "Verification" %}</dt><dd>{{ work_order.verification_label|default:_("Not yet verified") }}</dd></div>
+        {% if work_order.emergency %}<div><dt>{% trans "Emergency" %}</dt><dd>{{ work_order.emergency_label }}</dd></div>{% endif %}
       </dl>
 
       {% if accountability_stages %}
@@ -34,28 +35,28 @@
 
       {% if expected_signer %}
       <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
-        <summary>Technical proof</summary>
+        <summary>{% trans "Technical proof" %}</summary>
         <dl class="detail-list">
-          <div><dt>Registered acceptance wallet</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label="Wallet address" %}</dd></div>
+          <div><dt>{% trans "Registered acceptance wallet" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label=_("Wallet address") %}</dd></div>
         </dl>
       </details>
       {% endif %}
 
       {% if "proposal.create" in capabilities and work_order.requires_spending %}
-      <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.pk %}">Create spending proposal</a></p>
+      <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.pk %}">{% trans "Create spending proposal" %}</a></p>
       {% endif %}
     </div>
 
     <div class="record-action">
       {% if is_assignee and work_order.status == "ASSIGNED" %}
       <div class="workflow-section">
-        <h2>Begin assigned work</h2>
-        <form method="post" class="stack-form">
+        <h2>{% trans "Begin assigned work" %}</h2>
+        <form method="post" class="stack-form" data-busy-on-submit>
           {% csrf_token %}
           <input type="hidden" name="action" value="start">
           <div class="form-actions">
-            <button type="submit" class="button button-primary">Start work</button>
-            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+            <button type="submit" class="button button-primary">{% trans "Start work" %}</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">{% trans "Cancel" %}</a>
           </div>
         </form>
       </div>
@@ -63,15 +64,15 @@
 
       {% if is_assignee and work_order.status == "IN_PROGRESS" and form %}
       <div class="workflow-section">
-        <h2>Complete work</h2>
-        <form method="post" class="stack-form">
+        <h2>{% trans "Complete work" %}</h2>
+        <form method="post" class="stack-form" data-busy-on-submit>
           {% csrf_token %}
           <input type="hidden" name="action" value="complete">
           {{ form.as_p }}
-          <p class="hint">Select the before and after photos already uploaded for this building and account.</p>
+          <p class="hint">{% trans "Select the before and after photos already uploaded for this building and account." %}</p>
           <div class="form-actions">
-            <button type="submit" class="button button-primary">Complete work</button>
-            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+            <button type="submit" class="button button-primary">{% trans "Complete work" %}</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">{% trans "Cancel" %}</a>
           </div>
         </form>
       </div>
@@ -79,23 +80,23 @@
 
       {% if accept_form %}
       <div class="workflow-section">
-        <h2>Accept completed work</h2>
-        <p>Confirm the actual cost and linked invoice and acceptance evidence. Acceptance unlocks payment recording.</p>
+        <h2>{% trans "Accept completed work" %}</h2>
+        <p>{% trans "Confirm the actual cost and linked invoice and acceptance evidence. Acceptance unlocks payment recording." %}</p>
         <form method="post" class="stack-form" data-signed-form data-review-form id="accept-form"
               {% if expected_signer %}data-expected-signer="{{ expected_signer }}"{% endif %}>
           {% csrf_token %}
           {{ accept_form.as_p }}
           {% if typed_data %}
           <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Ready to sign the acceptance with the wallet registered for this role.</p>
+          <p class="hint signing-status" data-signing-status id="accept-signing-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign the acceptance with the wallet registered for this role." %}</p>
           {% else %}
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Acceptance is not ready. Link complete invoice and acceptance document pairs, then try again.</p>
+          <p class="hint signing-status" data-signing-status id="accept-signing-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Acceptance is not ready. Link complete invoice and acceptance document pairs, then try again." %}</p>
           {% endif %}
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
           {% include "web/staff/_review_summary.html" with review_kind="work_accept" review_id="work-accept" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary" {% if not typed_data %}aria-disabled="true"{% endif %}>Sign and accept work</button>
-            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+            <button type="submit" class="button button-primary" aria-describedby="accept-signing-status" {% if not typed_data %}aria-disabled="true"{% endif %}>{% trans "Sign and accept work" %}</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">{% trans "Cancel" %}</a>
           </div>
         </form>
       </div>
@@ -103,16 +104,16 @@
 
       {% if emergency_form %}
       <div class="workflow-section">
-        <h2>Authorize emergency work</h2>
+        <h2>{% trans "Authorize emergency work" %}</h2>
         <form method="post" class="stack-form" data-signed-form data-review-form>
           {% csrf_token %}
           {{ emergency_form.as_p }}
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the emergency reason before signing.</p>
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Review the emergency reason before signing." %}</p>
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
           {% include "web/staff/_review_summary.html" with review_kind="emergency_authorize" review_id="emergency-authorize" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary">Sign and authorize emergency work</button>
-            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+            <button type="submit" class="button button-primary">{% trans "Sign and authorize emergency work" %}</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">{% trans "Cancel" %}</a>
           </div>
         </form>
       </div>
@@ -120,23 +121,23 @@
 
       {% if emergency_decide_form %}
       <div class="workflow-section">
-        <h2>Record emergency ratification</h2>
+        <h2>{% trans "Record emergency ratification" %}</h2>
         <form method="post" class="stack-form" data-signed-form data-review-form>
           {% csrf_token %}
           {{ emergency_decide_form.as_p }}
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">Review the outcome before signing.</p>
+          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Review the outcome before signing." %}</p>
           <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
           {% include "web/staff/_review_summary.html" with review_kind="emergency_decide" review_id="emergency-decide" %}
           <div class="form-actions">
-            <button type="submit" class="button button-primary">Sign and record ratification</button>
-            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">Cancel</a>
+            <button type="submit" class="button button-primary">{% trans "Sign and record ratification" %}</button>
+            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">{% trans "Cancel" %}</a>
           </div>
         </form>
       </div>
       {% endif %}
 
       {% if not is_assignee and not accept_form and not emergency_form and not emergency_decide_form %}
-      <p class="empty">No action is assigned to this membership. Review the work status or return to the action inbox.</p>
+      <p class="empty">{% trans "No action is assigned to this membership. Review the work status or return to the action inbox." %}</p>
       {% endif %}
     </div>
   </div>

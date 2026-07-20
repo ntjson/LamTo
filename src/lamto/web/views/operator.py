@@ -48,6 +48,7 @@ from lamto.web.staff import require_staff_capability, resolve_active_membership,
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
+    set_sign_confirmation,
     signed_action_failure,
 )
 from lamto.web.staff_signing import new_event_id, upload_document_pair
@@ -424,49 +425,94 @@ def proposal_detail(request, pk):
         # Signed financial / accountability actions require recent re-auth.
         if action in ("publish", "decide"):
             require_recent_auth(request)
-        if action == "publish" and can_publish:
-            require_staff_capability(request, LEDGER_PUBLISH)
-            if publish_form.is_valid():
-                try:
-                    snapshot = publish_form.save(proposal, membership)
-                except (ValidationError, PermissionDenied) as error:
-                    signed_action_failure(
-                        request,
-                        error,
-                        action="The publication",
-                        next_step="Check the publication details, then sign again.",
-                    )
-                else:
-                    event_ref = getattr(
-                        getattr(snapshot, "outbox_event", None), "event_id", ""
-                    ) or publish_form.cleaned_data.get("event_id", "")
-                    short_ref = (
-                        f"{event_ref[:10]}…"
-                        if event_ref and len(event_ref) > 12
-                        else event_ref or f"snapshot #{snapshot.pk}"
-                    )
-                    amount = (
-                        proposal.current_version.amount_vnd
-                        if proposal.current_version_id
-                        else None
-                    )
-                    amount_bit = f" ({amount:,} VND)" if amount is not None else ""
-                    messages.success(
-                        request,
-                        f"Published proposal #{proposal.pk}{amount_bit}. "
-                        f"Receipt anchor {short_ref}. Once independently confirmed, "
-                        "residents see this verified expense on the public ledger.",
-                    )
-                    return redirect("web:proposal-detail", pk=proposal.pk)
-            else:
-                detail = "; ".join(
-                    e for errs in publish_form.errors.values() for e in errs
-                ) or "Form invalid."
+        if action == "publish":
+            if not can_publish:
                 messages.error(
                     request,
-                    f"Publication not saved: {detail} "
-                    "Your entries are still here. Connect the registered publisher wallet and try again.",
+                    "Publication is not ready to sign. Review the unmet checks on this "
+                    "page, or wait if a publication snapshot is already awaiting confirmation.",
                 )
+            else:
+                require_staff_capability(request, LEDGER_PUBLISH)
+                if publish_form.is_valid():
+                    try:
+                        snapshot = publish_form.save(proposal, membership)
+                    except (ValidationError, PermissionDenied) as error:
+                        signed_action_failure(
+                            request,
+                            error,
+                            action="The publication",
+                            next_step="Check the publication details, then sign again.",
+                        )
+                    else:
+                        event_ref = getattr(
+                            getattr(snapshot, "outbox_event", None), "event_id", ""
+                        ) or publish_form.cleaned_data.get("event_id", "")
+                        short_ref = (
+                            f"{event_ref[:10]}…"
+                            if event_ref and len(event_ref) > 12
+                            else event_ref or f"snapshot #{snapshot.pk}"
+                        )
+                        amount = (
+                            proposal.current_version.amount_vnd
+                            if proposal.current_version_id
+                            else None
+                        )
+                        amount_display = (
+                            f"{amount:,} VND" if amount is not None else "—"
+                        )
+                        contractor = (
+                            proposal.current_version.contractor_name
+                            if proposal.current_version_id
+                            else "—"
+                        )
+                        set_sign_confirmation(
+                            request,
+                            action="Publish to resident ledger",
+                            acting_as=(
+                                f"{membership.get_role_display()} · "
+                                f"{membership.organization.name}"
+                            ),
+                            details=[
+                                {
+                                    "label": "Proposal",
+                                    "value": f"#{proposal.pk}",
+                                },
+                                {"label": "Amount", "value": amount_display},
+                                {"label": "Contractor", "value": contractor},
+                                {
+                                    "label": "Receipt anchor",
+                                    "value": short_ref,
+                                },
+                            ],
+                            consequence=(
+                                "An append-only resident-ledger snapshot is prepared. "
+                                "It is not yet a finalized public expense."
+                            ),
+                            what_next=(
+                                "Independent confirmation must finish before residents "
+                                "see this verified expense on the public ledger. "
+                                "Publication stays amber until that confirmation lands."
+                            ),
+                            status_note=(
+                                "Signed — awaiting independent confirmation"
+                            ),
+                        )
+                        messages.success(
+                            request,
+                            f"Publication signed for proposal #{proposal.pk}. "
+                            "Awaiting independent confirmation before residents see it.",
+                        )
+                        return redirect("web:proposal-detail", pk=proposal.pk)
+                else:
+                    detail = "; ".join(
+                        e for errs in publish_form.errors.values() for e in errs
+                    ) or "Form invalid."
+                    messages.error(
+                        request,
+                        f"Publication not saved: {detail} "
+                        "Your entries are still here. Connect the registered publisher wallet and try again.",
+                    )
         elif action == "decide" and can_approve:
             if form.is_valid():
                 try:
@@ -615,6 +661,17 @@ def proposal_detail(request, pk):
         if wallet is not None:
             publish_expected_signer = wallet.address
 
+    publication_pending = False
+    publication_snapshot = None
+    try:
+        publication_snapshot = proposal.publication_snapshot
+    except PublicationSnapshot.DoesNotExist:
+        publication_snapshot = None
+    if publication_snapshot is not None and not PublishedLedgerEntry.objects.filter(
+        proposal=proposal
+    ).exists():
+        publication_pending = True
+
     return render(
         request,
         "web/staff/proposal_detail.html",
@@ -636,6 +693,8 @@ def proposal_detail(request, pk):
             expected_signer=expected_signer,
             publish_typed_data=publish_typed_data,
             publish_expected_signer=publish_expected_signer,
+            publication_pending=publication_pending,
+            publication_snapshot=publication_snapshot,
             accountability_stages=accountability_chain_for(proposal),
         ),
     )

@@ -8,6 +8,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import redirect, render
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from lamto.accounts.security import require_staff_mfa
@@ -88,9 +89,9 @@ def prepare_record_list(
 
 EXCEPTION_KINDS = {"failed_outbox", "integrity_mismatch", "quarantined_upload"}
 ACTION_GROUPS = (
-    ("do_now", "Do now"),
-    ("due_soon", "Due soon"),
-    ("exceptions", "Exceptions"),
+    ("do_now", _("Do now")),
+    ("due_soon", _("Due soon")),
+    ("exceptions", _("Exceptions")),
 )
 
 
@@ -102,7 +103,9 @@ def _action_group(item):
     return "do_now"
 
 
-def prepare_action_inbox(items, *, query="", kind="", status="", page_number=1):
+def prepare_action_inbox(
+    items, *, query="", kind="", status="", page_number=1, querystring=""
+):
     query = query.strip()
     kind_filters = {}
     for item in items:
@@ -122,6 +125,14 @@ def prepare_action_inbox(items, *, query="", kind="", status="", page_number=1):
     grouped = {value: [] for value, _label in ACTION_GROUPS}
     for item in page.object_list:
         grouped[_action_group(item)].append(item)
+    status_filters = [
+        {"value": value, "label": label, "active": value == status}
+        for value, label in ACTION_GROUPS
+    ]
+    kind_filter_list = [
+        {"value": value, "label": label, "active": value == kind}
+        for value, label in sorted(kind_filters.items(), key=lambda pair: pair[1])
+    ]
     return {
         "groups": [
             {"label": label, "items": grouped[value]}
@@ -129,16 +140,22 @@ def prepare_action_inbox(items, *, query="", kind="", status="", page_number=1):
             if grouped[value]
         ],
         "page": page,
-        "kind_filters": [
-            {"value": value, "label": label}
-            for value, label in sorted(kind_filters.items(), key=lambda pair: pair[1])
-        ],
+        "kind_filters": kind_filter_list,
         "active_kind": kind,
-        "status_filters": [
-            {"value": value, "label": label} for value, label in ACTION_GROUPS
-        ],
+        "status_filters": status_filters,
         "active_status": status,
         "query": query,
+        "list_meta": {
+            "page": page,
+            "query": query,
+            "sort": "",
+            "sort_options": [],
+            "page_param": "page",
+            "querystring": querystring,
+        },
+        "filters": status_filters,
+        "filters_active": bool(status or kind or query),
+        "secondary_filters": kind_filter_list,
     }
 
 
@@ -150,12 +167,15 @@ def action_inbox(request):
     require_staff_mfa(request)
     membership, memberships = resolve_active_membership(request)
     items = action_items_for(membership)
+    params = request.GET.copy()
+    params.pop("page", None)
     inbox = prepare_action_inbox(
         items,
         query=request.GET.get("q", ""),
         kind=request.GET.get("kind", ""),
         status=request.GET.get("status", ""),
         page_number=request.GET.get("page", 1),
+        querystring=params.urlencode(),
     )
     return render(
         request,
@@ -172,6 +192,15 @@ def action_inbox(request):
             status_filters=inbox["status_filters"],
             active_status=inbox["active_status"],
             inbox_query=inbox["query"],
+            list_meta=inbox["list_meta"],
+            filters=inbox["filters"],
+            filters_active=inbox["filters_active"],
+            secondary_filters=inbox["secondary_filters"],
+            secondary_filter_param="kind",
+            secondary_filter_label="Task type",
+            search_label="Search tasks",
+            search_placeholder="Case, work order, payment…",
+            pagination_label="Action inbox pages",
         ),
     )
 
@@ -194,22 +223,51 @@ def staff_home(request):
 
 
 ACCOUNTABILITY_STAGES = (
-    ("report", "Report"),
-    ("triage", "Triage"),
-    ("work", "Work"),
-    ("proposal", "Proposal and approval"),
-    ("acceptance", "Acceptance"),
-    ("payment", "Payment"),
-    ("publication", "Publication"),
+    ("report", _("Report")),
+    ("triage", _("Triage")),
+    ("work", _("Work")),
+    ("proposal", _("Proposal and approval")),
+    ("acceptance", _("Acceptance")),
+    ("payment", _("Payment")),
+    ("publication", _("Publication")),
 )
 
 
 STAGE_STATE_LABELS = {
-    "complete": "Completed",
-    "current": "Current step",
-    "blocked": "Blocked",
-    "upcoming": "Not started",
+    "complete": _("Completed"),
+    "current": _("Current step"),
+    "blocked": _("Blocked"),
+    "upcoming": _("Not started"),
+    # Snapshot signed; independent chain confirmation / finalize still pending.
+    "pending": _("Awaiting confirmation"),
 }
+
+SESSION_SIGN_CONFIRMATION_KEY = "staff_sign_confirmation"
+
+
+def set_sign_confirmation(
+    request,
+    *,
+    action,
+    acting_as,
+    details,
+    consequence,
+    what_next,
+    status_note=None,
+):
+    """Store a post-sign confirmation panel (mirrors the pre-sign review summary)."""
+    request.session[SESSION_SIGN_CONFIRMATION_KEY] = {
+        "action": action,
+        "acting_as": acting_as,
+        "details": list(details or []),
+        "consequence": consequence,
+        "what_next": what_next,
+        "status_note": status_note or "",
+    }
+
+
+def pop_sign_confirmation(request):
+    return request.session.pop(SESSION_SIGN_CONFIRMATION_KEY, None)
 
 # Proposal statuses that clear the proposal stage.
 _PROPOSAL_APPROVED = frozenset({"NORMAL_AUTHORIZED", "EMERGENCY_EVIDENCE"})
@@ -235,8 +293,14 @@ def deadline_tone(deadline_at, *, now=None) -> str:
     return "neutral"
 
 
-def accountability_chain(current: str | None, *, blocked: bool = False):
-    """Return ordered stages for an explicit current key (or all-complete when None)."""
+def accountability_chain(
+    current: str | None, *, blocked: bool = False, pending: bool = False
+):
+    """Return ordered stages for an explicit current key (or all-complete when None).
+
+    ``pending`` marks the current stage as awaiting independent confirmation
+    (amber) without treating it as complete.
+    """
     keys = [key for key, _ in ACCOUNTABILITY_STAGES]
     if current is None:
         current_index = len(keys)
@@ -246,6 +310,8 @@ def accountability_chain(current: str | None, *, blocked: bool = False):
     for index, (key, label) in enumerate(ACCOUNTABILITY_STAGES):
         if index == current_index and blocked:
             state = "blocked"
+        elif index == current_index and pending:
+            state = "pending"
         elif index == current_index:
             state = "current"
         elif index < current_index:
@@ -284,14 +350,19 @@ def resolve_accountability_stage(
     entry=None,
     case=None,
     published: bool | None = None,
-) -> tuple[str | None, bool]:
-    """Derive (current_stage_key, blocked) from real case/proposal state.
+    publication_pending: bool | None = None,
+) -> tuple[str | None, bool, bool]:
+    """Derive (current_stage_key, blocked, publication_pending) from real state.
 
-    Returns ``(None, False)`` when every stage is complete (published, or a
-    non-spending work order already closed). Pass ``published`` to skip the
-    ledger lookup (tests and pre-resolved views).
+    Returns ``(None, False, False)`` when every stage is complete (published, or a
+    non-spending work order already closed). Pass ``published`` / ``publication_pending``
+    to skip DB lookups (tests and pre-resolved views).
+
+    ``publication_pending`` is True when a PublicationSnapshot exists but the
+    PublishedLedgerEntry has not been finalized yet — the chain must not show
+    Publication as complete before independent confirmation.
     """
-    from lamto.finance.models import PublishedLedgerEntry
+    from lamto.finance.models import PublicationSnapshot, PublishedLedgerEntry
     from lamto.finance.models.execution import AcceptanceRecord, PaymentEvidence
     from lamto.finance.models.proposals import Proposal
     from lamto.maintenance.models import MaintenanceCase, WorkOrder
@@ -311,7 +382,7 @@ def resolve_accountability_stage(
             case = source
 
     if entry is not None:
-        return None, False
+        return None, False, False
 
     if payment is None and acceptance is not None:
         payment = _related_or_none(acceptance, "payment")
@@ -348,36 +419,49 @@ def resolve_accountability_stage(
                     payment_id=payment.pk
                 ).exists()
         if published:
-            return None, False
+            return None, False, False
+
+        if publication_pending is None:
+            publication_pending = False
+            # When callers pre-resolve ``published`` (tests / cached views), do
+            # not open a second DB path unless they also pass publication_pending.
+            if published is None and proposal is not None and getattr(proposal, "pk", None):
+                has_snapshot = PublicationSnapshot.objects.filter(
+                    proposal_id=proposal.pk
+                ).exists()
+                has_entry = PublishedLedgerEntry.objects.filter(
+                    proposal_id=proposal.pk
+                ).exists()
+                publication_pending = has_snapshot and not has_entry
 
         if payment is not None:
-            return "publication", False
+            return "publication", False, bool(publication_pending)
 
         status = getattr(work_order, "status", "")
         requires_spending = bool(getattr(work_order, "requires_spending", False))
         if acceptance is not None or status in _WORK_CLOSED:
             if not requires_spending:
-                return None, False
-            return "payment", False
+                return None, False, False
+            return "payment", False, False
 
         proposal_status = getattr(proposal, "status", None) if proposal else None
         approved = proposal_status in _PROPOSAL_APPROVED
         rejected = proposal_status == Proposal.Status.REJECTED or proposal_status == "REJECTED"
         if approved:
-            return "acceptance", False
+            return "acceptance", False, False
 
         if requires_spending:
             if rejected:
-                return "proposal", True
+                return "proposal", True, False
             if proposal is not None or status in _WORK_DONE:
-                return "proposal", False
-            return "work", False
+                return "proposal", False, False
+            return "work", False, False
 
         if status == WorkOrder.Status.AWAITING_ACCEPTANCE or status == "AWAITING_ACCEPTANCE":
-            return "acceptance", False
+            return "acceptance", False, False
         if status == WorkOrder.Status.CANCELLED or status == "CANCELLED":
-            return "work", True
-        return "work", False
+            return "work", True, False
+        return "work", False, False
 
     if case is not None:
         latest = None
@@ -386,23 +470,30 @@ def resolve_accountability_stage(
             latest = work_orders.order_by("-created_at", "-pk").first()
         if latest is not None:
             return resolve_accountability_stage(
-                work_order=latest, published=published
+                work_order=latest, published=published, publication_pending=publication_pending
             )
-        return "work", False
+        return "work", False, False
 
     if proposal is not None:
         return resolve_accountability_stage(
             proposal=proposal,
             work_order=getattr(proposal, "work_order", None),
             published=published,
+            publication_pending=publication_pending,
         )
 
-    return "report", False
+    return "report", False, False
 
 
-def accountability_chain_for(source=None, *, blocked: bool | None = None, **kwargs):
+def accountability_chain_for(
+    source=None, *, blocked: bool | None = None, pending: bool | None = None, **kwargs
+):
     """Compute the chain from a domain record instead of a hard-coded page stage."""
-    current, derived_blocked = resolve_accountability_stage(source, **kwargs)
+    current, derived_blocked, derived_pending = resolve_accountability_stage(
+        source, **kwargs
+    )
     return accountability_chain(
-        current, blocked=derived_blocked if blocked is None else blocked
+        current,
+        blocked=derived_blocked if blocked is None else blocked,
+        pending=derived_pending if pending is None else pending,
     )
