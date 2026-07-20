@@ -5,7 +5,7 @@ Every function takes an explicit building_id; ownership-scoped selectors take
 the owning user. Bodies are moved verbatim from lamto.web.views.resident.
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.db.models import Sum
 from django.utils import timezone
@@ -96,6 +96,83 @@ def fund_period_flows(building_id, *, days=30):
         or 0
     )
     return int(inflows), int(outflows)
+
+
+FUND_SERIES_RANGE_KEYS = ("30d", "6m", "12m")
+
+
+def fund_series_from_entries(entries, *, range_key, today):
+    """Pure bucketing core for fund_series.
+
+    entries iterates (recorded_at aware-datetime, entry_type, amount_vnd).
+    Buckets by the Asia/Ho_Chi_Minh calendar day of recorded_at; amounts keep
+    their stored sign (outflow-types negative), so balance is a plain sum.
+    """
+    if range_key not in FUND_SERIES_RANGE_KEYS:
+        raise ValueError(f"range_key must be one of {FUND_SERIES_RANGE_KEYS}")
+    if range_key == "30d":
+        starts = [today - timedelta(days=offset) for offset in range(29, -1, -1)]
+
+        def bucket_of(day):
+            return day
+    else:
+        months = 6 if range_key == "6m" else 12
+        year, month = today.year, today.month
+        starts = []
+        for _ in range(months):
+            starts.append(date(year, month, 1))
+            month -= 1
+            if month == 0:
+                year, month = year - 1, 12
+        starts.reverse()
+
+        def bucket_of(day):
+            return day.replace(day=1)
+
+    inflow_types = {
+        MaintenanceFundEntry.EntryType.OPENING_BALANCE,
+        MaintenanceFundEntry.EntryType.INFLOW,
+    }
+    window_start = starts[0]
+    flows = {start: [0, 0] for start in starts}
+    balance = 0  # seeded with everything before the window
+    for recorded_at, entry_type, amount_vnd in entries:
+        day = timezone.localtime(recorded_at).date()
+        if day < window_start:
+            balance += amount_vnd
+            continue
+        slot = flows.get(bucket_of(day))
+        if slot is None:
+            continue  # future-dated rows fall outside the chart window
+        slot[0 if entry_type in inflow_types else 1] += amount_vnd
+    series = []
+    for start in starts:
+        inflows, outflows = flows[start]
+        balance += inflows + outflows
+        series.append(
+            {
+                "period_start": start,
+                "inflows_vnd": inflows,
+                "outflows_vnd": outflows,
+                "balance_vnd": balance,
+            }
+        )
+    return series
+
+
+def fund_series(building_id, *, range_key):
+    """Chart rows for the fund pages (spec 2026-07-20-fund-balance-chart).
+
+    Last point's balance_vnd equals fund_balance(verified_only=True).
+    """
+    rows = verified_fund_entries(building_id).values_list(
+        "recorded_at", "entry_type", "amount_vnd"
+    )
+    # ponytail: Python-side bucketing; funds have few entries. Switch to
+    # TruncDay/TruncMonth aggregates if a fund ever nears ~10k rows.
+    return fund_series_from_entries(
+        rows, range_key=range_key, today=timezone.localdate()
+    )
 
 
 def _ledger_story_fields(entry, payload):
@@ -364,4 +441,3 @@ def pending_reconciliation_proposals(building_id):
             continue
         eligible.append(proposal)
     return eligible
-
