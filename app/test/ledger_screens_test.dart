@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:built_collection/built_collection.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/core/failure.dart';
 import 'package:lamto/features/ledger/ledger_detail_screen.dart';
 import 'package:lamto/features/ledger/ledger_screen.dart';
+import 'package:lamto/features/transparency/fund_chart.dart';
 import 'package:lamto/features/transparency/transparency_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
@@ -20,6 +22,21 @@ LedgerEntryList _entry(int id, String level) => LedgerEntryList(
     ..publishedAt = DateTime.utc(2026, 7, 10)
     ..integrityStatus = 'VERIFIED'
     ..evidenceLevel = level,
+);
+
+FundSeries _series(String range) => FundSeries(
+  (b) => b
+    ..range = range
+    ..points = ListBuilder<FundSeriesPoint>([
+      for (var i = 0; i < 6; i++)
+        FundSeriesPoint(
+          (p) => p
+            ..periodStart = DateTime.utc(2026, 2 + i, 1)
+            ..inflowsVnd = i == 2 ? 200000 : 0
+            ..outflowsVnd = i == 4 ? -50000 : 0
+            ..balanceVnd = 1500000 + i * 10000,
+        ),
+    ]),
 );
 
 LedgerEntryDetail _detail() => LedgerEntryDetail(
@@ -82,12 +99,19 @@ LedgerEntryDetail _detail() => LedgerEntryDetail(
 
 class _FakeRepo implements TransparencyRepository {
   final periods = <(int?, int?)>[];
+  final seriesRanges = <String>[];
   final document = Completer<Uint8List>();
   final documentRetryErrors = <Object>[
     Failure(code: 'permission_denied'),
     StateError('broken file'),
   ];
   int documentCalls = 0;
+
+  @override
+  Future<FundSeries> fetchFundSeries({String range = '6m'}) async {
+    seriesRanges.add(range);
+    return _series(range);
+  }
 
   @override
   Future<PaginatedLedgerEntryListList> listLedger({
@@ -129,6 +153,61 @@ Widget _host(Widget child, _FakeRepo repo) => ProviderScope(
 );
 
 void main() {
+  testWidgets('ledger tab shows full fund chart with range selector', (
+    tester,
+  ) async {
+    final repo = _FakeRepo();
+    await tester.pumpWidget(_host(const Scaffold(body: LedgerScreen()), repo));
+    await tester.pumpAndSettle();
+    expect(find.text('Số dư quỹ'), findsOneWidget);
+    expect(find.byType(FundChart), findsOneWidget);
+    expect(find.byType(LineChart), findsOneWidget);
+    expect(find.byType(BarChart), findsOneWidget);
+    expect(find.byType(SegmentedButton<String>), findsOneWidget);
+  });
+
+  testWidgets('range selector switches the series', (tester) async {
+    final repo = _FakeRepo();
+    final container = ProviderContainer(
+      overrides: [transparencyRepositoryProvider.overrideWithValue(repo)],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const Scaffold(body: LedgerScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('30 ngày'));
+    await tester.pumpAndSettle();
+    expect(container.read(fundChartRangeProvider), '30d');
+    expect(repo.seriesRanges, containsAllInOrder(['6m', '30d']));
+  });
+
+  testWidgets('ledger chart supports large text without overflow', (
+    tester,
+  ) async {
+    final repo = _FakeRepo();
+    await tester.pumpWidget(
+      _host(
+        const MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(body: LedgerScreen()),
+        ),
+        repo,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(FundChart), findsOneWidget);
+  });
+
   testWidgets('list shows entries with evidence badge and period filter', (
     tester,
   ) async {

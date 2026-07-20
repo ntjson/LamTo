@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/adaptive_page_route.dart';
@@ -10,6 +11,7 @@ import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
+import '../transparency/fund_chart.dart';
 import '../transparency/transparency_repository.dart';
 import 'evidence_labels.dart';
 import 'ledger_detail_screen.dart';
@@ -62,6 +64,9 @@ final ledgerListProvider =
       LedgerListController.new,
     );
 
+/// Selected chart range on the Sổ quỹ tab; survives tab switches.
+final fundChartRangeProvider = StateProvider<String>((_) => '6m');
+
 /// DESIGN.md filter-chip: Quiet Surface at rest, Accountability Indigo with
 /// on-primary ink when selected (never a semantic state color).
 class _PeriodChip extends StatelessWidget {
@@ -98,8 +103,14 @@ class LedgerScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final entries = ref.watch(ledgerListProvider);
     final controller = ref.read(ledgerListProvider.notifier);
+    final chartRange = ref.watch(fundChartRangeProvider);
     final currentYear = DateTime.now().year;
     final years = [for (var y = currentYear; y >= currentYear - 2; y--) y];
+    String rangeLabel(String key) => switch (key) {
+      '30d' => l10n.fundChartRange30d,
+      '12m' => l10n.fundChartRange12m,
+      _ => l10n.fundChartRange6m,
+    };
 
     return Material(
       color: Colors.transparent,
@@ -139,6 +150,30 @@ class LedgerScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.fundChartTitle,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: [
+                    for (final key in fundSeriesRanges)
+                      ButtonSegment(value: key, label: Text(rangeLabel(key))),
+                  ],
+                  selected: {chartRange},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (selection) =>
+                      ref.read(fundChartRangeProvider.notifier).state =
+                          selection.first,
+                ),
+                const SizedBox(height: 12),
+                FundChart(range: chartRange),
+                const SizedBox(height: 24),
+              ],
+            ),
             switch (entries) {
               AsyncData(:final value) when value.isEmpty => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
