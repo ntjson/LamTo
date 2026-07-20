@@ -206,7 +206,7 @@ class FundSeriesPointSerializer(serializers.Serializer):
 
 
 class FundSeriesSerializer(serializers.Serializer):
-    range = serializers.ChoiceField(choices=("30d", "6m", "12m"))
+    range = serializers.CharField()
     points = FundSeriesPointSerializer(many=True)
 
 

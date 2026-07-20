@@ -74,6 +74,15 @@ class OpenApiDriftTests(SimpleTestCase):
             "document download route missing from committed schema"
         )
 
+    def test_fund_series_range_response_is_plain_string(self):
+        import yaml
+
+        schema = yaml.safe_load(SCHEMA_PATH.read_text())
+        range_schema = schema["components"]["schemas"]["FundSeries"]["properties"][
+            "range"
+        ]
+        assert range_schema == {"type": "string"}
+
 
     def test_schema_includes_rfc9457_problem_component(self):
         content = SCHEMA_PATH.read_text()
