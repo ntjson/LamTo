@@ -12,6 +12,7 @@ abstract final class TransparencyApiPaths {
   static const ledger = '/api/v1/ledger';
   static const ledgerDetail = '/api/v1/ledger/{id}';
   static const fundSummary = '/api/v1/fund/summary';
+  static const fundSeries = '/api/v1/fund/series';
   static const notifications = '/api/v1/notifications';
   static const notificationRead = '/api/v1/notifications/{id}/read';
   static const devices = '/api/v1/devices';
@@ -21,6 +22,7 @@ abstract final class TransparencyApiPaths {
 
 abstract class TransparencyRepository {
   Future<FundSummary> fetchFundSummary();
+  Future<FundSeries> fetchFundSeries({String range});
   Future<PaginatedLedgerEntryListList> listLedger({
     String? cursor,
     int? year,
@@ -65,6 +67,12 @@ class DioTransparencyRepository implements TransparencyRepository {
   @override
   Future<FundSummary> fetchFundSummary() async {
     final res = await _fund.fundSummaryRetrieve();
+    return res.data!;
+  }
+
+  @override
+  Future<FundSeries> fetchFundSeries({String range = '6m'}) async {
+    final res = await _fund.fundSeriesRetrieve(range: range);
     return res.data!;
   }
 
@@ -169,6 +177,18 @@ final fundSummaryProvider = FutureProvider.autoDispose<FundSummary>((ref) {
   ref.watch(occupancyScopedProviders);
   return ref.watch(transparencyRepositoryProvider).fetchFundSummary();
 });
+
+/// Ranges accepted by /fund/series, in display order.
+const fundSeriesRanges = ['30d', '6m', '12m'];
+
+/// Chart series keyed by range; building-scoped like fundSummaryProvider.
+final fundSeriesProvider = FutureProvider.autoDispose
+    .family<FundSeries, String>((ref, range) {
+      ref.watch(occupancyScopedProviders);
+      return ref
+          .watch(transparencyRepositoryProvider)
+          .fetchFundSeries(range: range);
+    });
 
 /// First few published entries for the Home "recent spending" block.
 final recentSpendingProvider =

@@ -9,6 +9,8 @@ doc/DeviceRegisterRequest.md
 doc/DevicesApi.md
 doc/DocumentsApi.md
 doc/FundApi.md
+doc/FundSeries.md
+doc/FundSeriesPoint.md
 doc/FundSummary.md
 doc/LedgerApi.md
 doc/LedgerApprover.md
@@ -69,6 +71,8 @@ lib/src/model/correction.dart
 lib/src/model/date.dart
 lib/src/model/device.dart
 lib/src/model/device_register_request.dart
+lib/src/model/fund_series.dart
+lib/src/model/fund_series_point.dart
 lib/src/model/fund_summary.dart
 lib/src/model/ledger_approver.dart
 lib/src/model/ledger_entry_detail.dart
@@ -109,6 +113,8 @@ test/device_test.dart
 test/devices_api_test.dart
 test/documents_api_test.dart
 test/fund_api_test.dart
+test/fund_series_point_test.dart
+test/fund_series_test.dart
 test/fund_summary_test.dart
 test/ledger_api_test.dart
 test/ledger_approver_test.dart

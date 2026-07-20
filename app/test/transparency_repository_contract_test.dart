@@ -42,6 +42,7 @@ void main() {
       TransparencyApiPaths.ledger,
       TransparencyApiPaths.ledgerDetail,
       TransparencyApiPaths.fundSummary,
+      TransparencyApiPaths.fundSeries,
       TransparencyApiPaths.notifications,
       TransparencyApiPaths.notificationRead,
       TransparencyApiPaths.devices,

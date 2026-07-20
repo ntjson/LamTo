@@ -10,6 +10,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Correction.serializer)
       ..add(Device.serializer)
       ..add(DeviceRegisterRequest.serializer)
+      ..add(FundSeries.serializer)
+      ..add(FundSeriesPoint.serializer)
       ..add(FundSummary.serializer)
       ..add(LedgerApprover.serializer)
       ..add(LedgerEntryDetail.serializer)
@@ -41,6 +43,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Verification.serializer)
       ..add(WorkRatingRequest.serializer)
       ..add(WorkRatingResult.serializer)
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(FundSeriesPoint)]),
+          () => ListBuilder<FundSeriesPoint>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LedgerApprover)]),
           () => ListBuilder<LedgerApprover>())

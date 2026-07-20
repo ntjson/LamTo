@@ -71,6 +71,7 @@ Class | Method | HTTP request | Description
 [*DevicesApi*](doc/DevicesApi.md) | [**devicesCreate**](doc/DevicesApi.md#devicescreate) | **POST** /api/v1/devices | 
 [*DevicesApi*](doc/DevicesApi.md) | [**devicesDestroy**](doc/DevicesApi.md#devicesdestroy) | **DELETE** /api/v1/devices/{install_id} | 
 [*DocumentsApi*](doc/DocumentsApi.md) | [**documentsRetrieve**](doc/DocumentsApi.md#documentsretrieve) | **GET** /api/v1/documents/{token} | 
+[*FundApi*](doc/FundApi.md) | [**fundSeriesRetrieve**](doc/FundApi.md#fundseriesretrieve) | **GET** /api/v1/fund/series | 
 [*FundApi*](doc/FundApi.md) | [**fundSummaryRetrieve**](doc/FundApi.md#fundsummaryretrieve) | **GET** /api/v1/fund/summary | 
 [*LedgerApi*](doc/LedgerApi.md) | [**ledgerList**](doc/LedgerApi.md#ledgerlist) | **GET** /api/v1/ledger | 
 [*LedgerApi*](doc/LedgerApi.md) | [**ledgerRetrieve**](doc/LedgerApi.md#ledgerretrieve) | **GET** /api/v1/ledger/{id} | 
@@ -91,6 +92,8 @@ Class | Method | HTTP request | Description
  - [Correction](doc/Correction.md)
  - [Device](doc/Device.md)
  - [DeviceRegisterRequest](doc/DeviceRegisterRequest.md)
+ - [FundSeries](doc/FundSeries.md)
+ - [FundSeriesPoint](doc/FundSeriesPoint.md)
  - [FundSummary](doc/FundSummary.md)
  - [LedgerApprover](doc/LedgerApprover.md)
  - [LedgerEntryDetail](doc/LedgerEntryDetail.md)

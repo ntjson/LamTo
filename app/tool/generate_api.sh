@@ -11,13 +11,15 @@ generate_with_docker() {
     -v "$ROOT:/local" \
     openapitools/openapi-generator-cli:v7.14.0 generate \
     -i "/local/$SCHEMA_REL" -g dart-dio -o "/local/app/$OUT" \
-    --additional-properties=pubName=lamto_api,dateLibrary=core
+    --additional-properties=pubName=lamto_api,dateLibrary=core \
+    --type-mappings=date=DateTime
 }
 
 generate_with_java() {
   npx --yes @openapitools/openapi-generator-cli@2.23.1 generate \
     -i "../$SCHEMA_REL" -g dart-dio -o "$OUT" \
-    --additional-properties=pubName=lamto_api,dateLibrary=core
+    --additional-properties=pubName=lamto_api,dateLibrary=core \
+    --type-mappings=date=DateTime
 }
 
 if command -v java >/dev/null 2>&1; then
