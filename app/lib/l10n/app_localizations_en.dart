@@ -482,4 +482,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefCorrectionStatus => 'Corrections';
+
+  @override
+  String get fundChartTitle => 'Fund balance';
+
+  @override
+  String get fundChartFlowsTitle => 'Inflows and outflows';
+
+  @override
+  String get fundChartSemantics => 'Fund balance chart';
+
+  @override
+  String get fundChartRange30d => '30 days';
+
+  @override
+  String get fundChartRange6m => '6 months';
+
+  @override
+  String get fundChartRange12m => '12 months';
 }

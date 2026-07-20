@@ -155,5 +155,11 @@
   "prefTriageStatus": "Phản ánh được xem xét",
   "prefWorkCompleted": "Công việc hoàn thành",
   "prefLedgerPublication": "Khoản chi được công bố",
-  "prefCorrectionStatus": "Điều chỉnh"
+  "prefCorrectionStatus": "Điều chỉnh",
+  "fundChartTitle": "Số dư quỹ",
+  "fundChartFlowsTitle": "Thu và chi",
+  "fundChartSemantics": "Biểu đồ số dư quỹ",
+  "fundChartRange30d": "30 ngày",
+  "fundChartRange6m": "6 tháng",
+  "fundChartRange12m": "12 tháng"
 }

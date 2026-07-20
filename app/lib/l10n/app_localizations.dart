@@ -967,6 +967,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Corrections'**
   String get prefCorrectionStatus;
+
+  /// No description provided for @fundChartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund balance'**
+  String get fundChartTitle;
+
+  /// No description provided for @fundChartFlowsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inflows and outflows'**
+  String get fundChartFlowsTitle;
+
+  /// No description provided for @fundChartSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund balance chart'**
+  String get fundChartSemantics;
+
+  /// No description provided for @fundChartRange30d.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days'**
+  String get fundChartRange30d;
+
+  /// No description provided for @fundChartRange6m.
+  ///
+  /// In en, this message translates to:
+  /// **'6 months'**
+  String get fundChartRange6m;
+
+  /// No description provided for @fundChartRange12m.
+  ///
+  /// In en, this message translates to:
+  /// **'12 months'**
+  String get fundChartRange12m;
 }
 
 class _AppLocalizationsDelegate

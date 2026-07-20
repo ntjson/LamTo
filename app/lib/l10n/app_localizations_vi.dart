@@ -483,4 +483,22 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get prefCorrectionStatus => 'Điều chỉnh';
+
+  @override
+  String get fundChartTitle => 'Số dư quỹ';
+
+  @override
+  String get fundChartFlowsTitle => 'Thu và chi';
+
+  @override
+  String get fundChartSemantics => 'Biểu đồ số dư quỹ';
+
+  @override
+  String get fundChartRange30d => '30 ngày';
+
+  @override
+  String get fundChartRange6m => '6 tháng';
+
+  @override
+  String get fundChartRange12m => '12 tháng';
 }

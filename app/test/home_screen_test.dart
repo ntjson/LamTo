@@ -1,11 +1,16 @@
 import 'dart:async';
 
 import 'package:built_collection/built_collection.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lamto/core/error_retry.dart';
+import 'package:lamto/core/format.dart';
 import 'package:lamto/features/home/home_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
+import 'package:lamto/features/shell/home_shell.dart';
+import 'package:lamto/features/transparency/fund_chart.dart';
 import 'package:lamto/features/transparency/transparency_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
@@ -16,6 +21,21 @@ FundSummary _fund() => FundSummary(
     ..periodDays = 30
     ..periodInflowsVnd = 200000
     ..periodOutflowsVnd = 50000,
+);
+
+FundSeries _series(String range) => FundSeries(
+  (b) => b
+    ..range = range
+    ..points = ListBuilder<FundSeriesPoint>([
+      for (var i = 0; i < 6; i++)
+        FundSeriesPoint(
+          (p) => p
+            ..periodStart = DateTime.utc(2026, 2 + i, 1)
+            ..inflowsVnd = i == 2 ? 200000 : 0
+            ..outflowsVnd = i == 4 ? -50000 : 0
+            ..balanceVnd = 1500000 + i * 10000,
+        ),
+    ]),
 );
 
 LedgerEntryList _entry(int id) => LedgerEntryList(
@@ -79,6 +99,10 @@ class _FakeTransparency implements TransparencyRepository {
   Future<FundSummary> fetchFundSummary() async => _fund();
 
   @override
+  Future<FundSeries> fetchFundSeries({String range = '6m'}) async =>
+      _series(range);
+
+  @override
   Future<PaginatedLedgerEntryListList> listLedger({
     String? cursor,
     int? year,
@@ -91,12 +115,30 @@ class _FakeTransparency implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _ThrowingSeriesTransparency extends _FakeTransparency {
+  @override
+  Future<FundSeries> fetchFundSeries({String range = '6m'}) async {
+    throw Exception('series down');
+  }
+}
+
+class _PendingSeriesTransparency extends _FakeTransparency {
+  final series = Completer<FundSeries>();
+
+  @override
+  Future<FundSeries> fetchFundSeries({String range = '6m'}) => series.future;
+}
+
 class _PendingTransparency implements TransparencyRepository {
   final fund = Completer<FundSummary>();
+  final series = Completer<FundSeries>();
   final ledger = Completer<PaginatedLedgerEntryListList>();
 
   @override
   Future<FundSummary> fetchFundSummary() => fund.future;
+
+  @override
+  Future<FundSeries> fetchFundSeries({String range = '6m'}) => series.future;
 
   @override
   Future<PaginatedLedgerEntryListList> listLedger({
@@ -110,6 +152,98 @@ class _PendingTransparency implements TransparencyRepository {
 }
 
 void main() {
+  testWidgets('home renders fund chart card', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FundChart), findsOneWidget);
+    expect(find.byType(LineChart), findsOneWidget);
+  });
+
+  testWidgets('series loading keeps a named chart placeholder', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(
+            _PendingSeriesTransparency(),
+          ),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(FundChart), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+  });
+
+  testWidgets('series failure shows retry but keeps balance', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(
+            _ThrowingSeriesTransparency(),
+          ),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(formatVnd(1500000)), findsOneWidget);
+    expect(find.byType(ErrorRetry), findsWidgets);
+    expect(find.byType(LineChart), findsNothing);
+  });
+
+  testWidgets('tapping home chart switches shell tab to ledger', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+        transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FundChart));
+    expect(container.read(shellTabProvider), ledgerTabIndex);
+  });
+
   testWidgets('home shows fund block, open reports only, recent spending', (
     tester,
   ) async {

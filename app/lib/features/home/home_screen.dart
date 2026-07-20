@@ -11,6 +11,8 @@ import '../ledger/ledger_detail_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../reports/issue_detail_screen.dart';
 import '../reports/my_issues_screen.dart';
+import '../shell/home_shell.dart';
+import '../transparency/fund_chart.dart';
 import '../transparency/transparency_repository.dart';
 
 /// Home tab (spec 6.3(3)): fund block, period flows, my open reports, recent
@@ -65,7 +67,7 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             switch (fund) {
-              AsyncData(:final value) => _fundBlock(context, l10n, value),
+              AsyncData(:final value) => _fundBlock(context, ref, l10n, value),
               AsyncError(:final error) => ErrorRetry(
                 error: error,
                 onRetry: () => ref.invalidate(fundSummaryProvider),
@@ -110,6 +112,7 @@ class HomeScreen extends ConsumerWidget {
   /// DESIGN.md fund-balance signature: large tabular amount + stat grid.
   Widget _fundBlock(
     BuildContext context,
+    WidgetRef ref,
     AppLocalizations l10n,
     FundSummary fund,
   ) {
@@ -155,6 +158,13 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
           ),
+        const SizedBox(height: 16),
+        FundChart(
+          range: '6m',
+          compact: true,
+          onTap: () =>
+              ref.read(shellTabProvider.notifier).state = ledgerTabIndex,
+        ),
       ],
     );
   }

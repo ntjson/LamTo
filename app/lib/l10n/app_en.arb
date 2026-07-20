@@ -154,5 +154,11 @@
   "prefTriageStatus": "Report reviewed",
   "prefWorkCompleted": "Work completed",
   "prefLedgerPublication": "Published spending",
-  "prefCorrectionStatus": "Corrections"
+  "prefCorrectionStatus": "Corrections",
+  "fundChartTitle": "Fund balance",
+  "fundChartFlowsTitle": "Inflows and outflows",
+  "fundChartSemantics": "Fund balance chart",
+  "fundChartRange30d": "30 days",
+  "fundChartRange6m": "6 months",
+  "fundChartRange12m": "12 months"
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
@@ -17,13 +19,17 @@ import '../reports/report_form_screen.dart';
 ///
 /// iOS uses [CupertinoTabController] as the single source of truth for the
 /// selected tab so bar and body cannot diverge.
-class HomeShell extends StatefulWidget {
+final shellTabProvider = StateProvider<int>((_) => 0);
+
+const ledgerTabIndex = 2;
+
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   /// Android (and shared) selected index.
   int _index = 0;
 
@@ -33,7 +39,11 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    _cupertinoController = CupertinoTabController(initialIndex: 0);
+    _index = ref.read(shellTabProvider);
+    _cupertinoController = CupertinoTabController(initialIndex: _index)
+      ..addListener(() {
+        ref.read(shellTabProvider.notifier).state = _cupertinoController.index;
+      });
   }
 
   @override
@@ -76,6 +86,12 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(shellTabProvider, (_, next) {
+      if (_index != next) setState(() => _index = next);
+      if (_cupertinoController.index != next) {
+        _cupertinoController.index = next;
+      }
+    });
     final l10n = AppLocalizations.of(context)!;
     final bodies = _bodies;
     final isIos = defaultTargetPlatform == TargetPlatform.iOS;
@@ -151,7 +167,10 @@ class _HomeShellState extends State<HomeShell> {
             children: [
               NavigationRail(
                 selectedIndex: _index,
-                onDestinationSelected: (i) => setState(() => _index = i),
+                onDestinationSelected: (i) {
+                  ref.read(shellTabProvider.notifier).state = i;
+                  setState(() => _index = i);
+                },
                 labelType: NavigationRailLabelType.all,
                 destinations: [
                   for (final (icon, label) in destinations)
@@ -178,7 +197,10 @@ class _HomeShellState extends State<HomeShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) {
+          ref.read(shellTabProvider.notifier).state = i;
+          setState(() => _index = i);
+        },
         destinations: [
           for (final (icon, label) in destinations)
             NavigationDestination(icon: Icon(icon), label: label),
