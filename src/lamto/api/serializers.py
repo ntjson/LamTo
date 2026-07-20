@@ -196,6 +196,20 @@ class FundSummarySerializer(serializers.Serializer):
     period_outflows_vnd = serializers.IntegerField()
 
 
+class FundSeriesPointSerializer(serializers.Serializer):
+    period_start = serializers.DateField()
+    inflows_vnd = serializers.IntegerField()
+    outflows_vnd = serializers.IntegerField(
+        help_text="Outflow-type amounts are stored negative; this is <= 0."
+    )
+    balance_vnd = serializers.IntegerField()
+
+
+class FundSeriesSerializer(serializers.Serializer):
+    range = serializers.ChoiceField(choices=("30d", "6m", "12m"))
+    points = FundSeriesPointSerializer(many=True)
+
+
 class ReportCreateSerializer(serializers.Serializer):
     client_ref = serializers.UUIDField(
         help_text="Client-generated UUID, unique per user (spec 3.5)."

@@ -112,3 +112,66 @@ class FundSummaryTests(TestCase):
             headers={**self._auth(), "x-lamto-occupancy": str(extra.pk)},
         )
         assert response.status_code == 404
+
+
+@override_settings(
+    STORAGES={
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": _TEMP_STORAGE},
+        },
+        "private": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": _TEMP_STORAGE},
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+)
+class FundSeriesTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.seed = seed_pilot_world(
+            building_name="API Series Building",
+            email_prefix="apis",
+            create_sample_report=False,
+        )
+        cls.resident = cls.seed.users["resident"]
+
+    def _auth(self):
+        _instance, token = AuthToken.objects.create(user=self.resident)
+        return {"authorization": f"Token {token}"}
+
+    def test_default_range_shape_and_final_balance(self):
+        response = self.client.get(reverse("api:fund-series"), headers=self._auth())
+        assert response.status_code == 200, response.content
+        body = response.json()
+        assert body["range"] == "6m"
+        assert len(body["points"]) == 6
+        point = body["points"][-1]
+        assert set(point) == {
+            "period_start", "inflows_vnd", "outflows_vnd", "balance_vnd",
+        }
+        assert point["balance_vnd"] == fund_balance(
+            self.seed.building.pk, verified_only=True
+        )
+
+    def test_each_range_bucket_count(self):
+        for range_key, count in (("30d", 30), ("6m", 6), ("12m", 12)):
+            response = self.client.get(
+                reverse("api:fund-series"), {"range": range_key},
+                headers=self._auth(),
+            )
+            assert response.status_code == 200
+            assert len(response.json()["points"]) == count
+
+    def test_invalid_range_is_400(self):
+        response = self.client.get(
+            reverse("api:fund-series"), {"range": "7d"}, headers=self._auth()
+        )
+        assert response.status_code == 400
+        assert problem(response)["code"] == "validation_failed"
+
+    def test_unauthenticated_is_401(self):
+        assert self.client.get(reverse("api:fund-series")).status_code == 401

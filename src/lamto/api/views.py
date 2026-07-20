@@ -37,6 +37,7 @@ from lamto.api.problems import problem_responses
 from lamto.api.serializers import (
     DeviceRegisterSerializer,
     DeviceSerializer,
+    FundSeriesSerializer,
     FundSummarySerializer,
     LedgerEntryDetailSerializer,
     LedgerEntryListSerializer,
@@ -90,7 +91,9 @@ from lamto.api.services import (
 from lamto.evidence.models import evidence_level
 from lamto.finance.fund import fund_balance
 from lamto.finance.selectors import (
+    FUND_SERIES_RANGE_KEYS,
     fund_period_flows,
+    fund_series,
     ledger_entry_proof,
     published_ledger_entries,
     published_ledger_entry_for_proof,
@@ -426,6 +429,35 @@ class FundSummaryView(APIView):
             "period_outflows_vnd": outflows,
         }
         return Response(FundSummarySerializer(data).data)
+
+
+class FundSeriesView(APIView):
+    @extend_schema(
+        parameters=[
+            OCCUPANCY_HEADER_PARAMETER,
+            OpenApiParameter(
+                name="range",
+                type=OpenApiTypes.STR,
+                description="Chart range: 30d, 6m, or 12m. Defaults to 6m.",
+            ),
+        ],
+        responses={
+            200: FundSeriesSerializer,
+            **problem_responses(400, 401, 403, 404, 422),
+        },
+    )
+    def get(self, request):
+        _occupancy, tenant = resolve_api_occupancy(request)
+        range_key = request.query_params.get("range", "6m")
+        if range_key not in FUND_SERIES_RANGE_KEYS:
+            raise exceptions.ValidationError(
+                {"range": f"must be one of {', '.join(FUND_SERIES_RANGE_KEYS)}"}
+            )
+        data = {
+            "range": range_key,
+            "points": fund_series(tenant.building_id, range_key=range_key),
+        }
+        return Response(FundSeriesSerializer(data).data)
 
 
 class ReportCursorPagination(pagination.CursorPagination):

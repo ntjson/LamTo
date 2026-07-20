@@ -40,6 +40,7 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/me/notification-preferences",
             "/api/v1/ledger",
             "/api/v1/fund/summary",
+            "/api/v1/fund/series",
             "/api/v1/reports",
             "/api/v1/locations",
             "/api/v1/notifications",
