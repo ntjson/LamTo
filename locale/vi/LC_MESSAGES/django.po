@@ -129,3 +129,42 @@ msgstr "Bằng chứng kỹ thuật"
 
 msgid "Cancel"
 msgstr "Hủy"
+
+msgid "Balance over time"
+msgstr "Số dư theo thời gian"
+
+msgid "Chart range"
+msgstr "Khoảng thời gian biểu đồ"
+
+msgid "Opening balance"
+msgstr "Số dư đầu kỳ"
+
+msgid "Closing balance"
+msgstr "Số dư cuối kỳ"
+
+msgid "Total inflows"
+msgstr "Tổng thu"
+
+msgid "Total outflows"
+msgstr "Tổng chi"
+
+msgid "Fund balance chart"
+msgstr "Biểu đồ số dư quỹ"
+
+msgid "Balance"
+msgstr "Số dư"
+
+msgid "Inflows"
+msgstr "Thu"
+
+msgid "Outflows"
+msgstr "Chi"
+
+msgid "30 days"
+msgstr "30 ngày"
+
+msgid "6 months"
+msgstr "6 tháng"
+
+msgid "12 months"
+msgstr "12 tháng"

@@ -2,6 +2,7 @@ import tempfile
 import time
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -198,6 +199,7 @@ class FundHomeTests(TestCase):
         session[RECENT_REAUTH_KEY] = time.time()
         session["active_membership_id"] = membership.pk
         session.save()
+        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
         return membership
 
     def test_fund_home_shows_balance_entries_and_pending(self):
@@ -212,6 +214,40 @@ class FundHomeTests(TestCase):
         self.assertContains(resp, "Pending reconciliation")
         # The seeded opening balance is a verified entry.
         self.assertContains(resp, "Opening balance")
+
+    def test_fund_home_renders_chart_and_window_stats(self):
+        seed = seed_pilot_world(building_name="Fund Chart B", email_prefix="fch")
+        self._login(seed, "fund_recorder")
+        resp = self.client.get(reverse("web:fund-home"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="fund-chart-data"')
+        self.assertContains(resp, "Opening balance")
+        self.assertContains(resp, "Closing balance")
+        self.assertContains(resp, "Total inflows")
+        self.assertContains(resp, "Total outflows")
+        self.assertEqual(resp.context["chart_range"], "6m")
+        self.assertEqual(len(resp.context["chart_points"]), 6)
+        first = resp.context["chart_points"][0]
+        self.assertIsInstance(first["period_start"], str)
+
+    def test_fund_home_range_toggle_and_fallback(self):
+        seed = seed_pilot_world(building_name="Fund Chart R", email_prefix="fcr")
+        self._login(seed, "fund_recorder")
+        resp = self.client.get(reverse("web:fund-home"), {"range": "30d"})
+        self.assertEqual(len(resp.context["chart_points"]), 30)
+        resp = self.client.get(reverse("web:fund-home"), {"range": "bogus"})
+        self.assertEqual(resp.context["chart_range"], "6m")
+
+    def test_fund_home_window_stats_reconcile(self):
+        seed = seed_pilot_world(building_name="Fund Chart S", email_prefix="fcs")
+        self._login(seed, "fund_recorder")
+        ctx = self.client.get(reverse("web:fund-home")).context
+        self.assertEqual(
+            ctx["window_opening_vnd"]
+            + ctx["window_inflows_vnd"]
+            + ctx["window_outflows_vnd"],
+            ctx["window_closing_vnd"],
+        )
 
     def test_without_fund_capability_is_forbidden(self):
         seed = seed_pilot_world(building_name="Fund Home Deny", email_prefix="fhd")

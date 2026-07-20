@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.capabilities import FUND_RECORD, FUND_VERIFY
@@ -25,7 +26,9 @@ from lamto.finance.fund import (
 )
 from lamto.finance.models import MaintenanceFund, MaintenanceFundEntry
 from lamto.finance.selectors import (
+    FUND_SERIES_RANGE_KEYS,
     fund_period_flows,
+    fund_series,
     pending_fund_verification_entries,
     pending_reconciliation_proposals,
     verified_fund_entries,
@@ -33,6 +36,13 @@ from lamto.finance.selectors import (
 from lamto.web.forms.staff import RecordFundSourceForm, SignFundSourceForm, SignedDecisionForm
 from lamto.web.staff import capabilities_for, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.staff_signing import new_event_id, upload_document_pair
+
+
+FUND_CHART_RANGES = (
+    ("30d", _("30 days")),
+    ("6m", _("6 months")),
+    ("12m", _("12 months")),
+)
 
 
 def _require_fund_access(request):
@@ -62,6 +72,16 @@ def fund_home(request):
     pending_verification = list(pending_fund_verification_entries(building_id)[:50])
     inflows, outflows = fund_period_flows(building_id, days=30)
     pending = pending_reconciliation_proposals(building_id)[:50]
+    range_key = request.GET.get("range", "6m")
+    if range_key not in FUND_SERIES_RANGE_KEYS:
+        range_key = "6m"
+    series = fund_series(building_id, range_key=range_key)
+    window_inflows = sum(row["inflows_vnd"] for row in series)
+    window_outflows = sum(row["outflows_vnd"] for row in series)
+    window_closing = series[-1]["balance_vnd"]
+    chart_points = [
+        {**row, "period_start": row["period_start"].isoformat()} for row in series
+    ]
     return render(
         request,
         "web/staff/fund_detail.html",
@@ -79,6 +99,13 @@ def fund_home(request):
             period_inflows=inflows,
             period_outflows=outflows,
             pending=pending,
+            chart_points=chart_points,
+            chart_range=range_key,
+            chart_ranges=FUND_CHART_RANGES,
+            window_opening_vnd=window_closing - window_inflows - window_outflows,
+            window_closing_vnd=window_closing,
+            window_inflows_vnd=window_inflows,
+            window_outflows_vnd=window_outflows,
             fund_exists=MaintenanceFund.objects.filter(building_id=building_id).exists(),
             can_record=FUND_RECORD in caps,
             can_verify=FUND_VERIFY in caps,
