@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:built_collection/built_collection.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/core/error_retry.dart';
 import 'package:lamto/core/format.dart';
 import 'package:lamto/features/home/home_screen.dart';
+import 'package:lamto/features/ledger/ledger_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/features/shell/home_shell.dart';
 import 'package:lamto/features/transparency/fund_chart.dart';
@@ -151,6 +154,27 @@ class _PendingTransparency implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+Future<void> _pumpShell(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(400, 800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+        transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('vi'),
+        home: const HomeShell(),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('home renders fund chart card', (tester) async {
     await tester.pumpWidget(
@@ -218,30 +242,41 @@ void main() {
     expect(find.byType(LineChart), findsNothing);
   });
 
-  testWidgets('tapping home chart switches shell tab to ledger', (
-    tester,
-  ) async {
-    final container = ProviderContainer(
-      overrides: [
-        reportsRepositoryProvider.overrideWithValue(_FakeReports()),
-        transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
-      ],
-    );
-    addTearDown(container.dispose);
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const Scaffold(body: HomeScreen()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets('Android Home chart opens the shell Ledger tab', (tester) async {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      await _pumpShell(tester);
+      await tester.tap(find.byType(FundChart));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(FundChart));
-    expect(container.read(shellTabProvider), ledgerTabIndex);
+      expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        ledgerTabIndex,
+      );
+      expect(find.byType(LedgerScreen), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
+  });
+
+  testWidgets('iOS Home chart opens the shell Ledger tab', (tester) async {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await _pumpShell(tester);
+      final controller = tester
+          .widget<CupertinoTabScaffold>(find.byType(CupertinoTabScaffold))
+          .controller!;
+
+      await tester.tap(find.byType(FundChart));
+      await tester.pumpAndSettle();
+
+      expect(controller.index, ledgerTabIndex);
+      expect(find.byType(LedgerScreen), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
   });
 
   testWidgets('home shows fund block, open reports only, recent spending', (

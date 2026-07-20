@@ -17,8 +17,8 @@ import '../reports/report_form_screen.dart';
 /// Report creation is a task, so it is exposed as the platform primary action
 /// instead of consuming a destination.
 ///
-/// iOS uses [CupertinoTabController] as the single source of truth for the
-/// selected tab so bar and body cannot diverge.
+/// [shellTabProvider] synchronizes cross-tab requests with Android's selected
+/// index and iOS's [CupertinoTabController].
 final shellTabProvider = StateProvider<int>((_) => 0);
 
 const ledgerTabIndex = 2;
