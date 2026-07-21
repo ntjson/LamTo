@@ -16,6 +16,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(FundSummary.serializer)
       ..add(InfoReplyRequest.serializer)
       ..add(InfoReplyResult.serializer)
+      ..add(KindEnum.serializer)
       ..add(LedgerEntryDetail.serializer)
       ..add(LedgerEntryList.serializer)
       ..add(Location.serializer)
@@ -43,6 +44,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ReportPhoto.serializer)
       ..add(ReportSummary.serializer)
       ..add(ReportWorkUpdate.serializer)
+      ..add(ReportWorkUpdatePhoto.serializer)
       ..add(StatusEnum.serializer)
       ..add(TokenResponse.serializer)
       ..add(Verification.serializer)
@@ -75,6 +77,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ReportWorkUpdate)]),
           () => ListBuilder<ReportWorkUpdate>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(ReportWorkUpdatePhoto)]),
+          () => ListBuilder<ReportWorkUpdatePhoto>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType.nullable(JsonObject)]),

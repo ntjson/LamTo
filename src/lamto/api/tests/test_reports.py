@@ -1,15 +1,18 @@
 import json
 import tempfile
 import uuid
+from datetime import timedelta
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from knox.models import AuthToken
 
 from lamto.accounts.models import ResidentOccupancy
 from lamto.api.serializers import InfoReplyResultSerializer
-from lamto.maintenance.models import IssueReport
-from lamto.maintenance.cases import request_information
+from lamto.documents.models import Document
+from lamto.maintenance.cases import publish_progress, request_information
+from lamto.maintenance.models import CaseReport, IssueReport, MaintenanceCase, TriageDecision
 from lamto.testing.factories import seed_pilot_world
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-api-reports-")
@@ -175,3 +178,47 @@ class ReportCreateTests(TestCase):
             headers=self._auth(),
         )
         assert miss.status_code == 404
+
+    def test_detail_timeline_includes_work_update_evidence_photos(self):
+        report = IssueReport.objects.create(
+            reporter=self.resident,
+            unit=self.seed.unit,
+            text="Lift jerks",
+            selected_location=self.seed.location,
+            location_path_snapshot="API Reports B / Lobby",
+            status=IssueReport.Status.IN_REVIEW,
+        )
+        manager = self.seed.management_users[0]
+        decision = TriageDecision.objects.create(
+            report=report,
+            operator=manager,
+            category="Lift",
+            urgency="HIGH",
+            location=self.seed.location,
+            department="Maintenance",
+            deadline_minutes=1440,
+        )
+        case = MaintenanceCase.objects.create(
+            decision=decision,
+            building=self.seed.building,
+            category="Lift",
+            urgency="HIGH",
+            location=self.seed.location,
+            department="Maintenance",
+            deadline_at=timezone.now() + timedelta(days=1),
+        )
+        CaseReport.objects.create(case=case, report=report, grouped_by=manager)
+        before = self.seed.photo(Document.Kind.BEFORE_PHOTO, manager, "before")
+        publish_progress(case, manager, "Inspected lift", "Found worn guide", before_versions=[before])
+
+        response = self.client.get(
+            reverse("api:report-detail", kwargs={"pk": report.pk}),
+            headers=self._auth(),
+        )
+
+        assert response.status_code == 200, response.content
+        photo = response.json()["cases"][0]["updates"][0]["photos"][0]
+        assert photo["id"] == before.pk
+        assert photo["kind"] == "BEFORE"
+        assert photo["filename"]
+        assert photo["download_url"]

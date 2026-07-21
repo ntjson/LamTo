@@ -13,13 +13,13 @@ part 'proposal.g.dart';
 /// Proposal
 ///
 /// Properties:
-/// * [id]
-/// * [caseId]
-/// * [buildingId]
-/// * [status]
-/// * [completedAt]
-/// * [closedAt]
-/// * [currentVersion]
+/// * [id] 
+/// * [caseId] 
+/// * [buildingId] 
+/// * [status] 
+/// * [completedAt] 
+/// * [closedAt] 
+/// * [currentVersion] 
 @BuiltValue()
 abstract class Proposal implements Built<Proposal, ProposalBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -205,3 +205,4 @@ class _$ProposalSerializer implements PrimitiveSerializer<Proposal> {
     return result.build();
   }
 }
+

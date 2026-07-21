@@ -16,6 +16,7 @@ doc/FundSeriesPoint.md
 doc/FundSummary.md
 doc/InfoReplyRequest.md
 doc/InfoReplyResult.md
+doc/KindEnum.md
 doc/LedgerApi.md
 doc/LedgerEntryDetail.md
 doc/LedgerEntryList.md
@@ -48,6 +49,7 @@ doc/ReportDetail.md
 doc/ReportPhoto.md
 doc/ReportSummary.md
 doc/ReportWorkUpdate.md
+doc/ReportWorkUpdatePhoto.md
 doc/ReportsApi.md
 doc/StatusEnum.md
 doc/TokenResponse.md
@@ -82,6 +84,7 @@ lib/src/model/fund_series_point.dart
 lib/src/model/fund_summary.dart
 lib/src/model/info_reply_request.dart
 lib/src/model/info_reply_result.dart
+lib/src/model/kind_enum.dart
 lib/src/model/ledger_entry_detail.dart
 lib/src/model/ledger_entry_list.dart
 lib/src/model/location.dart
@@ -109,6 +112,7 @@ lib/src/model/report_detail.dart
 lib/src/model/report_photo.dart
 lib/src/model/report_summary.dart
 lib/src/model/report_work_update.dart
+lib/src/model/report_work_update_photo.dart
 lib/src/model/status_enum.dart
 lib/src/model/token_response.dart
 lib/src/model/verification.dart
@@ -128,6 +132,7 @@ test/fund_series_test.dart
 test/fund_summary_test.dart
 test/info_reply_request_test.dart
 test/info_reply_result_test.dart
+test/kind_enum_test.dart
 test/ledger_api_test.dart
 test/ledger_entry_detail_test.dart
 test/ledger_entry_list_test.dart
@@ -159,6 +164,7 @@ test/report_create_request_test.dart
 test/report_detail_test.dart
 test/report_photo_test.dart
 test/report_summary_test.dart
+test/report_work_update_photo_test.dart
 test/report_work_update_test.dart
 test/reports_api_test.dart
 test/status_enum_test.dart

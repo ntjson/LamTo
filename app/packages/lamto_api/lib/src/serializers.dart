@@ -23,6 +23,7 @@ import 'package:lamto_api/src/model/fund_series_point.dart';
 import 'package:lamto_api/src/model/fund_summary.dart';
 import 'package:lamto_api/src/model/info_reply_request.dart';
 import 'package:lamto_api/src/model/info_reply_result.dart';
+import 'package:lamto_api/src/model/kind_enum.dart';
 import 'package:lamto_api/src/model/ledger_entry_detail.dart';
 import 'package:lamto_api/src/model/ledger_entry_list.dart';
 import 'package:lamto_api/src/model/location.dart';
@@ -50,6 +51,7 @@ import 'package:lamto_api/src/model/report_detail.dart';
 import 'package:lamto_api/src/model/report_photo.dart';
 import 'package:lamto_api/src/model/report_summary.dart';
 import 'package:lamto_api/src/model/report_work_update.dart';
+import 'package:lamto_api/src/model/report_work_update_photo.dart';
 import 'package:lamto_api/src/model/status_enum.dart';
 import 'package:lamto_api/src/model/token_response.dart';
 import 'package:lamto_api/src/model/verification.dart';
@@ -66,6 +68,7 @@ part 'serializers.g.dart';
   FundSummary,
   InfoReplyRequest,
   InfoReplyResult,
+  KindEnum,
   LedgerEntryDetail,
   LedgerEntryList,
   Location,
@@ -93,6 +96,7 @@ part 'serializers.g.dart';
   ReportPhoto,
   ReportSummary,
   ReportWorkUpdate,
+  ReportWorkUpdatePhoto,
   StatusEnum,
   TokenResponse,
   Verification,

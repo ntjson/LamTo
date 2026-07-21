@@ -31,6 +31,7 @@ export 'package:lamto_api/src/model/fund_series_point.dart';
 export 'package:lamto_api/src/model/fund_summary.dart';
 export 'package:lamto_api/src/model/info_reply_request.dart';
 export 'package:lamto_api/src/model/info_reply_result.dart';
+export 'package:lamto_api/src/model/kind_enum.dart';
 export 'package:lamto_api/src/model/ledger_entry_detail.dart';
 export 'package:lamto_api/src/model/ledger_entry_list.dart';
 export 'package:lamto_api/src/model/location.dart';
@@ -58,6 +59,8 @@ export 'package:lamto_api/src/model/report_detail.dart';
 export 'package:lamto_api/src/model/report_photo.dart';
 export 'package:lamto_api/src/model/report_summary.dart';
 export 'package:lamto_api/src/model/report_work_update.dart';
+export 'package:lamto_api/src/model/report_work_update_photo.dart';
 export 'package:lamto_api/src/model/status_enum.dart';
 export 'package:lamto_api/src/model/token_response.dart';
 export 'package:lamto_api/src/model/verification.dart';
+

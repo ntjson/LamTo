@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from lamto.maintenance.models import IssueReport
+from lamto.maintenance.models import IssueReport, WorkUpdateEvidence
 
 
 class ProblemSerializer(serializers.Serializer):
@@ -229,11 +229,19 @@ class ReportPhotoUploadSerializer(serializers.Serializer):
     photo = serializers.FileField(help_text="JPEG/PNG image; scanned by ClamAV before storage.")
 
 
+class ReportWorkUpdatePhotoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    filename = serializers.CharField()
+    kind = serializers.ChoiceField(choices=WorkUpdateEvidence.Kind.choices)
+    download_url = serializers.CharField()
+
+
 class ReportWorkUpdateSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     cause = serializers.CharField()
     result = serializers.CharField()
     created_at = serializers.DateTimeField()
+    photos = ReportWorkUpdatePhotoSerializer(many=True)
 
 
 class ReportCaseSerializer(serializers.Serializer):

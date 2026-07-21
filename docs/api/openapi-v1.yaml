@@ -1250,6 +1250,14 @@ components:
       required:
       - report_id
       - status
+    KindEnum:
+      enum:
+      - BEFORE
+      - AFTER
+      type: string
+      description: |-
+        * `BEFORE` - Before
+        * `AFTER` - After
     LedgerEntryDetail:
       type: object
       properties:
@@ -1842,11 +1850,32 @@ components:
         created_at:
           type: string
           format: date-time
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportWorkUpdatePhoto'
       required:
       - cause
       - created_at
       - id
+      - photos
       - result
+    ReportWorkUpdatePhoto:
+      type: object
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        download_url:
+          type: string
+      required:
+      - download_url
+      - filename
+      - id
+      - kind
     StatusEnum:
       enum:
       - SUBMITTED

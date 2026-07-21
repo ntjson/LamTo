@@ -3,49 +3,55 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:lamto_api/src/model/kind_enum.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'proposal_rating_result.g.dart';
+part 'report_work_update_photo.g.dart';
 
-/// ProposalRatingResult
+/// ReportWorkUpdatePhoto
 ///
 /// Properties:
 /// * [id] 
-/// * [proposalId] 
-/// * [satisfied] 
+/// * [filename] 
+/// * [kind] 
+/// * [downloadUrl] 
 @BuiltValue()
-abstract class ProposalRatingResult implements Built<ProposalRatingResult, ProposalRatingResultBuilder> {
+abstract class ReportWorkUpdatePhoto implements Built<ReportWorkUpdatePhoto, ReportWorkUpdatePhotoBuilder> {
   @BuiltValueField(wireName: r'id')
   int get id;
 
-  @BuiltValueField(wireName: r'proposal_id')
-  int get proposalId;
+  @BuiltValueField(wireName: r'filename')
+  String get filename;
 
-  @BuiltValueField(wireName: r'satisfied')
-  bool get satisfied;
+  @BuiltValueField(wireName: r'kind')
+  KindEnum get kind;
+  // enum kindEnum {  BEFORE,  AFTER,  };
 
-  ProposalRatingResult._();
+  @BuiltValueField(wireName: r'download_url')
+  String get downloadUrl;
 
-  factory ProposalRatingResult([void updates(ProposalRatingResultBuilder b)]) = _$ProposalRatingResult;
+  ReportWorkUpdatePhoto._();
+
+  factory ReportWorkUpdatePhoto([void updates(ReportWorkUpdatePhotoBuilder b)]) = _$ReportWorkUpdatePhoto;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(ProposalRatingResultBuilder b) => b;
+  static void _defaults(ReportWorkUpdatePhotoBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ProposalRatingResult> get serializer => _$ProposalRatingResultSerializer();
+  static Serializer<ReportWorkUpdatePhoto> get serializer => _$ReportWorkUpdatePhotoSerializer();
 }
 
-class _$ProposalRatingResultSerializer implements PrimitiveSerializer<ProposalRatingResult> {
+class _$ReportWorkUpdatePhotoSerializer implements PrimitiveSerializer<ReportWorkUpdatePhoto> {
   @override
-  final Iterable<Type> types = const [ProposalRatingResult, _$ProposalRatingResult];
+  final Iterable<Type> types = const [ReportWorkUpdatePhoto, _$ReportWorkUpdatePhoto];
 
   @override
-  final String wireName = r'ProposalRatingResult';
+  final String wireName = r'ReportWorkUpdatePhoto';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    ProposalRatingResult object, {
+    ReportWorkUpdatePhoto object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'id';
@@ -53,22 +59,27 @@ class _$ProposalRatingResultSerializer implements PrimitiveSerializer<ProposalRa
       object.id,
       specifiedType: const FullType(int),
     );
-    yield r'proposal_id';
+    yield r'filename';
     yield serializers.serialize(
-      object.proposalId,
-      specifiedType: const FullType(int),
+      object.filename,
+      specifiedType: const FullType(String),
     );
-    yield r'satisfied';
+    yield r'kind';
     yield serializers.serialize(
-      object.satisfied,
-      specifiedType: const FullType(bool),
+      object.kind,
+      specifiedType: const FullType(KindEnum),
+    );
+    yield r'download_url';
+    yield serializers.serialize(
+      object.downloadUrl,
+      specifiedType: const FullType(String),
     );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    ProposalRatingResult object, {
+    ReportWorkUpdatePhoto object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -79,7 +90,7 @@ class _$ProposalRatingResultSerializer implements PrimitiveSerializer<ProposalRa
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required ProposalRatingResultBuilder result,
+    required ReportWorkUpdatePhotoBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -93,19 +104,26 @@ class _$ProposalRatingResultSerializer implements PrimitiveSerializer<ProposalRa
           ) as int;
           result.id = valueDes;
           break;
-        case r'proposal_id':
+        case r'filename':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(int),
-          ) as int;
-          result.proposalId = valueDes;
+            specifiedType: const FullType(String),
+          ) as String;
+          result.filename = valueDes;
           break;
-        case r'satisfied':
+        case r'kind':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(bool),
-          ) as bool;
-          result.satisfied = valueDes;
+            specifiedType: const FullType(KindEnum),
+          ) as KindEnum;
+          result.kind = valueDes;
+          break;
+        case r'download_url':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.downloadUrl = valueDes;
           break;
         default:
           unhandled.add(key);
@@ -116,12 +134,12 @@ class _$ProposalRatingResultSerializer implements PrimitiveSerializer<ProposalRa
   }
 
   @override
-  ProposalRatingResult deserialize(
+  ReportWorkUpdatePhoto deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = ProposalRatingResultBuilder();
+    final result = ReportWorkUpdatePhotoBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(
