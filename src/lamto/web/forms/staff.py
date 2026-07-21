@@ -331,8 +331,24 @@ class CreateProposalForm(forms.Form):
 
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
     contractor_name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": "input"}))
+    fund_code = forms.CharField(max_length=32, required=False, initial="GENERAL", widget=forms.TextInput(attrs={"class": "input"}))
+    purpose = forms.CharField(required=False, widget=forms.Textarea(attrs={"class": "input"}))
+    proposed_action = forms.CharField(required=False, widget=forms.Textarea(attrs={"class": "input"}))
+    expected_schedule = forms.CharField(max_length=200, required=False, widget=forms.TextInput(attrs={"class": "input"}))
     quotation_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
     quotation_redacted = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+
+
+class StandaloneProposalForm(CreateProposalForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ("fund_code", "purpose", "proposed_action", "expected_schedule"):
+            self.fields[name].required = True
+
+
+class ProposalDecisionForm(forms.Form):
+    proceed = forms.BooleanField(required=False)
+    note = forms.CharField(required=False, widget=forms.Textarea(attrs={"class": "input"}))
 
 
 class SignProposalForm(SignedDecisionForm):

@@ -25,15 +25,20 @@ from lamto.finance.proposals import (
     ZERO_HASH,
     build_proposal_evidence_payload,
     create_proposal,
+    create_standalone_proposal,
+    decide_proposal,
+    publish_proposal_version,
     submit_proposal_version,
     spending_proposal_cases,
 )
 from lamto.maintenance.models import IssueReport, MaintenanceCase
+from lamto.maintenance.cases import complete_proposal_work, publish_progress
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
     CreateProposalForm,
     PreparePublicationForm,
     SignProposalForm,
+    StandaloneProposalForm,
 )
 from lamto.web.staff import require_management_context, staff_context
 from lamto.web.views.staff_common import (
@@ -70,15 +75,15 @@ def proposal_list(request):
     building_id = membership.building_id
     status = request.GET.get("status") or ""
     status_groups = {
-        "preparing": (Proposal.Status.DRAFT, Proposal.Status.REJECTED),
-        "review": (Proposal.Status.IN_REVIEW,),
-        "authorized": (Proposal.Status.NORMAL_AUTHORIZED,),
+        "preparing": (Proposal.Status.DRAFT,),
+        "review": (Proposal.Status.PUBLISHED,),
+        "authorized": (Proposal.Status.IN_PROGRESS, Proposal.Status.COMPLETED),
     }
     valid_status = status in Proposal.Status.values
     active_group = status if status in status_groups else next(
         (group for group, values in status_groups.items() if status in values), ""
     )
-    proposals_qs = Proposal.objects.filter(case__building_id=building_id)
+    proposals_qs = Proposal.objects.filter(building_id=building_id)
     if status in status_groups:
         proposals_qs = proposals_qs.filter(status__in=status_groups[status])
     elif valid_status:
@@ -94,14 +99,13 @@ def proposal_list(request):
     )
     next_actions = {
         Proposal.Status.DRAFT: "Complete and submit",
-        Proposal.Status.IN_REVIEW: "Review and decide",
-        Proposal.Status.NORMAL_AUTHORIZED: "Continue to acceptance and payment",
-        Proposal.Status.REJECTED: "Correct and resubmit",
+        Proposal.Status.PUBLISHED: "Review and decide",
+        Proposal.Status.IN_PROGRESS: "Publish progress or complete",
     }
     proposal_items = [
         {
             "url": f"/s/proposals/{p.pk}/",
-            "title": f"Proposal #{p.pk} · {p.case.category}"
+            "title": f"Proposal #{p.pk} · {p.case.category if p.case_id else p.current_version.purpose if p.current_version else 'Standalone'}"
             + (
                 f" · {p.current_version.contractor_name}"
                 if p.current_version
@@ -154,7 +158,7 @@ def proposal_detail(request, pk):
             "current_version", "case", "creator_membership"
         ),
         pk=pk,
-        case__building_id=membership.building_id,
+        building_id=membership.building_id,
     )
     publish_form = PreparePublicationForm(request.POST or None)
     can_publish = _proposal_publishable(proposal)
@@ -164,6 +168,29 @@ def proposal_detail(request, pk):
 
     if request.method == "POST":
         action = request.POST.get("action") or "publish"
+        if action in {"decide", "progress", "complete"}:
+            require_recent_auth(request)
+            try:
+                if action == "decide":
+                    decide_proposal(
+                        proposal, request.user, request.POST.get("proceed") in {"1", "true", "on"},
+                        request.POST.get("note", ""),
+                    )
+                elif action == "progress":
+                    publish_progress(
+                        proposal=proposal, manager=request.user, cause=request.POST.get("cause", ""),
+                        result=request.POST.get("result", ""),
+                    )
+                else:
+                    complete_proposal_work(
+                        proposal, request.user, request.POST.get("cause", ""),
+                        request.POST.get("result", ""),
+                    )
+            except (ValidationError, PermissionDenied) as error:
+                messages.error(request, str(error))
+            else:
+                messages.success(request, "Proposal updated.")
+            return redirect("web:proposal-detail", pk=proposal.pk)
         # Signed financial / accountability actions require recent re-auth.
         if action == "publish":
             require_recent_auth(request)
@@ -395,6 +422,30 @@ def proposal_create(request, pk):
     typed_data = None
     action = request.POST.get("action") if request.method == "POST" else None
 
+    if request.method == "POST" and create_form.is_valid():
+        try:
+            original, _redacted = upload_document_pair(
+                case.building, Document.Kind.QUOTATION, request.user,
+                create_form.cleaned_data["quotation_original"],
+                create_form.cleaned_data["quotation_redacted"],
+            )
+            proposal = existing or create_proposal(case, membership)
+            publish_proposal_version(
+                proposal, membership, amount_vnd=create_form.cleaned_data["amount_vnd"],
+                contractor_name=create_form.cleaned_data["contractor_name"],
+                fund_code=create_form.cleaned_data.get("fund_code") or "GENERAL",
+                purpose=create_form.cleaned_data.get("purpose") or case.category,
+                proposed_action=create_form.cleaned_data.get("proposed_action") or "Perform proposed maintenance",
+                expected_schedule=create_form.cleaned_data.get("expected_schedule") or "To be scheduled",
+                quotation_versions=[original], event_id=new_event_id(),
+            )
+        except (ValidationError, PermissionDenied) as error:
+            create_form.add_error(None, error)
+            action = None
+        else:
+            messages.success(request, "Proposal published.")
+            return redirect("web:proposal-detail", pk=proposal.pk)
+
     if action == "prepare" and create_form.is_valid():
         try:
             original, _redacted = upload_document_pair(
@@ -475,3 +526,36 @@ def proposal_create(request, pk):
             typed_data=typed_data,
         ),
     )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def standalone_proposal_create(request):
+    membership, memberships = require_management_context(request)
+    form = StandaloneProposalForm(request.POST or None, request.FILES or None)
+    if request.method == "POST":
+        require_recent_auth(request)
+        if form.is_valid():
+            try:
+                original, _ = upload_document_pair(
+                    membership.building, Document.Kind.QUOTATION, request.user,
+                    form.cleaned_data["quotation_original"], form.cleaned_data["quotation_redacted"],
+                )
+                proposal = create_standalone_proposal(membership.building, membership)
+                publish_proposal_version(
+                    proposal, membership, amount_vnd=form.cleaned_data["amount_vnd"],
+                    contractor_name=form.cleaned_data["contractor_name"],
+                    fund_code=form.cleaned_data["fund_code"], purpose=form.cleaned_data["purpose"],
+                    proposed_action=form.cleaned_data["proposed_action"],
+                    expected_schedule=form.cleaned_data["expected_schedule"],
+                    quotation_versions=[original], event_id=new_event_id(),
+                )
+            except (ValidationError, PermissionDenied) as error:
+                form.add_error(None, error)
+            else:
+                messages.success(request, "Proposal published.")
+                return redirect("web:proposal-detail", pk=proposal.pk)
+    return render(request, "web/staff/proposal_create.html", staff_context(
+        request, membership, memberships, nav_active="finance", finance_active="proposals",
+        case=None, create_form=form, sign_form=None, typed_data=None,
+    ))

@@ -45,12 +45,13 @@ def _evidence_versions(versions, kind, building_id, uploader):
     return valid
 
 
-def _append_update(case, manager, cause, result, before_versions, after_versions):
+def _append_update(case, manager, cause, result, before_versions, after_versions, proposal=None):
     if not (cause or "").strip() or not (result or "").strip():
         raise ValidationError("Progress updates need both a cause and a result.")
-    before = _evidence_versions(before_versions, Document.Kind.BEFORE_PHOTO, case.building_id, manager)
-    after = _evidence_versions(after_versions, Document.Kind.AFTER_PHOTO, case.building_id, manager)
-    update = WorkUpdate.objects.create(case=case, cause=cause.strip(), result=result.strip())
+    building_id = case.building_id if case else proposal.building_id
+    before = _evidence_versions(before_versions, Document.Kind.BEFORE_PHOTO, building_id, manager)
+    after = _evidence_versions(after_versions, Document.Kind.AFTER_PHOTO, building_id, manager)
+    update = WorkUpdate.objects.create(case=case, proposal=proposal, cause=cause.strip(), result=result.strip())
     WorkUpdateEvidence.objects.bulk_create([
         *[WorkUpdateEvidence(update=update, version=v, kind=WorkUpdateEvidence.Kind.BEFORE) for v in before],
         *[WorkUpdateEvidence(update=update, version=v, kind=WorkUpdateEvidence.Kind.AFTER) for v in after],
@@ -71,13 +72,23 @@ def start_case_work(case, manager) -> MaintenanceCase:
 
 
 @transaction.atomic
-def publish_progress(case, manager, cause, result, before_versions=(), after_versions=()) -> WorkUpdate:
-    case = _locked_case(case)
-    membership = require_management(manager, case.building_id)
-    update = _append_update(case, manager, cause, result, before_versions, after_versions)
+def publish_progress(case=None, manager=None, cause="", result="", before_versions=(), after_versions=(), proposal=None) -> WorkUpdate:
+    if (case is None) == (proposal is None):
+        raise ValidationError("Progress requires exactly one case or proposal.")
+    if case is not None:
+        case = _locked_case(case)
+        building_id = case.building_id
+    else:
+        from lamto.finance.models import Proposal
+        proposal = Proposal.objects.select_for_update().filter(pk=getattr(proposal, "pk", None), case__isnull=True).first()
+        if proposal is None or proposal.status != Proposal.Status.IN_PROGRESS:
+            raise ValidationError("An in-progress standalone proposal is required.")
+        building_id = proposal.building_id
+    membership = require_management(manager, building_id)
+    update = _append_update(case, manager, cause, result, before_versions, after_versions, proposal)
     record_audit(actor=manager, membership=membership, action="case.progress_published",
                  target_type="WorkUpdate", target_id=str(update.pk), result="accepted",
-                 metadata={"case_id": case.pk})
+                 metadata={"case_id": case.pk if case else None, "proposal_id": proposal.pk if proposal else None})
     try:
         from lamto.notifications.hooks import notify_progress_update
         notify_progress_update(update)
@@ -87,12 +98,37 @@ def publish_progress(case, manager, cause, result, before_versions=(), after_ver
 
 
 @transaction.atomic
+def complete_proposal_work(proposal, manager, cause, result, before_versions=(), after_versions=()):
+    from lamto.finance.models import Proposal
+    proposal = Proposal.objects.select_for_update().filter(pk=getattr(proposal, "pk", None), case__isnull=True).first()
+    if proposal is None or proposal.status != Proposal.Status.IN_PROGRESS:
+        raise ValidationError("An in-progress standalone proposal is required.")
+    membership = require_management(manager, proposal.building_id)
+    update = _append_update(None, manager, cause, result, before_versions, after_versions, proposal)
+    proposal.status = Proposal.Status.COMPLETED
+    proposal.completed_at = timezone.now()
+    proposal.save(update_fields=["status", "completed_at"])
+    record_audit(manager, membership, "proposal.work_completed", "Proposal", str(proposal.pk),
+                 "accepted", {"work_update_id": update.pk})
+    return proposal
+
+
+@transaction.atomic
 def complete_case_work(case, manager, cause, result, before_versions=(), after_versions=()) -> MaintenanceCase:
     case = _locked_case(case)
     membership = require_management(manager, case.building_id)
     update = _append_update(case, manager, cause, result, before_versions, after_versions)
     case.completed_at = timezone.now()
     case.save(update_fields=["completed_at"])
+    try:
+        proposal = case.proposal
+    except Exception:
+        proposal = None
+    if proposal is not None:
+        from lamto.finance.models import Proposal
+        proposal.status = Proposal.Status.COMPLETED
+        proposal.completed_at = case.completed_at
+        proposal.save(update_fields=["status", "completed_at"])
     for report in IssueReport.objects.filter(case_reports__case=case).exclude(status__in=TERMINAL_STATUSES):
         report.status = IssueReport.Status.COMPLETED
         report.save(update_fields=["status"])
@@ -120,7 +156,16 @@ def close_expired_completed_cases(now=None) -> int:
         case.active = False
         case.closed_at = now
         case.save(update_fields=["active", "closed_at"])
-    return len(cases)
+    from lamto.finance.models import Proposal
+    proposals = list(Proposal.objects.select_for_update().filter(
+        case__isnull=True, status=Proposal.Status.COMPLETED,
+        completed_at__lte=now - timedelta(days=RATING_WINDOW_DAYS), closed_at__isnull=True,
+    ))
+    for proposal in proposals:
+        proposal.status = Proposal.Status.CLOSED
+        proposal.closed_at = now
+        proposal.save(update_fields=["status", "closed_at"])
+    return len(cases) + len(proposals)
 
 
 def _locked_report(report):

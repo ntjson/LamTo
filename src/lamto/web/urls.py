@@ -22,6 +22,7 @@ urlpatterns = [
     path("s/cases/<int:pk>/", requests.case_detail, name="case-detail"),
     # Proposals
     path("s/proposals/", proposals.proposal_list, name="proposal-list"),
+    path("s/proposals/new/", proposals.standalone_proposal_create, name="standalone-proposal-create"),
     path("s/proposals/<int:pk>/", proposals.proposal_detail, name="proposal-detail"),
     path("s/cases/<int:pk>/propose/", proposals.proposal_create, name="proposal-create"),
     # Work (dies in stage 2)

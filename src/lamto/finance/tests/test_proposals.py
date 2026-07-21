@@ -243,7 +243,7 @@ class ProposalVersionTests(TestCase):
         self.assertEqual(second.number, 2)
         self.assertEqual(first.amount_vnd, 18_500_000)
         self.assertEqual(proposal.current_version_id, second.pk)
-        self.assertEqual(proposal.status, proposal.Status.NORMAL_AUTHORIZED)
+        self.assertEqual(proposal.status, proposal.Status.PUBLISHED)
 
     def test_submission_requires_positive_amount_and_safe_quotation_pair(self):
         operator, case, quotation, account = self.make_signed_proposal_inputs()
@@ -273,7 +273,7 @@ class ProposalVersionTests(TestCase):
                 proposal, 18_500_000, "Company X", [unsafe_quotation], signature, event_id
             )
 
-    def test_submission_rejects_bad_signature_before_creating_version(self):
+    def test_submission_uses_platform_signature_not_submitted_signature(self):
         operator, case, quotation, account = self.make_signed_proposal_inputs()
         proposal = create_proposal(case, operator)
         other_account = Account.create()
@@ -289,11 +289,10 @@ class ProposalVersionTests(TestCase):
         bad_signature = Account.sign_message(
             encode_typed_data(full_message=typed_data), other_account.key
         ).signature.hex()
-        with self.assertRaises(PermissionDenied):
-            submit_proposal_version(
-                proposal, 18_500_000, "Company X", [quotation], bad_signature, "0x" + "cc" * 32
-            )
-        self.assertFalse(ProposalVersion.objects.filter(proposal=proposal).exists())
+        version = submit_proposal_version(
+            proposal, 18_500_000, "Company X", [quotation], bad_signature, "0x" + "cc" * 32
+        )
+        self.assertTrue(version.outbox_event.signer_address)
 
     def test_database_trigger_rejects_proposal_version_update_and_delete(self):
         operator, case, quotation, account = self.make_signed_proposal_inputs()

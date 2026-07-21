@@ -25,6 +25,9 @@ urlpatterns = [
     path("reports/<int:pk>/info-reply", views.ReportInfoReplyView.as_view(), name="report-info-reply"),
     path("reports/<int:pk>/photos", views.ReportPhotoUploadView.as_view(), name="report-photos"),
     path("cases/<int:pk>/rating", views.CaseRatingView.as_view(), name="case-rating"),
+    path("proposals", views.ProposalListView.as_view(), name="proposal-list"),
+    path("proposals/<int:pk>", views.ProposalDetailView.as_view(), name="proposal-detail"),
+    path("proposals/<int:pk>/rating", views.ProposalRatingView.as_view(), name="proposal-rating"),
     path("locations", views.LocationListView.as_view(), name="locations"),
     path("notifications", views.NotificationListView.as_view(), name="notifications"),
     path(

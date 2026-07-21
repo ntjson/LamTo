@@ -93,6 +93,7 @@ API_AUTHENTICATED_GLOBAL = {
 
 # Tenant-scoped lists / aggregates (building via occupancy resolution).
 API_TENANT_LIST = {
+    "api:proposal-list": "GET",
     "api:ledger-list": "GET",
     "api:fund-summary": "GET",
     "api:fund-series": "GET",
@@ -103,6 +104,8 @@ API_TENANT_LIST = {
 # Tenant-scoped object access by primary key.
 # route -> (attribute on cls.b with the B-side pk, method, expected status)
 API_TENANT_OBJECT = {
+    "api:proposal-detail": ("proposal_pk", "GET", 404),
+    "api:proposal-rating": ("proposal_pk", "POST", 404),
     "api:ledger-detail": ("ledger_pk", "GET", 404),
     "api:report-detail": ("report_pk", "GET", 404),
     "api:report-photos": ("report_pk", "POST", 404),

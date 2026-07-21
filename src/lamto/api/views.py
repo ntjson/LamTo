@@ -59,6 +59,8 @@ from lamto.api.serializers import (
     TokenResponseSerializer,
     CaseRatingResultSerializer,
     CaseRatingSerializer,
+    ProposalRatingResultSerializer,
+    ProposalSerializer,
 )
 from lamto.notifications.devices import deactivate_device, register_device
 from lamto.notifications.models import NotificationDelivery, NotificationPreference
@@ -92,6 +94,8 @@ from lamto.api.services import (
 )
 from lamto.evidence.models import evidence_level
 from lamto.finance.fund import fund_balance
+from lamto.finance.models import Proposal
+from lamto.maintenance.ratings import rate_completed_proposal
 from lamto.finance.selectors import (
     FUND_SERIES_RANGE_KEYS,
     fund_period_flows,
@@ -649,12 +653,53 @@ class CaseRatingView(APIView):
             raise exceptions.ValidationError(error.messages)
         except DjangoPermissionDenied:
             raise exceptions.PermissionDenied("Only residents who reported this case may rate the work.")
-        return Response(
-            CaseRatingResultSerializer(
-                {"id": rating.pk, "case_id": case.pk, "satisfied": rating.satisfied}
-            ).data,
-            status=201,
-        )
+        return Response(CaseRatingResultSerializer(
+            {"id": rating.pk, "case_id": case.pk, "satisfied": rating.satisfied}
+        ).data, status=201)
+
+
+class ProposalListView(APIView):
+    @extend_schema(operation_id="proposal_list", parameters=[OCCUPANCY_HEADER_PARAMETER], responses={200: ProposalSerializer(many=True), **problem_responses(401, 403, 404, 422)})
+    def get(self, request):
+        _occupancy, tenant = resolve_api_occupancy(request)
+        proposals = Proposal.objects.filter(
+            building_id=tenant.building_id
+        ).exclude(status=Proposal.Status.DRAFT).select_related("current_version").order_by("-created_at")
+        return Response(ProposalSerializer(proposals, many=True).data)
+
+
+class ProposalDetailView(APIView):
+    @extend_schema(operation_id="proposal_detail", parameters=[OCCUPANCY_HEADER_PARAMETER], responses={200: ProposalSerializer, **problem_responses(401, 403, 404, 422)})
+    def get(self, request, pk):
+        _occupancy, tenant = resolve_api_occupancy(request)
+        proposal = Proposal.objects.filter(pk=pk, building_id=tenant.building_id).exclude(
+            status=Proposal.Status.DRAFT
+        ).select_related("current_version").first()
+        if proposal is None:
+            raise exceptions.NotFound("Proposal not found.")
+        return Response(ProposalSerializer(proposal).data)
+
+
+class ProposalRatingView(APIView):
+    @extend_schema(parameters=[OCCUPANCY_HEADER_PARAMETER], request=CaseRatingSerializer, responses={201: ProposalRatingResultSerializer,
+                   **problem_responses(400, 401, 403, 404)})
+    def post(self, request, pk):
+        _occupancy, tenant = resolve_api_occupancy(request)
+        proposal = Proposal.objects.filter(pk=pk, building_id=tenant.building_id, case__isnull=True).first()
+        if proposal is None:
+            raise exceptions.NotFound("Proposal not found.")
+        serializer = CaseRatingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            rating = rate_completed_proposal(request.user, proposal,
+                serializer.validated_data["satisfied"], serializer.validated_data.get("comment", ""))
+        except DjangoValidationError as error:
+            raise exceptions.ValidationError(error.messages)
+        except DjangoPermissionDenied:
+            raise exceptions.PermissionDenied("Active occupancy in the building is required.")
+        return Response(ProposalRatingResultSerializer(
+            {"id": rating.pk, "proposal_id": proposal.pk, "satisfied": rating.satisfied}
+        ).data, status=201)
 
 
 class LocationListView(APIView):

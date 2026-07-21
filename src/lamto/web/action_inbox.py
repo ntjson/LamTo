@@ -77,6 +77,7 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
     items.extend(_deadline_risk_items(building_id))
     items.extend(_in_progress_case_items(building_id))
     items.extend(_proposal_create_candidates(building_id))
+    items.extend(_proposal_decision_items(building_id))
     items.extend(_work_acceptance_items(building_id))
     items.extend(_payment_record_items(building_id))
     items.extend(_payment_verify_items(building_id))
@@ -196,6 +197,17 @@ def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
             )
         )
     return items
+
+
+def _proposal_decision_items(building_id: int) -> list[ActionItem]:
+    return [ActionItem(
+        kind="proposal_decision", title="Decide proposal",
+        summary=f"Proposal #{proposal.pk} awaits a proceed decision", target_type="Proposal",
+        target_id=proposal.pk, url=reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
+        priority=16,
+    ) for proposal in Proposal.objects.filter(
+        building_id=building_id, status=Proposal.Status.PUBLISHED, decided_at__isnull=True,
+    ).order_by("created_at")[:30]]
 
 
 def _work_acceptance_items(building_id: int) -> list[ActionItem]:

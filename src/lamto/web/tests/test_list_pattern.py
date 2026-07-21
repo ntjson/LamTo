@@ -162,7 +162,7 @@ class ListPatternTests(TestCase):
         in_review = Proposal.objects.create(
             case=case2,
             creator_membership=membership,
-            status=Proposal.Status.IN_REVIEW,
+            status=Proposal.Status.PUBLISHED,
         )
         self._login(user, membership)
 

@@ -282,6 +282,31 @@ class CaseRatingResultSerializer(serializers.Serializer):
     satisfied = serializers.BooleanField()
 
 
+class ProposalSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    case_id = serializers.IntegerField(allow_null=True)
+    building_id = serializers.IntegerField()
+    status = serializers.CharField()
+    completed_at = serializers.DateTimeField(allow_null=True)
+    closed_at = serializers.DateTimeField(allow_null=True)
+    current_version = serializers.SerializerMethodField()
+
+    def get_current_version(self, proposal) -> dict | None:
+        version = proposal.current_version
+        if version is None:
+            return None
+        return {field: getattr(version, field) for field in (
+            "number", "purpose", "proposed_action", "amount_vnd", "fund_code",
+            "contractor_name", "expected_schedule",
+        )}
+
+
+class ProposalRatingResultSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    proposal_id = serializers.IntegerField()
+    satisfied = serializers.BooleanField()
+
+
 class LocationSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()

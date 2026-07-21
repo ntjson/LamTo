@@ -231,11 +231,18 @@ class AppendOnlyModel(models.Model):
 
 
 class WorkUpdate(AppendOnlyModel):
-    case = models.ForeignKey(MaintenanceCase, on_delete=models.PROTECT, related_name="updates")
+    case = models.ForeignKey(MaintenanceCase, null=True, blank=True, on_delete=models.PROTECT, related_name="updates")
+    proposal = models.ForeignKey("finance.Proposal", null=True, blank=True, on_delete=models.PROTECT, related_name="updates")
     cause = models.TextField()
     result = models.TextField()
     evidence = models.ManyToManyField(DocumentVersion, through="WorkUpdateEvidence", related_name="work_updates")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=(models.Q(case__isnull=False, proposal__isnull=True) | models.Q(case__isnull=True, proposal__isnull=False)),
+            name="work_update_case_xor_proposal",
+        )]
 
 
 class WorkUpdateEvidence(AppendOnlyModel):
@@ -262,7 +269,13 @@ class CompletionRating(models.Model):
     )
     case = models.ForeignKey(
         MaintenanceCase,
+        null=True,
+        blank=True,
         on_delete=models.PROTECT,
+        related_name="completion_ratings",
+    )
+    proposal = models.ForeignKey(
+        "finance.Proposal", null=True, blank=True, on_delete=models.PROTECT,
         related_name="completion_ratings",
     )
     satisfied = models.BooleanField()
@@ -273,6 +286,15 @@ class CompletionRating(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["resident", "case"],
+                condition=models.Q(case__isnull=False),
                 name="completion_rating_once_per_resident_case",
+            ),
+            models.UniqueConstraint(
+                fields=["resident", "proposal"], condition=models.Q(proposal__isnull=False),
+                name="completion_rating_once_per_resident_proposal",
+            ),
+            models.CheckConstraint(
+                condition=(models.Q(case__isnull=False, proposal__isnull=True) | models.Q(case__isnull=True, proposal__isnull=False)),
+                name="completion_rating_case_xor_proposal",
             ),
         ]

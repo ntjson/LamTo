@@ -66,3 +66,35 @@ def rate_completed_case(resident, case, satisfied, comment="") -> CompletionRati
         case.closed_at = timezone.now()
         case.save(update_fields=["active", "closed_at"])
     return rating
+
+
+@transaction.atomic
+def rate_completed_proposal(resident, proposal, satisfied, comment="") -> CompletionRating:
+    from lamto.finance.models import Proposal
+    proposal = Proposal.objects.select_for_update().filter(
+        pk=getattr(proposal, "pk", None), case__isnull=True
+    ).first()
+    if proposal is None:
+        raise ValidationError("Standalone proposal is required.")
+    if proposal.completed_at is None:
+        raise ValidationError("Only completed proposals can be rated.")
+    if type(satisfied) is not bool:
+        raise ValidationError("Satisfied must be a boolean.")
+    if comment is None:
+        comment = ""
+    if not isinstance(comment, str) or len(comment.strip()) > 500:
+        raise ValidationError("Rating comment must be text of at most 500 characters.")
+    occupancy = ResidentOccupancy.objects.filter(
+        user=resident, active=True, unit__building_id=proposal.building_id
+    ).first()
+    if occupancy is None:
+        raise PermissionDenied("Active occupancy in the building is required to rate work.")
+    if CompletionRating.objects.filter(resident=resident, proposal=proposal).exists():
+        raise ValidationError("This proposal has already been rated by this resident.")
+    rating = CompletionRating.objects.create(
+        resident=resident, proposal=proposal, satisfied=satisfied,
+        comment=comment.strip(), created_at=timezone.now(),
+    )
+    record_audit(resident, None, "work.rate", "CompletionRating", str(rating.pk), "accepted",
+                 {"occupancy_id": occupancy.pk, "proposal_id": proposal.pk})
+    return rating

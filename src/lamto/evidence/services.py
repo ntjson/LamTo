@@ -42,12 +42,12 @@ HASH_PAYLOAD_SHAPES = frozenset({"hash", "hashes", "bytes32"})
 EVIDENCE_PAYLOAD_SCHEMAS = {
     EvidenceType.PROPOSAL_CREATED: ({
         "proposal_id": "id", "proposal_version": "positive_int", "record_id": "id",
-        "case_id": "id", "report_id": "id",
         "amount_vnd": "money", "proposal_snapshot_hash": "hash",
-        "case_snapshot_hash": "hash",
-        "report_snapshot_hash": "hash", "quotation_original_hash": "hash",
+        "quotation_original_hash": "hash",
         "quotation_redacted_hash": "hash",
-    }, {"estimated_amount_vnd": "money", "photo_hash": "hash", "photo_hashes": "hashes"}),
+    }, {"building_id": "id", "case_id": "id", "report_id": "id", "case_snapshot_hash": "hash",
+        "report_snapshot_hash": "hash", "estimated_amount_vnd": "money",
+        "photo_hash": "hash", "photo_hashes": "hashes"}),
     EvidenceType.WORK_ACCEPTANCE: ({
         "case_id": "id", "actual_cost_vnd": "money",
         "acceptance_timestamp": "timestamp", "invoice_original_hash": "hash",

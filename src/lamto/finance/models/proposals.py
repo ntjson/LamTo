@@ -23,17 +23,30 @@ class InsertOnlyModel(models.Model):
 class Proposal(models.Model):
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Draft"
-        IN_REVIEW = "IN_REVIEW", "In review"
-        NORMAL_AUTHORIZED = "NORMAL_AUTHORIZED", "Normal authorized"
-        REJECTED = "REJECTED", "Rejected"
+        PUBLISHED = "PUBLISHED", "Published"
+        NOT_PROCEEDING = "NOT_PROCEEDING", "Not proceeding"
+        IN_PROGRESS = "IN_PROGRESS", "In progress"
+        COMPLETED = "COMPLETED", "Completed"
+        CLOSED = "CLOSED", "Closed"
 
-    case = models.OneToOneField(MaintenanceCase, on_delete=models.PROTECT, related_name="proposal")
+    case = models.OneToOneField(MaintenanceCase, null=True, blank=True, on_delete=models.PROTECT, related_name="proposal")
+    building = models.ForeignKey("accounts.Building", on_delete=models.PROTECT, related_name="proposals")
     creator_membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
     current_version = models.ForeignKey(
         "ProposalVersion", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )
+    decided_by = models.ForeignKey(ManagementMembership, null=True, blank=True, on_delete=models.PROTECT, related_name="decided_proposals")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.TextField(blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.building_id is None and self.case_id:
+            self.building_id = self.case.building_id
+        return super().save(*args, **kwargs)
 
 class ProposalVersion(InsertOnlyModel):
     proposal = models.ForeignKey(Proposal, on_delete=models.PROTECT, related_name="versions")
@@ -42,11 +55,13 @@ class ProposalVersion(InsertOnlyModel):
     contractor_name = models.CharField(max_length=255)
     fund_code = models.CharField(max_length=32, default="GENERAL")
     purpose = models.TextField()
+    proposed_action = models.TextField()
+    expected_schedule = models.CharField(max_length=200)
     snapshot = models.JSONField()
     snapshot_hash = models.CharField(max_length=64)
     creator_membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
-    creator_wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
-    creator_signature = models.CharField(max_length=132)
+    creator_wallet = models.ForeignKey(SignerWallet, null=True, blank=True, on_delete=models.PROTECT)
+    creator_signature = models.CharField(max_length=132, blank=True)
     outbox_event = models.OneToOneField(
         BlockchainOutboxEvent, on_delete=models.PROTECT, related_name="proposal_version"
     )

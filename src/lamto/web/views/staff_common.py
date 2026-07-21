@@ -265,7 +265,7 @@ def pop_sign_confirmation(request):
     return request.session.pop(SESSION_SIGN_CONFIRMATION_KEY, None)
 
 # Proposal statuses that clear the proposal stage.
-_PROPOSAL_AUTHORIZED = frozenset({"NORMAL_AUTHORIZED"})
+_PROPOSAL_AUTHORIZED = frozenset({"IN_PROGRESS", "COMPLETED"})
 _WORK_DONE = frozenset({"AWAITING_ACCEPTANCE", "ACCEPTED", "CLOSED"})
 _WORK_CLOSED = frozenset({"ACCEPTED", "CLOSED"})
 
@@ -407,7 +407,7 @@ def resolve_accountability_stage(
         proposal_status = getattr(proposal, "status", None) if proposal else None
         if proposal_status in _PROPOSAL_AUTHORIZED:
             return "acceptance", False, False
-        if proposal_status == Proposal.Status.REJECTED or proposal_status == "REJECTED":
+        if proposal_status == Proposal.Status.NOT_PROCEEDING or proposal_status in {"NOT_PROCEEDING", "REJECTED"}:
             return "proposal", True, False
         if proposal is not None:
             return "proposal", False, False

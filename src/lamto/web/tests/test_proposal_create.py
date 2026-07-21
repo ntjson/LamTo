@@ -58,7 +58,7 @@ class ProposalCreateTests(TestCase):
         session.save()
 
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
-    def test_prepare_then_sign_submits_version(self):
+    def test_publish_submits_platform_signed_version(self):
         self._login_operator()
         url = reverse("web:proposal-create", kwargs={"pk": self.work.pk})
 
@@ -68,44 +68,19 @@ class ProposalCreateTests(TestCase):
                 "action": "prepare",
                 "amount_vnd": 5_000_000,
                 "contractor_name": "Acme Co",
+                "fund_code": "GENERAL",
+                "purpose": "Elevator noise",
+                "proposed_action": "Replace bearings",
+                "expected_schedule": "August 2026",
                 "quotation_original": _pdf("q.pdf", b"orig"),
                 "quotation_redacted": _pdf("qr.pdf", b"redacted differs"),
             },
         )
-        self.assertEqual(prepare.status_code, 200)
-        self.assertContains(prepare, "data-signed-form")
+        self.assertEqual(prepare.status_code, 302)
         proposal = Proposal.objects.get(case=self.work)
-        self.assertIsNone(proposal.current_version_id)
-        original = DocumentVersion.objects.get(
-            document__building=self.seed.building,
-            document__kind=Document.Kind.QUOTATION,
-            variant=DocumentVersion.Variant.ORIGINAL,
-        )
-
-        payload = build_proposal_evidence_payload(proposal, 5_000_000, "Acme Co", [original])
-        event_id = "0x" + "11" * 32
-        typed = build_evidence_typed_data(
-            event_id, EvidenceType.PROPOSAL_CREATED, "0x" + payload_hash(payload), ZERO_HASH
-        )
-        signature = Account.sign_message(
-            encode_typed_data(full_message=typed), self.account.key
-        ).signature.hex()
-
-        submit = self.client.post(
-            url,
-            {
-                "action": "submit",
-                "amount_vnd": 5_000_000,
-                "contractor_name": "Acme Co",
-                "quotation_original_id": original.pk,
-                "proposal_id": proposal.pk,
-                "event_id": event_id,
-                "signature": signature,
-            },
-        )
-        self.assertRedirects(submit, reverse("web:proposal-detail", kwargs={"pk": proposal.pk}))
         version = ProposalVersion.objects.get(proposal=proposal)
         self.assertEqual(version.amount_vnd, 5_000_000)
+        self.assertTrue(version.outbox_event.signer_address)
         self.work.refresh_from_db()
 
     def test_second_manager_can_open_proposal_create(self):
