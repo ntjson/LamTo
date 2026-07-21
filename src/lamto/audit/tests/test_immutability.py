@@ -3,7 +3,14 @@ from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 
-from lamto.accounts.models import Building, Organization, OrganizationMembership, ResidentOccupancy, Unit
+from lamto.accounts.models import (
+    Building,
+    ManagementMembership,
+    Organization,
+    OrganizationMembership,
+    ResidentOccupancy,
+    Unit,
+)
 from lamto.audit.models import AuditEvent
 from lamto.audit.services import record_audit
 
@@ -14,12 +21,29 @@ class AuditImmutabilityTests(TestCase):
             email="board@example.test", password="secret", display_name="Board Member"
         )
         building = Building.objects.create(name="Minh An Residence")
+        return ManagementMembership.objects.create(user=user, building=building)
+
+    def test_record_audit_rejects_organization_membership(self):
+        user = get_user_model().objects.create_user(
+            email="legacy@example.test", password="secret", display_name="Legacy Member"
+        )
+        building = Building.objects.create(name="Legacy Building")
         organization = Organization.objects.create(
             building=building, name="Management Board", kind=Organization.Kind.BOARD
         )
-        return OrganizationMembership.objects.create(
+        membership = OrganizationMembership.objects.create(
             user=user, organization=organization, role=OrganizationMembership.Role.BOARD
         )
+
+        with self.assertRaises(PermissionDenied):
+            record_audit(
+                actor=user,
+                membership=membership,
+                action="proposal.create",
+                target_type="ProposalVersion",
+                target_id="42",
+                result="allowed",
+            )
 
     def test_audit_is_append_only(self):
         membership = self.make_board_membership()

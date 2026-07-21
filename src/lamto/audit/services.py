@@ -1,6 +1,6 @@
 from django.core.exceptions import PermissionDenied
 
-from lamto.accounts.models import OrganizationMembership, ResidentOccupancy
+from lamto.accounts.models import ManagementMembership, ResidentOccupancy
 
 from .models import AuditEvent
 
@@ -18,11 +18,11 @@ def record_audit(actor, membership, action, target_type, target_id, result, meta
             pass
         elif (
             (action, target_type) != ("document.download", "DocumentVersion")
-            or OrganizationMembership.objects.filter(user_id=getattr(actor, "pk", None), active=True).exists()
+            or ManagementMembership.objects.filter(user_id=getattr(actor, "pk", None), active=True).exists()
             or (occupancy_id is not None and not valid_occupancy)
         ):
             raise PermissionDenied("Audit membership attribution is invalid.")
-    elif not OrganizationMembership.objects.filter(
+    elif not isinstance(membership, ManagementMembership) or not ManagementMembership.objects.filter(
         pk=membership.pk, user_id=getattr(actor, "pk", None), active=True
     ).exists():
         raise PermissionDenied("Audit membership attribution is invalid.")
