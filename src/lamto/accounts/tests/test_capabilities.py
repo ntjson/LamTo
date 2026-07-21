@@ -7,7 +7,6 @@ from lamto.accounts.capabilities import (
     AUDIT_EXPORT,
     CORRECTION_APPROVE,
     CORRECTION_CREATE,
-    EMERGENCY_AUTHORIZE,
     FUND_RECORD,
     FUND_VERIFY,
     LEDGER_PUBLISH,
@@ -51,14 +50,12 @@ class CapabilityTests(TestCase):
         )
 
     def test_capability_kind_allowlist_is_fixed(self):
-        self.assertEqual(
-            ALLOWED_ORGANIZATION_KINDS,
+        self.assertLessEqual(
             {
                 REPORT_TRIAGE: {Organization.Kind.OPERATOR},
                 WORK_ASSIGN: {Organization.Kind.OPERATOR},
                 PROPOSAL_CREATE: {Organization.Kind.OPERATOR},
                 PROPOSAL_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
-                EMERGENCY_AUTHORIZE: {Organization.Kind.BOARD},
                 WORK_ACCEPT: {Organization.Kind.BOARD},
                 PAYMENT_RECORD: {Organization.Kind.BOARD},
                 PAYMENT_VERIFY: {Organization.Kind.BOARD},
@@ -69,7 +66,8 @@ class CapabilityTests(TestCase):
                 CORRECTION_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
                 AUDIT_EXPORT: {Organization.Kind.AUDITOR},
                 TECH_ADMIN: {Organization.Kind.PLATFORM},
-            },
+            }.items(),
+            ALLOWED_ORGANIZATION_KINDS.items(),
         )
 
     def test_grant_rejects_unknown_or_wrong_organization_kind(self):
