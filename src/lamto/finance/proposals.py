@@ -81,7 +81,7 @@ def _submission_snapshot(proposal, amount_vnd, contractor_name, pairs, number):
         "report_id": report.pk,
         "amount_vnd": amount_vnd,
         "contractor_name": contractor_name,
-        "fund_code": "MAINTENANCE",
+        "fund_code": "GENERAL",
         "purpose": case.category,
         "quotation_versions": quotation_snapshot,
     }

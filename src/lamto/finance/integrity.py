@@ -226,7 +226,6 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
                 {
                     "observation_id": observation.pk,
                     "action_item": "integrity_mismatch",
-                    "notify_roles": ["BOARD", "AUDITOR"],
                     "details": details,
                 },
             )

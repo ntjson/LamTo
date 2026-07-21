@@ -88,7 +88,6 @@ def _record_gate_failure(
                 "expected_hash": expected_hash or "",
                 "actual_hash": actual_hash or "",
                 "action_item": "publication_integrity",
-                "notify_roles": ["BOARD", "AUDITOR"],
             },
         )
     return failure

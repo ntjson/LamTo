@@ -40,7 +40,7 @@ class ProposalVersion(InsertOnlyModel):
     number = models.PositiveIntegerField()
     amount_vnd = models.BigIntegerField()
     contractor_name = models.CharField(max_length=255)
-    fund_code = models.CharField(max_length=32, default="MAINTENANCE")
+    fund_code = models.CharField(max_length=32, default="GENERAL")
     purpose = models.TextField()
     snapshot = models.JSONField()
     snapshot_hash = models.CharField(max_length=64)
