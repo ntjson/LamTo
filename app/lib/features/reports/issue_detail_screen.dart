@@ -166,7 +166,7 @@ class _RateCaseSheet extends ConsumerStatefulWidget {
 }
 
 class _RateCaseSheetState extends ConsumerState<_RateCaseSheet> {
-  bool? _satisfied;
+  bool _satisfied = true;
   final _comment = TextEditingController();
   bool _busy = false;
   String? _error;
@@ -201,8 +201,7 @@ class _RateCaseSheetState extends ConsumerState<_RateCaseSheet> {
               ButtonSegment(value: true, label: Text(l10n.rateSatisfied)),
               ButtonSegment(value: false, label: Text(l10n.rateNotSatisfied)),
             ],
-            selected: _satisfied == null ? {} : {_satisfied!},
-            emptySelectionAllowed: true,
+            selected: {_satisfied},
             onSelectionChanged: _busy
                 ? null
                 : (selection) => setState(() => _satisfied = selection.first),
@@ -221,7 +220,7 @@ class _RateCaseSheetState extends ConsumerState<_RateCaseSheet> {
           ],
           const SizedBox(height: 8),
           FilledButton(
-            onPressed: _busy || _satisfied == null ? null : _submit,
+            onPressed: _busy ? null : _submit,
             child: Text(l10n.rateSubmit),
           ),
         ],
@@ -240,7 +239,7 @@ class _RateCaseSheetState extends ConsumerState<_RateCaseSheet> {
           .read(reportsRepositoryProvider)
           .rateCase(
             caseId: widget.caseId,
-            satisfied: _satisfied!,
+            satisfied: _satisfied,
             comment: _comment.text.trim(),
           );
       if (mounted) Navigator.pop(context, true);

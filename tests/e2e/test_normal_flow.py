@@ -9,6 +9,18 @@ from lamto.testing.factories import DEFAULT_AMOUNT_VND
 pytestmark = pytest.mark.django_db
 
 
+def test_direct_outcome_c_happy_path(seeded_pilot):
+    seeded_pilot.submit_report("Lift doors stick", "Building B / Lift 2")
+    seeded_pilot.confirm_triage_case()
+    seeded_pilot.start_assigned_work()
+    seeded_pilot.publish_work_progress()
+    seeded_pilot.complete_assigned_work()
+
+    rating = seeded_pilot.rate_completed_case(satisfied=True)
+
+    assert rating.satisfied is True
+
+
 def test_realistic_normal_flow(page, seeded_pilot):
     seeded_pilot.submit_report(
         "Elevator shakes heavily",

@@ -127,4 +127,36 @@ void main() {
     expect(find.text('Cảm ơn bạn đã đánh giá.'), findsOneWidget);
     expect(find.text('Đánh giá công việc'), findsNothing); // refreshed
   });
+
+  testWidgets('rates eligible case as not satisfied', (tester) async {
+    final repo = _FakeRepo(_detail(canRate: true));
+    await _pump(tester, repo);
+    await tester.tap(find.text('Đánh giá công việc'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Không hài lòng'));
+    await tester.pump();
+    await tester.tap(find.text('Gửi đánh giá'));
+    await tester.pumpAndSettle();
+
+    expect(repo.ratings.single, (1, false, ''));
+  });
+
+  testWidgets('retapping the selected rating keeps a valid selection', (
+    tester,
+  ) async {
+    final repo = _FakeRepo(_detail(canRate: true));
+    await _pump(tester, repo);
+    await tester.tap(find.text('Đánh giá công việc'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hài lòng'));
+    await tester.pump();
+    await tester.tap(find.text('Hài lòng'));
+    await tester.pump();
+    await tester.tap(find.text('Gửi đánh giá'));
+    await tester.pumpAndSettle();
+
+    expect(repo.ratings.single, (1, true, ''));
+  });
 }
