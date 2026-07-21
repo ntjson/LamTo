@@ -5,8 +5,6 @@ from django.test import TestCase
 
 from lamto.accounts.models import (
     Building,
-    Organization,
-    OrganizationMembership,
     ResidentOccupancy,
     Unit,
 )
@@ -186,18 +184,8 @@ class ReportSubmissionTests(TestCase):
 
         self.assertEqual(list(report.photos.values_list("version_id", flat=True)), [photo.id])
 
-    def test_submission_with_active_membership_persists_report_job_and_audit(self):
+    def test_submission_attributes_audit_to_resident_without_membership(self):
         resident, unit, location = self.make_resident_unit_and_location()
-        organization = Organization.objects.create(
-            building=unit.building,
-            name="Resident Council",
-            kind=Organization.Kind.RESIDENT_REP,
-        )
-        OrganizationMembership.objects.create(
-            user=resident,
-            organization=organization,
-            role=OrganizationMembership.Role.RESIDENT_REP,
-        )
 
         report = submit_report(resident, unit, "Elevator shakes", location, [])
 

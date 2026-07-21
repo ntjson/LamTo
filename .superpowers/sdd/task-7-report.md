@@ -22,3 +22,10 @@ The initial run using the shared `test_lamto` database could not establish a beh
 - Confirmed no `_operator_membership`, `_maintenance_membership`, maintenance capability imports, organization membership lookups, or organization-to-building traversal remain in the cut-over maintenance services/tests.
 - Audit calls receive the `ManagementMembership` returned by `require_management`.
 - Full-wave tests intentionally not run; the task brief expects later-wave failures outside this module.
+
+## Review follow-up
+
+- Removed the last irrelevant `Organization` / `OrganizationMembership.Role.RESIDENT_REP` setup from the resident reporting audit test.
+- Renamed the test to state its actual contract: the audit actor is the resident and `membership_id` is null.
+- Focused verification: `1 passed in 4.92s`.
+- Maintenance module verification: `42 passed in 11.15s`.
