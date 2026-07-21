@@ -284,7 +284,6 @@ def ledger_detail(request, pk):
             "approvals": payload.get("approvals") or {},
             "verification": detail["verification"],
             "redacted_docs": detail["redacted_docs"],
-            "corrections": detail["corrections"],
             "transaction_ids": detail["transaction_ids"],
             "emergency": detail["emergency"],
             "integrity_label": integrity["label"],

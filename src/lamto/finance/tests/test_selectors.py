@@ -136,7 +136,7 @@ class FundSeriesTests(TestCase):
         assert by_start[date(2026, 7, 1)]["outflows_vnd"] == -5_000_000
         assert series[-1]["balance_vnd"] == 0
 
-    def test_positive_corrections_are_inflows_and_negative_corrections_outflows(self):
+    def test_signed_adjustments_are_classified_by_amount(self):
         entries = [
             (self._hcm(2026, 7, 1), "REVERSAL", 5_000_000),
             (self._hcm(2026, 7, 2), "REPLACEMENT", 2_000_000),

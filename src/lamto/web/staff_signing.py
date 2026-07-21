@@ -173,7 +173,6 @@ def _referenced_document_ids():
     """Document pks whose versions are linked from domain evidence FKs."""
     from lamto.finance.models import (
         AcceptanceRecord,
-        CorrectionDocument,
         MaintenanceFundEntry,
         PaymentEvidence,
         ProposalDocument,
@@ -216,9 +215,6 @@ def _referenced_document_ids():
                 model.objects.exclude(**{field: None}).values_list(field, flat=True)
             )
     protected |= _docs_from_version_ids(
-        CorrectionDocument.objects.values_list("version_id", flat=True)
-    )
-    protected |= _docs_from_version_ids(
         ReportPhoto.objects.values_list("version_id", flat=True)
     )
     protected |= _docs_from_version_ids(
@@ -260,7 +256,7 @@ def cleanup_stale_prepared_ops(*, older_than_hours=24, dry_run=False):
     Removes:
     - Document rows whose versions are all older than the threshold and that
       are not referenced by any domain evidence FK (proposal docs, fund,
-      acceptance, payment, corrections, report photos, work-update evidence).
+      acceptance, payment, report photos, work-update evidence).
     - Proposal rows still without a current_version older than threshold.
 
     Also purges private-storage blobs for deleted document versions.

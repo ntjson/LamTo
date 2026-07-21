@@ -84,13 +84,6 @@ VALID_PAYLOADS = {
         "resident_payload_hash": HASH, "document_hashes": [HASH],
         "publication_timestamp": TIMESTAMP, "drill": False,
     },
-    EvidenceType.CORRECTION: {
-        "correction_id": 1, "original_event_id": "0x" + "11" * 32,
-        "original_hash": HASH, "replacement_hashes": [OTHER_HASH],
-        "reason_digest": HASH, "decision": "APPROVE",
-        "actor_organization_id": 1, "publisher_snapshot_hash": HASH,
-        "correction_timestamp": TIMESTAMP,
-    },
     EvidenceType.FUND_ENTRY: {
         "fund_entry_id": 1, "entry_type": "INFLOW", "amount_vnd": 1_000_000,
         "source_document_original_hash": HASH,
@@ -522,7 +515,9 @@ class EvidenceOutboxTests(TestCase):
             )
 
     def test_all_evidence_types_have_complete_payload_schemas(self):
-        self.assertEqual(set(VALID_PAYLOADS), set(EvidenceType))
+        self.assertEqual(
+            set(VALID_PAYLOADS), set(EvidenceType) - {EvidenceType.RESERVED_10}
+        )
         for event_type, payload in VALID_PAYLOADS.items():
             with self.subTest(event_type=event_type):
                 _validate_payload(event_type, payload)

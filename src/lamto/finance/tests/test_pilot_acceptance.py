@@ -29,16 +29,6 @@ from lamto.documents.models import Document
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
 from lamto.evidence.signatures import build_evidence_typed_data
-from lamto.finance.corrections import (
-    allocate_correction_id,
-    allocate_correction_publication_id,
-    build_correction_evidence_typed_data,
-    create_correction,
-    decide_correction,
-    finalize_correction_publication,
-    prepare_correction_publication,
-    _correction_resident_payload,
-)
 from lamto.finance.emergencies import (
     authorize_emergency,
     build_emergency_authorization_evidence_typed_data,
@@ -47,7 +37,6 @@ from lamto.finance.emergencies import (
 )
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import (
-    CorrectionDecision,
     EmergencyRatification,
     MaintenanceFundEntry,
     PublishedLedgerEntry,
@@ -101,19 +90,6 @@ class PilotAcceptanceTests(TestCase):
             create_sample_report=False,
         )
         self.driver = PilotDomainDriver(self.seed)
-
-    def sign_correction(self, membership, **kwargs):
-        event_id = kwargs.pop("event_id", new_event_id())
-        typed = build_correction_evidence_typed_data(
-            event_id=event_id,
-            actor_organization_id=membership.organization_id,
-            **kwargs,
-        )
-        signature = Account.sign_message(
-            encode_typed_data(full_message=typed),
-            self.seed.accounts[membership.pk].key,
-        ).signature.hex()
-        return signature, event_id
 
     def test_realistic_normal_flow(self):
         driver = self.driver
@@ -411,7 +387,7 @@ class PilotAcceptanceTests(TestCase):
                 proof_original,
             )
 
-    def test_tampered_document_blocks_publish_and_correction_preserves_original(self):
+    def test_tampered_document_blocks_publish(self):
         driver = self.driver
         driver.prepare_locally_approved_normal_work()
         driver.complete_assigned_work()
@@ -427,177 +403,6 @@ class PilotAcceptanceTests(TestCase):
         blocked = driver.attempt_publication()
         self.assertTrue(blocked.blocked)
         self.assertIn("mismatch", blocked.reason.lower())
-
-        # Fresh published entry for correction path.
-        seed2 = seed_pilot_world(
-            building_name=f"Pilot Correct {self._testMethodName}",
-            create_sample_report=False,
-        )
-        d2 = PilotDomainDriver(seed2)
-        d2.prepare_locally_approved_normal_work()
-        d2.complete_assigned_work()
-        d2.accept_and_record_payment()
-        d2.verify_payment()
-        d2.confirm_all_chain_events()
-        d2.sign_publication_snapshot()
-        d2.confirm_all_chain_events()
-        entry = PublishedLedgerEntry.objects.get(case__building=seed2.building)
-        original_cost = entry.actual_cost_vnd
-        original_published_at = entry.published_at
-        balance_before = d2.fund_balance()
-        new_amount = original_cost - 500_000
-
-        operator = seed2.roles["correction_operator"]
-        board = seed2.roles["correction_board"]
-        rep = seed2.roles["resident_representative"]
-        publisher = seed2.roles["eligible_publisher"]
-        evidence_o, _ = d2.seed.document_pair(
-            Document.Kind.CORRECTION_EVIDENCE, operator.user, "correction"
-        )
-        correction_id = allocate_correction_id()
-        create_ts = timezone.now()
-        replacement_hashes = [evidence_o.sha256]
-        event_id = new_event_id()
-        sig = Account.sign_message(
-            encode_typed_data(
-                full_message=build_correction_evidence_typed_data(
-                    correction_id=correction_id,
-                    original_event_id=entry.snapshot.outbox_event.event_id,
-                    original_hash=entry.snapshot.outbox_event.payload_hash,
-                    replacement_hashes=replacement_hashes,
-                    reason="Invoice arithmetic error",
-                    decision="APPROVE",
-                    actor_organization_id=operator.organization_id,
-                    publisher_snapshot_hash=ZERO_BARE,
-                    event_id=event_id,
-                    timestamp=create_ts,
-                    previous_hash="0x" + entry.snapshot.outbox_event.payload_hash,
-                )
-            ),
-            seed2.accounts[operator.pk].key,
-        ).signature.hex()
-        correction = create_correction(
-            entry,
-            operator,
-            "Invoice arithmetic error",
-            {"actual_cost_vnd": new_amount, "contractor_name": entry.contractor_name},
-            [evidence_o],
-            sig,
-            event_id,
-            correction_id=correction_id,
-            timestamp=create_ts,
-        )
-        confirm_event(correction.outbox_event)
-
-        board_ts = timezone.now()
-        board_event = new_event_id()
-        board_typed = build_correction_evidence_typed_data(
-            correction_id=correction.pk,
-            original_event_id=entry.snapshot.outbox_event.event_id,
-            original_hash=entry.snapshot.outbox_event.payload_hash,
-            replacement_hashes=replacement_hashes,
-            reason="Board accepts",
-            decision="APPROVE",
-            actor_organization_id=board.organization_id,
-            publisher_snapshot_hash=ZERO_BARE,
-            event_id=board_event,
-            timestamp=board_ts,
-            previous_hash="0x" + correction.outbox_event.payload_hash,
-        )
-        board_sig = Account.sign_message(
-            encode_typed_data(full_message=board_typed), seed2.accounts[board.pk].key
-        ).signature.hex()
-        board_decision = decide_correction(
-            correction,
-            board,
-            CorrectionDecision.Stage.BOARD,
-            "APPROVE",
-            "Board accepts",
-            board_sig,
-            board_event,
-            timestamp=board_ts,
-        )
-        confirm_event(board_decision.outbox_event)
-
-        rep_ts = timezone.now()
-        rep_event = new_event_id()
-        rep_typed = build_correction_evidence_typed_data(
-            correction_id=correction.pk,
-            original_event_id=entry.snapshot.outbox_event.event_id,
-            original_hash=entry.snapshot.outbox_event.payload_hash,
-            replacement_hashes=replacement_hashes,
-            reason="Rep co-approves",
-            decision="APPROVE",
-            actor_organization_id=rep.organization_id,
-            publisher_snapshot_hash=ZERO_BARE,
-            event_id=rep_event,
-            timestamp=rep_ts,
-            previous_hash="0x" + board_decision.outbox_event.payload_hash,
-        )
-        rep_sig = Account.sign_message(
-            encode_typed_data(full_message=rep_typed), seed2.accounts[rep.pk].key
-        ).signature.hex()
-        rep_decision = decide_correction(
-            correction,
-            rep,
-            CorrectionDecision.Stage.RESIDENT_REP,
-            "APPROVE",
-            "Rep co-approves",
-            rep_sig,
-            rep_event,
-            timestamp=rep_ts,
-        )
-        confirm_event(rep_decision.outbox_event)
-
-        snapshot_id = allocate_correction_publication_id()
-        pub_ts = timezone.now()
-        resident_payload_hash = payload_hash(_correction_resident_payload(correction))
-        pub_event = new_event_id()
-        pub_typed = build_correction_evidence_typed_data(
-            correction_id=correction.pk,
-            original_event_id=entry.snapshot.outbox_event.event_id,
-            original_hash=entry.snapshot.outbox_event.payload_hash,
-            replacement_hashes=replacement_hashes,
-            reason=correction.reason,
-            decision="APPROVE",
-            actor_organization_id=publisher.organization_id,
-            publisher_snapshot_hash=resident_payload_hash,
-            event_id=pub_event,
-            timestamp=pub_ts,
-            previous_hash="0x" + rep_decision.outbox_event.payload_hash,
-        )
-        pub_sig = Account.sign_message(
-            encode_typed_data(full_message=pub_typed),
-            seed2.accounts[publisher.pk].key,
-        ).signature.hex()
-        snapshot = prepare_correction_publication(
-            correction,
-            publisher,
-            pub_sig,
-            pub_event,
-            snapshot_id=snapshot_id,
-            timestamp=pub_ts,
-        )
-        confirm_event(snapshot.outbox_event)
-        first = finalize_correction_publication(snapshot.pk)
-        second = finalize_correction_publication(snapshot.pk)
-        self.assertEqual(first.pk, second.pk)
-
-        entry.refresh_from_db()
-        self.assertEqual(entry.actual_cost_vnd, original_cost)
-        self.assertEqual(entry.published_at, original_published_at)
-        reverse = MaintenanceFundEntry.objects.get(
-            correction=correction, entry_type=MaintenanceFundEntry.EntryType.REVERSAL
-        )
-        replacement = MaintenanceFundEntry.objects.get(
-            correction=correction, entry_type=MaintenanceFundEntry.EntryType.REPLACEMENT
-        )
-        self.assertEqual(reverse.amount_vnd, original_cost)
-        self.assertEqual(replacement.amount_vnd, -new_amount)
-        self.assertEqual(
-            fund_balance(seed2.building.pk, verified_only=True),
-            balance_before + original_cost - new_amount,
-        )
 
     def test_backup_restore_and_outbox_replay_idempotent_hashes(self):
         driver = self.driver

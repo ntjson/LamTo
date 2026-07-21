@@ -93,13 +93,6 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
         "resident_payload_hash": "hash", "document_hashes": "hashes",
         "publication_timestamp": "timestamp", "drill": "bool",
     }, {"emergency_outcome_hash": "hash"}),
-    EvidenceType.CORRECTION: ({
-        "correction_id": "id", "original_event_id": "bytes32",
-        "original_hash": "hash", "replacement_hashes": "hashes",
-        "reason_digest": "hash", "decision": APPROVAL,
-        "actor_organization_id": "id", "publisher_snapshot_hash": "hash",
-        "correction_timestamp": "timestamp",
-    }, {}),
     EvidenceType.FUND_ENTRY: ({
         "fund_entry_id": "id", "entry_type": frozenset({"OPENING", "INFLOW"}),
         "amount_vnd": "money", "source_document_original_hash": "hash",

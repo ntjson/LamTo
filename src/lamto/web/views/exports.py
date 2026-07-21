@@ -20,7 +20,6 @@ from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import (
     ApprovalDecision,
-    Correction,
     MaintenanceFundEntry,
     VerificationObservation,
 )
@@ -101,8 +100,6 @@ def audit_export(request):
             header, rows = _outbox_rows(building_id)
         elif kind == "observations":
             header, rows = _observation_rows(building_id)
-        elif kind == "corrections":
-            header, rows = _correction_rows(building_id)
         else:
             kind = "audit_events"
             header, rows = _audit_event_rows(building_id)
@@ -208,7 +205,6 @@ def _fund_entry_rows(building_id):
             ]
         )
     return header, rows
-
 
 def _approval_rows(building_id):
     header = [
@@ -350,41 +346,6 @@ def _observation_rows(building_id):
                 obs.result,
                 details,
                 obs.observed_at.isoformat() if obs.observed_at else "",
-            ]
-        )
-    return header, rows
-
-
-def _correction_rows(building_id):
-    header = [
-        "id",
-        "original_entry_id",
-        "operator_membership_id",
-        "reason",
-        "replacement_payload_hash",
-        "wallet_address",
-        "outbox_event_id",
-        "transaction_hash",
-        "created_at",
-    ]
-    rows = []
-    for corr in (
-        Correction.objects.filter(original_entry__case__building_id=building_id)
-        .select_related("wallet", "outbox_event", "operator")
-        .order_by("id")
-        .iterator(chunk_size=200)
-    ):
-        rows.append(
-            [
-                corr.id,
-                corr.original_entry_id,
-                corr.operator_id,
-                corr.reason,
-                corr.replacement_payload_hash,
-                corr.wallet.address if corr.wallet_id else "",
-                corr.outbox_event.event_id if corr.outbox_event_id else "",
-                corr.outbox_event.transaction_hash if corr.outbox_event_id else "",
-                corr.created_at.isoformat() if corr.created_at else "",
             ]
         )
     return header, rows

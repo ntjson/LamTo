@@ -1,11 +1,4 @@
 from .approvals import ApprovalDecision
-from .corrections import (
-    Correction,
-    CorrectionDecision,
-    CorrectionDocument,
-    CorrectionPublicationSnapshot,
-    VerificationObservation,
-)
 from .emergencies import EmergencyAuthorization, EmergencyRatification
 from .execution import AcceptanceRecord, PaymentEvidence, PaymentVerification
 from .ledger import (
@@ -15,16 +8,13 @@ from .ledger import (
     PublicationGateFailure,
     PublicationSnapshot,
     PublishedLedgerEntry,
+    VerificationObservation,
 )
 from .proposals import Proposal, ProposalDocument, ProposalVersion
 
 __all__ = [
     "AcceptanceRecord",
     "ApprovalDecision",
-    "Correction",
-    "CorrectionDecision",
-    "CorrectionDocument",
-    "CorrectionPublicationSnapshot",
     "EmergencyAuthorization",
     "EmergencyRatification",
     "FundEntryVerification",

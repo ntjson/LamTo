@@ -79,13 +79,6 @@ class MaintenanceFundEntry(InsertOnlyModel):
         on_delete=models.PROTECT,
         related_name="fund_entries",
     )
-    correction = models.ForeignKey(
-        "Correction",
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="fund_entries",
-    )
     source_key = models.CharField(max_length=128, unique=True)
     recorded_at = models.DateTimeField()
 
@@ -144,6 +137,28 @@ class FundEntryVerification(InsertOnlyModel):
     @property
     def verifier(self):
         return self.membership
+
+
+class VerificationObservation(InsertOnlyModel):
+    class Result(models.TextChoices):
+        VERIFIED = "VERIFIED", "Verified"
+        MISMATCH = "MISMATCH", "Mismatch"
+        UNAVAILABLE = "UNAVAILABLE", "Unavailable"
+
+    published_entry = models.ForeignKey(
+        "PublishedLedgerEntry",
+        on_delete=models.PROTECT,
+        related_name="verification_observations",
+    )
+    result = models.CharField(max_length=16, choices=Result.choices)
+    checked_document_hashes = models.JSONField(default=list)
+    checked_chain_event_ids = models.JSONField(default=list)
+    details = models.JSONField(default=dict)
+    observed_at = models.DateTimeField()
+
+    @property
+    def created_at(self):
+        return self.observed_at
 
 
 class PublicationSnapshot(InsertOnlyModel):

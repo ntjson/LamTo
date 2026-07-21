@@ -5,7 +5,6 @@ from __future__ import annotations
 from lamto.accounts.models import CapabilityGrant, OrganizationMembership
 from lamto.notifications.services import (
     EVENT_CASE_STATUS,
-    EVENT_CORRECTION_STATUS,
     EVENT_DEADLINE_RISK,
     EVENT_EMERGENCY_DEADLINE,
     EVENT_EMERGENCY_OUTCOME,
@@ -264,32 +263,6 @@ def notify_publication(entry):
         subject="Ledger publication",
         body=f"Spending of {entry.actual_cost_vnd} VND published to the resident ledger.",
         event_code=EVENT_PUBLICATION,
-        building=building_id,
-    )
-
-
-def notify_correction_status(correction, status_label: str):
-    building_id = correction.original_entry.case.building_id
-    recipients = (
-        [correction.operator.user]
-        + _users_with_capability(building_id, "correction.approve")
-        + _users_with_capability(building_id, "correction.create")
-    )
-    if getattr(correction, "is_resident_visible", False):
-        from lamto.accounts.models import ResidentOccupancy
-
-        recipients += [
-            o.user
-            for o in ResidentOccupancy.objects.filter(
-                unit__building_id=building_id, active=True
-            ).select_related("user")
-        ]
-    notify_users(
-        recipients,
-        event_key=f"{EVENT_CORRECTION_STATUS}:correction:{correction.pk}:{status_label}",
-        subject=f"Correction {status_label}",
-        body=f"Correction #{correction.pk} is now {status_label}.",
-        event_code=EVENT_CORRECTION_STATUS,
         building=building_id,
     )
 

@@ -32,7 +32,6 @@ EVENT_PAYMENT_RECORDED = "payment.recorded"
 EVENT_PAYMENT_VERIFIED = "payment.verified"
 EVENT_PAYMENT_REJECTED = "payment.rejected"
 EVENT_PUBLICATION = "ledger.publication"
-EVENT_CORRECTION_STATUS = "correction.status"
 EVENT_INTEGRITY_MISMATCH = "integrity.mismatch"
 EVENT_QUARANTINED_UPLOAD = "document.quarantined"
 EVENT_OUTBOX_FAILED = "outbox.failed"
@@ -54,7 +53,6 @@ REQUIRED_IN_APP_EVENT_CODES = frozenset(
         EVENT_PAYMENT_VERIFIED,
         EVENT_PAYMENT_REJECTED,
         EVENT_PUBLICATION,
-        EVENT_CORRECTION_STATUS,
         EVENT_INTEGRITY_MISMATCH,
         EVENT_QUARANTINED_UPLOAD,
         EVENT_OUTBOX_FAILED,
@@ -71,7 +69,6 @@ PREFERENCE_EVENT_CHOICES = (
     (EVENT_EMERGENCY_OUTCOME, "Emergency outcomes"),
     (EVENT_PAYMENT_RECORDED, "Payment actions"),
     (EVENT_PUBLICATION, "Ledger publication"),
-    (EVENT_CORRECTION_STATUS, "Corrections"),
     (EVENT_INTEGRITY_MISMATCH, "Integrity mismatch"),
 )
 
@@ -82,7 +79,6 @@ RESIDENT_PUSH_EVENT_CODES = frozenset(
         EVENT_TRIAGE_STATUS,
         EVENT_WORK_COMPLETED,
         EVENT_PUBLICATION,
-        EVENT_CORRECTION_STATUS,
     }
 )
 

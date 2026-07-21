@@ -15,8 +15,6 @@ from django.utils import timezone
 
 from lamto.accounts.capabilities import (
     AUDIT_EXPORT,
-    CORRECTION_APPROVE,
-    CORRECTION_CREATE,
     EMERGENCY_AUTHORIZE,
     LEDGER_PUBLISH,
     PAYMENT_RECORD,
@@ -33,8 +31,6 @@ from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
     AcceptanceRecord,
     ApprovalDecision,
-    Correction,
-    CorrectionDecision,
     EmergencyAuthorization,
     EmergencyRatification,
     PaymentEvidence,
@@ -133,9 +129,6 @@ def action_items_for(membership: OrganizationMembership) -> list[ActionItem]:
 
     if _has(membership, LEDGER_PUBLISH):
         items.extend(_pending_publication_items(building_id))
-
-    if _has(membership, CORRECTION_APPROVE) or _has(membership, CORRECTION_CREATE):
-        items.extend(_correction_review_items(membership, building_id))
 
     if _has(membership, AUDIT_EXPORT) or membership.role == OrganizationMembership.Role.AUDITOR:
         items.extend(_integrity_mismatch_items(building_id))
@@ -524,52 +517,6 @@ def _pending_publication_items(building_id: int) -> list[ActionItem]:
                 target_id=snap.pk,
                 url=reverse("web:proposal-detail", kwargs={"pk": snap.proposal_id}),
                 priority=17,
-            )
-        )
-    return items
-
-
-def _correction_review_items(membership, building_id: int) -> list[ActionItem]:
-    items = []
-    corrections = (
-        Correction.objects.filter(
-            original_entry__case__building_id=building_id,
-        )
-        .prefetch_related("decisions")
-        .order_by("-created_at")[:40]
-    )
-    stage = None
-    if membership.organization.kind == Organization.Kind.BOARD:
-        stage = CorrectionDecision.Stage.BOARD
-    elif membership.organization.kind == Organization.Kind.RESIDENT_REP:
-        stage = CorrectionDecision.Stage.RESIDENT_REP
-
-    for correction in corrections:
-        if correction.status in {"PUBLISHED", "REJECTED"}:
-            continue
-        if stage and _has(membership, CORRECTION_APPROVE):
-            decided = any(d.stage == stage for d in correction.decisions.all())
-            if decided:
-                continue
-            if stage == CorrectionDecision.Stage.RESIDENT_REP:
-                board_ok = any(
-                    d.stage == CorrectionDecision.Stage.BOARD
-                    and d.decision == CorrectionDecision.Decision.APPROVE
-                    for d in correction.decisions.all()
-                )
-                if not board_ok:
-                    continue
-        items.append(
-            ActionItem(
-                kind="correction_review",
-                title="Correction review",
-                summary=f"Correction #{correction.pk} · {correction.status}",
-                target_type="Correction",
-                target_id=correction.pk,
-                url=reverse("web:proposal-detail", kwargs={"pk": correction.original_entry.proposal_id})
-                if correction.original_entry.proposal_id
-                else reverse("web:action-inbox"),
-                priority=19,
             )
         )
     return items

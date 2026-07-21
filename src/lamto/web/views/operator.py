@@ -531,7 +531,7 @@ def proposal_detail(request, pk):
                         request,
                         "Decision recorded and added to the evidence chain. If approved, "
                         "the proposal moves to the next required approval; if rejected, "
-                        "it returns to the creator for correction.",
+                        "it returns to the creator for revision.",
                     )
                     return redirect("web:proposal-detail", pk=proposal.pk)
             else:

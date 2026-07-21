@@ -135,12 +135,6 @@ class RedactedDocumentSerializer(serializers.Serializer):
     download_url = serializers.CharField()
 
 
-class CorrectionSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    status = serializers.CharField()
-    reason = serializers.CharField()
-
-
 class ProofEventSerializer(serializers.Serializer):
     event_id = serializers.CharField()
     event_type = serializers.IntegerField()
@@ -185,7 +179,6 @@ class LedgerEntryDetailSerializer(serializers.Serializer):
     payload = serializers.JSONField()
     verification = VerificationSerializer(allow_null=True)
     redacted_documents = RedactedDocumentSerializer(many=True)
-    corrections = CorrectionSerializer(many=True)
     proof = ProofSerializer()
 
 

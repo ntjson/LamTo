@@ -13,7 +13,7 @@ class EvidenceType(models.IntegerChoices):
     PAYMENT_RECORDED = 7, "Payment recorded"
     PAYMENT_VERIFIED = 8, "Payment verified"
     PUBLICATION_SNAPSHOT = 9, "Publication snapshot"
-    CORRECTION = 10, "Correction"
+    RESERVED_10 = 10, "Reserved"
     FUND_ENTRY = 11, "Fund entry"
 
 
@@ -109,4 +109,3 @@ def evidence_level(status) -> str:
 def is_settled(status) -> bool:
     """Settled = evidence durably recorded: locally signed or chain-confirmed."""
     return status in SETTLED_STATUSES
-

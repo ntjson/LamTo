@@ -41,7 +41,7 @@ def published_ledger_entry_for_proof(building_id, pk):
     """One settled published entry with relations needed by ``ledger_entry_proof``.
 
     Extends the list selector with acceptance/redacted-doc/payment event joins
-    and corrections prefetch so detail assembly avoids obvious extra queries.
+    so detail assembly avoids obvious extra queries.
     """
     return (
         published_ledger_entries(building_id)
@@ -57,10 +57,7 @@ def published_ledger_entry_for_proof(building_id, pk):
             "payment__verification__outbox_event",
             "proposal__current_version",
         )
-        .prefetch_related(
-            "corrections",
-            "proposal__current_version__approval_decisions__membership__user",
-        )
+        .prefetch_related("proposal__current_version__approval_decisions__membership__user")
         .first()
     )
 
@@ -291,11 +288,6 @@ def ledger_entry_proof(entry):
         ),
         "verification": verification,
         "redacted_docs": redacted_docs,
-        "corrections": [
-            correction
-            for correction in entry.corrections.all()
-            if correction.is_resident_visible
-        ],
         "events": events,
         "transaction_ids": [
             event.transaction_hash for event in events if event.transaction_hash

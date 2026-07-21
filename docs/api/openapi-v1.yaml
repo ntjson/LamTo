@@ -904,19 +904,6 @@ paths:
           description: Resource not found (code=not_found).
 components:
   schemas:
-    Correction:
-      type: object
-      properties:
-        id:
-          type: integer
-        status:
-          type: string
-        reason:
-          type: string
-      required:
-      - id
-      - reason
-      - status
     Device:
       type: object
       properties:
@@ -1051,17 +1038,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RedactedDocument'
-        corrections:
-          type: array
-          items:
-            $ref: '#/components/schemas/Correction'
         proof:
           $ref: '#/components/schemas/Proof'
       required:
       - actual_cost_vnd
       - approvers
       - contractor_name
-      - corrections
       - id
       - integrity_status
       - payload

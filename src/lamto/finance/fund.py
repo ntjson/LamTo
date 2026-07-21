@@ -432,9 +432,6 @@ def _finalized_posting_q():
     ) | Q(
         entry_type__in=FINALIZED_ENTRY_TYPES,
         proposal__published_ledger_entry__isnull=False,
-    ) | Q(
-        entry_type__in=FINALIZED_ENTRY_TYPES,
-        correction_id__isnull=False,
     )
 
 

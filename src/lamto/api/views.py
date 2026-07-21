@@ -384,14 +384,6 @@ class LedgerDetailView(APIView):
                 }
                 for doc in detail["redacted_docs"]
             ],
-            "corrections": [
-                {
-                    "id": correction.pk,
-                    "status": correction.status,
-                    "reason": correction.reason,
-                }
-                for correction in detail["corrections"]
-            ],
             "proof": {
                 "evidence_level": detail["evidence_level"],
                 "anchoring_backend": entry.snapshot.anchoring_backend,

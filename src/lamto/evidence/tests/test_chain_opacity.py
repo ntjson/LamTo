@@ -18,7 +18,10 @@ from lamto.evidence.services import (
 
 class ChainOpacityTests(SimpleTestCase):
     def test_every_event_type_has_a_schema(self):
-        self.assertEqual(set(EVIDENCE_PAYLOAD_SCHEMAS), set(EvidenceType.values))
+        self.assertEqual(
+            set(EVIDENCE_PAYLOAD_SCHEMAS),
+            set(EvidenceType.values) - {EvidenceType.RESERVED_10.value},
+        )
 
     def test_payload_schemas_admit_only_opaque_shapes(self):
         for event_type, (required, optional) in EVIDENCE_PAYLOAD_SCHEMAS.items():

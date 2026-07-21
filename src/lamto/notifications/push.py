@@ -14,18 +14,14 @@ PUSH_COPY = {
     "triage.status": ("Phản ánh đã được phân loại", "Phản ánh của bạn đã được mở thành yêu cầu xử lý."),
     "work.completed": ("Công việc đã hoàn thành", "Vui lòng đánh giá công việc đã thực hiện."),
     "ledger.publication": ("Khoản chi mới được công bố", "Có khoản chi mới trong sổ quỹ tòa nhà."),
-    "correction.status": ("Có điều chỉnh mới", "Một điều chỉnh đã được công bố trong sổ quỹ."),
 }
 _DEFAULT_COPY = ("Thông báo mới", "Bạn có một thông báo mới.")
 
 # Allowlisted entity segment (from event_key) -> app deep-link route type.
-# correction has no resident detail screen (A2): map to notifications so the
-# client allowlist lands on the feed (not ledger with a correction pk / 404).
 DEEP_LINK_TYPES = {
     "report": "report",
     "case": "case",
     "entry": "ledger",
-    "correction": "notifications",
 }
 
 _firebase_app = None

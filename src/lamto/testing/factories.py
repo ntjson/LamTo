@@ -30,8 +30,6 @@ from eth_account.messages import encode_typed_data
 
 from lamto.accounts.capabilities import (
     AUDIT_EXPORT,
-    CORRECTION_APPROVE,
-    CORRECTION_CREATE,
     EMERGENCY_AUTHORIZE,
     FUND_RECORD,
     FUND_VERIFY,
@@ -61,15 +59,6 @@ from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.acceptance import accept_work, build_acceptance_evidence_typed_data
 from lamto.finance.approvals import build_approval_evidence_payload, decide_proposal
-from lamto.finance.corrections import (
-    allocate_correction_id,
-    allocate_correction_publication_id,
-    build_correction_evidence_typed_data,
-    create_correction,
-    decide_correction,
-    finalize_correction_publication,
-    prepare_correction_publication,
-)
 from lamto.finance.emergencies import (
     authorize_emergency,
     build_emergency_authorization_evidence_typed_data,
@@ -89,7 +78,6 @@ from lamto.finance.fund import (
 )
 from lamto.finance.integrity import verify_published_entry
 from lamto.finance.models import (
-    Correction,
     MaintenanceFundEntry,
     Proposal,
     PublicationSnapshot,
@@ -142,8 +130,6 @@ ROLE_KEYS = (
     "fund_verifier",
     "auditor",
     "tech_admin",
-    "correction_operator",
-    "correction_board",
 )
 
 
@@ -347,7 +333,7 @@ def seed_pilot_world(
     operator, operator_account = make_signer(
         building,
         OrganizationMembership.Role.OPERATOR,
-        [REPORT_TRIAGE, WORK_ASSIGN, PROPOSAL_CREATE, CORRECTION_CREATE],
+        [REPORT_TRIAGE, WORK_ASSIGN, PROPOSAL_CREATE],
         email=email("operator"),
         display_name="Pilot Operator",
         password=password,
@@ -356,8 +342,6 @@ def seed_pilot_world(
     seed.accounts[operator.pk] = operator_account
     seed.roles["operator"] = operator
     seed.users["operator"] = operator.user
-    seed.roles["correction_operator"] = operator
-    seed.users["correction_operator"] = operator.user
 
     maintenance_user = get_user_model().objects.create_user(
         email=email("maintenance"),
@@ -388,7 +372,6 @@ def seed_pilot_world(
         ),
         "fund_recorder": ([FUND_RECORD], "Fund Recorder"),
         "fund_verifier": ([FUND_VERIFY], "Fund Verifier"),
-        "correction_board": ([CORRECTION_APPROVE, LEDGER_PUBLISH], "Correction Board"),
     }
     for key, (caps, label) in board_roles.items():
         membership, account = make_signer(
@@ -411,7 +394,7 @@ def seed_pilot_world(
     rep, rep_account = make_signer(
         building,
         OrganizationMembership.Role.RESIDENT_REP,
-        [PROPOSAL_APPROVE, CORRECTION_APPROVE],
+        [PROPOSAL_APPROVE],
         email=email("resident-rep"),
         display_name="Pilot Resident Representative",
         password=password,

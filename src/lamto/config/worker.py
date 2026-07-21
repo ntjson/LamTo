@@ -83,9 +83,7 @@ def process_publication_finalization_batch(*, limit: int = 50) -> ProcessorResul
     name = "publication_finalize"
     try:
         from lamto.evidence.models import SETTLED_STATUSES
-        from lamto.finance.corrections import finalize_correction_publication
         from lamto.finance.models import (
-            CorrectionPublicationSnapshot,
             PublicationSnapshot,
             PublishedLedgerEntry,
         )
@@ -105,21 +103,6 @@ def process_publication_finalization_batch(*, limit: int = 50) -> ProcessorResul
                 count += 1
             except Exception:
                 logger.exception("finalize_publication failed for %s", snapshot.pk)
-
-        corr_pending = (
-            CorrectionPublicationSnapshot.objects.filter(
-                outbox_event__status__in=SETTLED_STATUSES,
-            )
-            .order_by("pk")[:limit]
-        )
-        for snapshot in corr_pending:
-            try:
-                finalize_correction_publication(snapshot.pk)
-                count += 1
-            except Exception:
-                logger.exception(
-                    "finalize_correction_publication failed for %s", snapshot.pk
-                )
 
         return ProcessorResult(name=name, ok=True, count=count, detail=f"finalized={count}")
     except Exception as exc:
