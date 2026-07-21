@@ -15,6 +15,16 @@ from lamto.maintenance.models import CaseReport, IssueReport, MaintenanceCase
 from .models import Proposal, ProposalDocument, ProposalVersion
 
 
+def spending_proposal_cases():
+    """Cases still on outcome D: public, active, and not already started as outcome C."""
+    return (
+        MaintenanceCase.objects.filter(active=True, completed_at__isnull=True)
+        .exclude(reports__is_private=True)
+        .exclude(reports__status=IssueReport.Status.IN_PROGRESS)
+        .distinct()
+    )
+
+
 ZERO_HASH = "0x" + "00" * 32
 
 
@@ -132,6 +142,8 @@ def create_proposal(case, creator_membership) -> Proposal:
     links = CaseReport.objects.filter(case=locked_case).select_related("report")
     if any(link.report.is_private for link in links):
         raise ValidationError("Private requests cannot become community proposals.")
+    if any(link.report.status == IssueReport.Status.IN_PROGRESS for link in links):
+        raise ValidationError("Cases already proceeding without spending cannot add a proposal.")
     try:
         proposal = Proposal.objects.create(
             case=locked_case,

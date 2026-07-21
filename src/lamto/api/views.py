@@ -630,8 +630,7 @@ class CaseRatingView(APIView):
         responses={201: CaseRatingResultSerializer, **problem_responses(400, 401, 403, 404)},
     )
     def post(self, request, pk):
-        # Scope to work orders on a case the caller reported: existence is not
-        # revealed for other tenants' work (spec 2.3 -> 404).
+        # Scope to a case the caller reported; do not reveal other tenants' cases.
         case = (
             MaintenanceCase.objects.filter(pk=pk, case_reports__report__reporter=request.user)
             .distinct()

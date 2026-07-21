@@ -26,6 +26,7 @@ from lamto.finance.proposals import (
     build_proposal_evidence_payload,
     create_proposal,
     submit_proposal_version,
+    spending_proposal_cases,
 )
 from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion
 from lamto.maintenance.cases import (
@@ -293,6 +294,10 @@ def case_detail(request, pk):
             legacy_items=[],
             updates=case.updates.order_by("-created_at"),
             ratings=case.completion_ratings.select_related("resident").order_by("created_at"),
+            can_create_proposal=(
+                not hasattr(case, "proposal")
+                and spending_proposal_cases().filter(pk=case.pk).exists()
+            ),
             list_mode=False,
             mode="case",
         ),

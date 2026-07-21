@@ -26,6 +26,7 @@ from lamto.finance.proposals import (
     build_proposal_evidence_payload,
     create_proposal,
     submit_proposal_version,
+    spending_proposal_cases,
 )
 from lamto.maintenance.models import IssueReport, MaintenanceCase
 from lamto.web.forms.staff import (
@@ -377,6 +378,9 @@ def proposal_create(request, pk):
     )
     if request.method == "POST":
         require_recent_auth(request)
+    if not spending_proposal_cases().filter(pk=case.pk).exists():
+        messages.error(request, "This case is not eligible for a spending proposal.")
+        return redirect("web:case-detail", pk=case.pk)
     existing = (
         Proposal.objects.filter(case=case)
         .select_related("current_version")

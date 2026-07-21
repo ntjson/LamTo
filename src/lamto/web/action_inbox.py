@@ -25,6 +25,7 @@ from lamto.finance.models import (
     PublishedLedgerEntry,
     VerificationObservation,
 )
+from lamto.finance.proposals import spending_proposal_cases
 from lamto.maintenance.models import (
     IssueReport,
     MaintenanceCase,
@@ -75,6 +76,7 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
     items.extend(_review_queue_items(building_id))
     items.extend(_deadline_risk_items(building_id))
     items.extend(_in_progress_case_items(building_id))
+    items.extend(_proposal_create_candidates(building_id))
     items.extend(_work_acceptance_items(building_id))
     items.extend(_payment_record_items(building_id))
     items.extend(_payment_verify_items(building_id))
@@ -177,7 +179,7 @@ def _in_progress_case_items(building_id: int) -> list[ActionItem]:
 
 def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
     items = []
-    qs = MaintenanceCase.objects.filter(
+    qs = spending_proposal_cases().filter(
         building_id=building_id,
         proposal__isnull=True,
     ).distinct().order_by("created_at")[:30]

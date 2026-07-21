@@ -32,7 +32,7 @@
   {% if accountability_stages %}{% include "web/staff/_accountability_chain.html" %}{% endif %}
   {% if case.proposal %}
   <p><a class="button button-secondary" href="{% url 'web:proposal-detail' case.proposal.pk %}">{% trans "View spending proposal" %}</a></p>
-  {% elif case %}
+  {% elif can_create_proposal %}
   <p><a class="button button-secondary" href="{% url 'web:proposal-create' case.pk %}">{% trans "Create spending proposal" %}</a></p>
   {% endif %}
   {% if accept_form %}
