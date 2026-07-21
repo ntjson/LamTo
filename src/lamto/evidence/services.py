@@ -11,7 +11,7 @@ from django.utils import timezone
 from eth_utils import to_checksum_address
 
 from lamto.accounts.models import (
-    OrganizationMembership,
+    ManagementMembership,
     SignerAuthorizationRequest,
     SignerWallet,
     WalletRegistrationChallenge,
@@ -28,11 +28,6 @@ from .signatures import (
 )
 
 
-SIGNING_ROLES = {
-    OrganizationMembership.Role.OPERATOR,
-    OrganizationMembership.Role.BOARD,
-    OrganizationMembership.Role.RESIDENT_REP,
-}
 HASH_RE = re.compile(r"(?:0x)?[0-9a-f]{64}\Z")
 UTC_RFC3339_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\Z")
 PAYMENT_DECISION = frozenset({"APPROVE", "REJECT"})
@@ -110,11 +105,11 @@ def _signed_write_authorization(scope, *parts) -> str:
 
 
 def _active_signing_membership(membership, *, lock=False):
-    queryset = OrganizationMembership.objects.select_related("user", "organization")
+    queryset = ManagementMembership.objects.select_related("user", "building")
     if lock:
         queryset = queryset.select_for_update()
     current = queryset.filter(pk=getattr(membership, "pk", None), active=True).first()
-    if current is None or current.role not in SIGNING_ROLES:
+    if current is None:
         raise PermissionDenied("Membership is not eligible to sign pilot evidence.")
     return current
 
@@ -165,7 +160,7 @@ def begin_wallet_registration(membership) -> dict:
         membership.user,
         membership,
         "wallet.registration.begin",
-        "OrganizationMembership",
+        "ManagementMembership",
         str(membership.pk),
         "SUCCESS",
         {"expires_at": utc_rfc3339(challenge.expires_at)},
@@ -240,8 +235,8 @@ def revoke_wallet(wallet, authorizing_membership) -> SignerWallet:
         raise PermissionDenied("Wallet revocation authorization is invalid.")
     locked_memberships = {
         membership.pk: membership
-        for membership in OrganizationMembership.objects.select_related(
-            "user", "organization"
+        for membership in ManagementMembership.objects.select_related(
+            "user", "building"
         )
         .select_for_update()
         .filter(pk__in={owner_membership_id, authorizer_id})
@@ -253,12 +248,11 @@ def revoke_wallet(wallet, authorizing_membership) -> SignerWallet:
         authorizer is None
         or owner_membership is None
         or not authorizer.active
-        or authorizer.role not in SIGNING_ROLES
     ):
         raise PermissionDenied("Membership is not eligible to authorize wallet revocation.")
     wallet = SignerWallet.objects.select_for_update().select_related("membership").get(pk=wallet.pk)
-    if wallet.membership.organization_id != authorizer.organization_id:
-        raise PermissionDenied("Wallet revocation requires the same organization.")
+    if wallet.membership.building_id != authorizer.building_id:
+        raise PermissionDenied("Wallet revocation requires the same building.")
     if not wallet.active:
         return wallet
     authorization = _signed_write_authorization(

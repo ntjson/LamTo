@@ -1,7 +1,7 @@
 """Deterministic non-production pilot factories and domain driver.
 
-Factories create one building, units, organizations, memberships, capability
-grants, stakeholder wallets, document pairs, and labeled test records.
+Factories create one building, management memberships, resident occupancy,
+stakeholder wallets, document pairs, and labeled test records.
 Wallet private keys are held only in-process for tests/seeds and never printed
 by management commands (optional write to an ignored env file).
 """
@@ -41,14 +41,7 @@ from lamto.accounts.capabilities import (
     WORK_ACCEPT,
     WORK_ASSIGN,
 )
-from lamto.accounts.models import (
-    Building,
-    Organization,
-    OrganizationMembership,
-    ResidentOccupancy,
-    Unit,
-)
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership, ResidentOccupancy, Unit
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -216,17 +209,7 @@ def make_signer(
     user = get_user_model().objects.create_user(
         email=email, password=password, display_name=display_name
     )
-    if organization is None:
-        organization = Organization.objects.create(
-            building=building,
-            name=org_name or display_name,
-            kind=OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role],
-        )
-    membership = OrganizationMembership.objects.create(
-        user=user, organization=organization, role=role
-    )
-    for code in capabilities:
-        grant_capability(membership, code)
+    membership = ManagementMembership.objects.create(user=user, building=building)
     account = Account.create()
     challenge = begin_wallet_registration(membership)
     proof = Account.sign_message(
@@ -263,7 +246,7 @@ class PilotSeed:
     location: BuildingLocation
     password: str = PILOT_PASSWORD
     accounts: dict[int, Any] = field(default_factory=dict)
-    roles: dict[str, OrganizationMembership] = field(default_factory=dict)
+    roles: dict[str, ManagementMembership | None] = field(default_factory=dict)
     users: dict[str, Any] = field(default_factory=dict)
     report: IssueReport | None = None
     work_order: WorkOrder | None = None
@@ -276,7 +259,7 @@ class PilotSeed:
         self._seq += 1
         return f"{base}-{self._seq}"
 
-    def membership(self, role_key: str) -> OrganizationMembership:
+    def membership(self, role_key: str) -> ManagementMembership | None:
         return self.roles[role_key]
 
     def account_for(self, membership) -> Any:
@@ -316,10 +299,9 @@ def seed_pilot_world(
         # Unique local-part avoids collisions when multiple seeds share one DB transaction.
         return f"{prefix}-{local}@{email_domain}"
 
-    # Operator org hosts operator + maintenance
     operator, operator_account = make_signer(
         building,
-        OrganizationMembership.Role.OPERATOR,
+        "management",
         [REPORT_TRIAGE, WORK_ASSIGN, PROPOSAL_CREATE],
         email=email("operator"),
         display_name="Pilot Operator",
@@ -335,19 +317,12 @@ def seed_pilot_world(
         password=password,
         display_name="Pilot Maintenance",
     )
-    OrganizationMembership.objects.create(
-        user=maintenance_user,
-        organization=operator.organization,
-        role=OrganizationMembership.Role.MAINTENANCE,
+    maintenance = ManagementMembership.objects.create(
+        user=maintenance_user, building=building
     )
     seed.users["maintenance"] = maintenance_user
-    seed.roles["maintenance"] = OrganizationMembership.objects.get(
-        user=maintenance_user, role=OrganizationMembership.Role.MAINTENANCE
-    )
+    seed.roles["maintenance"] = maintenance
 
-    board_org = Organization.objects.create(
-        building=building, name="Pilot Board", kind=Organization.Kind.BOARD
-    )
     board_roles = {
         "board_acceptor": ([WORK_ACCEPT], "Board Acceptor"),
         "board_payment_recorder": ([PAYMENT_RECORD, WORK_ACCEPT], "Payment Recorder"),
@@ -359,49 +334,27 @@ def seed_pilot_world(
     for key, (caps, label) in board_roles.items():
         membership, account = make_signer(
             building,
-            OrganizationMembership.Role.BOARD,
+            "management",
             caps,
             email=email(key.replace("_", "-")),
             display_name=f"Pilot {label}",
             password=password,
-            organization=board_org,
-            org_name="Pilot Board",
         )
         seed.accounts[membership.pk] = account
         seed.roles[key] = membership
         seed.users[key] = membership.user
 
-    # Verifier may also publish (dual-control path covered separately).
-    grant_capability(seed.roles["board_payment_verifier"], LEDGER_PUBLISH)
-
-    # Auditor and tech admin are not wallet-signing roles.
     auditor_user = get_user_model().objects.create_user(
         email=email("auditor"), password=password, display_name="Pilot Auditor"
     )
-    auditor_org = Organization.objects.create(
-        building=building, name="Pilot Auditor Firm", kind=Organization.Kind.AUDITOR
-    )
-    auditor = OrganizationMembership.objects.create(
-        user=auditor_user,
-        organization=auditor_org,
-        role=OrganizationMembership.Role.AUDITOR,
-    )
-    grant_capability(auditor, AUDIT_EXPORT)
+    auditor = ManagementMembership.objects.create(user=auditor_user, building=building)
     seed.roles["auditor"] = auditor
     seed.users["auditor"] = auditor_user
 
     tech_user = get_user_model().objects.create_user(
         email=email("tech-admin"), password=password, display_name="Pilot Tech Admin"
     )
-    tech_org = Organization.objects.create(
-        building=building, name="Pilot Platform", kind=Organization.Kind.PLATFORM
-    )
-    tech = OrganizationMembership.objects.create(
-        user=tech_user,
-        organization=tech_org,
-        role=OrganizationMembership.Role.TECH_ADMIN,
-    )
-    grant_capability(tech, TECH_ADMIN)
+    tech = ManagementMembership.objects.create(user=tech_user, building=building)
     seed.roles["tech_admin"] = tech
     seed.users["tech_admin"] = tech_user
 
@@ -659,9 +612,6 @@ class PilotDomainDriver:
         work = self.seed.work_order
         work.refresh_from_db()
         accepter = self.seed.roles["board_payment_recorder"]
-        # Prefer the payment recorder; fall back to the dedicated accepter.
-        if not accepter.capabilitygrant_set.filter(code=WORK_ACCEPT).exists():
-            accepter = self.seed.roles["board_acceptor"]
         inv_o, inv_r = self.seed.document_pair(
             Document.Kind.INVOICE, accepter.user, "invoice"
         )

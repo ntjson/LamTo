@@ -21,8 +21,6 @@ from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import LEDGER_PUBLISH, PAYMENT_VERIFY
-from lamto.accounts.services import grant_capability
 from lamto.audit.models import AuditEvent
 from lamto.documents.access import authorize_download
 from lamto.documents.models import Document
@@ -151,7 +149,6 @@ class PilotAcceptanceTests(TestCase):
         driver.complete_assigned_work()
         payment = driver.accept_and_record_payment()
         recorder = driver.seed.roles["board_payment_recorder"]
-        grant_capability(recorder, PAYMENT_VERIFY)
         event_id = new_event_id()
         typed = build_payment_verification_evidence_typed_data(
             payment, recorder, "VERIFIED", event_id, timestamp=payment.recorded_at
@@ -180,16 +177,16 @@ class PilotAcceptanceTests(TestCase):
         # The payment recorder remains ineligible to publish.
         for role_key in ("board_payment_recorder",):
             membership = driver.seed.roles[role_key]
-            grant_capability(membership, LEDGER_PUBLISH)
             original = driver.seed.roles["eligible_publisher"]
             driver.seed.roles["eligible_publisher"] = membership
             blocked = driver.attempt_publication()
             driver.seed.roles["eligible_publisher"] = original
             self.assertTrue(blocked.blocked, msg=f"{role_key} should be blocked")
 
-        # Operator creator cannot hold LEDGER_PUBLISH on operator org.
-        with self.assertRaises(PermissionDenied):
-            grant_capability(driver.seed.roles["operator"], LEDGER_PUBLISH)
+        original = driver.seed.roles["eligible_publisher"]
+        driver.seed.roles["eligible_publisher"] = driver.seed.roles["operator"]
+        self.assertTrue(driver.attempt_publication().blocked)
+        driver.seed.roles["eligible_publisher"] = original
 
         entry = driver.sign_publication_snapshot()
         self.assertIsNotNone(entry)

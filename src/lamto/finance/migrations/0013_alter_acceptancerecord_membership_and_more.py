@@ -7,7 +7,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0013_alter_signerauthorizationrequest_requested_by_and_more'),
+        ('accounts', '0014_management_wallet_procedures'),
+        ('evidence', '0015_management_outbox_procedure'),
         ('finance', '0012_delete_approvaldecision'),
     ]
 
@@ -56,5 +57,98 @@ class Migration(migrations.Migration):
             model_name='publicationsnapshot',
             name='publisher',
             field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='publication_snapshots', to='accounts.managementmembership'),
+        ),
+        migrations.RunSQL(
+            r"""
+            CREATE OR REPLACE FUNCTION finance_reject_payment_self_verification()
+            RETURNS trigger AS $$
+            DECLARE recorder_user_id bigint; verifier_user_id bigint;
+            BEGIN
+                SELECT recorder.user_id INTO recorder_user_id
+                FROM finance_paymentevidence payment
+                JOIN accounts_managementmembership recorder ON recorder.id = payment.recorder_id
+                WHERE payment.id = NEW.payment_id;
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'payment evidence missing for verification'
+                    USING ERRCODE = 'foreign_key_violation';
+                END IF;
+                SELECT verifier.user_id INTO verifier_user_id
+                FROM accounts_managementmembership verifier WHERE verifier.id = NEW.membership_id;
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'payment verifier membership missing'
+                    USING ERRCODE = 'foreign_key_violation';
+                END IF;
+                IF recorder_user_id = verifier_user_id THEN
+                    RAISE EXCEPTION 'payment verifier must differ from payment recorder'
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            CREATE OR REPLACE FUNCTION finance_reject_fund_self_verification()
+            RETURNS trigger AS $$
+            DECLARE recorder_user_id bigint; verifier_user_id bigint;
+            BEGIN
+                SELECT recorder.user_id INTO recorder_user_id
+                FROM finance_maintenancefundentry entry
+                JOIN accounts_managementmembership recorder ON recorder.id = entry.recorder_id
+                WHERE entry.id = NEW.entry_id;
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'fund entry missing for verification'
+                    USING ERRCODE = 'foreign_key_violation';
+                END IF;
+                SELECT verifier.user_id INTO verifier_user_id
+                FROM accounts_managementmembership verifier WHERE verifier.id = NEW.membership_id;
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'fund verifier membership missing'
+                    USING ERRCODE = 'foreign_key_violation';
+                END IF;
+                IF recorder_user_id = verifier_user_id THEN
+                    RAISE EXCEPTION 'fund verifier must differ from fund recorder'
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            CREATE OR REPLACE FUNCTION finance_reject_ineligible_publisher()
+            RETURNS trigger AS $$
+            DECLARE publisher_user_id bigint; creator_user_id bigint; recorder_user_id bigint;
+            BEGIN
+                SELECT publisher.user_id INTO publisher_user_id
+                FROM accounts_managementmembership publisher WHERE publisher.id = NEW.publisher_id;
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'publisher membership missing'
+                    USING ERRCODE = 'foreign_key_violation';
+                END IF;
+                SELECT creator.user_id INTO creator_user_id
+                FROM finance_proposal proposal
+                JOIN accounts_managementmembership creator ON creator.id = proposal.creator_membership_id
+                WHERE proposal.id = NEW.proposal_id;
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'proposal missing for publication snapshot'
+                    USING ERRCODE = 'foreign_key_violation';
+                END IF;
+                IF publisher_user_id = creator_user_id THEN
+                    RAISE EXCEPTION 'publisher must differ from proposal creator'
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                SELECT recorder.user_id INTO recorder_user_id
+                FROM finance_proposal proposal
+                JOIN maintenance_workorder work_order ON work_order.id = proposal.work_order_id
+                JOIN finance_acceptancerecord acceptance ON acceptance.work_order_id = work_order.id
+                JOIN finance_paymentevidence payment ON payment.acceptance_id = acceptance.id
+                JOIN accounts_managementmembership recorder ON recorder.id = payment.recorder_id
+                WHERE proposal.id = NEW.proposal_id LIMIT 1;
+                IF FOUND AND publisher_user_id = recorder_user_id THEN
+                    RAISE EXCEPTION 'publisher must differ from payment recorder'
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+            """,
+            migrations.RunSQL.noop,
         ),
     ]
