@@ -58,3 +58,9 @@ Both are forward-only. Applied successfully against the shared Compose database.
 - Added an end-to-end standalone proposal lifecycle test and independent pending/failed/mismatch visibility checks for both anchors.
 - Reviewer verification: focused suites `59 passed`; evidence/finance/API/web modules `268 passed, 1 skipped`; full Django suite `439 passed, 1 skipped`; `manage.py check`, migration drift check, legacy-symbol sweep, and `git diff --check` are clean.
 - Flutter was not rerun for this follow-up because it changes server-side visibility/scoping only and does not change the regenerated OpenAPI or Dart client contract.
+
+## Tenant-boundary follow-up
+
+- Restored active regression coverage proving signed type-1 events inherit the signer's building, platform-signed type-1 proposal events inherit the supplied proposal building, and the database rejects changing an event to another building.
+- No production change was needed; the existing insert procedures and identity trigger already enforce the contract.
+- Verification: focused boundary suite `2 passed`; evidence module `53 passed, 1 skipped`; full Django suite `441 passed, 1 skipped`; system check, migration drift check, legacy-symbol sweep, and `git diff --check` are clean.
