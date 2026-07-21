@@ -54,9 +54,8 @@ from lamto.maintenance.models import (
     MaintenanceCase,
     TriageDecision,
     TriageJob,
-    WorkOrder,
 )
-from lamto.maintenance.workorders import complete_work_order, start_work_order
+from lamto.maintenance.cases import complete_case_work, start_case_work
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-integrity-")
@@ -205,18 +204,10 @@ class IntegrityTests(TestCase):
             department="Maintenance",
             deadline_at="2026-07-20T12:00:00Z",
         )
-        work_order = WorkOrder.objects.create(
-            case=case,
-            assignee=maintenance_user,
-            priority="HIGH",
-            deadline_at=case.deadline_at,
-            requires_spending=True,
-            authorization_status=WorkOrder.AuthorizationStatus.PENDING,
-        )
         quotation_original, _quotation_redacted = self.document_pair(
             building, Document.Kind.QUOTATION, operator.user, "quotation"
         )
-        proposal = create_proposal(work_order.case, operator)
+        proposal = create_proposal(case, operator)
         event_id = "0x" + secrets.token_hex(32)
         payload = build_proposal_evidence_payload(
             proposal, 18_500_000, "Company X", [quotation_original]
@@ -235,14 +226,13 @@ class IntegrityTests(TestCase):
             building, None, None, "board-actor"
         )
 
-        work_order.refresh_from_db()
-        start_work_order(work_order, maintenance_user)
+        start_case_work(case, maintenance_user)
         before = self.photo(building, Document.Kind.BEFORE_PHOTO, maintenance_user, "before")
         after = self.photo(building, Document.Kind.AFTER_PHOTO, maintenance_user, "after")
-        complete_work_order(
-            work_order, maintenance_user, "Worn cable", "Cable secured", [before], [after]
+        complete_case_work(
+            case, maintenance_user, "Worn cable", "Cable secured", [before], [after]
         )
-        work_order.refresh_from_db()
+        case.refresh_from_db()
 
         invoice_original, invoice_redacted = self.document_pair(
             building, Document.Kind.INVOICE, operator.user, "invoice"
@@ -252,7 +242,7 @@ class IntegrityTests(TestCase):
         )
         accept_event = "0x" + secrets.token_hex(32)
         accept_typed = build_acceptance_evidence_typed_data(
-            work_order.case,
+            case,
             board_actor,
             18_500_000,
             invoice_original,
@@ -260,13 +250,13 @@ class IntegrityTests(TestCase):
             acceptance_original,
             acceptance_redacted,
             accept_event,
-            timestamp=work_order.completed_at,
+            timestamp=case.completed_at,
         )
         accept_sig = Account.sign_message(
             encode_typed_data(full_message=accept_typed), board_account.key
         ).signature.hex()
         acceptance = accept_work(
-            work_order.case,
+            case,
             board_actor,
             18_500_000,
             invoice_original,
@@ -275,7 +265,7 @@ class IntegrityTests(TestCase):
             acceptance_redacted,
             accept_sig,
             accept_event,
-            timestamp=work_order.completed_at,
+            timestamp=case.completed_at,
         )
 
         payment_recorder, payment_recorder_account = self.make_signer(

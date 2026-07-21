@@ -148,7 +148,7 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         templates = "\n".join(
             (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
             for name in (
-                "work_order_detail.html",
+                "case_detail.html",
                 "proposal_detail.html",
                 "payment_detail.html",
                 "_review_summary.html",
@@ -166,7 +166,7 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         for name in (
             "_fund_forms.html",
             "proposal_create.html",
-            "work_order_detail.html",
+            "case_detail.html",
             "proposal_detail.html",
             "payment_detail.html",
         ):
@@ -318,140 +318,21 @@ class AccountabilityChainTests(SimpleTestCase):
             for step in staff_common.accountability_chain_for(published=False, **kwargs)
         ]
 
-    def test_stage_work_in_progress_spending(self):
+    def test_case_work_and_completion_stages(self):
         from types import SimpleNamespace
 
-        wo = SimpleNamespace(
-            pk=1, status="IN_PROGRESS", requires_spending=True, proposal=None, acceptance=None
-        )
-        self.assertEqual(
-            self._states(work_order=wo),
-            ["complete", "complete", "current", "upcoming", "upcoming", "upcoming", "upcoming"],
-        )
+        active = SimpleNamespace(completed_at=None, proposal=None, acceptance=None)
+        completed = SimpleNamespace(completed_at=timezone.now(), proposal=None, acceptance=None)
+        self.assertEqual(self._states(case=active)[2], "current")
+        self.assertEqual(self._states(case=completed)[4], "current")
 
-    def test_stage_proposal_after_work_done_without_publication(self):
-        from types import SimpleNamespace
-
-        wo = SimpleNamespace(
-            pk=1,
-            status="AWAITING_ACCEPTANCE",
-            requires_spending=True,
-            proposal=None,
-            acceptance=None,
-        )
-        self.assertEqual(
-            self._states(work_order=wo),
-            ["complete", "complete", "complete", "current", "upcoming", "upcoming", "upcoming"],
-        )
-
-    def test_stage_acceptance_after_proposal_authorized(self):
-        from types import SimpleNamespace
-
-        proposal = SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED")
-        wo = SimpleNamespace(
-            pk=1,
-            status="AWAITING_ACCEPTANCE",
-            requires_spending=True,
-            proposal=proposal,
-            acceptance=None,
-        )
-        self.assertEqual(
-            self._states(work_order=wo, proposal=proposal),
-            ["complete", "complete", "complete", "complete", "current", "upcoming", "upcoming"],
-        )
-
-    def test_stage_payment_after_acceptance(self):
-        from types import SimpleNamespace
-
-        acceptance = SimpleNamespace(pk=3, payment=None)
-        wo = SimpleNamespace(
-            pk=1,
-            status="ACCEPTED",
-            requires_spending=True,
-            proposal=SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED"),
-            acceptance=acceptance,
-        )
-        self.assertEqual(
-            self._states(work_order=wo, acceptance=acceptance),
-            ["complete", "complete", "complete", "complete", "complete", "current", "upcoming"],
-        )
-
-    def test_stage_publication_after_payment_recorded(self):
-        from types import SimpleNamespace
-
-        payment = SimpleNamespace(pk=4)
-        acceptance = SimpleNamespace(pk=3, payment=payment)
-        wo = SimpleNamespace(
-            pk=1,
-            status="ACCEPTED",
-            requires_spending=True,
-            proposal=SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED"),
-            acceptance=acceptance,
-        )
-        payment.acceptance = acceptance
-        self.assertEqual(
-            self._states(work_order=wo, payment=payment, publication_pending=False),
-            ["complete", "complete", "complete", "complete", "complete", "complete", "current"],
-        )
-
-    def test_stage_publication_awaiting_confirmation_is_pending_not_complete(self):
-        from types import SimpleNamespace
-
-        payment = SimpleNamespace(pk=4)
-        acceptance = SimpleNamespace(pk=3, payment=payment)
-        proposal = SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED")
-        wo = SimpleNamespace(
-            pk=1,
-            status="ACCEPTED",
-            requires_spending=True,
-            proposal=proposal,
-            acceptance=acceptance,
-        )
-        payment.acceptance = acceptance
-        chain = staff_common.accountability_chain_for(
-            work_order=wo,
-            payment=payment,
-            proposal=proposal,
-            published=False,
-            publication_pending=True,
-        )
-        self.assertEqual(
-            [step["state"] for step in chain],
-            ["complete", "complete", "complete", "complete", "complete", "complete", "pending"],
-        )
-        self.assertEqual(
-            str(chain[-1]["state_label"]),
-            str(staff_common.STAGE_STATE_LABELS["pending"]),
-        )
-        self.assertNotEqual(chain[-1]["state"], "complete")
-
-    def test_stage_all_complete_when_published(self):
-        from types import SimpleNamespace
-
-        wo = SimpleNamespace(
-            pk=1, status="CLOSED", requires_spending=True, proposal=None, acceptance=None
-        )
-        chain = staff_common.accountability_chain_for(work_order=wo, published=True)
-        self.assertEqual({step["state"] for step in chain}, {"complete"})
-
-    def test_stage_rejected_proposal_is_blocked(self):
+    def test_case_rejected_proposal_is_blocked(self):
         from types import SimpleNamespace
 
         proposal = SimpleNamespace(pk=2, status="REJECTED")
-        wo = SimpleNamespace(
-            pk=1,
-            status="IN_PROGRESS",
-            requires_spending=True,
-            proposal=proposal,
-            acceptance=None,
-        )
-        chain = staff_common.accountability_chain_for(
-            work_order=wo, proposal=proposal, published=False
-        )
-        self.assertEqual(
-            [step["state"] for step in chain],
-            ["complete", "complete", "complete", "blocked", "upcoming", "upcoming", "upcoming"],
-        )
+        case = SimpleNamespace(completed_at=None, proposal=proposal, acceptance=None)
+        chain = staff_common.accountability_chain_for(case=case, proposal=proposal, published=False)
+        self.assertEqual(chain[3]["state"], "blocked")
 
     def test_deadline_tone_is_proportional(self):
         from datetime import timedelta
@@ -463,7 +344,7 @@ class AccountabilityChainTests(SimpleTestCase):
 
     def test_detail_templates_include_shared_chain(self):
         for name in (
-            "work_order_detail.html",
+            "case_detail.html",
             "proposal_detail.html",
             "payment_detail.html",
         ):
@@ -475,7 +356,6 @@ class AccountabilityChainTests(SimpleTestCase):
             WEB_ROOT / "views" / "requests.py",
             WEB_ROOT / "views" / "proposals.py",
             WEB_ROOT / "views" / "payments.py",
-            WEB_ROOT / "views" / "work.py",
         ):
             source = path.read_text(encoding="utf-8")
             self.assertIn("accountability_chain_for", source)

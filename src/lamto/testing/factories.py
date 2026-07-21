@@ -72,10 +72,10 @@ from lamto.finance.publication import (
     _collect_document_checks,
     _resident_payload,
 )
-from lamto.maintenance.models import BuildingLocation, IssueReport, WorkOrder
+from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
+from lamto.maintenance.cases import complete_case_work, start_case_work
 from lamto.maintenance.reporting import submit_report
 from lamto.maintenance.triage import confirm_triage
-from lamto.maintenance.workorders import complete_work_order, create_work_order, start_work_order
 
 
 PILOT_PASSWORD = "pilot-test-secret"
@@ -207,7 +207,7 @@ class PilotSeed:
     management_memberships: list[ManagementMembership] = field(default_factory=list)
     residents: list[Any] = field(default_factory=list)
     report: IssueReport | None = None
-    work_order: WorkOrder | None = None
+    case: MaintenanceCase | None = None
     proposal: Proposal | None = None
     storage_root: str | None = None
     chain_paused: bool = False
@@ -422,7 +422,7 @@ class PilotDomainDriver:
         self._ctx["report"] = report
         return report
 
-    def confirm_triage_and_create_paid_work_order(self):
+    def confirm_triage_case(self):
         manager = self.seed.management_memberships[0]
         report = self.seed.report or self._ctx.get("report")
         if report is None:
@@ -436,24 +436,17 @@ class PilotDomainDriver:
             department="Maintenance",
             deadline_minutes=240,
         )
-        work = create_work_order(
-            case,
-            manager.user,
-            manager.user,
-            requires_spending=True,
-        )
-        self.seed.work_order = work
+        self.seed.case = case
         self._ctx["case"] = case
-        self._ctx["work_order"] = work
-        return work
+        return case
 
     def submit_signed_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
         manager = self.seed.management_memberships[0]
-        work = self.seed.work_order or self._ctx["work_order"]
+        work = self.seed.case or self._ctx["case"]
         quotation_original, _ = self.seed.document_pair(
             Document.Kind.QUOTATION, manager.user, "quotation"
         )
-        proposal = create_proposal(work.case, manager)
+        proposal = create_proposal(work, manager)
         event_id = new_event_id()
         payload = build_proposal_evidence_payload(
             proposal, amount_vnd, "Pilot Contractor Co", [quotation_original]
@@ -481,35 +474,35 @@ class PilotDomainDriver:
         return version
 
     def start_assigned_work(self):
-        work = self.seed.work_order or self._ctx["work_order"]
+        work = self.seed.case or self._ctx["case"]
         work.refresh_from_db()
-        started = start_work_order(work, self.seed.management_users[0])
-        self._ctx["work_order"] = started
-        self.seed.work_order = started
+        started = start_case_work(work, self.seed.management_users[0])
+        self._ctx["case"] = started
+        self.seed.case = started
         return SimpleNamespace(
-            verification_label=started.case.verification_label,
-            status=started.status,
-            work_order=started,
+            verification_label=started.verification_label,
+            status="IN_PROGRESS",
+            case=started,
         )
 
     def complete_assigned_work(self):
-        work = self.seed.work_order or self._ctx["work_order"]
+        work = self.seed.case or self._ctx["case"]
         work.refresh_from_db()
-        if work.status == WorkOrder.Status.ASSIGNED:
-            work = start_work_order(work, self.seed.management_users[0])
+        if not work.reports.filter(status=IssueReport.Status.IN_PROGRESS).exists():
+            work = start_case_work(work, self.seed.management_users[0])
         manager = self.seed.management_users[0]
         before = self.seed.photo(Document.Kind.BEFORE_PHOTO, manager, "before")
         after = self.seed.photo(Document.Kind.AFTER_PHOTO, manager, "after")
-        completed = complete_work_order(
+        completed = complete_case_work(
             work, manager, "Worn cable", "Cable secured", [before], [after]
         )
-        self._ctx["work_order"] = completed
-        self.seed.work_order = completed
+        self._ctx["case"] = completed
+        self.seed.case = completed
         return completed
 
     def accept_and_record_payment(self, amount_vnd: int | None = None):
         amount_vnd = amount_vnd or self._ctx.get("amount_vnd", DEFAULT_AMOUNT_VND)
-        work = self.seed.work_order
+        work = self.seed.case
         work.refresh_from_db()
         accepter = self.seed.management_memberships[0]
         inv_o, inv_r = self.seed.document_pair(
@@ -520,7 +513,7 @@ class PilotDomainDriver:
         )
         event_id = new_event_id()
         typed = build_acceptance_evidence_typed_data(
-            work.case,
+            work,
             accepter,
             amount_vnd,
             inv_o,
@@ -532,7 +525,7 @@ class PilotDomainDriver:
         )
         signature = self.seed.sign_typed(accepter, typed)
         acceptance = accept_work(
-            work.case,
+            work,
             accepter,
             amount_vnd,
             inv_o,
@@ -691,9 +684,9 @@ class PilotDomainDriver:
         self.submit_report(
             "Elevator shakes heavily", "Building B / Lift 2", None
         )
-        self.confirm_triage_and_create_paid_work_order()
+        self.confirm_triage_case()
         self.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
-        return self.seed.work_order
+        return self.seed.case
 
     def open_latest_ledger_entry(self):
         entry = (

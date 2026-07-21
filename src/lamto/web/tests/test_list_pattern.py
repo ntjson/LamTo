@@ -20,7 +20,6 @@ from lamto.maintenance.models import (
     IssueReport,
     MaintenanceCase,
     TriageDecision,
-    WorkOrder,
 )
 
 
@@ -36,17 +35,6 @@ class ListPatternTests(TestCase):
         session[RECENT_REAUTH_KEY] = time.time()
         session["active_management_id"] = membership.pk
         session.save()
-
-    def _make_work(self, building, case, assignee, status):
-        return WorkOrder.objects.create(
-            case=case,
-            assignee=assignee,
-            priority="HIGH",
-            deadline_at=timezone.now(),
-            requires_spending=True,
-            authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
-            status=status,
-        )
 
     def _case_world(self, *, email_prefix="lp", **_legacy_role):
         building = Building.objects.create(name=f"List {email_prefix}")
@@ -89,39 +77,6 @@ class ListPatternTests(TestCase):
             active=True,
         )
         return building, location, user, membership, case
-
-    def test_work_list_filters_by_status(self):
-        building, _loc, user, membership, case = self._case_world(email_prefix="work")
-        self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
-        self._make_work(building, case, user, "COMPLETED")
-
-        self._login(user, membership)
-
-        resp = self.client.get(reverse("web:work-order-list"))
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "queue-toolbar")
-
-        filtered = self.client.get(reverse("web:work-order-list"), {"status": "ASSIGNED"})
-        self.assertContains(filtered, "Assigned")
-        self.assertNotContains(filtered, "COMPLETED")
-
-    def test_work_list_groups_status_filters_by_workflow(self):
-        building, _loc, user, membership, case = self._case_world(
-            email_prefix="work-groups"
-        )
-        active = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
-        done = self._make_work(building, case, user, WorkOrder.Status.CLOSED)
-        self._login(user, membership)
-
-        response = self.client.get(reverse("web:work-order-list"))
-        for label in ("Active", "Awaiting acceptance", "Done"):
-            self.assertContains(response, label)
-
-        filtered = self.client.get(
-            reverse("web:work-order-list"), {"status": "active"}
-        )
-        self.assertContains(filtered, f"Work order #{active.pk}")
-        self.assertNotContains(filtered, f"Work order #{done.pk}")
 
     def test_case_list_filters_active_cases_by_urgency(self):
         building, location, user, membership, high_case = self._case_world(
@@ -184,7 +139,6 @@ class ListPatternTests(TestCase):
         building, _loc, user, membership, case = self._case_world(
             email_prefix="prop",
         )
-        work = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
         draft = Proposal.objects.create(
             case=case,
             creator_membership=membership,
@@ -260,7 +214,7 @@ class ListPatternTests(TestCase):
             seed = seed_pilot_world(building_name="Pay Filt", email_prefix="payf")
             d = PilotDomainDriver(seed)
             d.submit_report("x", "Lift")
-            d.confirm_triage_and_create_paid_work_order()
+            d.confirm_triage_case()
             d.submit_signed_proposal()
             d.complete_assigned_work()
             d.accept_and_record_payment()
@@ -289,34 +243,3 @@ class ListPatternTests(TestCase):
                 {"status": PaymentEvidence.ExternalStatus.COMPLETED},
             )
             self.assertContains(filtered_ok, f"Payment #{payment.pk}")
-
-    # Record lists are complete, searchable histories: no silent 100-item cap.
-    def test_work_list_paginates_with_total_and_preserved_filters(self):
-        building, _loc, user, membership, case = self._case_world(email_prefix="pag")
-        for _ in range(25):
-            self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
-        self._login(user, membership)
-
-        first = self.client.get(
-            reverse("web:work-order-list"), {"status": "ASSIGNED"}
-        )
-        self.assertContains(first, "25 results")
-        self.assertContains(first, "Page 1 of 2")
-        self.assertContains(first, "status=ASSIGNED")  # pagination keeps filters
-
-        second = self.client.get(
-            reverse("web:work-order-list"), {"status": "ASSIGNED", "page": 2}
-        )
-        self.assertContains(second, "Page 2 of 2")
-        self.assertEqual(len(second.context["items"]), 5)
-
-    def test_work_list_search_matches_category_and_id(self):
-        building, _loc, user, membership, case = self._case_world(email_prefix="srch")
-        match = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
-        self._login(user, membership)
-
-        by_id = self.client.get(reverse("web:work-order-list"), {"q": str(match.pk)})
-        self.assertContains(by_id, f"Work order #{match.pk}")
-
-        miss = self.client.get(reverse("web:work-order-list"), {"q": "no-such-thing"})
-        self.assertContains(miss, "0 results")

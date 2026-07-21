@@ -235,7 +235,7 @@ class SecurityTests(TestCase):
         verify_totp_for_session(user, token2, request=request)
         self.assertTrue(request.session.get(DEVICE_ID_SESSION_KEY))
 
-    def test_staff_mfa_required_on_payment_list_audit_search_work_order_list(self):
+    def test_staff_mfa_required_on_payment_list_audit_search_case_list(self):
         """Password-only session denied on key staff workspaces (Finding 1)."""
         board = self.make_manager()
         auditor = self.make_membership("aud-mfa")

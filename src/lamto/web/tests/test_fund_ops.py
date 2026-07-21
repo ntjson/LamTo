@@ -30,7 +30,7 @@ def _full_publish(seed):
     """Run the pilot expenditure through verified payment (not yet published)."""
     d = PilotDomainDriver(seed)
     d.submit_report("Lift noise", "Lift 2")
-    d.confirm_triage_and_create_paid_work_order()
+    d.confirm_triage_case()
     d.submit_signed_proposal()
     d.complete_assigned_work()
     d.accept_and_record_payment()

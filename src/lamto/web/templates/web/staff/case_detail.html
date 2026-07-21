@@ -29,10 +29,18 @@
     <div><dt>{% trans "Location" %}</dt><dd>{{ report.location_path_snapshot }}</dd></div>
     <div><dt>{% trans "Status" %}</dt><dd>{{ report.get_status_display }}</dd></div>
   </dl>
+  {% if accountability_stages %}{% include "web/staff/_accountability_chain.html" %}{% endif %}
   {% if case.proposal %}
   <p><a class="button button-secondary" href="{% url 'web:proposal-detail' case.proposal.pk %}">{% trans "View spending proposal" %}</a></p>
   {% elif case %}
   <p><a class="button button-secondary" href="{% url 'web:proposal-create' case.pk %}">{% trans "Create spending proposal" %}</a></p>
+  {% endif %}
+  {% if accept_form %}
+  <form method="post" data-signed-form data-review-form>
+    {% csrf_token %}{{ accept_form.as_p }}
+    {% include "web/staff/_review_summary.html" with title="What you are signing" next_step="What happens next" %}
+    <button type="submit" class="button button-primary">{% trans "Sign and accept work" %}</button>
+  </form>
   {% endif %}
   {% endif %}
   {% if case %}

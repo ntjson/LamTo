@@ -42,8 +42,8 @@ from lamto.finance.proposals import (
 )
 from lamto.finance.publication import finalize_publication
 from lamto.maintenance.ai import process_triage_job
-from lamto.maintenance.models import TriageJob, WorkOrder
-from lamto.maintenance.workorders import start_work_order
+from lamto.maintenance.models import IssueReport, TriageJob
+from lamto.maintenance.cases import start_case_work
 from lamto.testing.factories import (
     DEFAULT_AMOUNT_VND,
     PilotDomainDriver,
@@ -90,7 +90,7 @@ class PilotAcceptanceTests(TestCase):
             "tests/fixtures/elevator.jpg",
         )
 
-        driver.confirm_triage_and_create_paid_work_order()
+        driver.confirm_triage_case()
         driver.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
 
         driver.complete_assigned_work()
@@ -179,15 +179,12 @@ class PilotAcceptanceTests(TestCase):
     def test_proposal_revision_after_signature_requires_new_publication(self):
         driver = self.driver
         driver.submit_report("Elevator issue", "Lift 2", None)
-        driver.confirm_triage_and_create_paid_work_order()
+        driver.confirm_triage_case()
         version1 = driver.submit_signed_proposal(
             amount_vnd=DEFAULT_AMOUNT_VND
         )
-        work = driver.seed.work_order
+        work = driver.seed.case
         work.refresh_from_db()
-        self.assertEqual(
-            work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED
-        )
 
         manager = driver.seed.management_memberships[0]
         proposal = driver.seed.proposal
@@ -215,11 +212,8 @@ class PilotAcceptanceTests(TestCase):
         work.refresh_from_db()
         self.assertEqual(version2.number, 2)
         self.assertEqual(proposal.current_version_id, version2.pk)
-        self.assertEqual(
-            work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED
-        )
-        started = start_work_order(work, driver.seed.management_users[0])
-        self.assertEqual(started.status, WorkOrder.Status.IN_PROGRESS)
+        started = start_case_work(work, driver.seed.management_users[0])
+        self.assertTrue(started.reports.filter(status=IssueReport.Status.IN_PROGRESS).exists())
 
     def test_ai_outage_leaves_report_and_inbox_authoritative(self):
         driver = self.driver
@@ -229,7 +223,7 @@ class PilotAcceptanceTests(TestCase):
         with patch("lamto.maintenance.ai.urlopen", side_effect=URLError("offline")):
             job = process_triage_job(report.triage_job.id)
         self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
-        work = driver.confirm_triage_and_create_paid_work_order()
+        work = driver.confirm_triage_case()
         self.assertIsNotNone(work.pk)
         self.assertEqual(report.pk, driver.seed.report.pk)
 

@@ -19,7 +19,6 @@ from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import Proposal, ProposalVersion
 from lamto.finance.proposals import ZERO_HASH, build_proposal_evidence_payload
 from lamto.documents.models import Document, DocumentVersion
-from lamto.maintenance.models import WorkOrder
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-propcreate-")
@@ -42,8 +41,8 @@ class ProposalCreateTests(TestCase):
         self.seed = seed_pilot_world(building_name="Prop Create B", email_prefix="pc")
         driver = PilotDomainDriver(self.seed)
         driver.submit_report("Lift jerks", "Lift 2")
-        driver.confirm_triage_and_create_paid_work_order()
-        self.work = self.seed.work_order
+        driver.confirm_triage_case()
+        self.work = self.seed.case
         self.operator = self.seed.management_memberships[0]
         self.account = self.seed.accounts[self.operator.pk]
 
@@ -61,7 +60,7 @@ class ProposalCreateTests(TestCase):
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
     def test_prepare_then_sign_submits_version(self):
         self._login_operator()
-        url = reverse("web:proposal-create", kwargs={"pk": self.work.case_id})
+        url = reverse("web:proposal-create", kwargs={"pk": self.work.pk})
 
         prepare = self.client.post(
             url,
@@ -75,7 +74,7 @@ class ProposalCreateTests(TestCase):
         )
         self.assertEqual(prepare.status_code, 200)
         self.assertContains(prepare, "data-signed-form")
-        proposal = Proposal.objects.get(case=self.work.case)
+        proposal = Proposal.objects.get(case=self.work)
         self.assertIsNone(proposal.current_version_id)
         original = DocumentVersion.objects.get(
             document__building=self.seed.building,
@@ -108,7 +107,6 @@ class ProposalCreateTests(TestCase):
         version = ProposalVersion.objects.get(proposal=proposal)
         self.assertEqual(version.amount_vnd, 5_000_000)
         self.work.refresh_from_db()
-        self.assertEqual(self.work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED)
 
     def test_second_manager_can_open_proposal_create(self):
         manager = self.seed.management_memberships[1]
@@ -120,5 +118,5 @@ class ProposalCreateTests(TestCase):
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
         session.save()
-        resp = self.client.get(reverse("web:proposal-create", kwargs={"pk": self.work.case_id}))
+        resp = self.client.get(reverse("web:proposal-create", kwargs={"pk": self.work.pk}))
         self.assertEqual(resp.status_code, 200)

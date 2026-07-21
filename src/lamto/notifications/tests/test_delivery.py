@@ -165,7 +165,7 @@ class FailingEmailBackend:
 
 
 class DeadlineRiskNotificationTests(TestCase):
-    def test_worker_queues_deadline_risk_for_near_due_work_order(self):
+    def test_worker_queues_deadline_risk_for_near_due_case(self):
         from datetime import timedelta
 
         from django.contrib.auth import get_user_model
@@ -177,7 +177,6 @@ class DeadlineRiskNotificationTests(TestCase):
             IssueReport,
             MaintenanceCase,
             TriageDecision,
-            WorkOrder,
         )
         from lamto.notifications.models import NotificationDelivery
         from lamto.notifications.services import EVENT_DEADLINE_RISK
@@ -227,27 +226,16 @@ class DeadlineRiskNotificationTests(TestCase):
             deadline_at=timezone.now() + timedelta(hours=12),
             active=True,
         )
-        work_order = WorkOrder.objects.create(
-            case=case,
-            assignee=assignee_user,
-            priority="HIGH",
-            deadline_at=timezone.now() + timedelta(hours=6),
-            requires_spending=False,
-            authorization_status=WorkOrder.AuthorizationStatus.NOT_REQUIRED,
-            status=WorkOrder.Status.ASSIGNED,
-        )
-
         with self.captureOnCommitCallbacks(execute=True):
             result = process_deadline_risk_batch(limit=20)
         self.assertTrue(result.ok)
         self.assertGreaterEqual(result.count, 1)
 
-        day = work_order.deadline_at.date().isoformat()
-        event_key = f"{EVENT_DEADLINE_RISK}:work:{work_order.pk}:day:{day}"
+        day = case.deadline_at.date().isoformat()
+        event_key = f"{EVENT_DEADLINE_RISK}:case:{case.pk}:day:{day}"
         deliveries = NotificationDelivery.objects.filter(event_key=event_key)
         self.assertTrue(deliveries.exists())
         recipients = set(deliveries.values_list("recipient_id", flat=True))
-        self.assertIn(assignee_user.pk, recipients)
         self.assertIn(op_user.pk, recipients)
 
         # Idempotent: second run does not create additional rows for same day

@@ -46,7 +46,6 @@ class ManagementWorkspaceTests(TestCase):
             "action-inbox",
             "case-list",
             "proposal-list",
-            "work-order-list",
             "payment-list",
             "audit-export",
             "fund-home",
@@ -147,7 +146,7 @@ class ManagementWorkspaceTests(TestCase):
             create_opening_fund=False,
         )
         driver = PilotDomainDriver(seed)
-        driver.confirm_triage_and_create_paid_work_order()
+        driver.confirm_triage_case()
         driver.submit_signed_proposal()
         driver.complete_assigned_work()
         payment = driver.accept_and_record_payment()

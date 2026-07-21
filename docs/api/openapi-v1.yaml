@@ -104,6 +104,63 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Authentication required or failed (code=not_authenticated or
             authentication_failed).
+  /api/v1/cases/{id}/rating:
+    post:
+      operationId: cases_rating_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - cases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseRatingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CaseRatingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CaseRatingRequest'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseRatingResult'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
   /api/v1/devices:
     post:
       operationId: devices_create
@@ -902,65 +959,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Resource not found (code=not_found).
-  /api/v1/cases/{id}/rating:
-    post:
-      operationId: case_rating_create
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - cases
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CaseRatingRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/CaseRatingRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/CaseRatingRequest'
-        required: true
-      security:
-      - knoxApiToken: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CaseRatingResult'
-          description: ''
-        '400':
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-          description: Validation failed (code=validation_failed).
-        '401':
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-          description: Authentication required or failed (code=not_authenticated or
-            authentication_failed).
-        '403':
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-          description: Permission denied (code=permission_denied).
-        '404':
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-          description: Resource not found (code=not_found).
 components:
   schemas:
+    CaseRatingRequest:
+      type: object
+      properties:
+        satisfied:
+          type: boolean
+        comment:
+          type: string
+          maxLength: 500
+      required:
+      - satisfied
+    CaseRatingResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        case_id:
+          type: integer
+        satisfied:
+          type: boolean
+      required:
+      - case_id
+      - id
+      - satisfied
     Device:
       type: object
       properties:
@@ -1463,12 +1486,14 @@ components:
           type: boolean
       required:
       - active
+      - can_rate
       - category
+      - closed_at
+      - completed_at
       - deadline_at
       - id
-      - urgency
       - updates
-      - can_rate
+      - urgency
     ReportCreateRequest:
       type: object
       properties:
@@ -1602,9 +1627,9 @@ components:
           format: date-time
       required:
       - cause
-      - result
       - created_at
       - id
+      - result
     StatusEnum:
       enum:
       - SUBMITTED
@@ -1650,29 +1675,6 @@ components:
       - decision
       - verified_at
       - verified_by
-    CaseRatingRequest:
-      type: object
-      properties:
-        satisfied:
-          type: boolean
-        comment:
-          type: string
-          maxLength: 500
-      required:
-      - satisfied
-    CaseRatingResult:
-      type: object
-      properties:
-        id:
-          type: integer
-        case_id:
-          type: integer
-        satisfied:
-          type: boolean
-      required:
-      - id
-      - satisfied
-      - case_id
   securitySchemes:
     knoxApiToken:
       type: apiKey

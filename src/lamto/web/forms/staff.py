@@ -168,9 +168,9 @@ class AcceptWorkForm(SignedDecisionForm):
         self.fields["invoice_pair"].choices = inv
         self.fields["acceptance_pair"].choices = acc
 
-    def save(self, work_order, membership, documents):
+    def save(self, case, membership, documents):
         return accept_work(
-            work_order,
+            case,
             membership,
             self.cleaned_data["actual_cost_vnd"],
             documents["invoice_original"],

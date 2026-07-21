@@ -41,11 +41,10 @@ class PushQueueGatingTests(TestCase):
         queue_notification(self.resident, f"{EVENT_PUBLICATION}:entry:3", "s", "b", event_code=EVENT_PUBLICATION, building=self.building)
         assert self._push_rows().count() == 0
 
-    def test_work_rateable_notifies_reporting_resident(self):
-        from lamto.notifications.hooks import notify_work_rateable
+    def test_case_completion_notifies_reporting_resident(self):
+        from lamto.notifications.hooks import notify_case_completed
         from lamto.notifications.services import EVENT_WORK_COMPLETED
         from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
-        from lamto.maintenance.models import WorkOrder
         import tempfile
         from django.test import override_settings
 
@@ -59,17 +58,15 @@ class PushQueueGatingTests(TestCase):
             seed = seed_pilot_world(building_name="Rate B", email_prefix="rate", create_sample_report=False)
             d = PilotDomainDriver(seed)
             d.submit_report("Lift noise", "Lift 2")
-            d.confirm_triage_and_create_paid_work_order()
+            d.confirm_triage_case()
             d.submit_signed_proposal()
             d.complete_assigned_work()
             d.accept_and_record_payment()
             d.confirm_all_chain_events()
-            work = WorkOrder.objects.get(case__building=seed.building)
-            from lamto.finance.models import AcceptanceRecord
-            record = AcceptanceRecord.objects.get(case=work.case)
+            case = seed.case
             # notify_users queues via transaction.on_commit; fire it in-test.
             with self.captureOnCommitCallbacks(execute=True):
-                notify_work_rateable(record)
+                notify_case_completed(case)
             assert NotificationDelivery.objects.filter(
                 recipient=seed.residents[0], event_code=EVENT_WORK_COMPLETED,
             ).exists()

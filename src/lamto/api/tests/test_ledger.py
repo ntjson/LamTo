@@ -43,7 +43,7 @@ class LedgerApiTests(TestCase):
         )
         driver = PilotDomainDriver(cls.seed)
         driver.submit_report("Lobby lamp flickers", "Lift 2")
-        driver.confirm_triage_and_create_paid_work_order()
+        driver.confirm_triage_case()
         driver.submit_signed_proposal()
         driver.complete_assigned_work()
         driver.accept_and_record_payment()

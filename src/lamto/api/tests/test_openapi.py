@@ -60,9 +60,9 @@ class OpenApiDriftTests(SimpleTestCase):
             or "/api/v1/reports/{pk}/photos" in content
         ), "report photos upload route missing from committed schema"
         assert (
-            "/api/v1/work/{id}/rating" in content
-            or "/api/v1/work/{pk}/rating" in content
-        ), "work rating route missing from committed schema"
+            "/api/v1/cases/{id}/rating" in content
+            or "/api/v1/cases/{pk}/rating" in content
+        ), "case rating route missing from committed schema"
         assert (
             "/api/v1/notifications/{id}/read" in content
             or "/api/v1/notifications/{pk}/read" in content

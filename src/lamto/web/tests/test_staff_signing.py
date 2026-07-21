@@ -20,7 +20,7 @@ from lamto.accounts.models import (
 from lamto.documents.models import Document, DocumentVersion
 from lamto.web.forms.staff import (
     AcceptWorkForm,
-    CompleteWorkOrderForm,
+    ProgressUpdateForm,
     RecordPaymentForm,
 )
 from lamto.web.staff_signing import (
@@ -209,7 +209,6 @@ class UploadDocumentPairTests(TestCase):
             IssueReport,
             MaintenanceCase,
             TriageDecision,
-            WorkOrder,
         )
 
         location = BuildingLocation.objects.create(
@@ -245,15 +244,6 @@ class UploadDocumentPairTests(TestCase):
             department="Ops",
             deadline_at=timezone.now(),
             active=True,
-        )
-        work = WorkOrder.objects.create(
-            case=case,
-            assignee=self.user,
-            priority="HIGH",
-            deadline_at=timezone.now(),
-            requires_spending=True,
-            authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
-            status=WorkOrder.Status.ASSIGNED,
         )
         membership = ManagementMembership.objects.get(
             user=self.user, building=self.building
@@ -335,8 +325,8 @@ class StaffEvidenceFormTests(TestCase):
             uploader=self.user,
         )
 
-    def test_complete_work_order_form_scopes_photo_querysets(self):
-        form = CompleteWorkOrderForm(
+    def test_progress_update_form_scopes_photo_querysets(self):
+        form = ProgressUpdateForm(
             building_id=self.building.pk, uploader_id=self.user.pk
         )
         self.assertQuerySetEqual(

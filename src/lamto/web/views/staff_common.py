@@ -338,7 +338,6 @@ def _related_or_none(obj, attr: str):
 def resolve_accountability_stage(
     source=None,
     *,
-    work_order=None,
     proposal=None,
     payment=None,
     acceptance=None,
@@ -349,8 +348,7 @@ def resolve_accountability_stage(
 ) -> tuple[str | None, bool, bool]:
     """Derive (current_stage_key, blocked, publication_pending) from real state.
 
-    Returns ``(None, False, False)`` when every stage is complete (published, or a
-    non-spending work order already closed). Pass ``published`` / ``publication_pending``
+    Returns ``(None, False, False)`` when every stage is complete. Pass ``published`` / ``publication_pending``
     to skip DB lookups (tests and pre-resolved views).
 
     ``publication_pending`` is True when a PublicationSnapshot exists but the
@@ -360,7 +358,7 @@ def resolve_accountability_stage(
     from lamto.finance.models import PublicationSnapshot, PublishedLedgerEntry
     from lamto.finance.models.execution import AcceptanceRecord, PaymentEvidence
     from lamto.finance.models.proposals import Proposal
-    from lamto.maintenance.models import MaintenanceCase, WorkOrder
+    from lamto.maintenance.models import MaintenanceCase
 
     if source is not None:
         if isinstance(source, PublishedLedgerEntry):
@@ -371,8 +369,6 @@ def resolve_accountability_stage(
             acceptance = source
         elif isinstance(source, Proposal):
             proposal = source
-        elif isinstance(source, WorkOrder):
-            work_order = source
         elif isinstance(source, MaintenanceCase):
             case = source
 
@@ -390,8 +386,6 @@ def resolve_accountability_stage(
     if case is None and payment is not None:
         acc = getattr(payment, "acceptance", None)
         case = getattr(acc, "case", None) if acc is not None else None
-    if case is None and work_order is not None:
-        case = getattr(work_order, "case", None)
     if proposal is None and case is not None:
         proposal = _related_or_none(case, "proposal")
     if acceptance is None and case is not None:
@@ -399,77 +393,25 @@ def resolve_accountability_stage(
     if payment is None and acceptance is not None:
         payment = _related_or_none(acceptance, "payment")
 
-    if work_order is not None:
+    if case is not None:
         if published is None:
-            published = False
-            pk = getattr(work_order, "pk", None)
-            if pk is not None:
-                published = PublishedLedgerEntry.objects.filter(
-                    work_order_id=pk
-                ).exists()
-            if not published and proposal is not None and getattr(proposal, "pk", None):
-                published = PublishedLedgerEntry.objects.filter(
-                    proposal_id=proposal.pk
-                ).exists()
-            if not published and payment is not None and getattr(payment, "pk", None):
-                published = PublishedLedgerEntry.objects.filter(
-                    payment_id=payment.pk
-                ).exists()
+            published = PublishedLedgerEntry.objects.filter(case=case).exists()
         if published:
             return None, False, False
-
-        if publication_pending is None:
-            publication_pending = False
-            # When callers pre-resolve ``published`` (tests / cached views), do
-            # not open a second DB path unless they also pass publication_pending.
-            if published is None and proposal is not None and getattr(proposal, "pk", None):
-                has_snapshot = PublicationSnapshot.objects.filter(
-                    proposal_id=proposal.pk
-                ).exists()
-                has_entry = PublishedLedgerEntry.objects.filter(
-                    proposal_id=proposal.pk
-                ).exists()
-                publication_pending = has_snapshot and not has_entry
-
         if payment is not None:
+            if publication_pending is None:
+                publication_pending = PublicationSnapshot.objects.filter(proposal__case=case).exists()
             return "publication", False, bool(publication_pending)
-
-        status = getattr(work_order, "status", "")
-        requires_spending = bool(getattr(work_order, "requires_spending", False))
-        if acceptance is not None or status in _WORK_CLOSED:
-            if not requires_spending:
-                return None, False, False
+        if acceptance is not None:
             return "payment", False, False
-
         proposal_status = getattr(proposal, "status", None) if proposal else None
-        authorized = proposal_status in _PROPOSAL_AUTHORIZED
-        rejected = proposal_status == Proposal.Status.REJECTED or proposal_status == "REJECTED"
-        if authorized:
+        if proposal_status in _PROPOSAL_AUTHORIZED:
             return "acceptance", False, False
-
-        if requires_spending:
-            if rejected:
-                return "proposal", True, False
-            if proposal is not None or status in _WORK_DONE:
-                return "proposal", False, False
-            return "work", False, False
-
-        if status == WorkOrder.Status.AWAITING_ACCEPTANCE or status == "AWAITING_ACCEPTANCE":
-            return "acceptance", False, False
-        if status == WorkOrder.Status.CANCELLED or status == "CANCELLED":
-            return "work", True, False
-        return "work", False, False
-
-    if case is not None:
-        latest = None
-        work_orders = getattr(case, "work_orders", None)
-        if work_orders is not None and hasattr(work_orders, "order_by"):
-            latest = work_orders.order_by("-created_at", "-pk").first()
-        if latest is not None:
-            return resolve_accountability_stage(
-                work_order=latest, published=published, publication_pending=publication_pending
-            )
-        return "work", False, False
+        if proposal_status == Proposal.Status.REJECTED or proposal_status == "REJECTED":
+            return "proposal", True, False
+        if proposal is not None:
+            return "proposal", False, False
+        return ("acceptance", False, False) if case.completed_at else ("work", False, False)
 
     if proposal is not None:
         return resolve_accountability_stage(

@@ -58,7 +58,7 @@ class PaymentMakerCheckerTests(TestCase):
             acceptance_redacted,
         ) = _AcceptanceFixtures.make_completed_work_inputs(self)
         proof_original, proof_redacted = self.document_pair(
-            work.case.building,
+            work.building,
             Document.Kind.PAYMENT_PROOF,
             board.user,
             51,
@@ -105,7 +105,7 @@ class PaymentMakerCheckerTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         acceptance = accept_work(
-            work.case,
+            work,
             board,
             18_500_000,
             invoice_original,
@@ -197,7 +197,7 @@ class PaymentMakerCheckerTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         acceptance = accept_work(
-            work.case,
+            work,
             board_recorder,
             18_500_000,
             invoice_original,

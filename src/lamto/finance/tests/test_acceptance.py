@@ -27,11 +27,10 @@ from lamto.maintenance.models import (
     MaintenanceCase,
     TriageDecision,
     TriageJob,
-    WorkOrder,
     WorkUpdate,
     WorkUpdateEvidence,
 )
-from lamto.maintenance.workorders import complete_work_order, start_work_order
+from lamto.maintenance.cases import complete_case_work, start_case_work
 
 
 class WorkAcceptanceTests(TestCase):
@@ -150,18 +149,10 @@ class WorkAcceptanceTests(TestCase):
             department="Maintenance",
             deadline_at="2026-07-20T12:00:00Z",
         )
-        work_order = WorkOrder.objects.create(
-            case=case,
-            assignee=maintenance,
-            priority="HIGH",
-            deadline_at=case.deadline_at,
-            requires_spending=True,
-            authorization_status=WorkOrder.AuthorizationStatus.PENDING,
-        )
         quotation_original, _ = self.document_pair(
             building, Document.Kind.QUOTATION, operator_user, 1, "quotation"
         )
-        proposal = create_proposal(work_order.case, operator)
+        proposal = create_proposal(case, operator)
         event_id = "0x" + secrets.token_hex(32)
         from lamto.finance.proposals import build_proposal_evidence_payload
         from lamto.evidence.signatures import build_evidence_typed_data
@@ -184,14 +175,13 @@ class WorkAcceptanceTests(TestCase):
         )
         self.accounts = {board.pk: board_account}
 
-        work_order.refresh_from_db()
-        start_work_order(work_order, maintenance)
+        start_case_work(case, maintenance)
         before = self.photo(building, Document.Kind.BEFORE_PHOTO, maintenance, 11)
         after = self.photo(building, Document.Kind.AFTER_PHOTO, maintenance, 12)
-        complete_work_order(
-            work_order, maintenance, "Worn cable", "Cable secured", [before], [after]
+        complete_case_work(
+            case, maintenance, "Worn cable", "Cable secured", [before], [after]
         )
-        work_order.refresh_from_db()
+        case.refresh_from_db()
 
         invoice_original, invoice_redacted = self.document_pair(
             building, Document.Kind.INVOICE, operator_user, 21, "invoice"
@@ -200,7 +190,7 @@ class WorkAcceptanceTests(TestCase):
             building, Document.Kind.ACCEPTANCE_REPORT, operator_user, 31, "acceptance"
         )
         return (
-            work_order,
+            case,
             board,
             invoice_original,
             invoice_redacted,
@@ -224,7 +214,7 @@ class WorkAcceptanceTests(TestCase):
             event_id = "0x" + secrets.token_hex(32)
         timestamp = timestamp or work.completed_at
         typed_data = build_acceptance_evidence_typed_data(
-            work.case,
+            work,
             membership,
             actual_cost_vnd,
             invoice_original,
@@ -260,7 +250,7 @@ class WorkAcceptanceTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         record = accept_work(
-            work.case,
+            work,
             board,
             18_500_000,
             invoice_original,
@@ -271,8 +261,6 @@ class WorkAcceptanceTests(TestCase):
             event_id,
             timestamp=timestamp,
         )
-        work.refresh_from_db()
-        self.assertEqual(work.status, WorkOrder.Status.ACCEPTED)
         self.assertEqual(record.actual_cost_vnd, 18_500_000)
         self.assertEqual(record.outbox_event.event_type, EvidenceType.WORK_ACCEPTANCE)
         self.assertEqual(record.outbox_event.payload["actual_cost_vnd"], 18_500_000)
@@ -290,7 +278,7 @@ class WorkAcceptanceTests(TestCase):
         )
         self.assertEqual(
             record.outbox_event.previous_hash,
-            "0x" + work.case.proposal.current_version.outbox_event.payload_hash,
+            "0x" + work.proposal.current_version.outbox_event.payload_hash,
         )
 
     def test_accept_work_rejects_wrong_status_and_non_positive_cost(self):
@@ -310,11 +298,12 @@ class WorkAcceptanceTests(TestCase):
             acceptance_original=acceptance_original,
             acceptance_redacted=acceptance_redacted,
         )
-        work.status = WorkOrder.Status.IN_PROGRESS
-        work.save(update_fields=["status"])
+        completed_at = work.completed_at
+        work.completed_at = None
+        work.save(update_fields=["completed_at"])
         with self.assertRaises(ValidationError):
             accept_work(
-                work.case,
+                work,
                 board,
                 18_500_000,
                 invoice_original,
@@ -325,11 +314,11 @@ class WorkAcceptanceTests(TestCase):
                 event_id,
                 timestamp=timestamp,
             )
-        work.status = WorkOrder.Status.AWAITING_ACCEPTANCE
-        work.save(update_fields=["status"])
+        work.completed_at = completed_at
+        work.save(update_fields=["completed_at"])
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work.case,
+                work,
                 18_500_000.0,
                 invoice_original,
                 invoice_redacted,
@@ -339,7 +328,7 @@ class WorkAcceptanceTests(TestCase):
             )
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work.case,
+                work,
                 0,
                 invoice_original,
                 invoice_redacted,
@@ -363,7 +352,7 @@ class WorkAcceptanceTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work.case,
+                work,
                 18_500_000,
                 bad_original,
                 bad_redacted,
@@ -372,11 +361,11 @@ class WorkAcceptanceTests(TestCase):
                 timestamp=work.completed_at,
             )
         wrong_kind_original, wrong_kind_redacted = self.document_pair(
-            work.case.building, Document.Kind.QUOTATION, board.user, 42, "not-invoice"
+            work.building, Document.Kind.QUOTATION, board.user, 42, "not-invoice"
         )
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work.case,
+                work,
                 18_500_000,
                 wrong_kind_original,
                 wrong_kind_redacted,
@@ -403,7 +392,7 @@ class WorkAcceptanceTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         record = accept_work(
-            work.case,
+            work,
             board,
             18_500_000,
             invoice_original,
@@ -423,49 +412,3 @@ class WorkAcceptanceTests(TestCase):
             AcceptanceRecord.objects.filter(pk=record.pk).update(actual_cost_vnd=1)
         with self.assertRaises(IntegrityError), transaction.atomic():
             AcceptanceRecord.objects.filter(pk=record.pk).delete()
-
-    def test_accept_work_selects_the_awaiting_execution_when_case_has_multiple_work_orders(self):
-        (
-            awaiting,
-            board,
-            invoice_original,
-            invoice_redacted,
-            acceptance_original,
-            acceptance_redacted,
-        ) = self.make_completed_work_inputs()
-        newer = WorkOrder.objects.create(
-            case=awaiting.case,
-            assignee=awaiting.assignee,
-            priority=awaiting.priority,
-            deadline_at=awaiting.deadline_at,
-            requires_spending=False,
-            authorization_status=WorkOrder.AuthorizationStatus.NOT_REQUIRED,
-            status=WorkOrder.Status.ASSIGNED,
-        )
-        signature, event_id, timestamp = self.sign_acceptance(
-            awaiting,
-            board,
-            invoice_original=invoice_original,
-            invoice_redacted=invoice_redacted,
-            acceptance_original=acceptance_original,
-            acceptance_redacted=acceptance_redacted,
-        )
-
-        record = accept_work(
-            awaiting.case,
-            board,
-            18_500_000,
-            invoice_original,
-            invoice_redacted,
-            acceptance_original,
-            acceptance_redacted,
-            signature,
-            event_id,
-            timestamp=timestamp,
-        )
-
-        awaiting.refresh_from_db()
-        newer.refresh_from_db()
-        self.assertEqual(record.case, awaiting.case)
-        self.assertEqual(awaiting.status, WorkOrder.Status.ACCEPTED)
-        self.assertEqual(newer.status, WorkOrder.Status.ASSIGNED)
