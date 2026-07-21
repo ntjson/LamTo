@@ -81,7 +81,6 @@ class Command(BaseCommand):
                 f"  pilot-board-payment-recorder@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-board-payment-verifier@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-eligible-publisher@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-board-emergency-approver@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-auditor@{PILOT_EMAIL_DOMAIN}\n"
             )
             return

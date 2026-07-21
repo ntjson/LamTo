@@ -59,23 +59,11 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
         "proposal_hash": "hash", "decision": APPROVAL,
         "actor_organization_id": "id", "decision_timestamp": "timestamp",
     }, {}),
-    EvidenceType.EMERGENCY_AUTHORIZATION: ({
-        "work_order_id": "id", "reason_digest": "hash",
-        "available_estimate_vnd": "money", "authorization_timestamp": "timestamp",
-        "drill": "bool",
-    }, {"estimate_document_hash": "hash"}),
-    EvidenceType.EMERGENCY_OUTCOME: ({
-        "decision": frozenset({"RATIFY", "REJECT"}),
-        "result": frozenset({"RATIFIED", "REJECTED"}), "reason_digest": "hash",
-        "deadline_result": frozenset({"MET", "MISSED"}),
-        "decision_timestamp": "timestamp", "drill": "bool",
-    }, {}),
     EvidenceType.WORK_ACCEPTANCE: ({
         "work_order_id": "id", "actual_cost_vnd": "money",
         "acceptance_timestamp": "timestamp", "invoice_original_hash": "hash",
         "invoice_redacted_hash": "hash", "acceptance_report_original_hash": "hash",
         "acceptance_report_redacted_hash": "hash", "photo_hashes": "hashes",
-        "drill": "bool",
     }, {}),
     EvidenceType.PAYMENT_RECORDED: ({
         "payment_id": "id", "amount_vnd": "money", "bank_reference_digest": "hash",
@@ -91,8 +79,8 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
     EvidenceType.PUBLICATION_SNAPSHOT: ({
         "publication_id": "id", "prerequisite_event_hashes": "hashes",
         "resident_payload_hash": "hash", "document_hashes": "hashes",
-        "publication_timestamp": "timestamp", "drill": "bool",
-    }, {"emergency_outcome_hash": "hash"}),
+        "publication_timestamp": "timestamp",
+    }, {}),
     EvidenceType.FUND_ENTRY: ({
         "fund_entry_id": "id", "entry_type": frozenset({"OPENING", "INFLOW"}),
         "amount_vnd": "money", "source_document_original_hash": "hash",

@@ -97,8 +97,6 @@ def _submission_snapshot(proposal, amount_vnd, contractor_name, pairs, number):
         "proposal_snapshot_hash": payload_hash(snapshot),
         "work_snapshot_hash": payload_hash({
             "work_order_id": work_order.pk,
-            "emergency": work_order.emergency,
-            "drill": work_order.drill,
             "requires_spending": work_order.requires_spending,
         }),
         "case_snapshot_hash": payload_hash({
@@ -147,7 +145,6 @@ def create_proposal(work_order, creator_membership) -> Proposal:
         proposal = Proposal.objects.create(
             work_order=locked_work_order,
             creator_membership=membership,
-            mode=(Proposal.Mode.EMERGENCY if locked_work_order.emergency else Proposal.Mode.NORMAL),
         )
     except IntegrityError as exc:
         raise ValidationError("A proposal already exists for this work order.") from exc
@@ -158,7 +155,7 @@ def create_proposal(work_order, creator_membership) -> Proposal:
         "Proposal",
         str(proposal.pk),
         "accepted",
-        {"work_order_id": locked_work_order.pk, "mode": proposal.mode},
+        {"work_order_id": locked_work_order.pk},
     )
     return proposal
 
@@ -226,16 +223,9 @@ def submit_proposal_version(
         ]
     )
     locked_proposal.current_version = version
-    locked_proposal.status = (
-        Proposal.Status.EMERGENCY_EVIDENCE
-        if locked_proposal.mode == Proposal.Mode.EMERGENCY
-        else Proposal.Status.IN_REVIEW
-    )
+    locked_proposal.status = Proposal.Status.IN_REVIEW
     locked_proposal.save(update_fields=["current_version", "status"])
-    if work_order.requires_spending and (
-        locked_proposal.mode == Proposal.Mode.NORMAL
-        or work_order.authorization_status != WorkOrder.AuthorizationStatus.AUTHORIZED
-    ):
+    if work_order.requires_spending:
         work_order.authorization_status = WorkOrder.AuthorizationStatus.PENDING
         work_order.save(update_fields=["authorization_status"])
     record_audit(

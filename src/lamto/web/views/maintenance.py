@@ -115,7 +115,7 @@ def work_order_detail(request, pk):
     membership, memberships = resolve_active_membership(request)
     _require_maintenance(membership)
     work_order = get_object_or_404(
-        WorkOrder.objects.select_related("case", "assignee", "emergency_requested_by"),
+        WorkOrder.objects.select_related("case", "assignee"),
         pk=pk,
         case__building_id=membership.organization.building_id,
     )

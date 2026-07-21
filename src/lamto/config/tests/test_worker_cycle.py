@@ -39,42 +39,6 @@ class WorkerCycleTests(TestCase):
         self.assertEqual(res.name, "notifications")
 
     def test_cycle_runs_all_named_processors(self):
-        with patch(
-            "lamto.config.worker.process_triage_batch",
-            return_value=ProcessorResult("triage", True),
-        ), patch(
-            "lamto.config.worker.process_emergency_outcomes_batch",
-            return_value=ProcessorResult("emergency_outcomes", True),
-        ), patch(
-            "lamto.config.worker.process_blockchain_outbox_batch",
-            return_value=ProcessorResult("blockchain_outbox", True),
-        ), patch(
-            "lamto.config.worker.process_publication_finalization_batch",
-            return_value=ProcessorResult("publication_finalize", True),
-        ), patch(
-            "lamto.config.worker.process_integrity_batch",
-            return_value=ProcessorResult("integrity", True),
-        ), patch(
-            "lamto.config.worker.process_notifications_batch",
-            return_value=ProcessorResult("notifications", True),
-        ):
-            # PROCESSORS tuple holds real callables; patch the functions they reference
-            # by replacing PROCESSORS with patched callables
-            from lamto.config import worker as worker_mod
-
-            patched = (
-                worker_mod.process_triage_batch,
-                worker_mod.process_emergency_outcomes_batch,
-                worker_mod.process_blockchain_outbox_batch,
-                worker_mod.process_publication_finalization_batch,
-                worker_mod.process_integrity_batch,
-                worker_mod.process_notifications_batch,
-            )
-            with patch.object(worker_mod, "PROCESSORS", patched):
-                # The patches above wrap the names but PROCESSORS already bound
-                # originals. Force new PROCESSORS of MagicMocks instead:
-                pass
-
         calls = []
 
         def make(name, fail=False):
@@ -88,8 +52,7 @@ class WorkerCycleTests(TestCase):
 
         processors = (
             make("triage"),
-            make("emergency_outcomes", fail=True),
-            make("blockchain_outbox"),
+            make("blockchain_outbox", fail=True),
             make("publication_finalize"),
             make("integrity"),
             make("notifications"),
@@ -101,7 +64,6 @@ class WorkerCycleTests(TestCase):
             calls,
             [
                 "triage",
-                "emergency_outcomes",
                 "blockchain_outbox",
                 "publication_finalize",
                 "integrity",

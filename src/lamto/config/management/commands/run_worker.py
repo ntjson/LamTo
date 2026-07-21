@@ -5,7 +5,7 @@ from lamto.config.worker import run_worker_cycle, run_worker_loop
 
 class Command(BaseCommand):
     help = (
-        "Run the unified database-backed worker (triage, emergencies, outbox, "
+        "Run the unified database-backed worker (triage, outbox, "
         "publication finalization, integrity, notifications)."
     )
 

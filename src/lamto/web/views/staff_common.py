@@ -281,7 +281,7 @@ def pop_sign_confirmation(request):
     return request.session.pop(SESSION_SIGN_CONFIRMATION_KEY, None)
 
 # Proposal statuses that clear the proposal stage.
-_PROPOSAL_APPROVED = frozenset({"NORMAL_AUTHORIZED", "EMERGENCY_EVIDENCE"})
+_PROPOSAL_APPROVED = frozenset({"NORMAL_AUTHORIZED"})
 _WORK_DONE = frozenset({"AWAITING_ACCEPTANCE", "ACCEPTED", "CLOSED"})
 _WORK_CLOSED = frozenset({"ACCEPTED", "CLOSED"})
 

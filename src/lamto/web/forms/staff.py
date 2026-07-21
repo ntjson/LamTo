@@ -7,7 +7,6 @@ from lamto.accounts.models import OrganizationMembership
 from lamto.documents.models import Document, DocumentVersion
 from lamto.finance.acceptance import accept_work
 from lamto.finance.approvals import decide_proposal
-from lamto.finance.emergencies import authorize_emergency, decide_emergency
 from lamto.finance.models import ApprovalDecision, MaintenanceFundEntry, PaymentVerification
 from lamto.finance.payments import record_payment, verify_payment
 from lamto.maintenance.models import BuildingLocation
@@ -40,7 +39,6 @@ class ConfirmTriageForm(forms.Form):
             ("LOW", "Low"),
             ("MEDIUM", "Medium"),
             ("HIGH", "High"),
-            ("EMERGENCY", "Emergency"),
         ],
         widget=forms.Select(attrs={"class": "input"}),
     )
@@ -304,41 +302,6 @@ class VerifyPaymentForm(SignedDecisionForm):
     def save(self, payment, membership):
         return verify_payment(
             payment,
-            membership,
-            self.cleaned_data["decision"],
-            self.cleaned_data.get("reason") or "",
-            self.cleaned_data["signature"],
-            self.cleaned_data["event_id"],
-        )
-
-
-class EmergencyAuthorizeForm(SignedDecisionForm):
-    estimate_vnd = forms.IntegerField(
-        required=False, min_value=1, widget=forms.NumberInput(attrs={"class": "input"})
-    )
-
-    def save(self, work_order, membership):
-        from django.utils import timezone
-
-        return authorize_emergency(
-            work_order,
-            membership,
-            self.cleaned_data.get("estimate_vnd"),
-            self.cleaned_data["signature"],
-            self.cleaned_data["event_id"],
-            timezone.now(),
-        )
-
-
-class EmergencyDecideForm(SignedDecisionForm):
-    decision = forms.ChoiceField(
-        choices=[("RATIFY", "Ratify"), ("REJECT", "Reject")],
-        widget=forms.Select(attrs={"class": "input"}),
-    )
-
-    def save(self, authorization, membership):
-        return decide_emergency(
-            authorization,
             membership,
             self.cleaned_data["decision"],
             self.cleaned_data.get("reason") or "",

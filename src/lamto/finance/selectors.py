@@ -51,7 +51,6 @@ def published_ledger_entry_for_proof(building_id, pk):
             "work_order__acceptance",
             "work_order__acceptance__invoice_redacted",
             "work_order__acceptance__acceptance_redacted",
-            "work_order__emergency_authorization__membership__user",
             "payment__proof_redacted",
             "payment__outbox_event",
             "payment__verification__outbox_event",
@@ -188,14 +187,12 @@ def _ledger_story_fields(entry, payload):
     cause = (getattr(work, "cause", None) or "").strip()
     report_text = (getattr(report, "text", None) or "").strip() if report else ""
     category = (getattr(case, "category", None) or "").strip()
-    emergency_reason = (getattr(work, "emergency_reason", None) or "").strip()
-
     what_was_fixed = result or report_text or category
-    why = cause or emergency_reason or category
+    why = cause or category
 
     approvers = []
     version = entry.proposal.current_version if entry.proposal_id else None
-    if version is not None and entry.proposal.mode == Proposal.Mode.NORMAL:
+    if version is not None:
         stage_to_role = {
             ApprovalDecision.Stage.BOARD: "board",
             ApprovalDecision.Stage.RESIDENT_REP: "resident_rep",
@@ -216,18 +213,6 @@ def _ledger_story_fields(entry, payload):
                     "decision": approval.decision,
                 }
             )
-    elif payload.get("emergency") or getattr(work, "emergency", False):
-        auth = getattr(work, "emergency_authorization", None)
-        if auth is not None:
-            name = auth.membership.user.display_name
-            if name:
-                approvers.append(
-                    {
-                        "role": "emergency",
-                        "name": name,
-                        "decision": "AUTHORIZED",
-                    }
-                )
 
     return {
         "what_was_fixed": what_was_fixed,
@@ -292,7 +277,6 @@ def ledger_entry_proof(entry):
         "transaction_ids": [
             event.transaction_hash for event in events if event.transaction_hash
         ],
-        "emergency": payload.get("emergency"),
         "evidence_level": evidence_level(entry.snapshot.outbox_event.status),
         "what_was_fixed": story["what_was_fixed"],
         "why": story["why"],
@@ -326,20 +310,13 @@ def pending_reconciliation_proposals(building_id):
     prepare_publication — not merely payment.decision == VERIFIED:
     - payment verification decision VERIFIED
     - payment external_status COMPLETED
-    - proposal has current_version; work order not drill
+    - proposal has current_version
     - no PublishedLedgerEntry and no PublicationSnapshot yet
-    - prerequisite outbox events settled (proposal version, mode-specific
-      prerequisites, acceptance, payment, verification)
-    - NORMAL: settled board + resident-rep approvals
-    - EMERGENCY: same gates as prepare_publication._emergency_context
-      (authorization + terminal ratification outcome, 24h window passed)
-      plus settled authorization (and ratification outbox when present)
+    - prerequisite outbox events settled
+    - settled board + resident-rep approvals
     """
-    from django.core.exceptions import ValidationError
-    from django.utils import timezone
-
     from lamto.accounts.models import Organization
-    from lamto.evidence.models import SETTLED_STATUSES, is_settled
+    from lamto.evidence.models import SETTLED_STATUSES
     from lamto.finance.models import (
         ApprovalDecision,
         PaymentEvidence,
@@ -348,8 +325,6 @@ def pending_reconciliation_proposals(building_id):
         PublicationSnapshot,
         PublishedLedgerEntry,
     )
-    from lamto.finance.publication import _emergency_context
-
     published_proposal_ids = PublishedLedgerEntry.objects.filter(
         case__building_id=building_id, proposal__isnull=False
     ).values("proposal_id")
@@ -360,7 +335,6 @@ def pending_reconciliation_proposals(building_id):
     qs = (
         Proposal.objects.filter(
             work_order__case__building_id=building_id,
-            work_order__drill=False,
             current_version__isnull=False,
             work_order__acceptance__payment__verification__decision=PaymentVerification.Decision.VERIFIED,
             work_order__acceptance__payment__external_status=PaymentEvidence.ExternalStatus.COMPLETED,
@@ -374,10 +348,6 @@ def pending_reconciliation_proposals(building_id):
         .select_related(
             "current_version",
             "work_order",
-            "work_order__emergency_authorization",
-            "work_order__emergency_authorization__outbox_event",
-            "work_order__emergency_authorization__ratification",
-            "work_order__emergency_authorization__ratification__outbox_event",
         )
         .prefetch_related(
             "current_version__approval_decisions__outbox_event",
@@ -385,48 +355,17 @@ def pending_reconciliation_proposals(building_id):
         )
         .order_by("-created_at")
     )
-    now = timezone.now()
     eligible = []
     for proposal in qs:
-        if proposal.mode == Proposal.Mode.NORMAL:
-            approvals = list(proposal.current_version.approval_decisions.all())
-            board = next(
-                (
-                    a
-                    for a in approvals
-                    if a.decision == ApprovalDecision.Decision.APPROVE
-                    and a.membership.organization.kind == Organization.Kind.BOARD
-                    and a.outbox_event_id
-                    and a.outbox_event.status in SETTLED_STATUSES
-                ),
-                None,
-            )
-            rep = next(
-                (
-                    a
-                    for a in approvals
-                    if a.decision == ApprovalDecision.Decision.APPROVE
-                    and a.membership.organization.kind == Organization.Kind.RESIDENT_REP
-                    and a.outbox_event_id
-                    and a.outbox_event.status in SETTLED_STATUSES
-                ),
-                None,
-            )
-            if board is None or rep is None:
-                continue
-        elif proposal.mode == Proposal.Mode.EMERGENCY:
-            # Match prepare_publication: authorization + terminal outcome + 24h window.
-            try:
-                authorization, ratification = _emergency_context(proposal, now)
-            except ValidationError:
-                continue
-            if not is_settled(authorization.outbox_event.status):
-                continue
-            if ratification.outbox_event_id and not is_settled(
-                ratification.outbox_event.status
-            ):
-                continue
-        else:
+        approvals = list(proposal.current_version.approval_decisions.all())
+        approved_kinds = {
+            a.membership.organization.kind
+            for a in approvals
+            if a.decision == ApprovalDecision.Decision.APPROVE
+            and a.outbox_event_id
+            and a.outbox_event.status in SETTLED_STATUSES
+        }
+        if not {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP} <= approved_kinds:
             continue
         eligible.append(proposal)
     return eligible

@@ -115,8 +115,6 @@ def decide_proposal(
     version = _locked_version(version)
     proposal = version.proposal
     work_order = proposal.work_order
-    if proposal.mode != Proposal.Mode.NORMAL:
-        raise ValidationError("Only normal proposals use fixed approvals.")
     if proposal.current_version_id != version.pk:
         raise ValidationError("Approval must target the current proposal version.")
     if payload_hash(version.snapshot) != version.snapshot_hash:
@@ -218,8 +216,7 @@ def proposal_is_locally_authorized(version) -> bool:
         return False
     proposal = version.proposal
     if (
-        proposal.mode != Proposal.Mode.NORMAL
-        or proposal.current_version_id != version.pk
+        proposal.current_version_id != version.pk
         or proposal.status != Proposal.Status.NORMAL_AUTHORIZED
     ):
         return False

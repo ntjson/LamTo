@@ -1,6 +1,6 @@
 from django.urls import path
 
-from lamto.web.views import auditor, board, fund, maintenance, operator, representative, resident
+from lamto.web.views import auditor, board, fund, maintenance, operator, resident
 from lamto.web.views import exports, health, security, staff_common
 
 app_name = "web"
@@ -51,12 +51,6 @@ urlpatterns = [
     path("s/work/<int:pk>/", maintenance.work_order_detail, name="work-order-detail"),
     path("s/work/<int:pk>/propose/", operator.proposal_create, name="proposal-create"),
     path("s/work/<int:pk>/accept/", board.accept_work, name="work-accept"),
-    path("s/work/<int:pk>/emergency/authorize/", board.emergency_authorize, name="emergency-authorize"),
-    path(
-        "s/emergency/<int:pk>/decide/",
-        representative.emergency_decide,
-        name="emergency-decide",
-    ),
     # Board payments — distinct routes for acceptance record vs payment verify
     path("s/payments/", board.payment_list, name="payment-list"),
     path("s/payments/record/", board.payment_record, name="payment-record"),

@@ -758,7 +758,6 @@ class PublicationTests(TestCase):
             "resident_payload_hash": "b" * 64,
             "document_hashes": ["c" * 64],
             "publication_timestamp": utc_rfc3339(timezone.now()),
-            "drill": False,
         }
         previous = "0x" + "00" * 32
         typed = build_evidence_typed_data(

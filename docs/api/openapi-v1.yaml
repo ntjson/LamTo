@@ -987,11 +987,11 @@ components:
       - period_outflows_vnd
     LedgerApprover:
       type: object
-      description: Who authorized the spend (board / resident rep / emergency).
+      description: Who authorized the spend (board / resident representative).
       properties:
         role:
           type: string
-          description: 'Machine role: board, resident_rep, or emergency.'
+          description: 'Machine role: board or resident_rep.'
         name:
           type: string
           description: Display name of the approver.
@@ -1024,7 +1024,7 @@ components:
           description: Resident-visible narrative of work completed.
         why:
           type: string
-          description: Resident-visible rationale (cause / purpose / emergency reason).
+          description: Resident-visible rationale (cause or purpose).
         approvers:
           type: array
           items:

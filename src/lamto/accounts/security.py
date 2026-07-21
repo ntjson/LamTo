@@ -42,7 +42,6 @@ BUSINESS_ROUTE_PREFIXES = (
     "/s/work/",
     "/s/payments/",
     "/s/audit/",
-    "/s/emergency/",
 )
 FINANCE_DOCUMENT_URL_NAMES = frozenset(
     {
@@ -54,8 +53,6 @@ FINANCE_DOCUMENT_URL_NAMES = frozenset(
         "web:work-order-list",
         "web:work-order-detail",
         "web:work-accept",
-        "web:emergency-authorize",
-        "web:emergency-decide",
         "web:payment-list",
         "web:payment-record-detail",
         "web:payment-verify-detail",

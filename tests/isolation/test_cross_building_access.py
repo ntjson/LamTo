@@ -33,7 +33,6 @@ from lamto.finance.models import (
     Proposal,
     PublishedLedgerEntry,
 )
-from lamto.finance.models.emergencies import EmergencyAuthorization
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase, WorkOrder
 from lamto.notifications.models import NotificationDelivery
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
@@ -53,8 +52,6 @@ STAFF_CASES = {
     "web:payment-record-detail": ("acceptance_pk", "board_payment_recorder", "GET"),
     "web:payment-verify-detail": ("payment_pk", "board_payment_verifier", "GET"),
     "web:work-accept": ("work_pk", "board_approver", "POST"),
-    "web:emergency-authorize": ("work_pk", "board_emergency_approver", "POST"),
-    "web:emergency-decide": ("emergency_pk", "resident_representative", "POST"),
     "web:fund-verify": ("fund_entry_pk", "fund_verifier", "POST"),
 }
 
@@ -186,19 +183,6 @@ class CrossBuildingAccessTests(TestCase):
         payment = PaymentEvidence.objects.get(acceptance=acceptance)
         ledger = PublishedLedgerEntry.objects.get(case=case)
 
-        # Main paid path already authorized work; force a fresh unpaid work order
-        # for the emergency drill (factory only recreates when work_order is None).
-        cls.seed_b.work_order = None
-        drill_driver = PilotDomainDriver(cls.seed_b)
-        drill_driver.login(None, "board_emergency_approver").authorize_emergency_drill()
-        emergency = (
-            EmergencyAuthorization.objects.filter(
-                work_order__case__building=b_building
-            )
-            .order_by("-pk")
-            .first()
-        )
-
         b_fund_entry = MaintenanceFundEntry.objects.get(
             fund__building=b_building,
             entry_type=MaintenanceFundEntry.EntryType.OPENING_BALANCE,
@@ -211,7 +195,6 @@ class CrossBuildingAccessTests(TestCase):
             "acceptance_pk": acceptance.pk,
             "payment_pk": payment.pk,
             "ledger_pk": ledger.pk,
-            "emergency_pk": emergency.pk,
             "fund_entry_pk": b_fund_entry.pk,
         }
         b_notice = NotificationDelivery.objects.create(

@@ -53,18 +53,6 @@ def process_triage_batch(*, limit: int = 20) -> ProcessorResult:
         return ProcessorResult(name=name, ok=False, detail=str(exc))
 
 
-def process_emergency_outcomes_batch() -> ProcessorResult:
-    name = "emergency_outcomes"
-    try:
-        from lamto.finance.emergencies import mark_overdue_ratifications
-
-        count = mark_overdue_ratifications(timezone.now())
-        return ProcessorResult(name=name, ok=True, count=count, detail=f"overdue={count}")
-    except Exception as exc:
-        logger.exception("worker processor %s failed", name)
-        return ProcessorResult(name=name, ok=False, detail=str(exc))
-
-
 def process_blockchain_outbox_batch(*, limit: int = 50) -> ProcessorResult:
     name = "blockchain_outbox"
     try:
@@ -214,7 +202,6 @@ def process_stale_devices_batch(*, days: int = 180) -> ProcessorResult:
 
 PROCESSORS = (
     process_triage_batch,
-    process_emergency_outcomes_batch,
     process_blockchain_outbox_batch,
     process_publication_finalization_batch,
     process_integrity_batch,
@@ -252,9 +239,6 @@ def _kwargs_for(processor, kwargs: dict) -> dict:
     specific = kwargs.get(f"{name}_limit")
     if specific is not None:
         out["limit"] = specific
-    # process_emergency_outcomes_batch takes no limit
-    if name == "process_emergency_outcomes_batch":
-        return {}
     # process_stale_devices_batch takes days, not limit
     if name == "process_stale_devices_batch":
         if "days" in kwargs:

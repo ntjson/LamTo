@@ -82,7 +82,7 @@ def case_list(request):
     from lamto.maintenance.ai import URGENCIES
 
     status = request.GET.get("status") or ""
-    urgency_groups = {"routine": ("LOW", "MEDIUM"), "urgent": ("HIGH", "EMERGENCY")}
+    urgency_groups = {"routine": ("LOW", "MEDIUM"), "urgent": ("HIGH",)}
     valid_status = status in URGENCIES
     active_group = status if status in urgency_groups else next(
         (group for group, values in urgency_groups.items() if status in values), ""
@@ -120,7 +120,6 @@ def case_list(request):
         "LOW": "Low",
         "MEDIUM": "Medium",
         "HIGH": "High",
-        "EMERGENCY": "Emergency",
     }
     from lamto.web.views.staff_common import deadline_tone
 
@@ -313,7 +312,7 @@ def proposal_list(request):
     status = request.GET.get("status") or ""
     status_groups = {
         "preparing": (Proposal.Status.DRAFT, Proposal.Status.REJECTED),
-        "review": (Proposal.Status.IN_REVIEW, Proposal.Status.EMERGENCY_EVIDENCE),
+        "review": (Proposal.Status.IN_REVIEW,),
         "authorized": (Proposal.Status.NORMAL_AUTHORIZED,),
     }
     valid_status = status in Proposal.Status.values
@@ -338,7 +337,6 @@ def proposal_list(request):
         Proposal.Status.DRAFT: "Complete and submit",
         Proposal.Status.IN_REVIEW: "Review and decide",
         Proposal.Status.NORMAL_AUTHORIZED: "Continue to acceptance and payment",
-        Proposal.Status.EMERGENCY_EVIDENCE: "Review emergency evidence",
         Proposal.Status.REJECTED: "Correct and resubmit",
     }
     proposal_items = [

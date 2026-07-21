@@ -268,7 +268,6 @@ class UploadDocumentPairTests(TestCase):
         proposal = Proposal.objects.create(
             work_order=work,
             creator_membership=membership,
-            mode=Proposal.Mode.NORMAL,
             status=Proposal.Status.DRAFT,
         )
         self.assertIsNone(proposal.current_version_id)

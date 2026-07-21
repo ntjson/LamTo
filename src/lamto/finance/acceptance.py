@@ -106,8 +106,6 @@ def _acceptance_previous_hash(work_order):
     version = proposal.current_version
     if version is None:
         raise ValidationError("A current proposal version is required before acceptance.")
-    if proposal.mode == Proposal.Mode.EMERGENCY:
-        return "0x" + version.outbox_event.payload_hash
     decision = (
         ApprovalDecision.objects.select_related("outbox_event")
         .filter(
@@ -157,7 +155,6 @@ def build_acceptance_evidence_payload(
         "acceptance_report_original_hash": acceptance_original.sha256,
         "acceptance_report_redacted_hash": acceptance_redacted.sha256,
         "photo_hashes": photo_hashes,
-        "drill": bool(work_order.drill),
     }
 
 
@@ -241,7 +238,6 @@ def accept_work(
         "acceptance_report_original_hash": acceptance_original.sha256,
         "acceptance_report_redacted_hash": acceptance_redacted.sha256,
         "photo_hashes": photo_hashes,
-        "drill": bool(work_order.drill),
     }
     event = queue_signed_event(
         event_id,

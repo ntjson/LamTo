@@ -54,20 +54,11 @@ VALID_PAYLOADS = {
         "proposal_hash": HASH, "decision": "APPROVE",
         "actor_organization_id": 1, "decision_timestamp": TIMESTAMP,
     },
-    EvidenceType.EMERGENCY_AUTHORIZATION: {
-        "work_order_id": 1, "reason_digest": HASH,
-        "available_estimate_vnd": 1_000_000,
-        "authorization_timestamp": TIMESTAMP, "drill": False,
-    },
-    EvidenceType.EMERGENCY_OUTCOME: {
-        "decision": "RATIFY", "result": "RATIFIED", "reason_digest": HASH,
-        "deadline_result": "MET", "decision_timestamp": TIMESTAMP, "drill": False,
-    },
     EvidenceType.WORK_ACCEPTANCE: {
         "work_order_id": 1, "actual_cost_vnd": 1_000_000,
         "acceptance_timestamp": TIMESTAMP, "invoice_original_hash": HASH,
         "invoice_redacted_hash": HASH, "acceptance_report_original_hash": HASH,
-        "acceptance_report_redacted_hash": HASH, "photo_hashes": [HASH], "drill": False,
+        "acceptance_report_redacted_hash": HASH, "photo_hashes": [HASH],
     },
     EvidenceType.PAYMENT_RECORDED: {
         "payment_id": 1, "amount_vnd": 1_000_000,
@@ -82,7 +73,7 @@ VALID_PAYLOADS = {
     EvidenceType.PUBLICATION_SNAPSHOT: {
         "publication_id": 1, "prerequisite_event_hashes": [HASH],
         "resident_payload_hash": HASH, "document_hashes": [HASH],
-        "publication_timestamp": TIMESTAMP, "drill": False,
+        "publication_timestamp": TIMESTAMP,
     },
     EvidenceType.FUND_ENTRY: {
         "fund_entry_id": 1, "entry_type": "INFLOW", "amount_vnd": 1_000_000,
@@ -516,7 +507,9 @@ class EvidenceOutboxTests(TestCase):
 
     def test_all_evidence_types_have_complete_payload_schemas(self):
         self.assertEqual(
-            set(VALID_PAYLOADS), set(EvidenceType) - {EvidenceType.RESERVED_10}
+            set(VALID_PAYLOADS),
+            set(EvidenceType)
+            - {EvidenceType.RESERVED_4, EvidenceType.RESERVED_5, EvidenceType.RESERVED_10},
         )
         for event_type, payload in VALID_PAYLOADS.items():
             with self.subTest(event_type=event_type):
@@ -546,7 +539,6 @@ class EvidenceOutboxTests(TestCase):
         cases = (
             (EvidenceType.BOARD_APPROVAL, {"decision": "private approval reason"}),
             (EvidenceType.BOARD_APPROVAL, {"decision_timestamp": "not-a-timestamp"}),
-            (EvidenceType.EMERGENCY_AUTHORIZATION, {"drill": 0}),
             (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": []}),
             (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": [HASH, 1]}),
             (EvidenceType.PUBLICATION_SNAPSHOT, {"document_hashes": "not-a-list"}),

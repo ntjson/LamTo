@@ -402,7 +402,7 @@ class SecurityTests(TestCase):
                 )
 
     def test_signed_financial_post_requires_recent_reauth(self):
-        """Accept / emergency / payment POSTs redirect to reauth when stale (Finding 2)."""
+        """Signed financial POSTs redirect to reauth when stale (Finding 2)."""
         board = self.make_board_user_with_payment_capability()
         self.client.force_login(board.user)
         self.enroll_and_bind(self.client, board.user)
@@ -483,4 +483,3 @@ class SecurityTests(TestCase):
         self.assertEqual(response.status_code, 200)
         after = AuditEvent.objects.filter(action="security.break_glass.request").count()
         self.assertGreater(after, before)
-

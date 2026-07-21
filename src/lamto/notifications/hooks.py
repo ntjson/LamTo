@@ -6,8 +6,6 @@ from lamto.accounts.models import CapabilityGrant, OrganizationMembership
 from lamto.notifications.services import (
     EVENT_CASE_STATUS,
     EVENT_DEADLINE_RISK,
-    EVENT_EMERGENCY_DEADLINE,
-    EVENT_EMERGENCY_OUTCOME,
     EVENT_INTEGRITY_MISMATCH,
     EVENT_PAYMENT_RECORDED,
     EVENT_PAYMENT_REJECTED,
@@ -125,44 +123,6 @@ def notify_proposal_decision(approval):
         subject="Proposal decision",
         body=f"Proposal #{proposal.pk} {approval.decision} at stage {approval.stage}.",
         event_code=code,
-        building=building_id,
-    )
-
-
-def notify_emergency_authorized(authorization):
-    building_id = authorization.work_order.case.building_id
-    recipients = (
-        _users_with_capability(building_id, "emergency.authorize")
-        + _users_with_role(building_id, OrganizationMembership.Role.RESIDENT_REP)
-        + _users_with_role(building_id, OrganizationMembership.Role.MAINTENANCE)
-    )
-    notify_users(
-        recipients,
-        event_key=f"{EVENT_EMERGENCY_DEADLINE}:auth:{authorization.pk}",
-        subject="Emergency authorized — ratification deadline set",
-        body=(
-            f"Emergency on work order #{authorization.work_order_id} authorized. "
-            f"Ratify by {authorization.ratification_deadline}."
-        ),
-        event_code=EVENT_EMERGENCY_DEADLINE,
-        building=building_id,
-    )
-
-
-def notify_emergency_outcome(ratification):
-    auth = ratification.authorization
-    building_id = auth.work_order.case.building_id
-    recipients = (
-        _users_with_capability(building_id, "emergency.authorize")
-        + _users_with_role(building_id, OrganizationMembership.Role.RESIDENT_REP)
-        + _users_with_role(building_id, OrganizationMembership.Role.BOARD)
-    )
-    notify_users(
-        recipients,
-        event_key=f"{EVENT_EMERGENCY_OUTCOME}:ratification:{ratification.pk}",
-        subject=f"Emergency outcome: {ratification.outcome}",
-        body=f"Work order #{auth.work_order_id} emergency outcome {ratification.outcome}.",
-        event_code=EVENT_EMERGENCY_OUTCOME,
         building=building_id,
     )
 

@@ -206,7 +206,6 @@ class ListPatternTests(TestCase):
         draft = Proposal.objects.create(
             work_order=work,
             creator_membership=membership,
-            mode=Proposal.Mode.NORMAL,
             status=Proposal.Status.DRAFT,
         )
         # Second work order + proposal in review
@@ -222,7 +221,6 @@ class ListPatternTests(TestCase):
         in_review = Proposal.objects.create(
             work_order=work2,
             creator_membership=membership,
-            mode=Proposal.Mode.NORMAL,
             status=Proposal.Status.IN_REVIEW,
         )
         self._login(user, membership)

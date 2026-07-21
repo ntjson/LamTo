@@ -1,4 +1,4 @@
-"""Task 18 pilot acceptance: normal path, emergency drill, adversarial cases.
+"""Task 18 pilot acceptance: normal path and adversarial cases.
 
 These tests drive REAL domain entry points via PilotDomainDriver / factories
 (not re-implementations of business rules).
@@ -29,15 +29,8 @@ from lamto.documents.models import Document
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
 from lamto.evidence.signatures import build_evidence_typed_data
-from lamto.finance.emergencies import (
-    authorize_emergency,
-    build_emergency_authorization_evidence_typed_data,
-    mark_overdue_ratifications,
-    request_emergency,
-)
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import (
-    EmergencyRatification,
     MaintenanceFundEntry,
     PublishedLedgerEntry,
 )
@@ -153,93 +146,6 @@ class PilotAcceptanceTests(TestCase):
         self.assertEqual(driver.ledger_count(), 1)
         driver.confirm_all_chain_events()
         self.assertEqual(driver.ledger_count(), 1)
-
-    def test_controlled_emergency_drill_is_isolated_and_preserved(self):
-        driver = self.driver
-        starting_balance = driver.fund_balance()
-        driver.pause_chain()
-        drill = driver.login(None, "board_emergency_approver").authorize_emergency_drill()
-        started = driver.login(None, "maintenance").start_drill_work()
-        outcome = driver.login(None, "resident_representative").reject_drill(
-            "Estimate incomplete"
-        )
-
-        self.assertEqual(drill.label, "Emergency drill")
-        self.assertEqual(started.verification_label, "Pending blockchain anchoring")
-        self.assertEqual(outcome.label, "Ratification rejected")
-        self.assertEqual(outcome.domain_label, "Emergency drill")
-        self.assertEqual(outcome.outcome, "REJECTED")
-
-        driver.resume_chain()
-        driver.confirm_all_chain_events()
-        self.assertEqual(driver.fund_balance(), starting_balance)
-        self.assertEqual(driver.ledger_count(drill=True), 0)
-        self.assertTrue(AuditEvent.objects.filter(action="emergency.request").exists())
-        self.assertTrue(AuditEvent.objects.filter(action="emergency.authorize").exists())
-        self.assertTrue(AuditEvent.objects.filter(action="work.start").exists())
-        self.assertTrue(AuditEvent.objects.filter(action="emergency.reject").exists())
-        self.assertTrue(
-            driver.audit_contains(drill.id, ["emergency"])
-            or AuditEvent.objects.filter(target_id=str(drill.id)).exists()
-        )
-        work = driver.seed.work_order
-        work.refresh_from_db()
-        self.assertTrue(work.drill)
-        self.assertTrue(work.emergency)
-
-    def test_emergency_outcomes_ratified_rejected_and_overdue(self):
-        driver = self.driver
-        driver.pause_chain()
-        drill = driver.authorize_emergency_drill()
-        driver.start_drill_work()
-        rejected = driver.reject_drill("Estimate incomplete")
-        self.assertEqual(rejected.outcome, "REJECTED")
-        auth_id = drill.authorization.pk
-
-        driver.login(None, "resident").submit_report("Drill 2 leak", "Lift 2", None)
-        driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
-        work2 = driver.seed.work_order
-        requested = request_emergency(
-            work2, driver.seed.roles["operator"], "Drill 2", drill=True
-        )
-        board = driver.seed.roles["board_emergency_approver"]
-        at = requested.emergency_requested_at
-        eid = new_event_id()
-        typed = build_emergency_authorization_evidence_typed_data(
-            requested, board, 1_000_000, eid, timestamp=at
-        )
-        sig = driver.seed.sign_typed(board, typed)
-        auth2 = authorize_emergency(requested, board, 1_000_000, sig, eid, now=at)
-        driver._ctx["emergency_authorization"] = auth2
-        ratified = driver.ratify_drill("Confirmed safe completion path")
-        self.assertEqual(ratified.outcome, "RATIFIED")
-
-        driver.login(None, "resident").submit_report("Drill 3 overdue", "Lift 2", None)
-        driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
-        work3 = driver.seed.work_order
-        past = timezone.now() - timedelta(hours=26)
-        with patch("lamto.finance.emergencies.timezone.now", return_value=past):
-            requested3 = request_emergency(
-                work3, driver.seed.roles["operator"], "Drill 3", drill=True
-            )
-        eid3 = new_event_id()
-        typed3 = build_emergency_authorization_evidence_typed_data(
-            requested3, board, 1_000_000, eid3, timestamp=past
-        )
-        sig3 = driver.seed.sign_typed(board, typed3)
-        auth3 = authorize_emergency(
-            requested3, board, 1_000_000, sig3, eid3, now=past
-        )
-        self.assertEqual(mark_overdue_ratifications(timezone.now()), 1)
-        overdue = EmergencyRatification.objects.get(authorization=auth3)
-        self.assertEqual(overdue.outcome, "OVERDUE")
-        self.assertEqual(overdue.label, "Emergency drill")
-        self.assertEqual(
-            EmergencyRatification.objects.get(authorization_id=auth_id).outcome,
-            "REJECTED",
-        )
-        self.assertEqual(driver.fund_balance(), 100_000_000)
-        self.assertEqual(driver.ledger_count(drill=True), 0)
 
     def test_payment_recorder_self_verification_denied_and_publisher_dual_control(self):
         driver = self.driver

@@ -26,7 +26,6 @@
         <div><dt>{% trans "Priority" %}</dt><dd>{{ work_order.priority }}</dd></div>
         <div><dt>{% trans "Deadline" %}</dt><dd>{% if work_order.deadline_at %}{{ work_order.deadline_at|staff_datetime }}{% else %}{% trans "Not set" %}{% endif %}</dd></div>
         <div><dt>{% trans "Verification" %}</dt><dd>{{ work_order.verification_label|default:_("Not yet verified") }}</dd></div>
-        {% if work_order.emergency %}<div><dt>{% trans "Emergency" %}</dt><dd>{{ work_order.emergency_label }}</dd></div>{% endif %}
       </dl>
 
       {% if accountability_stages %}
@@ -102,41 +101,7 @@
       </div>
       {% endif %}
 
-      {% if emergency_form %}
-      <div class="workflow-section">
-        <h2>{% trans "Authorize emergency work" %}</h2>
-        <form method="post" class="stack-form" data-signed-form data-review-form>
-          {% csrf_token %}
-          {{ emergency_form.as_p }}
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Review the emergency reason before signing." %}</p>
-          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          {% include "web/staff/_review_summary.html" with review_kind="emergency_authorize" review_id="emergency-authorize" %}
-          <div class="form-actions">
-            <button type="submit" class="button button-primary">{% trans "Sign and authorize emergency work" %}</button>
-            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">{% trans "Cancel" %}</a>
-          </div>
-        </form>
-      </div>
-      {% endif %}
-
-      {% if emergency_decide_form %}
-      <div class="workflow-section">
-        <h2>{% trans "Record emergency ratification" %}</h2>
-        <form method="post" class="stack-form" data-signed-form data-review-form>
-          {% csrf_token %}
-          {{ emergency_decide_form.as_p }}
-          <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Review the outcome before signing." %}</p>
-          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          {% include "web/staff/_review_summary.html" with review_kind="emergency_decide" review_id="emergency-decide" %}
-          <div class="form-actions">
-            <button type="submit" class="button button-primary">{% trans "Sign and record ratification" %}</button>
-            <a class="button button-secondary" href="{% url 'web:work-order-list' %}">{% trans "Cancel" %}</a>
-          </div>
-        </form>
-      </div>
-      {% endif %}
-
-      {% if not is_assignee and not accept_form and not emergency_form and not emergency_decide_form %}
+      {% if not is_assignee and not accept_form %}
       <p class="empty">{% trans "No action is assigned to this membership. Review the work status or return to the action inbox." %}</p>
       {% endif %}
     </div>

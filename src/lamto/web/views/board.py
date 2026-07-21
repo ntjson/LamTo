@@ -1,4 +1,4 @@
-"""Board workspace: acceptance, payments, emergencies, publication."""
+"""Board workspace: acceptance, payments, and publication."""
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -7,7 +7,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.capabilities import (
-    EMERGENCY_AUTHORIZE,
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
     WORK_ACCEPT,
@@ -17,7 +16,6 @@ from lamto.documents.models import Document
 from lamto.finance.models import AcceptanceRecord, PaymentEvidence
 from lamto.web.forms.staff import (
     AcceptWorkForm,
-    EmergencyAuthorizeForm,
     RecordPaymentForm,
     VerifyPaymentForm,
 )
@@ -193,7 +191,6 @@ def payment_list(request):
             can_verify=PAYMENT_VERIFY in caps,
         ),
     )
-
 
 @login_required
 @require_http_methods(["GET", "POST"])
@@ -665,51 +662,6 @@ def accept_work(request, pk):
             list_mode=False,
             typed_data=typed_data,
             expected_signer=expected_signer,
-            accountability_stages=accountability_chain_for(work_order),
-        ),
-    )
-
-
-@login_required
-@require_http_methods(["GET", "POST"])
-def emergency_authorize(request, pk):
-    from lamto.maintenance.models import WorkOrder
-
-    membership, memberships = require_staff_capability(request, EMERGENCY_AUTHORIZE)
-    work_order = get_object_or_404(
-        WorkOrder,
-        pk=pk,
-        case__building_id=membership.organization.building_id,
-    )
-    form = EmergencyAuthorizeForm(request.POST or None)
-    if request.method == "POST":
-        require_recent_auth(request)
-    if request.method == "POST" and form.is_valid():
-        try:
-            form.save(work_order, membership)
-        except (ValidationError, PermissionDenied) as error:
-            if isinstance(error, ValidationError):
-                form.add_error(None, error)
-            else:
-                raise
-        else:
-            messages.success(
-                request,
-                "Emergency authorized. A resident representative or the Board "
-                "must ratify or reject this authorization afterwards.",
-            )
-            return redirect("web:work-order-detail", pk=work_order.pk)
-    return render(
-        request,
-        "web/staff/work_order_detail.html",
-        staff_context(
-            request,
-            membership,
-            memberships,
-            nav_active="work",
-            work_order=work_order,
-            emergency_form=form,
-            list_mode=False,
             accountability_stages=accountability_chain_for(work_order),
         ),
     )

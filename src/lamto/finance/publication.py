@@ -19,8 +19,6 @@ from .fund import create_publication_outflow, get_or_create_fund
 from .models import (
     AcceptanceRecord,
     ApprovalDecision,
-    EmergencyAuthorization,
-    EmergencyRatification,
     PaymentEvidence,
     PaymentVerification,
     Proposal,
@@ -179,7 +177,7 @@ def _rep_approval(version):
 def _forbidden_publisher_user_ids(proposal, payment):
     forbidden = {proposal.creator_membership.user_id}
     version = proposal.current_version
-    if version is not None and proposal.mode == Proposal.Mode.NORMAL:
+    if version is not None:
         board = _board_approval(version)
         if board is not None:
             forbidden.add(board.membership.user_id)
@@ -195,23 +193,6 @@ def _assert_publisher_eligible(actor, proposal, payment):
         )
 
 
-def _emergency_context(proposal, now):
-    work_order = proposal.work_order
-    try:
-        authorization = work_order.emergency_authorization
-    except EmergencyAuthorization.DoesNotExist as exc:
-        raise ValidationError("Emergency authorization is required for emergency publication.") from exc
-    try:
-        ratification = authorization.ratification
-    except EmergencyRatification.DoesNotExist as exc:
-        raise ValidationError("Emergency terminal outcome is required before publication.") from exc
-    if now < authorization.ratification_deadline:
-        raise ValidationError("Emergency publication requires the 24-hour decision window to pass.")
-    if ratification.outcome not in EmergencyRatification.Outcome.values:
-        raise ValidationError("Emergency outcome is invalid.")
-    return authorization, ratification
-
-
 def _resident_payload(
     proposal,
     version,
@@ -219,13 +200,12 @@ def _resident_payload(
     payment,
     verification,
     document_hashes,
-    emergency_outcome=None,
 ):
     work_order = proposal.work_order
     case = work_order.case
     report_id = case.decision.report_id
-    board = _board_approval(version) if proposal.mode == Proposal.Mode.NORMAL else None
-    rep = _rep_approval(version) if proposal.mode == Proposal.Mode.NORMAL else None
+    board = _board_approval(version)
+    rep = _rep_approval(version)
     payload = {
         "report_id": report_id,
         "case_id": case.pk,
@@ -235,7 +215,6 @@ def _resident_payload(
         "proposed_amount_vnd": version.amount_vnd,
         "actual_cost_vnd": acceptance.actual_cost_vnd,
         "contractor_name": version.contractor_name,
-        "mode": proposal.mode,
         "document_hashes": document_hashes,
         "payment_verification": {
             "decision": verification.decision,
@@ -255,28 +234,6 @@ def _resident_payload(
             "membership_id": rep.membership_id,
             "decision": rep.decision,
             "user_id": rep.membership.user_id,
-        }
-    if emergency_outcome is not None:
-        authorization, ratification = emergency_outcome
-        label = "Emergency"
-        if ratification.outcome == EmergencyRatification.Outcome.RATIFIED:
-            outcome_label = "Ratified"
-        elif ratification.outcome == EmergencyRatification.Outcome.REJECTED:
-            outcome_label = "Ratification rejected"
-        else:
-            outcome_label = "Ratification overdue"
-        # Rejected/overdue must never render as approved.
-        payload["emergency"] = {
-            "label": label,
-            "outcome": ratification.outcome,
-            "outcome_label": outcome_label,
-            "approved": ratification.outcome == EmergencyRatification.Outcome.RATIFIED,
-            "authorization_event_hash": authorization.outbox_event.payload_hash,
-            "outcome_event_hash": (
-                ratification.outbox_event.payload_hash
-                if ratification.outbox_event_id
-                else None
-            ),
         }
     return payload
 
@@ -342,8 +299,6 @@ def build_publication_evidence_payload(
     resident_payload_hash,
     document_hashes,
     timestamp,
-    drill,
-    emergency_outcome_hash=None,
 ):
     if type(publication_id) is not int or publication_id <= 0:
         raise ValidationError("Publication id must be a positive integer.")
@@ -351,8 +306,6 @@ def build_publication_evidence_payload(
         raise ValidationError("Prerequisite event hashes are required.")
     if not isinstance(document_hashes, list) or not document_hashes:
         raise ValidationError("Document hashes are required.")
-    if type(drill) is not bool:
-        raise ValidationError("Drill flag must be a boolean.")
     if not isinstance(timestamp, type(timezone.now())) or timestamp.tzinfo is None:
         raise ValidationError("Publication timestamp must be timezone-aware.")
     payload = {
@@ -361,10 +314,7 @@ def build_publication_evidence_payload(
         "resident_payload_hash": resident_payload_hash,
         "document_hashes": document_hashes,
         "publication_timestamp": utc_rfc3339(timestamp),
-        "drill": drill,
     }
-    if emergency_outcome_hash:
-        payload["emergency_outcome_hash"] = emergency_outcome_hash
     return payload
 
 
@@ -377,7 +327,6 @@ def build_publication_evidence_typed_data(
     document_hashes,
     event_id,
     timestamp=None,
-    emergency_outcome_hash=None,
     previous_hash=None,
 ):
     ts = timestamp or timezone.now()
@@ -388,8 +337,6 @@ def build_publication_evidence_typed_data(
         resident_payload_hash,
         document_hashes,
         ts,
-        bool(proposal.work_order.drill),
-        emergency_outcome_hash=emergency_outcome_hash,
     )
     if previous_hash is None:
         previous_hash = "0x" + "00" * 32
@@ -421,8 +368,6 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
     work_order = proposal.work_order
     if actor.organization.building_id != work_order.case.building_id:
         raise PermissionDenied("Board must belong to the work-order building.")
-    if work_order.drill:
-        raise ValidationError("Drill-mode proposals cannot be published to the ledger.")
     if PublicationSnapshot.objects.filter(proposal=proposal).exists():
         raise ValidationError("Publication snapshot already exists for this proposal.")
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
@@ -437,32 +382,12 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
     if payment.external_status != PaymentEvidence.ExternalStatus.COMPLETED:
         raise ValidationError("Payment evidence status must be COMPLETED.")
 
-    emergency_outcome = None
-    emergency_outcome_hash = None
     prerequisite_events = []
-    now = timestamp or timezone.now()
-
-    if proposal.mode == Proposal.Mode.NORMAL:
-        board = _board_approval(version)
-        rep = _rep_approval(version)
-        if board is None or rep is None:
-            raise ValidationError(
-                "Normal publication requires Board and resident-representative approvals."
-            )
-        prerequisite_events.extend(
-            [version.outbox_event, board.outbox_event, rep.outbox_event]
-        )
-    elif proposal.mode == Proposal.Mode.EMERGENCY:
-        authorization, ratification = _emergency_context(proposal, now)
-        emergency_outcome = (authorization, ratification)
-        prerequisite_events.extend([authorization.outbox_event, version.outbox_event])
-        if ratification.outbox_event_id:
-            prerequisite_events.append(ratification.outbox_event)
-            emergency_outcome_hash = ratification.outbox_event.payload_hash
-        else:
-            emergency_outcome_hash = authorization.outbox_event.payload_hash
-    else:
-        raise ValidationError("Proposal mode is not publishable.")
+    board = _board_approval(version)
+    rep = _rep_approval(version)
+    if board is None or rep is None:
+        raise ValidationError("Publication requires Board and resident-representative approvals.")
+    prerequisite_events.extend([version.outbox_event, board.outbox_event, rep.outbox_event])
 
     prerequisite_events.extend(
         [acceptance.outbox_event, payment.outbox_event, verification.outbox_event]
@@ -487,7 +412,6 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
         payment,
         verification,
         document_hashes,
-        emergency_outcome=emergency_outcome,
     )
     if type(publication_id) is not int or publication_id <= 0:
         raise ValidationError("Publication id must be a positive integer.")
@@ -502,7 +426,6 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
         document_hashes,
         event_id,
         timestamp=timestamp,
-        emergency_outcome_hash=emergency_outcome_hash,
         previous_hash=previous_hash,
     )
     return {
@@ -535,8 +458,6 @@ def prepare_publication(
         work_order = proposal.work_order
         if actor.organization.building_id != work_order.case.building_id:
             raise PermissionDenied("Board must belong to the work-order building.")
-        if work_order.drill:
-            raise ValidationError("Drill-mode proposals cannot be published to the ledger.")
         if PublicationSnapshot.objects.filter(proposal=proposal).exists():
             raise ValidationError("Publication snapshot already exists for this proposal.")
         if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
@@ -551,41 +472,12 @@ def prepare_publication(
         if payment.external_status != PaymentEvidence.ExternalStatus.COMPLETED:
             raise ValidationError("Payment evidence status must be COMPLETED.")
 
-        emergency_outcome = None
-        emergency_outcome_hash = None
         prerequisite_events = []
-        now = timezone.now()
-
-        if proposal.mode == Proposal.Mode.NORMAL:
-            board = _board_approval(version)
-            rep = _rep_approval(version)
-            if board is None or rep is None:
-                raise ValidationError(
-                    "Normal publication requires Board and resident-representative approvals."
-                )
-            prerequisite_events.extend(
-                [
-                    version.outbox_event,
-                    board.outbox_event,
-                    rep.outbox_event,
-                ]
-            )
-        elif proposal.mode == Proposal.Mode.EMERGENCY:
-            authorization, ratification = _emergency_context(proposal, now)
-            emergency_outcome = (authorization, ratification)
-            prerequisite_events.extend(
-                [
-                    authorization.outbox_event,
-                    version.outbox_event,
-                ]
-            )
-            if ratification.outbox_event_id:
-                prerequisite_events.append(ratification.outbox_event)
-                emergency_outcome_hash = ratification.outbox_event.payload_hash
-            else:
-                emergency_outcome_hash = authorization.outbox_event.payload_hash
-        else:
-            raise ValidationError("Proposal mode is not publishable.")
+        board = _board_approval(version)
+        rep = _rep_approval(version)
+        if board is None or rep is None:
+            raise ValidationError("Publication requires Board and resident-representative approvals.")
+        prerequisite_events.extend([version.outbox_event, board.outbox_event, rep.outbox_event])
 
         prerequisite_events.extend(
             [
@@ -625,13 +517,7 @@ def prepare_publication(
                     payment,
                     verification,
                     document_hashes,
-                    emergency_outcome=emergency_outcome,
                 )
-                if emergency_outcome is not None:
-                    if resident_payload["emergency"]["approved"] and emergency_outcome[
-                        1
-                    ].outcome != EmergencyRatification.Outcome.RATIFIED:
-                        raise ValidationError("Emergency approval label is inconsistent.")
 
                 if publication_id is None:
                     publication_id = allocate_publication_id()
@@ -652,8 +538,6 @@ def prepare_publication(
                     resident_payload_hash,
                     document_hashes,
                     publication_timestamp,
-                    bool(work_order.drill),
-                    emergency_outcome_hash=emergency_outcome_hash,
                 )
                 event = queue_signed_event(
                     event_id,
@@ -749,8 +633,6 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
         raise ValidationError("Payment must remain VERIFIED at finalization.")
     version = proposal.current_version
     work_order = proposal.work_order
-    if work_order.drill:
-        raise ValidationError("Drill-mode proposals cannot post to the Maintenance Fund.")
     if work_order.status != WorkOrder.Status.ACCEPTED:
         # Acceptance is required; status should already be ACCEPTED.
         pass

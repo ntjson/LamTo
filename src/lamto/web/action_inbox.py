@@ -15,7 +15,6 @@ from django.utils import timezone
 
 from lamto.accounts.capabilities import (
     AUDIT_EXPORT,
-    EMERGENCY_AUTHORIZE,
     LEDGER_PUBLISH,
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
@@ -31,8 +30,6 @@ from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
     AcceptanceRecord,
     ApprovalDecision,
-    EmergencyAuthorization,
-    EmergencyRatification,
     PaymentEvidence,
     PaymentVerification,
     Proposal,
@@ -109,14 +106,6 @@ def action_items_for(membership: OrganizationMembership) -> list[ActionItem]:
 
     if _has(membership, PROPOSAL_APPROVE):
         items.extend(_proposal_approval_items(membership, building_id))
-
-    if _has(membership, EMERGENCY_AUTHORIZE):
-        items.extend(_emergency_items(building_id, membership))
-
-    if membership.organization.kind == Organization.Kind.RESIDENT_REP and _has(
-        membership, PROPOSAL_APPROVE
-    ):
-        items.extend(_emergency_ratification_items(building_id))
 
     if _has(membership, WORK_ACCEPT):
         items.extend(_work_acceptance_items(building_id))
@@ -258,7 +247,6 @@ def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
         requires_spending=True,
         authorization_status=WorkOrder.AuthorizationStatus.PENDING,
         proposal__isnull=True,
-        emergency=False,
     ).order_by("created_at")[:30]
     for wo in qs:
         items.append(
@@ -292,7 +280,6 @@ def _proposal_approval_items(membership, building_id: int) -> list[ActionItem]:
             work_order__case__building_id=building_id,
             status=Proposal.Status.IN_REVIEW,
             current_version__isnull=False,
-            mode=Proposal.Mode.NORMAL,
         )
         .exclude(
             current_version__approval_decisions__stage=stage,
@@ -323,70 +310,6 @@ def _proposal_approval_items(membership, building_id: int) -> list[ActionItem]:
                 url=reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
                 priority=20 if stage == ApprovalDecision.Stage.BOARD else 22,
                 amount_vnd=version.amount_vnd,
-            )
-        )
-    return items
-
-
-def _emergency_items(building_id: int, membership) -> list[ActionItem]:
-    items = []
-    # Pending emergency requests without authorization
-    pending = WorkOrder.objects.filter(
-        case__building_id=building_id,
-        emergency=True,
-        emergency_authorization__isnull=True,
-    ).order_by("emergency_requested_at")[:30]
-    for wo in pending:
-        items.append(
-            ActionItem(
-                kind="emergency_authorize",
-                title="Emergency authorization",
-                summary=f"Work order #{wo.pk} · {wo.emergency_label or 'Emergency'}",
-                target_type="WorkOrder",
-                target_id=wo.pk,
-                url=reverse("web:emergency-authorize", kwargs={"pk": wo.pk}),
-                priority=5,
-                deadline_at=wo.deadline_at,
-            )
-        )
-    # Open authorizations needing ratification (board may also track)
-    open_auth = EmergencyAuthorization.objects.filter(
-        work_order__case__building_id=building_id,
-        ratification__isnull=True,
-    ).order_by("ratification_deadline")[:30]
-    for auth in open_auth:
-        items.append(
-            ActionItem(
-                kind="emergency_ratification",
-                title="Emergency ratification",
-                summary=f"Authorization #{auth.pk} deadline {auth.ratification_deadline}",
-                target_type="EmergencyAuthorization",
-                target_id=auth.pk,
-                url=reverse("web:emergency-decide", kwargs={"pk": auth.pk}),
-                priority=5,
-                deadline_at=auth.ratification_deadline,
-            )
-        )
-    return items
-
-
-def _emergency_ratification_items(building_id: int) -> list[ActionItem]:
-    items = []
-    open_auth = EmergencyAuthorization.objects.filter(
-        work_order__case__building_id=building_id,
-        ratification__isnull=True,
-    ).order_by("ratification_deadline")[:30]
-    for auth in open_auth:
-        items.append(
-            ActionItem(
-                kind="emergency_ratification",
-                title="Emergency ratification",
-                summary=f"Authorization #{auth.pk} deadline {auth.ratification_deadline}",
-                target_type="EmergencyAuthorization",
-                target_id=auth.pk,
-                url=reverse("web:emergency-decide", kwargs={"pk": auth.pk}),
-                priority=5,
-                deadline_at=auth.ratification_deadline,
             )
         )
     return items

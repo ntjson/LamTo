@@ -5,7 +5,7 @@ never included): ``report_id``, ``text``, ``location_path_snapshot``, and
 ``candidates`` (each candidate has ``id``, ``text``, and
 ``location_path_snapshot``). A successful response is exactly:
 
-``{"category": str, "interpreted_location": str, "urgency": "LOW"|"MEDIUM"|"HIGH"|"EMERGENCY", "confidence_percent": int, "requires_manual_review": bool, "duplicate_report_ids": [int], "department": str, "deadline_minutes": int, "provider_request_id": str}``.
+``{"category": str, "interpreted_location": str, "urgency": "LOW"|"MEDIUM"|"HIGH", "confidence_percent": int, "requires_manual_review": bool, "duplicate_report_ids": [int], "department": str, "deadline_minutes": int, "provider_request_id": str}``.
 """
 
 import json
@@ -37,7 +37,7 @@ RESPONSE_KEYS = {
     "deadline_minutes",
     "provider_request_id",
 }
-URGENCIES = {"LOW", "MEDIUM", "HIGH", "EMERGENCY"}
+URGENCIES = {"LOW", "MEDIUM", "HIGH"}
 
 
 def _claim_triage_job(job_id=None):

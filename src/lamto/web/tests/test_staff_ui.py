@@ -486,7 +486,6 @@ class AccountabilityChainTests(SimpleTestCase):
             WEB_ROOT / "views" / "board.py",
             WEB_ROOT / "views" / "maintenance.py",
             WEB_ROOT / "views" / "auditor.py",
-            WEB_ROOT / "views" / "representative.py",
         ):
             source = path.read_text(encoding="utf-8")
             self.assertIn("accountability_chain_for", source)
@@ -511,7 +510,7 @@ class ActionInboxUiTests(SimpleTestCase):
         self.assertIsNotNone(prepare)
         self.assertIn("status", inspect.signature(prepare).parameters)
         items = [
-            self._item(1, kind="emergency_authorize", priority=5),
+            self._item(1, kind="payment_verification", priority=5),
             self._item(2, kind="deadline_risk", deadline=timezone.now()),
             self._item(3, kind="failed_outbox", priority=9),
         ]

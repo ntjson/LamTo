@@ -285,7 +285,6 @@ def ledger_detail(request, pk):
             "verification": detail["verification"],
             "redacted_docs": detail["redacted_docs"],
             "transaction_ids": detail["transaction_ids"],
-            "emergency": detail["emergency"],
             "integrity_label": integrity["label"],
             "integrity_class": integrity["css_class"],
             "integrity_icon": integrity["icon"],

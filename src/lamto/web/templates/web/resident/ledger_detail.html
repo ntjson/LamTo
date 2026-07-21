@@ -63,7 +63,7 @@
     {% endif %}
   </ul>
   {% else %}
-  <p class="empty">No dual-approval record in this publication payload (emergency path may apply).</p>
+  <p class="empty">No dual-approval record in this publication payload.</p>
   {% endif %}
 </section>
 
@@ -89,16 +89,6 @@
   {% endif %}
   <p class="hint">Private bank details are never shown to residents.</p>
 </section>
-
-{% if emergency %}
-<section class="panel" aria-labelledby="emergency-heading">
-  <h2 id="emergency-heading">Emergency outcome</h2>
-  <p>
-    <span class="status"><span class="status-icon" aria-hidden="true">!</span> {{ emergency.label }}</span>
-    {{ emergency.outcome_label }}
-  </p>
-</section>
-{% endif %}
 
 <section class="panel" aria-labelledby="docs-heading">
   <h2 id="docs-heading">Redacted documents</h2>

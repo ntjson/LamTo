@@ -193,13 +193,6 @@ class WorkOrder(models.Model):
         max_length=16, choices=AuthorizationStatus.choices, default=AuthorizationStatus.NOT_REQUIRED
     )
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.ASSIGNED)
-    emergency = models.BooleanField(default=False)
-    drill = models.BooleanField(default=False)
-    emergency_requested_by = models.ForeignKey(
-        "accounts.OrganizationMembership", null=True, blank=True, on_delete=models.PROTECT
-    )
-    emergency_reason = models.TextField(blank=True)
-    emergency_requested_at = models.DateTimeField(null=True, blank=True)
     cause = models.TextField(blank=True)
     result = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -216,13 +209,6 @@ class WorkOrder(models.Model):
 
     @property
     def verification_label(self):
-        if self.emergency:
-            try:
-                from lamto.finance.emergencies import emergency_verification_label
-
-                return emergency_verification_label(self)
-            except ObjectDoesNotExist:
-                pass
         try:
             proposal = self.proposal
         except ObjectDoesNotExist:
@@ -234,12 +220,6 @@ class WorkOrder(models.Model):
 
         return proposal_verification_label(version)
 
-    @property
-    def emergency_label(self):
-        if not self.emergency:
-            return None
-        return "Emergency drill" if self.drill else "Emergency"
-
     class Meta:
         constraints = [
             models.CheckConstraint(
@@ -248,23 +228,6 @@ class WorkOrder(models.Model):
                     | models.Q(requires_spending=True, authorization_status__in=["PENDING", "AUTHORIZED"])
                 ),
                 name="work_order_spending_authorization",
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(
-                        emergency=False,
-                        emergency_requested_at__isnull=True,
-                        emergency_requested_by__isnull=True,
-                        emergency_reason="",
-                    )
-                    | (
-                        models.Q(emergency=True)
-                        & models.Q(emergency_requested_at__isnull=False)
-                        & models.Q(emergency_requested_by__isnull=False)
-                        & ~models.Q(emergency_reason="")
-                    )
-                ),
-                name="work_order_emergency_request_identity",
             ),
         ]
 

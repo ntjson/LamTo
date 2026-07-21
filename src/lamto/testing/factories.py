@@ -1,7 +1,7 @@
 """Deterministic non-production pilot factories and domain driver.
 
 Factories create one building, units, organizations, memberships, capability
-grants, stakeholder wallets, document pairs, and labeled drill/test records.
+grants, stakeholder wallets, document pairs, and labeled test records.
 Wallet private keys are held only in-process for tests/seeds and never printed
 by management commands (optional write to an ignored env file).
 """
@@ -30,7 +30,6 @@ from eth_account.messages import encode_typed_data
 
 from lamto.accounts.capabilities import (
     AUDIT_EXPORT,
-    EMERGENCY_AUTHORIZE,
     FUND_RECORD,
     FUND_VERIFY,
     LEDGER_PUBLISH,
@@ -59,14 +58,6 @@ from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.acceptance import accept_work, build_acceptance_evidence_typed_data
 from lamto.finance.approvals import build_approval_evidence_payload, decide_proposal
-from lamto.finance.emergencies import (
-    authorize_emergency,
-    build_emergency_authorization_evidence_typed_data,
-    build_emergency_ratification_evidence_typed_data,
-    decide_emergency,
-    mark_overdue_ratifications,
-    request_emergency,
-)
 from lamto.finance.fund import (
     allocate_fund_entry_id,
     build_fund_source_evidence_typed_data,
@@ -125,7 +116,6 @@ ROLE_KEYS = (
     "board_payment_recorder",
     "board_payment_verifier",
     "eligible_publisher",
-    "board_emergency_approver",
     "fund_recorder",
     "fund_verifier",
     "auditor",
@@ -366,10 +356,6 @@ def seed_pilot_world(
         "board_payment_recorder": ([PAYMENT_RECORD, WORK_ACCEPT], "Payment Recorder"),
         "board_payment_verifier": ([PAYMENT_VERIFY, LEDGER_PUBLISH], "Payment Verifier"),
         "eligible_publisher": ([LEDGER_PUBLISH], "Eligible Publisher"),
-        "board_emergency_approver": (
-            [EMERGENCY_AUTHORIZE, PROPOSAL_APPROVE],
-            "Emergency Approver",
-        ),
         "fund_recorder": ([FUND_RECORD], "Fund Recorder"),
         "fund_verifier": ([FUND_VERIFY], "Fund Verifier"),
     }
@@ -562,13 +548,8 @@ class PilotDomainDriver:
     def fund_balance(self) -> int:
         return fund_balance(self.seed.building.pk, verified_only=True)
 
-    def ledger_count(self, drill: bool = False) -> int:
-        qs = PublishedLedgerEntry.objects.filter(case__building=self.seed.building)
-        if drill:
-            qs = qs.filter(work_order__drill=True)
-        else:
-            qs = qs.filter(work_order__drill=False)
-        return qs.count()
+    def ledger_count(self) -> int:
+        return PublishedLedgerEntry.objects.filter(case__building=self.seed.building).count()
 
     def audit_contains(self, target_id, fragments: list[str]) -> bool:
         events = AuditEvent.objects.filter(target_id=str(target_id))
@@ -584,7 +565,7 @@ class PilotDomainDriver:
         joined += " " + " ".join(
             f"{e.action} {e.result}" for e in related
         ).lower()
-        # Broader search on emergency/work actions in this building's recent window.
+        # Broader search on work actions in this building's recent window.
         all_actions = " ".join(
             AuditEvent.objects.order_by("-pk")[:200].values_list("action", flat=True)
         ).lower()
@@ -985,105 +966,6 @@ class PilotDomainDriver:
             recomputed_fund_balance_vnd=self.fund_balance(),
             observation=observation,
         )
-
-    # --- emergency drill ---------------------------------------------------------
-
-    def authorize_emergency_drill(self, reason: str = "Controlled pilot emergency drill"):
-        # Ensure a pending paid work order exists without normal authorization.
-        if self.seed.work_order is None or self.seed.work_order.emergency:
-            self.login(None, "resident").submit_report(
-                "Drill: simulated water leak", "Building B / Lift 2", None
-            )
-            self.login(None, "operator").confirm_triage_and_create_paid_work_order()
-        work = self.seed.work_order
-        work.refresh_from_db()
-        operator = self.seed.roles["operator"]
-        requested = request_emergency(work, operator, reason, drill=True)
-        board = self.seed.roles["board_emergency_approver"]
-        authorized_at = requested.emergency_requested_at
-        event_id = new_event_id()
-        typed = build_emergency_authorization_evidence_typed_data(
-            requested, board, 9_200_000, event_id, timestamp=authorized_at
-        )
-        signature = self.seed.sign_typed(board, typed)
-        authorization = authorize_emergency(
-            requested, board, 9_200_000, signature, event_id, now=authorized_at
-        )
-        self._ctx["emergency_authorization"] = authorization
-        self._ctx["drill_work_order"] = requested
-        self.seed.work_order = requested
-        return SimpleNamespace(
-            id=authorization.pk,
-            label=authorization.label,
-            authorization=authorization,
-            work_order=requested,
-        )
-
-    def start_drill_work(self):
-        work = self._ctx.get("drill_work_order") or self.seed.work_order
-        work.refresh_from_db()
-        started = start_work_order(work, self.seed.users["maintenance"])
-        return SimpleNamespace(
-            verification_label=started.verification_label,
-            status=started.status,
-            work_order=started,
-        )
-
-    def reject_drill(self, reason: str = "Estimate incomplete"):
-        authorization = self._ctx["emergency_authorization"]
-        rep = self.seed.roles["resident_representative"]
-        decided_at = authorization.authorized_at + timedelta(hours=1)
-        event_id = new_event_id()
-        typed = build_emergency_ratification_evidence_typed_data(
-            authorization, rep, "REJECT", reason, event_id, timestamp=decided_at
-        )
-        signature = self.seed.sign_typed(rep, typed)
-        outcome = decide_emergency(
-            authorization,
-            rep,
-            "REJECT",
-            reason,
-            signature,
-            event_id,
-            now=decided_at,
-        )
-        self._ctx["emergency_outcome"] = outcome
-        # UI-oriented label for rejected ratification; domain stores drill/emergency label.
-        return SimpleNamespace(
-            label="Ratification rejected",
-            domain_label=outcome.label,
-            decision=outcome.decision,
-            outcome=outcome.outcome,
-            record=outcome,
-        )
-
-    def ratify_drill(self, reason: str = "Safety action confirmed"):
-        authorization = self._ctx["emergency_authorization"]
-        rep = self.seed.roles["resident_representative"]
-        decided_at = authorization.authorized_at + timedelta(hours=1)
-        event_id = new_event_id()
-        typed = build_emergency_ratification_evidence_typed_data(
-            authorization, rep, "RATIFY", reason, event_id, timestamp=decided_at
-        )
-        signature = self.seed.sign_typed(rep, typed)
-        outcome = decide_emergency(
-            authorization,
-            rep,
-            "RATIFY",
-            reason,
-            signature,
-            event_id,
-            now=decided_at,
-        )
-        self._ctx["emergency_outcome"] = outcome
-        return outcome
-
-    def mark_drill_overdue(self):
-        authorization = self._ctx["emergency_authorization"]
-        now = authorization.ratification_deadline + timedelta(minutes=1)
-        count = mark_overdue_ratifications(now)
-        return count
-
 
 def build_temp_storage_override():
     """Return (location, override_settings context) for filesystem private storage."""

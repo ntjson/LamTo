@@ -596,11 +596,9 @@ class RoleWorkspaceTests(TestCase):
 
     def test_inbox_mutation_routes_and_publish_only_access(self):
         from lamto.accounts.capabilities import (
-            EMERGENCY_AUTHORIZE,
             LEDGER_PUBLISH,
             WORK_ACCEPT,
         )
-        from lamto.finance.models import EmergencyAuthorization
 
         building = Building.objects.create(name=self._unique("Mut"))
         location = BuildingLocation.objects.create(
@@ -610,7 +608,7 @@ class RoleWorkspaceTests(TestCase):
             building,
             OrganizationMembership.Role.BOARD,
             "board-mut",
-            capabilities=(EMERGENCY_AUTHORIZE, WORK_ACCEPT, LEDGER_PUBLISH),
+            capabilities=(WORK_ACCEPT, LEDGER_PUBLISH),
             with_wallet=True,
         )
         maint = self.make_membership(
@@ -659,26 +657,9 @@ class RoleWorkspaceTests(TestCase):
             status=WorkOrder.Status.AWAITING_ACCEPTANCE,
             completed_at=timezone.now(),
         )
-        wo_em = WorkOrder.objects.create(
-            case=case,
-            assignee=maint.user,
-            priority="HIGH",
-            deadline_at=timezone.now(),
-            requires_spending=True,
-            emergency=True,
-            emergency_reason="Burst pipe",
-            emergency_requested_by=board,
-            emergency_requested_at=timezone.now(),
-            authorization_status=WorkOrder.AuthorizationStatus.PENDING,
-            status=WorkOrder.Status.ASSIGNED,
-        )
         items = action_items_for(board)
         accept_urls = [i.url for i in items if i.kind == "work_acceptance"]
-        em_urls = [i.url for i in items if i.kind == "emergency_authorize"]
         self.assertTrue(any(f"/work/{wo_accept.pk}/accept/" in u for u in accept_urls))
-        self.assertTrue(
-            any(f"/work/{wo_em.pk}/emergency/authorize/" in u for u in em_urls)
-        )
 
         # Mutation pages render signed forms
         self.client.force_login(board.user)
@@ -687,13 +668,6 @@ class RoleWorkspaceTests(TestCase):
         self.assertEqual(ar.status_code, 200)
         self.assertContains(ar, "data-signed-form")
         self.assertContains(ar, "Accept work")
-
-        er = self.client.get(
-            reverse("web:emergency-authorize", kwargs={"pk": wo_em.pk})
-        )
-        self.assertEqual(er.status_code, 200)
-        self.assertContains(er, "data-signed-form")
-        self.assertContains(er, "Authorize emergency")
 
         # Pure ledger.publish membership can open proposal list
         publisher = self.make_membership(

@@ -151,10 +151,10 @@ class ProofSerializer(serializers.Serializer):
 
 
 class LedgerApproverSerializer(serializers.Serializer):
-    """Who authorized the spend (board / resident rep / emergency)."""
+    """Who authorized the spend (board / resident representative)."""
 
     role = serializers.CharField(
-        help_text="Machine role: board, resident_rep, or emergency."
+        help_text="Machine role: board or resident_rep."
     )
     name = serializers.CharField(help_text="Display name of the approver.")
     decision = serializers.CharField(help_text="Decision code (e.g. APPROVE).")
@@ -173,7 +173,7 @@ class LedgerEntryDetailSerializer(serializers.Serializer):
         help_text="Resident-visible narrative of work completed."
     )
     why = serializers.CharField(
-        help_text="Resident-visible rationale (cause / purpose / emergency reason)."
+        help_text="Resident-visible rationale (cause or purpose)."
     )
     approvers = LedgerApproverSerializer(many=True)
     payload = serializers.JSONField()

@@ -247,7 +247,6 @@ class ResidentViewTests(TestCase):
         proposal = Proposal.objects.create(
             work_order=work_order,
             creator_membership=operator_membership,
-            mode=Proposal.Mode.NORMAL,
             status=Proposal.Status.NORMAL_AUTHORIZED,
         )
         proposal_event = self.queue_event(operator_membership)
@@ -322,7 +321,6 @@ class ResidentViewTests(TestCase):
             "proposed_amount_vnd": version.amount_vnd,
             "actual_cost_vnd": actual_cost_vnd,
             "contractor_name": contractor_name,
-            "mode": proposal.mode,
             "document_hashes": [inv_r.sha256, acc_r.sha256, proof_r.sha256],
             "payment_verification": {
                 "decision": verification.decision,
