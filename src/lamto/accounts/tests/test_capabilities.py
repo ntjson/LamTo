@@ -50,25 +50,24 @@ class CapabilityTests(TestCase):
         )
 
     def test_capability_kind_allowlist_is_fixed(self):
-        self.assertLessEqual(
-            {
-                REPORT_TRIAGE: {Organization.Kind.OPERATOR},
-                WORK_ASSIGN: {Organization.Kind.OPERATOR},
-                PROPOSAL_CREATE: {Organization.Kind.OPERATOR},
-                PROPOSAL_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
-                WORK_ACCEPT: {Organization.Kind.BOARD},
-                PAYMENT_RECORD: {Organization.Kind.BOARD},
-                PAYMENT_VERIFY: {Organization.Kind.BOARD},
-                FUND_RECORD: {Organization.Kind.BOARD},
-                FUND_VERIFY: {Organization.Kind.BOARD},
-                LEDGER_PUBLISH: {Organization.Kind.BOARD},
-                CORRECTION_CREATE: {Organization.Kind.OPERATOR},
-                CORRECTION_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
-                AUDIT_EXPORT: {Organization.Kind.AUDITOR},
-                TECH_ADMIN: {Organization.Kind.PLATFORM},
-            }.items(),
-            ALLOWED_ORGANIZATION_KINDS.items(),
-        )
+        expected = {
+            REPORT_TRIAGE: {Organization.Kind.OPERATOR},
+            WORK_ASSIGN: {Organization.Kind.OPERATOR},
+            PROPOSAL_CREATE: {Organization.Kind.OPERATOR},
+            PROPOSAL_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
+            WORK_ACCEPT: {Organization.Kind.BOARD},
+            PAYMENT_RECORD: {Organization.Kind.BOARD},
+            PAYMENT_VERIFY: {Organization.Kind.BOARD},
+            FUND_RECORD: {Organization.Kind.BOARD},
+            FUND_VERIFY: {Organization.Kind.BOARD},
+            LEDGER_PUBLISH: {Organization.Kind.BOARD},
+            CORRECTION_CREATE: {Organization.Kind.OPERATOR},
+            CORRECTION_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
+            AUDIT_EXPORT: {Organization.Kind.AUDITOR},
+            TECH_ADMIN: {Organization.Kind.PLATFORM},
+        }
+        self.assertLessEqual(expected.items(), ALLOWED_ORGANIZATION_KINDS.items())
+        self.assertEqual(len(ALLOWED_ORGANIZATION_KINDS), len(expected) + 1)
 
     def test_grant_rejects_unknown_or_wrong_organization_kind(self):
         membership = self.make_membership(
