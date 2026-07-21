@@ -9,17 +9,16 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.utils.translation import gettext_lazy as _
 
-from lamto.accounts.capabilities import ALLOWED_ORGANIZATION_KINDS
-from lamto.accounts.models import CapabilityGrant, ManagementMembership, OrganizationMembership
-from lamto.accounts.security import deny_tech_admin_business_access, require_staff_mfa
-from lamto.accounts.services import require_capability, require_management
+from lamto.accounts.models import ManagementMembership
+from lamto.accounts.security import require_staff_mfa
+from lamto.accounts.services import require_management
 
 
 SESSION_MEMBERSHIP_KEY = "active_membership_id"
 
 
 def membership_building(membership):
-    return membership.building if isinstance(membership, ManagementMembership) else membership.organization.building
+    return membership.building
 
 
 def membership_building_id(membership):
@@ -27,22 +26,13 @@ def membership_building_id(membership):
 
 
 def user_memberships(user):
-    legacy = OrganizationMembership.objects.select_related(
-        "organization", "organization__building"
-    ).filter(user=user, active=True).order_by("organization__building__name", "role", "pk")
-    if legacy.exists():
-        return legacy
     return ManagementMembership.objects.select_related("building").filter(
         user=user, active=True
     ).order_by("building__name", "pk")
 
 
-def capabilities_for(membership) -> set[str]:
-    if membership is None:
-        return set()
-    if isinstance(membership, ManagementMembership):
-        return set(ALLOWED_ORGANIZATION_KINDS)
-    return set(CapabilityGrant.objects.filter(membership=membership).values_list("code", flat=True))
+def capabilities_for(_membership) -> set[str]:
+    return set()
 
 
 def resolve_active_membership(request, *, membership_id=None):
@@ -85,109 +75,55 @@ def require_staff_capability(request, code: str, *, membership_id=None):
     membership, memberships = resolve_active_membership(
         request, membership_id=membership_id
     )
-    if isinstance(membership, ManagementMembership):
-        return require_management(request.user, membership.building_id), memberships
-    if code != "tech.admin":
-        deny_tech_admin_business_access(membership)
-    return require_capability(request.user, membership.pk, code), memberships
+    return require_management(request.user, membership.building_id), memberships
 
 
 def nav_items_for(membership) -> list[dict]:
-    """Six active capability-filtered areas (spec 4.2 Phase-0): Inbox · Cases ·
-    Work · Finance (proposals · payments · fund) · Audit · Ops.
-    Ledger (seventh area) is deferred — not in this nav."""
-    caps = capabilities_for(membership)
-    items: list[dict] = [
+    """The six Management workspace areas."""
+    return [
         {
             "label": _("Inbox"),
             "url_name": "web:action-inbox",
             "capability": None,
             "active_key": "inbox",
-        }
+        },
+        {
+            "label": _("Cases"),
+            "url_name": "web:case-list",
+            "capability": None,
+            "active_key": "cases",
+        },
+        {
+            "label": _("Work"),
+            "url_name": "web:work-order-list",
+            "capability": None,
+            "active_key": "work",
+        },
+        {
+            "label": _("Finance"),
+            "url_name": "web:proposal-list",
+            "capability": None,
+            "active_key": "finance",
+        },
+        {
+            "label": _("Audit"),
+            "url_name": "web:audit-search",
+            "capability": None,
+            "active_key": "audit",
+        },
+        {
+            "label": _("Ops"),
+            "url_name": "web:ops-health",
+            "capability": None,
+            "active_key": "ops",
+        },
     ]
 
-    if "report.triage" in caps:
-        items.append(
-            {
-                "label": _("Cases"),
-                "url_name": "web:case-list",
-                "capability": "report.triage",
-                "active_key": "cases",
-            }
-        )
-
-    # Work: operators (assign), board acceptors (accept), and maintenance.
-    # Preserves the pre-Plan-4 behavior where work.accept also surfaced Work.
-    role = getattr(membership, "role", None)
-    if caps & {"work.assign", "work.accept"} or role == OrganizationMembership.Role.MAINTENANCE:
-        maintenance_only = role == OrganizationMembership.Role.MAINTENANCE and not caps & {"work.assign", "work.accept"}
-        items.append(
-            {
-                "label": _("My work") if maintenance_only else _("Work"),
-                "url_name": "web:work-order-list",
-                "capability": None,
-                "active_key": "work",
-            }
-        )
-
-    # Finance groups proposals · payments · fund; appears once, landing on the
-    # first sub-area the membership can open.
-    finance_caps = {
-        "proposal.create", "ledger.publish",
-        "payment.record", "payment.verify", "fund.record", "fund.verify",
-    }
-    if caps & finance_caps:
-        if caps & {"proposal.create", "ledger.publish"}:
-            finance_url = "web:proposal-list"
-        elif caps & {"payment.record", "payment.verify"}:
-            finance_url = "web:payment-list"
-        else:
-            finance_url = "web:fund-home"
-        items.append(
-            {
-                "label": _("Finance"),
-                "url_name": finance_url,
-                "capability": None,
-                "active_key": "finance",
-            }
-        )
-
-    if role == OrganizationMembership.Role.AUDITOR or "audit.export" in caps:
-        items.append(
-            {
-                "label": _("Audit"),
-                "url_name": "web:audit-search",
-                "capability": "audit.export",
-                "active_key": "audit",
-            }
-        )
-
-    if role == OrganizationMembership.Role.TECH_ADMIN or "tech.admin" in caps:
-        items.append(
-            {
-                "label": _("Ops"),
-                "url_name": "web:ops-health",
-                "capability": "tech.admin",
-                "active_key": "ops",
-            }
-        )
-
-    return items
-
-
-
-
 def finance_nav_items_for(membership) -> list[dict[str, str]]:
-    caps = capabilities_for(membership)
-    destinations = (
-        (_("Proposals"), "web:proposal-list", "proposals", {"proposal.create", "ledger.publish"}),
-        (_("Payments"), "web:payment-list", "payments", {"payment.record", "payment.verify"}),
-        (_("Fund"), "web:fund-home", "fund", {"fund.record", "fund.verify", "ledger.publish"}),
-    )
     return [
-        {"label": label, "url_name": url_name, "active_key": active_key}
-        for label, url_name, active_key, required in destinations
-        if caps & required
+        {"label": _("Proposals"), "url_name": "web:proposal-list", "active_key": "proposals"},
+        {"label": _("Payments"), "url_name": "web:payment-list", "active_key": "payments"},
+        {"label": _("Fund"), "url_name": "web:fund-home", "active_key": "fund"},
     ]
 
 

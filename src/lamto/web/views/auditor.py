@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.capabilities import AUDIT_EXPORT
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.finance.fund import fund_balance
@@ -17,7 +18,7 @@ from lamto.web.views.staff_common import accountability_chain_for
 
 
 def _require_auditor(membership):
-    return membership
+    return require_management(membership.user, membership.building_id)
 
 
 @login_required

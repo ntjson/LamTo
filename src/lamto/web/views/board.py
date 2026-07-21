@@ -19,7 +19,7 @@ from lamto.web.forms.staff import (
     RecordPaymentForm,
     VerifyPaymentForm,
 )
-from lamto.web.staff import capabilities_for, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import membership_building_id, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
@@ -87,9 +87,6 @@ def payment_record(request):
 @require_GET
 def payment_list(request):
     membership, memberships = resolve_active_membership(request)
-    caps = capabilities_for(membership)
-    if PAYMENT_RECORD not in caps and PAYMENT_VERIFY not in caps:
-        raise PermissionDenied("payment access")
     building_id = membership_building_id(membership)
     status = request.GET.get("status") or ""
     status_groups = {
@@ -103,8 +100,7 @@ def payment_list(request):
     active_group = status if status in status_groups else next(
         (group for group, values in status_groups.items() if status in values), ""
     )
-    record_list = (
-        prepare_record_list(
+    record_list = prepare_record_list(
             request,
             AcceptanceRecord.objects.filter(
                 work_order__case__building_id=building_id,
@@ -114,9 +110,6 @@ def payment_list(request):
             sorts=(("", "Newest first", ("-accepted_at",)),),
             page_param="rpage",
         )
-        if PAYMENT_RECORD in caps
-        else None
-    )
     verify_qs = PaymentEvidence.objects.filter(
         acceptance__work_order__case__building_id=building_id,
         verification__isnull=True,
@@ -125,8 +118,7 @@ def payment_list(request):
         verify_qs = verify_qs.filter(external_status__in=status_groups[status])
     elif valid_status:
         verify_qs = verify_qs.filter(external_status=status)
-    verify_list = (
-        prepare_record_list(
+    verify_list = prepare_record_list(
             request,
             verify_qs.select_related("acceptance__work_order__case"),
             search_fields=(
@@ -135,9 +127,6 @@ def payment_list(request):
             ),
             sorts=(("", "Newest first", ("-recorded_at",)),),
         )
-        if PAYMENT_VERIFY in caps
-        else None
-    )
     record_items = [
         {
             "url": f"/s/payments/record/{a.pk}/",
@@ -182,13 +171,11 @@ def payment_list(request):
             verify_list=verify_list,
             search_label="Search payments",
             search_placeholder="ID, bank reference, or category…",
-            filters=filters if PAYMENT_VERIFY in caps else None,
-            filters_active=(valid_status or status in status_groups)
-            if PAYMENT_VERIFY in caps
-            else False,
+            filters=filters,
+            filters_active=valid_status or status in status_groups,
             filter_param="status",
-            can_record=PAYMENT_RECORD in caps,
-            can_verify=PAYMENT_VERIFY in caps,
+            can_record=True,
+            can_verify=True,
         ),
     )
 
@@ -374,9 +361,6 @@ def payment_verify_detail(request, pk):
     from lamto.web.staff_signing import new_event_id
 
     membership, memberships = resolve_active_membership(request)
-    caps = capabilities_for(membership)
-    if PAYMENT_VERIFY not in caps and PAYMENT_RECORD not in caps:
-        raise PermissionDenied("payment access")
     building_id = membership_building_id(membership)
     from lamto.finance.models import PublishedLedgerEntry
 
@@ -395,7 +379,7 @@ def payment_verify_detail(request, pk):
     )
     acceptance = payment.acceptance
     already = hasattr(payment, "verification") and payment.verification is not None
-    can_verify = PAYMENT_VERIFY in caps and not already
+    can_verify = not already
     verify_form = VerifyPaymentForm(request.POST or None) if can_verify else None
     typed_data = None
     expected_signer = ""

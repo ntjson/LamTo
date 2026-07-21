@@ -41,7 +41,7 @@ from lamto.web.forms.staff import (
     PreparePublicationForm,
     SignProposalForm,
 )
-from lamto.web.staff import capabilities_for, membership_building, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import membership_building, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
@@ -286,22 +286,6 @@ def case_detail(request, pk):
 @require_GET
 def proposal_list(request):
     membership, memberships = resolve_active_membership(request)
-    caps = capabilities_for(membership)
-    if (
-        PROPOSAL_CREATE not in caps
-        and LEDGER_PUBLISH not in caps
-    ):
-        record_audit(
-            request.user,
-            membership,
-            "workspace.proposal.list",
-            "ManagementMembership",
-            str(membership.pk),
-            "denied",
-            {},
-        )
-        raise PermissionDenied("proposal access")
-
     building_id = membership_building_id(membership)
     status = request.GET.get("status") or ""
     status_groups = {
@@ -375,9 +359,8 @@ def proposal_list(request):
             filters=filters,
             filters_active=valid_status or status in status_groups,
             filter_param="status",
-            can_publish=LEDGER_PUBLISH in caps,
-            publish_only=LEDGER_PUBLISH in caps
-            and PROPOSAL_CREATE not in caps
+            can_publish=True,
+            publish_only=False,
         ),
     )
 
@@ -386,13 +369,6 @@ def proposal_list(request):
 @require_http_methods(["GET", "POST"])
 def proposal_detail(request, pk):
     membership, memberships = resolve_active_membership(request)
-    caps = capabilities_for(membership)
-    if (
-        PROPOSAL_CREATE not in caps
-        and LEDGER_PUBLISH not in caps
-    ):
-        raise PermissionDenied("proposal access")
-
     proposal = get_object_or_404(
         Proposal.objects.select_related(
             "current_version", "work_order__case", "creator_membership"
@@ -401,7 +377,7 @@ def proposal_detail(request, pk):
         work_order__case__building_id=membership_building_id(membership),
     )
     publish_form = PreparePublicationForm(request.POST or None)
-    can_publish = LEDGER_PUBLISH in caps and _proposal_publishable(proposal)
+    can_publish = _proposal_publishable(proposal)
     version = proposal.current_version
     publish_typed_data = None
     publish_expected_signer = ""

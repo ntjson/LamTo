@@ -34,7 +34,7 @@ from lamto.finance.selectors import (
     verified_fund_entries,
 )
 from lamto.web.forms.staff import RecordFundSourceForm, SignFundSourceForm, SignedDecisionForm
-from lamto.web.staff import capabilities_for, membership_building, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import membership_building, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.staff_signing import new_event_id, upload_document_pair
 
 
@@ -50,10 +50,7 @@ def _require_fund_access(request):
 
     require_staff_mfa(request)
     membership, memberships = resolve_active_membership(request)
-    caps = capabilities_for(membership)
-    if FUND_RECORD not in caps and FUND_VERIFY not in caps:
-        raise PermissionDenied("fund access")
-    return membership, memberships, caps
+    return membership, memberships
 
 
 @login_required
@@ -61,7 +58,7 @@ def _require_fund_access(request):
 def fund_home(request):
     from lamto.web.views.staff_common import prepare_record_list
 
-    membership, memberships, caps = _require_fund_access(request)
+    membership, memberships = _require_fund_access(request)
     building_id = membership_building_id(membership)
     entries_list = prepare_record_list(
         request,
@@ -107,8 +104,8 @@ def fund_home(request):
             window_inflows_vnd=window_inflows,
             window_outflows_vnd=window_outflows,
             fund_exists=MaintenanceFund.objects.filter(building_id=building_id).exists(),
-            can_record=FUND_RECORD in caps,
-            can_verify=FUND_VERIFY in caps,
+            can_record=True,
+            can_verify=True,
         ),
     )
 

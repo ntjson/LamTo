@@ -15,6 +15,7 @@ Completeness:
 import tempfile
 import time
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django_otp import DEVICE_ID_SESSION_KEY
@@ -22,7 +23,7 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 from knox.models import AuthToken
 
-from lamto.accounts.models import ResidentOccupancy
+from lamto.accounts.models import Organization, OrganizationMembership, ResidentOccupancy
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.fund import fund_balance
@@ -36,6 +37,7 @@ from lamto.finance.models import (
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase, WorkOrder
 from lamto.notifications.models import NotificationDelivery
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
+from lamto.web.staff import nav_items_for
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-isolation-")
 
@@ -272,6 +274,38 @@ class CrossBuildingAccessTests(TestCase):
             overlap = seen & bucket
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
+
+    def test_management_has_six_areas_and_legacy_only_staff_is_denied(self):
+        manager = self.seed_a.management_memberships[0]
+        assert [item["active_key"] for item in nav_items_for(manager)] == [
+            "inbox", "cases", "work", "finance", "audit", "ops"
+        ]
+        self._management_login()
+        assert self.client.get(reverse("web:case-list")).status_code == 200
+        assert self.client.get(reverse("web:audit-search")).status_code == 200
+        self.client.logout()
+
+        legacy_user = get_user_model().objects.create_user(
+            email="legacy-only@isolation.test", password="x", display_name="Legacy"
+        )
+        organization = Organization.objects.create(
+            building=self.seed_a.building,
+            name="Legacy operator",
+            kind=Organization.Kind.OPERATOR,
+        )
+        OrganizationMembership.objects.create(
+            user=legacy_user,
+            organization=organization,
+            role=OrganizationMembership.Role.OPERATOR,
+        )
+        self.client.force_login(legacy_user)
+        device = TOTPDevice.objects.create(
+            user=legacy_user, name="test", confirmed=True, key=random_hex()
+        )
+        session = self.client.session
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session.save()
+        assert self.client.get(reverse("web:case-list")).status_code == 403
 
     def test_staff_cannot_reach_other_building_objects(self):
         for route, (pk_attr, method) in STAFF_CASES.items():

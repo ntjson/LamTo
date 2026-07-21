@@ -64,3 +64,22 @@ uv run pytest src/lamto tests -q --tb=no
 ```
 
 All full-suite failures remain confined to the seven previously listed `src/lamto/web/tests/*` files deferred to Tasks 11–12. Residue sweeps found no driver login API, `_active_role`, role-key choreography, or `seed.roles`/`seed.users` usage outside those deferred web tests.
+
+## Review follow-up 2
+
+- Removed the shared staff resolver's legacy `OrganizationMembership` fallback and capability synthesis. Active staff resolution now accepts only active `ManagementMembership` rows; the transitional capability gate ignores its code and delegates to `require_management`.
+- Made the auditor gate explicitly require Management and bound every Manager to Inbox, Cases, Work, Finance, Audit, and Ops, including all three finance subareas.
+- Added isolation coverage proving Management can open Cases and Audit while a legacy-only operator is denied. Existing cross-building object checks still require exact 404 responses.
+
+```text
+uv run pytest --reuse-db tests/isolation -q
+11 passed in 2.15s
+
+uv run pytest --reuse-db tests/e2e -q
+8 passed in 4.82s
+
+uv run pytest --reuse-db tests/isolation tests/e2e src/lamto tests -q --ignore=src/lamto/web/tests
+3 failed, 376 passed, 1 skipped in 54.44s
+```
+
+The three non-web failures are legacy security expectations intentionally deferred to Tasks 11–12: two break-glass tech-admin health tests still inspect the removed role shape, and one test still expects a non-auditor legacy membership to be denied an export now available to every Manager. Restoring either behavior would reintroduce the forbidden legacy fallback or contradict the all-Manager workspace binding.

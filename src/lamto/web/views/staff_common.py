@@ -11,13 +11,11 @@ from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from lamto.accounts.capabilities import FUND_RECORD, FUND_VERIFY
 from lamto.accounts.security import require_staff_mfa
 from lamto.finance.selectors import fund_series
 from lamto.web.action_inbox import action_items_for
 from lamto.web.staff import (
     SESSION_MEMBERSHIP_KEY,
-    capabilities_for,
     resolve_active_membership,
     staff_context,
     user_memberships,
@@ -169,7 +167,6 @@ def action_inbox(request):
         raise PermissionDenied("An active staff membership is required.")
     require_staff_mfa(request)
     membership, memberships = resolve_active_membership(request)
-    caps = capabilities_for(membership)
     from lamto.web.staff import membership_building_id
     series = fund_series(membership_building_id(membership), range_key="6m")
     items = action_items_for(membership)
@@ -196,7 +193,7 @@ def action_inbox(request):
                 for row in series
             ],
             fund_balance_vnd=series[-1]["balance_vnd"],
-            fund_link_ok=FUND_RECORD in caps or FUND_VERIFY in caps,
+            fund_link_ok=True,
             action_groups=inbox["groups"],
             action_page=inbox["page"],
             kind_filters=inbox["kind_filters"],
