@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET
 from lamto.accounts.capabilities import AUDIT_EXPORT
 from lamto.accounts.models import OrganizationMembership
 from lamto.accounts.security import deny_tech_admin_business_access, require_staff_mfa
+from lamto.accounts.services import require_management
 from lamto.audit.models import AuditEvent
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
@@ -100,7 +101,7 @@ def audit_export(request):
 
         record_audit(
             request.user,
-            membership,
+            require_management(request.user, building_id),
             "audit.export",
             "Export",
             kind,
@@ -111,7 +112,7 @@ def audit_export(request):
         try:
             record_audit(
                 request.user,
-                membership,
+                require_management(request.user, building_id),
                 "audit.export",
                 "Export",
                 kind,
@@ -144,7 +145,7 @@ def _audit_event_rows(building_id):
         "result",
     ]
     qs = (
-        AuditEvent.objects.filter(membership__organization__building_id=building_id)
+        AuditEvent.objects.filter(membership__building_id=building_id)
         .order_by("id")
         .values_list(
             "id",

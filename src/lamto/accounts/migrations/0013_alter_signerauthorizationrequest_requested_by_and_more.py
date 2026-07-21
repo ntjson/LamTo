@@ -8,6 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('accounts', '0012_managementmembership'),
+        ('evidence', '0010_outbox_building_not_null'),
     ]
 
     operations = [

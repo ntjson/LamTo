@@ -57,7 +57,7 @@ def checks():
         (
             "outbox_signer_building",
             BlockchainOutboxEvent.objects.exclude(
-                building=F("signer_wallet__membership__organization__building")
+                building=F("signer_wallet__membership__building")
             ),
         ),
         (

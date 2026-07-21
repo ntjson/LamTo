@@ -17,6 +17,7 @@ from .models import (
     AuthThrottleBucket,
     BreakGlassRevocation,
     BreakGlassSession,
+    ManagementMembership,
     OrganizationMembership,
 )
 
@@ -27,6 +28,14 @@ THROTTLE_WINDOW_SECONDS = 15 * 60
 BREAK_GLASS_MAX_MINUTES = 60
 BREAK_GLASS_CONSENT_MAX_AGE = 600  # seconds; authorizer dual-control token
 BREAK_GLASS_CONSENT_SALT = "lamto.break_glass.consent"
+
+
+def _management_membership(membership):
+    return ManagementMembership.objects.filter(
+        user_id=membership.user_id,
+        building_id=membership.organization.building_id,
+        active=True,
+    ).first()
 
 
 class RecentAuthRequired(PermissionDenied):
@@ -196,7 +205,7 @@ def _deny_sensitive(request, reason: str, extra: dict | None = None) -> None:
     try:
         record_audit(
             request.user if getattr(request.user, "is_authenticated", False) else None,
-            membership,
+            _management_membership(membership) if membership else None,
             "security.sensitive_action",
             "Session",
             str(getattr(request.user, "pk", "") or ""),
@@ -274,7 +283,7 @@ def assert_break_glass_allows_path(request, path: str | None = None) -> None:
     try:
         record_audit(
             request.user,
-            session.membership,
+            _management_membership(session.membership),
             "security.break_glass.request",
             "BreakGlassSession",
             str(session.pk),
@@ -317,7 +326,7 @@ def issue_break_glass_consent(
     try:
         record_audit(
             authorizing_membership.user,
-            authorizing_membership,
+            _management_membership(authorizing_membership),
             "security.break_glass.consent",
             "OrganizationMembership",
             str(tech_membership.pk),
@@ -394,7 +403,7 @@ def start_break_glass(
     )
     record_audit(
         tech_membership.user,
-        tech_membership,
+        _management_membership(tech_membership),
         "security.break_glass.start",
         "BreakGlassSession",
         str(session.pk),
@@ -428,7 +437,7 @@ def revoke_break_glass(
     )
     record_audit(
         revoked_by,
-        session.membership,
+        _management_membership(session.membership),
         "security.break_glass.revoke",
         "BreakGlassSession",
         str(session.pk),

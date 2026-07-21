@@ -14,7 +14,7 @@ from lamto.accounts.security import (
     deny_tech_admin_business_access,
     require_staff_mfa,
 )
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_capability, require_management
 from lamto.audit.services import record_audit
 
 
@@ -87,7 +87,7 @@ def require_staff_capability(request, code: str, *, membership_id=None):
     except PermissionDenied:
         record_audit(
             request.user,
-            membership,
+            require_management(request.user, membership.organization.building_id),
             f"workspace.{code}",
             "OrganizationMembership",
             str(membership.pk),

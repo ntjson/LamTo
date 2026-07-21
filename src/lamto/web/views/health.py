@@ -22,7 +22,7 @@ from lamto.accounts.security import (
     is_break_glass_active,
     require_staff_mfa,
 )
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_capability, require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent
@@ -224,7 +224,7 @@ def ops_health(request):
     snapshot = collect_health_snapshot()
     record_audit(
         request.user,
-        membership,
+        require_management(request.user, membership.organization.building_id),
         "ops.health",
         "Health",
         "snapshot",

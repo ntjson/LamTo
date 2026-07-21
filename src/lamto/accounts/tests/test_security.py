@@ -29,6 +29,7 @@ from lamto.accounts.models import (
     BreakGlassRevocation,
     BreakGlassSession,
     Building,
+    ManagementMembership,
     Organization,
     OrganizationMembership,
 )
@@ -82,6 +83,7 @@ class SecurityTests(TestCase):
         membership = OrganizationMembership.objects.create(
             user=user, organization=organization, role=role
         )
+        ManagementMembership.objects.create(user=user, building=building)
         for code in capabilities:
             grant_capability(membership, code)
         return membership
