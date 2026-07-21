@@ -53,12 +53,13 @@ def settlement_record_transfer(request, pk):
 @require_http_methods(["GET", "POST"])
 def settlement_record_ack(request, pk):
     membership, memberships = require_management_context(request)
+    if request.method == "POST":
+        require_recent_auth(request)
     settlement = get_object_or_404(Settlement, pk=pk, proposal__building_id=membership.building_id)
     options = document_pair_options(membership.building_id, Document.Kind.PAYMENT_PROOF)
     initial = {"event_id": new_event_id()}
     form = RecordSettlementAcknowledgementForm(request.POST or None, initial=initial, proof_choices=[(value, label) for value, label, _, _ in options])
     if request.method == "POST" and form.is_valid():
-        require_recent_auth(request)
         pair = selected_pair(options, form.cleaned_data["proof_pair"])
         if pair is None:
             form.add_error("proof_pair", "Selected evidence is no longer available.")

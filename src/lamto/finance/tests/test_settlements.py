@@ -1,4 +1,5 @@
 import secrets
+from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -10,6 +11,7 @@ from lamto.evidence.models import EvidenceType
 from lamto.finance.models import Proposal
 from lamto.finance.proposals import create_standalone_proposal, publish_proposal_version
 from lamto.finance.settlements import record_acknowledgement, record_transfer
+from lamto.maintenance.cases import close_expired_completed_cases
 
 
 class SettlementTests(TestCase):
@@ -77,3 +79,22 @@ class SettlementTests(TestCase):
         proposal = create_standalone_proposal(self.building, self.membership)
         with self.assertRaises(ValidationError):
             self.transfer(proposal)
+
+    def test_later_settlement_postpones_close_and_is_not_counted(self):
+        proposal, _ = self.completed()
+        completed_at = timezone.now() - timedelta(days=15)
+        Proposal.objects.filter(pk=proposal.pk).update(completed_at=completed_at)
+        proposal.refresh_from_db()
+        settlement = self.transfer(proposal)
+        original, redacted = self.pair(Document.Kind.PAYMENT_PROOF, "late-ack")
+        settlement = record_acknowledgement(
+            settlement,
+            self.membership,
+            ack_original=original,
+            ack_redacted=redacted,
+            event_id="0x" + secrets.token_hex(32),
+        )
+
+        self.assertEqual(close_expired_completed_cases(now=settlement.settled_at - timedelta(seconds=1)), 0)
+        proposal.refresh_from_db()
+        self.assertIsNone(proposal.closed_at)

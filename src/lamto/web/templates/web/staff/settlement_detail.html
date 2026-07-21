@@ -18,6 +18,6 @@
   <p>Transfer: {{ settlement.transfer_original.filename }} / {{ settlement.transfer_redacted.filename }}</p>
   <p>Acknowledgement ({{ settlement.get_ack_kind_display }}): {% if settlement.ack_original %}{{ settlement.ack_original.filename }} / {{ settlement.ack_redacted.filename }}{% else %}Pending — <a href="{% url 'web:settlement-record-ack' settlement.pk %}">record acknowledgement</a>{% endif %}</p>
   <p>Status: {% if settlement.settled_at %}Settled{% else %}Awaiting acknowledgement{% endif %}</p>
-  <p>Anchor: {% if settlement.outbox_event %}{{ settlement.outbox_event.get_status_display }}{% else %}Pending{% endif %}</p>
+  <p>Anchor: {% include "web/staff/_evidence_level.html" with event=settlement.outbox_event %}</p>
 {% endif %}
 {% endblock %}

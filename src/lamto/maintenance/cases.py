@@ -161,6 +161,7 @@ def close_expired_completed_cases(now=None) -> int:
         case__isnull=True, status=Proposal.Status.COMPLETED,
         completed_at__lte=now - timedelta(days=RATING_WINDOW_DAYS), closed_at__isnull=True,
     ))
+    closed_proposals = 0
     for proposal in proposals:
         close_at = proposal.completed_at + timedelta(days=RATING_WINDOW_DAYS)
         settlement = getattr(proposal, "settlement", None)
@@ -171,7 +172,8 @@ def close_expired_completed_cases(now=None) -> int:
         proposal.status = Proposal.Status.CLOSED
         proposal.closed_at = now
         proposal.save(update_fields=["status", "closed_at"])
-    return len(cases) + len(proposals)
+        closed_proposals += 1
+    return len(cases) + closed_proposals
 
 
 def _locked_report(report):
