@@ -12,16 +12,6 @@ from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import (
-    FUND_RECORD,
-    FUND_VERIFY,
-    LEDGER_PUBLISH,
-    PAYMENT_RECORD,
-    PAYMENT_VERIFY,
-    PROPOSAL_CREATE,
-    WORK_ACCEPT,
-    WORK_ASSIGN,
-)
 from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
@@ -90,7 +80,7 @@ class PublicationTests(TestCase):
         self._fixture_seq = n
         return f"{base}-{n}"
 
-    def make_signer(self, building, role, capability, suffix):
+    def make_signer(self, building, role, access, suffix):
         suffix = self._unique(suffix)
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
@@ -180,7 +170,7 @@ class PublicationTests(TestCase):
         location = BuildingLocation.objects.create(building=building, name="Lobby")
         unit = Unit.objects.create(building=building, label="A-1")
         operator, operator_account = self.make_signer(
-            building, None, PROPOSAL_CREATE, "operator"
+            building, None, None, "operator"
         )
         maintenance_user = get_user_model().objects.create_user(
             email=f"maint-{tag}@example.test", password="secret", display_name="Maint"
@@ -242,7 +232,7 @@ class PublicationTests(TestCase):
         )
 
         board_actor, board_account = self.make_signer(
-            building, None, WORK_ACCEPT, "board-actor"
+            building, None, None, "board-actor"
         )
         self.accounts = {
             operator.pk: operator_account,
@@ -293,15 +283,15 @@ class PublicationTests(TestCase):
         )
 
         payment_recorder, payment_recorder_account = self.make_signer(
-            building, None, PAYMENT_RECORD, "pay-recorder"
+            building, None, None, "pay-recorder"
         )
         # Same user as board_acceptor is allowed for payment record, but use distinct for dual-control clarity.
         # Actually we can use board_acceptor as recorder. For publisher exclusion we need distinct publisher.
         payment_verifier, payment_verifier_account = self.make_signer(
-            building, None, PAYMENT_VERIFY, "pay-verifier"
+            building, None, None, "pay-verifier"
         )
         publisher, publisher_account = self.make_signer(
-            building, None, LEDGER_PUBLISH, "publisher"
+            building, None, None, "publisher"
         )
         # Publisher may equal payment verifier - grant both on publisher as alternative path tested separately.
         self.accounts[payment_recorder.pk] = payment_recorder_account
@@ -380,10 +370,10 @@ class PublicationTests(TestCase):
         # Seed fund so balance can absorb outflow.
         fund = get_or_create_fund(building)
         fund_recorder, fund_recorder_account = self.make_signer(
-            building, None, FUND_RECORD, "fund-rec"
+            building, None, None, "fund-rec"
         )
         fund_verifier, fund_verifier_account = self.make_signer(
-            building, None, FUND_VERIFY, "fund-ver"
+            building, None, None, "fund-ver"
         )
         self.accounts[fund_recorder.pk] = fund_recorder_account
         self.accounts[fund_verifier.pk] = fund_verifier_account

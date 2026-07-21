@@ -9,7 +9,6 @@ from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import PAYMENT_RECORD, PAYMENT_VERIFY, WORK_ACCEPT
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document
 from lamto.evidence.canonical import payload_hash
@@ -81,7 +80,7 @@ class PaymentMakerCheckerTests(TestCase):
 
     def make_second_board(self, building, suffix="board-verifier"):
         membership, account = self.make_signer(
-            building, None, PAYMENT_VERIFY, suffix
+            building, None, None, suffix
         )
         self.accounts[membership.pk] = account
         return membership

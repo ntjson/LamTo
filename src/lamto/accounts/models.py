@@ -1,5 +1,4 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.db import models
 
 from .managers import UserManager
@@ -44,80 +43,6 @@ class Unit(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["building", "label"], name="unit_label_per_building"),
             models.UniqueConstraint(fields=["id", "building"], name="unit_id_building_key"),
-        ]
-
-
-class Organization(models.Model):
-    class Kind(models.TextChoices):
-        BOARD = "BOARD", "Management Board"
-        OPERATOR = "OPERATOR", "Property-management operator"
-        RESIDENT_REP = "RESIDENT_REP", "Resident representative"
-        AUDITOR = "AUDITOR", "Auditor"
-        PLATFORM = "PLATFORM", "Platform provider"
-
-    building = models.ForeignKey(Building, on_delete=models.PROTECT)
-    name = models.CharField(max_length=200)
-    kind = models.CharField(max_length=24, choices=Kind.choices)
-
-    def clean(self):
-        super().clean()
-        if self.pk:
-            current_kind = type(self).objects.filter(pk=self.pk).values_list("kind", flat=True).first()
-            if current_kind is not None and current_kind != self.kind:
-                valid_roles = [
-                    role
-                    for role, kind in OrganizationMembership.ROLE_TO_ORGANIZATION_KIND.items()
-                    if kind == self.kind
-                ]
-                if self.organizationmembership_set.exclude(role__in=valid_roles).exists():
-                    raise ValidationError({"kind": "Organization kind does not match its memberships."})
-
-
-class OrganizationMembership(models.Model):
-    class Role(models.TextChoices):
-        OPERATOR = "OPERATOR", "Operator"
-        MAINTENANCE = "MAINTENANCE", "Maintenance"
-        BOARD = "BOARD", "Board"
-        RESIDENT_REP = "RESIDENT_REP", "Resident representative"
-        AUDITOR = "AUDITOR", "Auditor"
-        TECH_ADMIN = "TECH_ADMIN", "Technical administrator"
-
-    ROLE_TO_ORGANIZATION_KIND = {
-        Role.BOARD: Organization.Kind.BOARD,
-        Role.RESIDENT_REP: Organization.Kind.RESIDENT_REP,
-        Role.AUDITOR: Organization.Kind.AUDITOR,
-        Role.TECH_ADMIN: Organization.Kind.PLATFORM,
-        Role.OPERATOR: Organization.Kind.OPERATOR,
-        Role.MAINTENANCE: Organization.Kind.OPERATOR,
-    }
-
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
-    role = models.CharField(max_length=24, choices=Role.choices)
-    active = models.BooleanField(default=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "organization", "role"], name="membership_once"
-            )
-        ]
-
-    def clean(self):
-        expected_kind = self.ROLE_TO_ORGANIZATION_KIND.get(self.role)
-        if expected_kind and self.organization.kind != expected_kind:
-            raise ValidationError({"role": "Role does not match the organization kind."})
-
-
-class CapabilityGrant(models.Model):
-    membership = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
-    code = models.CharField(max_length=64)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["membership", "code"], name="capability_grant_once"
-            )
         ]
 
 
@@ -217,63 +142,6 @@ class AuthThrottleBucket(models.Model):
 
     def __str__(self):
         return f"AuthThrottleBucket({self.key_digest[:12]}…, failures={self.failure_count})"
-
-
-class BreakGlassSession(models.Model):
-    """Insert-only elevated support session for technical administrators.
-
-    Grants only account/organization support and health access — never
-    business decisions, financial/document contents, or stakeholder keys.
-    """
-
-    membership = models.ForeignKey(
-        OrganizationMembership,
-        on_delete=models.PROTECT,
-        related_name="break_glass_sessions",
-    )
-    reason = models.TextField()
-    authorizing_membership = models.ForeignKey(
-        OrganizationMembership,
-        on_delete=models.PROTECT,
-        related_name="authorized_break_glass_sessions",
-    )
-    started_at = models.DateTimeField()
-    expires_at = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        if not self._state.adding:
-            raise ValueError("BreakGlassSession rows are append-only.")
-        return super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValueError("BreakGlassSession rows are append-only.")
-
-
-class BreakGlassRevocation(models.Model):
-    """Insert-only early end of a break-glass session."""
-
-    session = models.ForeignKey(
-        BreakGlassSession,
-        on_delete=models.PROTECT,
-        related_name="revocations",
-    )
-    revoked_by = models.ForeignKey(
-        User,
-        on_delete=models.PROTECT,
-        related_name="break_glass_revocations",
-    )
-    reason = models.TextField(blank=True)
-    revoked_at = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        if not self._state.adding:
-            raise ValueError("BreakGlassRevocation rows are append-only.")
-        return super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValueError("BreakGlassRevocation rows are append-only.")
 
 
 class BackupMarker(models.Model):

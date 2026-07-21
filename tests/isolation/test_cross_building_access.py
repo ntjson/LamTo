@@ -23,7 +23,7 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 from knox.models import AuthToken
 
-from lamto.accounts.models import Organization, OrganizationMembership, ResidentOccupancy
+from lamto.accounts.models import ResidentOccupancy
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.fund import fund_balance
@@ -63,7 +63,7 @@ EXEMPT = {
     # Device revocation is user-scoped (own MFA devices), not tenant-scoped.
     "web:mfa-revoke": "user-scoped MFA device",
     # Break-glass sessions are platform support records for tech admins;
-    # tenancy does not apply and the view enforces tech-admin capability.
+    # tenancy does not apply and the view enforces management access.
     "web:break-glass-revoke": "platform-scoped support session",
 }
 
@@ -271,7 +271,7 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_six_areas_and_legacy_only_staff_is_denied(self):
+    def test_management_has_six_areas_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
             "inbox", "cases", "work", "finance", "exports", "ops"
@@ -281,22 +281,12 @@ class CrossBuildingAccessTests(TestCase):
         assert self.client.get(reverse("web:audit-export")).status_code == 200
         self.client.logout()
 
-        legacy_user = get_user_model().objects.create_user(
-            email="legacy-only@isolation.test", password="x", display_name="Legacy"
+        non_manager = get_user_model().objects.create_user(
+            email="non-manager@isolation.test", password="x", display_name="Non-manager"
         )
-        organization = Organization.objects.create(
-            building=self.seed_a.building,
-            name="Legacy operator",
-            kind=Organization.Kind.OPERATOR,
-        )
-        OrganizationMembership.objects.create(
-            user=legacy_user,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        self.client.force_login(legacy_user)
+        self.client.force_login(non_manager)
         device = TOTPDevice.objects.create(
-            user=legacy_user, name="test", confirmed=True, key=random_hex()
+            user=non_manager, name="test", confirmed=True, key=random_hex()
         )
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
@@ -312,8 +302,8 @@ class CrossBuildingAccessTests(TestCase):
                     self.client.post(url, {}) if method == "POST" else self.client.get(url)
                 )
                 # Design §2.3: pure cross-tenant object access is 404 (not 403).
-                # Roles here already hold the capability for the route inside
-                # their own building, so the only failure mode is wrong tenant.
+                # Managers may use the route inside their own building, so the
+                # only failure mode is wrong tenant.
                 assert response.status_code == 404, (route, response.status_code)
                 if hasattr(response, "content"):
                     assert B_LEAK_MARKER.encode() not in response.content

@@ -3,7 +3,7 @@
 from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
 
-from lamto.accounts.models import OrganizationMembership
+from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import Document, DocumentVersion
 from lamto.finance.acceptance import accept_work
 from lamto.finance.models import MaintenanceFundEntry, PaymentVerification
@@ -21,13 +21,13 @@ from lamto.notifications.services import PREFERENCE_EVENT_CHOICES
 
 class MembershipSwitchForm(forms.Form):
     membership = forms.ModelChoiceField(
-        queryset=OrganizationMembership.objects.none(),
+        queryset=ManagementMembership.objects.none(),
         label="Active membership",
     )
 
     def __init__(self, *args, memberships=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["membership"].queryset = memberships or OrganizationMembership.objects.none()
+        self.fields["membership"].queryset = memberships or ManagementMembership.objects.none()
 
 
 class ConfirmTriageForm(forms.Form):
@@ -71,7 +71,7 @@ class ConfirmTriageForm(forms.Form):
 
 class CreateWorkOrderForm(forms.Form):
     assignee = forms.ModelChoiceField(
-        queryset=OrganizationMembership.objects.none(),
+        queryset=ManagementMembership.objects.none(),
         label="Assignee (maintenance membership)",
         widget=forms.Select(attrs={"class": "input"}),
     )
@@ -80,10 +80,9 @@ class CreateWorkOrderForm(forms.Form):
     def __init__(self, *args, building_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         if building_id is not None:
-            self.fields["assignee"].queryset = OrganizationMembership.objects.filter(
+            self.fields["assignee"].queryset = ManagementMembership.objects.filter(
                 active=True,
-                role=OrganizationMembership.Role.MAINTENANCE,
-                organization__building_id=building_id,
+                building_id=building_id,
             ).select_related("user")
 
     def save(self, case, operator):

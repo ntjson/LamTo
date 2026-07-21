@@ -1,4 +1,4 @@
-"""Authentication throttle, re-auth, break-glass, and privileged-action gates."""
+"""Authentication throttle, re-auth, and privileged-action gates."""
 
 from __future__ import annotations
 
@@ -6,61 +6,24 @@ import hashlib
 import time
 from datetime import timedelta
 
-from django.core import signing
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 
 from lamto.audit.services import record_audit
 
-from .models import (
-    AuthThrottleBucket,
-    BreakGlassRevocation,
-    BreakGlassSession,
-    OrganizationMembership,
-)
+from .models import AuthThrottleBucket, ManagementMembership
 from .services import require_management
 
 RECENT_REAUTH_KEY = "recent_reauth_at"
 DEFAULT_REAUTH_MAX_AGE = 300
 THROTTLE_MAX_FAILURES = 5
 THROTTLE_WINDOW_SECONDS = 15 * 60
-BREAK_GLASS_MAX_MINUTES = 60
-BREAK_GLASS_CONSENT_MAX_AGE = 600  # seconds; authorizer dual-control token
-BREAK_GLASS_CONSENT_SALT = "lamto.break_glass.consent"
 
 
 class RecentAuthRequired(PermissionDenied):
     """Recent re-authentication required; StaffSecurityMiddleware redirects to reauth."""
 
-
-
-# Capabilities / route families blocked under break-glass and for pure tech admins.
-BUSINESS_ROUTE_PREFIXES = (
-    "/s/cases/",
-    "/s/reports/",
-    "/s/proposals/",
-    "/s/work/",
-    "/s/payments/",
-    "/s/audit/",
-)
-FINANCE_DOCUMENT_URL_NAMES = frozenset(
-    {
-        "web:case-list",
-        "web:case-detail",
-        "web:staff-report-detail",
-        "web:proposal-list",
-        "web:proposal-detail",
-        "web:work-order-list",
-        "web:work-order-detail",
-        "web:work-accept",
-        "web:payment-list",
-        "web:payment-record-detail",
-        "web:payment-verify-detail",
-        "web:payment-record",
-        "web:audit-export",
-    }
-)
 
 
 def throttle_digest(account: str, ip: str | None) -> str:
@@ -188,15 +151,15 @@ def require_recent_auth(request, max_age_seconds: int = DEFAULT_REAUTH_MAX_AGE) 
 
 def _deny_sensitive(request, reason: str, extra: dict | None = None) -> None:
     membership = None
-    mid = request.session.get("active_membership_id")
+    mid = request.session.get("active_management_id")
     if mid is not None:
-        membership = OrganizationMembership.objects.filter(
+        membership = ManagementMembership.objects.filter(
             pk=mid, user=request.user, active=True
         ).first()
     try:
         record_audit(
             request.user if getattr(request.user, "is_authenticated", False) else None,
-            require_management(request.user, membership.organization.building_id)
+            require_management(request.user, membership.building_id)
             if membership
             else None,
             "security.sensitive_action",
@@ -225,225 +188,6 @@ def require_staff_mfa(request) -> None:
     if not user_has_confirmed_totp(request.user):
         raise PermissionDenied("TOTP enrollment is required for staff workspaces.")
     require_otp_verified(request)
-
-
-def membership_is_tech_admin(membership: OrganizationMembership | None) -> bool:
-    return (
-        membership is not None
-        and membership.role == OrganizationMembership.Role.TECH_ADMIN
-    )
-
-
-def deny_tech_admin_business_access(membership: OrganizationMembership | None) -> None:
-    """Technical administrators never receive finance/document business access."""
-    if membership_is_tech_admin(membership):
-        raise PermissionDenied(
-            "Technical administrators cannot access finance or document business routes."
-        )
-
-
-def active_break_glass_session(user) -> BreakGlassSession | None:
-    if user is None or not getattr(user, "is_authenticated", False):
-        return None
-    now = _now()
-    sessions = (
-        BreakGlassSession.objects.select_related("membership", "authorizing_membership")
-        .filter(
-            membership__user=user,
-            membership__active=True,
-            membership__role=OrganizationMembership.Role.TECH_ADMIN,
-            expires_at__gt=now,
-        )
-        .order_by("-started_at")
-    )
-    for session in sessions:
-        if session.revocations.exists():
-            continue
-        return session
-    return None
-
-
-def is_break_glass_active(user) -> bool:
-    return active_break_glass_session(user) is not None
-
-
-def assert_break_glass_allows_path(request, path: str | None = None) -> None:
-    """Every break-glass request is audited; business routes remain denied."""
-    session = active_break_glass_session(request.user)
-    if session is None:
-        return
-    path = path if path is not None else request.path
-    record_audit(
-        request.user,
-        require_management(request.user, session.membership.organization.building_id),
-        "security.break_glass.request",
-        "BreakGlassSession",
-        str(session.pk),
-        "observed",
-        {"path": path, "method": request.method},
-    )
-    for prefix in BUSINESS_ROUTE_PREFIXES:
-        if path.startswith(prefix):
-            raise PermissionDenied(
-                "Break-glass sessions cannot access finance or document business routes."
-            )
-
-
-def issue_break_glass_consent(
-    *,
-    authorizing_membership: OrganizationMembership,
-    tech_membership: OrganizationMembership,
-) -> str:
-    """Issue a short-lived signed consent token after the authorizer re-auths.
-
-    Tech admins cannot self-nominate an arbitrary membership id: start_break_glass
-    requires a token that proves the named authorizer confirmed this elevation.
-    """
-    if not authorizing_membership.active:
-        raise ValidationError("Authorizing membership must be active.")
-    if authorizing_membership.role == OrganizationMembership.Role.TECH_ADMIN:
-        raise ValidationError("Authorizer must be an organization stakeholder, not tech admin.")
-    if tech_membership.role != OrganizationMembership.Role.TECH_ADMIN:
-        raise ValidationError("Consent target must be a technical administrator membership.")
-    if not tech_membership.active:
-        raise ValidationError("Technical administrator membership must be active.")
-    payload = {
-        "authorizer_id": authorizing_membership.pk,
-        "authorizer_user_id": authorizing_membership.user_id,
-        "tech_id": tech_membership.pk,
-    }
-    management_membership = require_management(
-        authorizing_membership.user,
-        authorizing_membership.organization.building_id,
-    )
-    token = signing.dumps(payload, salt=BREAK_GLASS_CONSENT_SALT, compress=True)
-    record_audit(
-        authorizing_membership.user,
-        management_membership,
-        "security.break_glass.consent",
-        "OrganizationMembership",
-        str(tech_membership.pk),
-        "accepted",
-        {"tech_membership_id": tech_membership.pk},
-    )
-    return token
-
-
-def validate_break_glass_consent(
-    token: str,
-    *,
-    tech_membership: OrganizationMembership,
-    authorizing_membership: OrganizationMembership,
-) -> dict:
-    """Validate authorizer dual-control consent; fail closed on missing/forged/expired tokens."""
-    if not (token or "").strip():
-        raise ValidationError(
-            "Authorizer consent token is required; cannot accept bare authorizing_membership_id."
-        )
-    try:
-        data = signing.loads(
-            token.strip(),
-            salt=BREAK_GLASS_CONSENT_SALT,
-            max_age=BREAK_GLASS_CONSENT_MAX_AGE,
-        )
-    except signing.SignatureExpired as exc:
-        raise ValidationError("Authorizer consent token has expired.") from exc
-    except signing.BadSignature as exc:
-        raise ValidationError("Invalid authorizer consent token.") from exc
-    if not isinstance(data, dict):
-        raise ValidationError("Invalid authorizer consent token.")
-    if int(data.get("authorizer_id", -1)) != authorizing_membership.pk:
-        raise ValidationError("Consent token does not match authorizing membership.")
-    if int(data.get("authorizer_user_id", -1)) != authorizing_membership.user_id:
-        raise ValidationError("Consent token does not match authorizer user.")
-    if int(data.get("tech_id", -1)) != tech_membership.pk:
-        raise ValidationError("Consent token does not match technical administrator membership.")
-    return data
-
-
-def start_break_glass(
-    *,
-    tech_membership: OrganizationMembership,
-    authorizing_membership: OrganizationMembership,
-    reason: str,
-    consent_token: str,
-    duration_minutes: int = BREAK_GLASS_MAX_MINUTES,
-) -> BreakGlassSession:
-    if tech_membership.role != OrganizationMembership.Role.TECH_ADMIN:
-        raise ValidationError("Break-glass requires a technical administrator membership.")
-    if not tech_membership.active or not authorizing_membership.active:
-        raise ValidationError("Memberships must be active.")
-    if authorizing_membership.role == OrganizationMembership.Role.TECH_ADMIN:
-        raise ValidationError("Authorizer must be an organization stakeholder, not tech admin.")
-    if not (reason or "").strip():
-        raise ValidationError("A mandatory reason is required.")
-    # Dual-control: refuse free-typed authorizer ids without proof of consent.
-    validate_break_glass_consent(
-        consent_token,
-        tech_membership=tech_membership,
-        authorizing_membership=authorizing_membership,
-    )
-    minutes = min(max(int(duration_minutes), 1), BREAK_GLASS_MAX_MINUTES)
-    now = _now()
-    management_membership = require_management(
-        tech_membership.user,
-        tech_membership.organization.building_id,
-    )
-    session = BreakGlassSession.objects.create(
-        membership=tech_membership,
-        reason=reason.strip(),
-        authorizing_membership=authorizing_membership,
-        started_at=now,
-        expires_at=now + timedelta(minutes=minutes),
-    )
-    record_audit(
-        tech_membership.user,
-        management_membership,
-        "security.break_glass.start",
-        "BreakGlassSession",
-        str(session.pk),
-        "accepted",
-        {
-            "authorizer_membership_id": authorizing_membership.pk,
-            "expires_at": session.expires_at.isoformat(),
-            "duration_minutes": minutes,
-            "consent_validated": True,
-        },
-    )
-    return session
-
-
-def revoke_break_glass(
-    session: BreakGlassSession,
-    *,
-    revoked_by,
-    reason: str = "",
-) -> BreakGlassRevocation:
-    if session.revocations.exists():
-        raise ValidationError("Break-glass session already revoked.")
-    now = _now()
-    if session.expires_at <= now:
-        raise ValidationError("Break-glass session already expired.")
-    management_membership = require_management(
-        revoked_by,
-        session.membership.organization.building_id,
-    )
-    rev = BreakGlassRevocation.objects.create(
-        session=session,
-        revoked_by=revoked_by,
-        reason=(reason or "").strip(),
-        revoked_at=now,
-    )
-    record_audit(
-        revoked_by,
-        management_membership,
-        "security.break_glass.revoke",
-        "BreakGlassSession",
-        str(session.pk),
-        "accepted",
-        {"revocation_id": rev.pk},
-    )
-    return rev
 
 
 def rotate_session(request) -> None:

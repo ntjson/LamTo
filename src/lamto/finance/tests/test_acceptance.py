@@ -8,11 +8,6 @@ from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import (
-    PROPOSAL_CREATE,
-    WORK_ACCEPT,
-    WORK_ASSIGN,
-)
 from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
@@ -45,7 +40,7 @@ class WorkAcceptanceTests(TestCase):
         self._fixture_seq = n
         return f"{base}-{n}"
 
-    def make_signer(self, building, role, capability, suffix):
+    def make_signer(self, building, role, access, suffix):
         suffix = self._unique(suffix)
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
@@ -185,7 +180,7 @@ class WorkAcceptanceTests(TestCase):
         )
 
         board, board_account = self.make_signer(
-            building, None, WORK_ACCEPT, "board-accept"
+            building, None, None, "board-accept"
         )
         self.accounts = {board.pk: board_account}
 

@@ -6,8 +6,6 @@ from django.test import TestCase
 from lamto.accounts.models import (
     Building,
     ManagementMembership,
-    Organization,
-    OrganizationMembership,
     ResidentOccupancy,
     Unit,
 )
@@ -22,28 +20,6 @@ class AuditImmutabilityTests(TestCase):
         )
         building = Building.objects.create(name="Minh An Residence")
         return ManagementMembership.objects.create(user=user, building=building)
-
-    def test_record_audit_rejects_organization_membership(self):
-        user = get_user_model().objects.create_user(
-            email="legacy@example.test", password="secret", display_name="Legacy Member"
-        )
-        building = Building.objects.create(name="Legacy Building")
-        organization = Organization.objects.create(
-            building=building, name="Management Board", kind=Organization.Kind.BOARD
-        )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=OrganizationMembership.Role.BOARD
-        )
-
-        with self.assertRaises(PermissionDenied):
-            record_audit(
-                actor=user,
-                membership=membership,
-                action="proposal.create",
-                target_type="ProposalVersion",
-                target_id="42",
-                result="allowed",
-            )
 
     def test_audit_is_append_only(self):
         membership = self.make_board_membership()

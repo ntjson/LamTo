@@ -1,4 +1,4 @@
-"""MFA, re-auth, throttle, session, and break-glass security controls."""
+"""MFA, re-auth, throttle, and session security controls."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from datetime import timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import PermissionDenied
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -16,38 +16,23 @@ from django_otp.oath import totp
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 
-from lamto.accounts.capabilities import (
-    AUDIT_EXPORT,
-    PAYMENT_RECORD,
-    PAYMENT_VERIFY,
-    REPORT_TRIAGE,
-    TECH_ADMIN,
-)
 from lamto.accounts.mfa import begin_totp_enrollment, confirm_totp_enrollment, verify_totp_for_session
 from lamto.accounts.models import (
     AuthThrottleBucket,
-    BreakGlassRevocation,
-    BreakGlassSession,
     Building,
     ManagementMembership,
-    Organization,
-    OrganizationMembership,
 )
 from lamto.accounts.security import (
     RECENT_REAUTH_KEY,
     THROTTLE_MAX_FAILURES,
     THROTTLE_WINDOW_SECONDS,
     assert_not_throttled,
-    issue_break_glass_consent,
     mark_recent_reauth,
     record_auth_failure,
     require_recent_auth,
     reset_auth_throttle,
-    revoke_break_glass,
-    start_break_glass,
     throttle_digest,
 )
-from lamto.accounts.services import grant_capability
 
 
 def _current_totp_token(device: TOTPDevice) -> str:
@@ -66,7 +51,7 @@ class SecurityTests(TestCase):
         self._seq = n
         return f"{base}-{n}"
 
-    def make_membership(self, role, suffix, capabilities=(), *, building=None):
+    def make_membership(self, suffix, *, building=None):
         building = building or self.building
         suffix = self._unique(suffix)
         user = get_user_model().objects.create_user(
@@ -74,37 +59,14 @@ class SecurityTests(TestCase):
             password="secret-pass-123",
             display_name=suffix,
         )
-        organization = Organization.objects.create(
-            building=building,
-            name=suffix,
-            kind=OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role],
-        )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
-        ManagementMembership.objects.create(user=user, building=building)
-        for code in capabilities:
-            grant_capability(membership, code)
-        return membership
+        return ManagementMembership.objects.create(user=user, building=building)
 
-    def make_board_user_with_payment_capability(self):
-        return self.make_membership(
-            OrganizationMembership.Role.BOARD,
-            "board-pay",
-            capabilities=(PAYMENT_RECORD, PAYMENT_VERIFY),
-        )
+    def make_manager(self):
+        return self.make_membership("board-pay")
 
     def make_operator_and_auditor(self):
-        operator = self.make_membership(
-            OrganizationMembership.Role.OPERATOR,
-            "op",
-            capabilities=(REPORT_TRIAGE,),
-        )
-        auditor = self.make_membership(
-            OrganizationMembership.Role.AUDITOR,
-            "aud",
-            capabilities=(AUDIT_EXPORT,),
-        )
+        operator = self.make_membership("op")
+        auditor = self.make_membership("aud")
         return operator, auditor
 
     def valid_payment_payload(self):
@@ -132,14 +94,8 @@ class SecurityTests(TestCase):
         session.save()
         return device
 
-    def consent_for(self, authorizer, tech) -> str:
-        return issue_break_glass_consent(
-            authorizing_membership=authorizer,
-            tech_membership=tech,
-        )
-
     def test_privileged_action_requires_verified_otp_and_recent_reauth(self):
-        board = self.make_board_user_with_payment_capability()
+        board = self.make_manager()
         self.client.force_login(board.user)
         response = self.client.post(
             reverse("web:payment-record"), self.valid_payment_payload()
@@ -147,7 +103,7 @@ class SecurityTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_privileged_action_allowed_with_otp_and_recent_reauth_gate_passes(self):
-        board = self.make_board_user_with_payment_capability()
+        board = self.make_manager()
         self.client.force_login(board.user)
         self.enroll_and_bind(self.client, board.user)
         # Gate should not 403 for MFA/reauth; may 404/400 for missing acceptance.
@@ -196,7 +152,7 @@ class SecurityTests(TestCase):
         assert_not_throttled(account, ip)
 
     def test_session_rotation_on_mfa_and_revocation_on_logout(self):
-        membership = self.make_board_user_with_payment_capability()
+        membership = self.make_manager()
         user = membership.user
         self.client.force_login(user)
         device = TOTPDevice.objects.create(
@@ -221,7 +177,7 @@ class SecurityTests(TestCase):
         self.assertFalse(self.client.session.get(DEVICE_ID_SESSION_KEY))
 
     def test_require_recent_auth_expires(self):
-        membership = self.make_board_user_with_payment_capability()
+        membership = self.make_manager()
         user = membership.user
         device = TOTPDevice.objects.create(
             user=user, name="re", confirmed=True, key=random_hex()
@@ -251,60 +207,14 @@ class SecurityTests(TestCase):
             mark_recent_reauth(request)
             require_recent_auth(request, max_age_seconds=300)
 
-    def test_break_glass_expiry_and_early_revocation(self):
-        tech = self.make_membership(
-            OrganizationMembership.Role.TECH_ADMIN,
-            "tech",
-            capabilities=(TECH_ADMIN,),
-        )
-        board = self.make_membership(
-            OrganizationMembership.Role.BOARD,
-            "authz",
-            capabilities=(PAYMENT_RECORD,),
-        )
-        session = start_break_glass(
-            tech_membership=tech,
-            authorizing_membership=board,
-            reason="Investigate stuck worker",
-            consent_token=self.consent_for(board, tech),
-            duration_minutes=60,
-        )
-        self.assertGreater(session.expires_at, timezone.now())
-        self.assertEqual(BreakGlassSession.objects.count(), 1)
-
-        rev = revoke_break_glass(session, revoked_by=tech.user, reason="done")
-        self.assertIsInstance(rev, BreakGlassRevocation)
-        with self.assertRaises(ValidationError):
-            revoke_break_glass(session, revoked_by=tech.user, reason="again")
-
-        # Expired session cannot be revoked as active
-        expired = start_break_glass(
-            tech_membership=tech,
-            authorizing_membership=board,
-            reason="Second window",
-            consent_token=self.consent_for(board, tech),
-            duration_minutes=1,
-        )
-        BreakGlassSession.objects.filter(pk=expired.pk).update(
-            expires_at=timezone.now() - timedelta(seconds=5)
-        )
-        expired.refresh_from_db()
-        with self.assertRaises(ValidationError):
-            revoke_break_glass(expired, revoked_by=tech.user)
-
-        # Insert-only: updates rejected
-        with self.assertRaises(ValueError):
-            session.reason = "mutated"
-            session.save()
-
     def test_staff_workspace_requires_confirmed_totp(self):
-        board = self.make_board_user_with_payment_capability()
+        board = self.make_manager()
         self.client.force_login(board.user)
         response = self.client.get(reverse("web:action-inbox"))
         self.assertEqual(response.status_code, 403)
 
     def test_totp_enrollment_confirm_and_verify(self):
-        board = self.make_board_user_with_payment_capability()
+        board = self.make_manager()
         user = board.user
         device = begin_totp_enrollment(user)
         self.assertFalse(device.confirmed)
@@ -327,17 +237,9 @@ class SecurityTests(TestCase):
 
     def test_staff_mfa_required_on_payment_list_audit_search_work_order_list(self):
         """Password-only session denied on key staff workspaces (Finding 1)."""
-        board = self.make_board_user_with_payment_capability()
-        auditor = self.make_membership(
-            OrganizationMembership.Role.AUDITOR,
-            "aud-mfa",
-            capabilities=(AUDIT_EXPORT,),
-        )
-        maint = self.make_membership(
-            OrganizationMembership.Role.MAINTENANCE,
-            "maint-mfa",
-            capabilities=(),
-        )
+        board = self.make_manager()
+        auditor = self.make_membership("aud-mfa")
+        maint = self.make_membership("maint-mfa")
 
         for membership, url_name in (
             (board, "web:payment-list"),
@@ -356,7 +258,7 @@ class SecurityTests(TestCase):
 
     def test_signed_financial_post_requires_recent_reauth(self):
         """Signed financial POSTs redirect to reauth when stale (Finding 2)."""
-        board = self.make_board_user_with_payment_capability()
+        board = self.make_manager()
         self.client.force_login(board.user)
         self.enroll_and_bind(self.client, board.user)
         # Stale reauth window.
@@ -370,83 +272,3 @@ class SecurityTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/s/security/reauth/", response["Location"])
         self.assertIn("next=", response["Location"])
-
-    def test_break_glass_requires_authorizer_consent_token(self):
-        """Bare authorizing_membership_id without consent is rejected (Finding 4)."""
-        tech = self.make_membership(
-            OrganizationMembership.Role.TECH_ADMIN,
-            "tech-consent",
-            capabilities=(TECH_ADMIN,),
-        )
-        board = self.make_membership(
-            OrganizationMembership.Role.BOARD,
-            "authz-consent",
-            capabilities=(PAYMENT_RECORD,),
-        )
-        with self.assertRaises(ValidationError):
-            start_break_glass(
-                tech_membership=tech,
-                authorizing_membership=board,
-                reason="No proof",
-                consent_token="",
-                duration_minutes=15,
-            )
-        with self.assertRaises(ValidationError):
-            start_break_glass(
-                tech_membership=tech,
-                authorizing_membership=board,
-                reason="Forged proof",
-                consent_token="not-a-valid-token",
-                duration_minutes=15,
-            )
-        # Valid dual-control consent works.
-        token = self.consent_for(board, tech)
-        session = start_break_glass(
-            tech_membership=tech,
-            authorizing_membership=board,
-            reason="Authorized support",
-            consent_token=token,
-            duration_minutes=15,
-        )
-        self.assertIsNotNone(session.pk)
-
-    def test_break_glass_start_without_management_membership_does_not_mutate(self):
-        tech = self.make_membership(
-            OrganizationMembership.Role.TECH_ADMIN, "tech-no-management"
-        )
-        board = self.make_membership(
-            OrganizationMembership.Role.BOARD, "authz-no-management"
-        )
-        ManagementMembership.objects.filter(user=tech.user).update(active=False)
-
-        with self.assertRaises(PermissionDenied):
-            start_break_glass(
-                tech_membership=tech,
-                authorizing_membership=board,
-                reason="Must not persist",
-                consent_token=self.consent_for(board, tech),
-            )
-
-        self.assertFalse(BreakGlassSession.objects.filter(membership=tech).exists())
-
-    def test_break_glass_revoke_without_management_membership_does_not_mutate(self):
-        tech = self.make_membership(
-            OrganizationMembership.Role.TECH_ADMIN,
-            "tech-revoke-no-management",
-        )
-        board = self.make_membership(
-            OrganizationMembership.Role.BOARD,
-            "authz-revoke-no-management",
-        )
-        session = start_break_glass(
-            tech_membership=tech,
-            authorizing_membership=board,
-            reason="Started while active",
-            consent_token=self.consent_for(board, tech),
-        )
-        ManagementMembership.objects.filter(user=tech.user).update(active=False)
-
-        with self.assertRaises(PermissionDenied):
-            revoke_break_glass(session, revoked_by=tech.user)
-
-        self.assertFalse(session.revocations.exists())

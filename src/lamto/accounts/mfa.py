@@ -43,7 +43,7 @@ def begin_totp_enrollment(user, *, name: str = "default") -> TOTPDevice:
             confirmed=False,
             key=secrets.token_hex(20),
         )
-    membership = user.organizationmembership_set.filter(active=True).first()
+    membership = user.managementmembership_set.filter(active=True).first()
     try:
         record_audit(
             user,
@@ -149,7 +149,7 @@ def provisioning_uri(device: TOTPDevice, account_name: str | None = None) -> str
 def _audit_mfa(user, action, device, result, extra=None):
     membership = None
     if user is not None and getattr(user, "is_authenticated", False):
-        membership = user.organizationmembership_set.filter(active=True).first()
+        membership = user.managementmembership_set.filter(active=True).first()
     try:
         record_audit(
             user,

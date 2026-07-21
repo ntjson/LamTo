@@ -12,7 +12,6 @@ from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import FUND_RECORD, FUND_VERIFY
 from lamto.accounts.models import Building, ManagementMembership
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
@@ -51,7 +50,7 @@ class FundSourceTests(TestCase):
         self._fixture_seq = n
         return f"{base}-{n}"
 
-    def make_signer(self, building, role, capability, suffix):
+    def make_signer(self, building, role, access, suffix):
         suffix = self._unique(suffix)
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
@@ -110,10 +109,10 @@ class FundSourceTests(TestCase):
     def setUp(self):
         self.building = Building.objects.create(name=self._unique("Fund Building"))
         self.recorder, self.recorder_account = self.make_signer(
-            self.building, None, FUND_RECORD, "fund-recorder"
+            self.building, None, None, "fund-recorder"
         )
         self.verifier, self.verifier_account = self.make_signer(
-            self.building, None, FUND_VERIFY, "fund-verifier"
+            self.building, None, None, "fund-verifier"
         )
         self.accounts = {
             self.recorder.pk: self.recorder_account,

@@ -1,7 +1,7 @@
 """Tenant-context resolution (spec 2.3 layer 1, 2.4).
 
 Staff requests already carry their tenant context as the active
-OrganizationMembership (lamto.web.staff.resolve_active_membership); the
+ManagementMembership (lamto.web.staff.resolve_active_membership); the
 membership IS the staff context. Resident requests resolve an explicit active
 ResidentOccupancy here — never `.first()` by accident. TenantContext is the
 frozen carrier handed to selectors by both presentation layers (templates now,
@@ -38,7 +38,7 @@ class TenantContext:
     @classmethod
     def from_membership(cls, membership) -> "TenantContext":
         return cls(
-            building_id=membership.organization.building_id,
+            building_id=membership.building_id,
             actor="staff",
             membership_id=membership.pk,
         )
