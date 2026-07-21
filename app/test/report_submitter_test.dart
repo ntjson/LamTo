@@ -88,6 +88,9 @@ class _FakeRepo implements ReportsRepository {
     String comment = '',
   }) => throw UnimplementedError();
   @override
+  Future<void> replyInfo({required int reportId, required String text}) =>
+      throw UnimplementedError();
+  @override
   Future<List<Location>> fetchLocations() => throw UnimplementedError();
 }
 

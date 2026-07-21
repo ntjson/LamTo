@@ -251,6 +251,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rateThanks => 'Thank you for your rating.';
 
   @override
+  String get infoRequestTitle => 'Management needs more information';
+
+  @override
+  String get infoReplyHint => 'Write your reply…';
+
+  @override
+  String get infoReplySubmit => 'Send reply';
+
+  @override
+  String get infoReplyPhotosHint =>
+      'You can also add photos from the photo section below.';
+
+  @override
   String get workStatusAssigned => 'Assigned';
 
   @override

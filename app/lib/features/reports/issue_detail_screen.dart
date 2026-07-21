@@ -90,6 +90,14 @@ class IssueDetailScreen extends ConsumerWidget {
           '${report.locationPathSnapshot} · ${report.unitLabel}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
+        if (report.status == StatusEnum.NEEDS_INFO &&
+            report.openInfoRequest != null) ...[
+          const SizedBox(height: 16),
+          _InfoRequestBanner(
+            message: report.openInfoRequest!['message']!.value as String,
+            onReply: () => _showReplySheet(context, ref, report.id),
+          ),
+        ],
         if (report.photos.isNotEmpty) ...[
           const SizedBox(height: 12),
           SizedBox(
@@ -153,6 +161,154 @@ class IssueDetailScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.rateThanks)));
+    }
+  }
+
+  Future<void> _showReplySheet(
+    BuildContext context,
+    WidgetRef ref,
+    int reportId,
+  ) async {
+    final replied = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _InfoReplySheet(reportId: reportId),
+    );
+    if (replied == true && context.mounted) {
+      ref.invalidate(reportDetailProvider(reportId));
+    }
+  }
+}
+
+class _InfoRequestBanner extends StatelessWidget {
+  const _InfoRequestBanner({required this.message, required this.onReply});
+
+  final String message;
+  final VoidCallback onReply;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colors = statusToneColors(context, StatusTone.warning);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.bg,
+        border: Border.all(color: colors.fg),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: colors.fg),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.infoRequestTitle,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(message),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: onReply,
+                  child: Text(l10n.infoReplySubmit),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoReplySheet extends ConsumerStatefulWidget {
+  const _InfoReplySheet({required this.reportId});
+
+  final int reportId;
+
+  @override
+  ConsumerState<_InfoReplySheet> createState() => _InfoReplySheetState();
+}
+
+class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
+  final _text = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 16 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.infoRequestTitle,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _text,
+            minLines: 3,
+            maxLines: 5,
+            enabled: !_busy,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(hintText: l10n.infoReplyHint),
+          ),
+          const SizedBox(height: 8),
+          Text(l10n.infoReplyPhotosHint),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _busy || _text.text.trim().isEmpty ? null : _submit,
+            child: Text(l10n.infoReplySubmit),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(reportsRepositoryProvider)
+          .replyInfo(reportId: widget.reportId, text: _text.text.trim());
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = failureMessage(Failure.fromObject(e), l10n));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 }

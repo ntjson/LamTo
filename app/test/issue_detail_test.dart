@@ -1,4 +1,5 @@
 import 'package:built_collection/built_collection.dart';
+import 'package:built_value/json_object.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,17 +8,28 @@ import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-ReportDetail _detail({required bool canRate}) => ReportDetail(
+ReportDetail _detail({
+  required bool canRate,
+  StatusEnum status = StatusEnum.SUBMITTED,
+  bool needsInfo = false,
+}) => ReportDetail(
   (b) => b
     ..id = 42
     ..text = 'Thang máy kêu to'
-    ..status = StatusEnum.SUBMITTED
+    ..status = status
     ..isPrivate = false
     ..locationPathSnapshot = 'Tòa A / Thang máy 2'
     ..unitLabel = 'B-1204'
     ..createdAt = DateTime.utc(2026, 7, 10)
     ..triageStatus = 'SUCCEEDED'
     ..category = 'Thang máy'
+    ..openInfoRequest = needsInfo
+        ? MapBuilder<String, JsonObject?>({
+            'id': JsonObject(7),
+            'message': JsonObject('Please describe the kitchen issue'),
+            'created_at': JsonObject('2026-07-11T00:00:00Z'),
+          })
+        : null
     ..photos = ListBuilder<ReportPhoto>()
     ..cases = ListBuilder<ReportCase>([
       ReportCase(
@@ -46,9 +58,20 @@ class _FakeRepo implements ReportsRepository {
   _FakeRepo(this.detail);
   ReportDetail detail;
   final ratings = <(int, bool, String)>[];
+  final replies = <(int, String)>[];
+  int fetches = 0;
 
   @override
-  Future<ReportDetail> fetchReport(int id) async => detail;
+  Future<ReportDetail> fetchReport(int id) async {
+    fetches++;
+    return detail;
+  }
+
+  @override
+  Future<void> replyInfo({required int reportId, required String text}) async {
+    replies.add((reportId, text));
+    detail = _detail(canRate: false, status: StatusEnum.IN_REVIEW);
+  }
 
   @override
   Future<CaseRatingResult> rateCase({
@@ -158,5 +181,55 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.ratings.single, (1, true, ''));
+  });
+
+  testWidgets('shows an open management information request', (tester) async {
+    await _pump(
+      tester,
+      _FakeRepo(
+        _detail(canRate: false, status: StatusEnum.NEEDS_INFO, needsInfo: true),
+      ),
+    );
+
+    expect(find.text('Ban quản lý cần thêm thông tin'), findsOneWidget);
+    expect(find.text('Please describe the kitchen issue'), findsOneWidget);
+    expect(find.text('Gửi trả lời'), findsOneWidget);
+  });
+
+  testWidgets('submits an information reply and refreshes the detail', (
+    tester,
+  ) async {
+    final repo = _FakeRepo(
+      _detail(canRate: false, status: StatusEnum.NEEDS_INFO, needsInfo: true),
+    );
+    await _pump(tester, repo);
+    await tester.tap(find.text('Gửi trả lời'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Kitchen tap');
+    await tester.pump();
+    await tester.tap(find.text('Gửi trả lời').last);
+    await tester.pumpAndSettle();
+
+    expect(repo.replies.single, (42, 'Kitchen tap'));
+    expect(repo.fetches, 2);
+    expect(find.text('Ban quản lý cần thêm thông tin'), findsNothing);
+  });
+
+  testWidgets('keeps information reply submit disabled for empty text', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeRepo(
+        _detail(canRate: false, status: StatusEnum.NEEDS_INFO, needsInfo: true),
+      ),
+    );
+    await tester.tap(find.text('Gửi trả lời'));
+    await tester.pumpAndSettle();
+
+    final submit = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Gửi trả lời').last,
+    );
+    expect(submit.onPressed, isNull);
   });
 }

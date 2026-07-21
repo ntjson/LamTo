@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/providers.dart';
+import '../../core/failure.dart';
 import 'report_draft.dart';
 import 'report_photo_files.dart';
 
@@ -33,6 +34,7 @@ abstract class ReportsRepository {
     required bool satisfied,
     String comment = '',
   });
+  Future<void> replyInfo({required int reportId, required String text});
   Future<List<Location>> fetchLocations();
 }
 
@@ -111,6 +113,18 @@ class DioReportsRepository implements ReportsRepository {
       ),
     );
     return res.data!;
+  }
+
+  @override
+  Future<void> replyInfo({required int reportId, required String text}) async {
+    try {
+      await _reports.reportsInfoReplyCreate(
+        id: reportId,
+        infoReplyRequest: InfoReplyRequest((b) => b..text = text),
+      );
+    } on DioException catch (e) {
+      throw Failure.fromDio(e);
+    }
   }
 
   @override

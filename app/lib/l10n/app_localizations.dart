@@ -542,6 +542,30 @@ abstract class AppLocalizations {
   /// **'Thank you for your rating.'**
   String get rateThanks;
 
+  /// No description provided for @infoRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Management needs more information'**
+  String get infoRequestTitle;
+
+  /// No description provided for @infoReplyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your reply…'**
+  String get infoReplyHint;
+
+  /// No description provided for @infoReplySubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reply'**
+  String get infoReplySubmit;
+
+  /// No description provided for @infoReplyPhotosHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also add photos from the photo section below.'**
+  String get infoReplyPhotosHint;
+
   /// No description provided for @workStatusAssigned.
   ///
   /// In en, this message translates to:

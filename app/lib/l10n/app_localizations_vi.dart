@@ -251,6 +251,19 @@ class AppLocalizationsVi extends AppLocalizations {
   String get rateThanks => 'Cảm ơn bạn đã đánh giá.';
 
   @override
+  String get infoRequestTitle => 'Ban quản lý cần thêm thông tin';
+
+  @override
+  String get infoReplyHint => 'Nhập câu trả lời của bạn…';
+
+  @override
+  String get infoReplySubmit => 'Gửi trả lời';
+
+  @override
+  String get infoReplyPhotosHint =>
+      'Bạn cũng có thể thêm ảnh ở phần ảnh bên dưới.';
+
+  @override
   String get workStatusAssigned => 'Đã giao';
 
   @override
