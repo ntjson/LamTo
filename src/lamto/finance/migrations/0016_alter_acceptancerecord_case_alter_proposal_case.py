@@ -12,19 +12,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
-            """
-            UPDATE finance_acceptancerecord acceptance
-            SET case_id = work_order.case_id
-            FROM maintenance_workorder work_order
-            WHERE acceptance.case_id = work_order.id;
-            UPDATE finance_proposal proposal
-            SET case_id = work_order.case_id
-            FROM maintenance_workorder work_order
-            WHERE proposal.case_id = work_order.id;
-            """,
-            migrations.RunSQL.noop,
-        ),
         migrations.AlterField(
             model_name='acceptancerecord',
             name='case',

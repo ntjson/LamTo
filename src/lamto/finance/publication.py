@@ -566,12 +566,11 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
         raise ValidationError("Payment must remain VERIFIED at finalization.")
     version = proposal.current_version
     case = proposal.case
-    work_order = case.work_orders.order_by("-created_at", "-pk").first()
+    work_order = case.work_orders.filter(
+        status=WorkOrder.Status.ACCEPTED
+    ).order_by("-completed_at", "-pk").first()
     if work_order is None:
-        raise ValidationError("Case has no work order.")
-    if work_order.status != WorkOrder.Status.ACCEPTED:
-        # Acceptance is required; status should already be ACCEPTED.
-        pass
+        raise ValidationError("Accepted work is required before publication.")
 
     fund = get_or_create_fund(case.building_id)
     published_at = timezone.now()

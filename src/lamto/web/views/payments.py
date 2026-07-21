@@ -498,7 +498,7 @@ def accept_work(request, pk):
 
     from lamto.accounts.models import SignerWallet
     from lamto.finance.acceptance import build_acceptance_evidence_typed_data
-    from lamto.maintenance.models import MaintenanceCase
+    from lamto.maintenance.models import MaintenanceCase, WorkOrder
     from lamto.web.staff_signing import new_event_id
 
     membership, memberships = require_management_context(request)
@@ -508,7 +508,9 @@ def accept_work(request, pk):
         pk=pk,
         building_id=building_id,
     )
-    work_order = case.work_orders.order_by("-created_at", "-pk").first()
+    work_order = case.work_orders.filter(
+        status=WorkOrder.Status.AWAITING_ACCEPTANCE
+    ).order_by("completed_at", "pk").first()
     # Rebuild scoped options on every GET/POST before constructing the form.
     invoice_options = document_pair_options(building_id, Document.Kind.INVOICE)
     acceptance_options = document_pair_options(

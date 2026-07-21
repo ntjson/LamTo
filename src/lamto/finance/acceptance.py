@@ -26,10 +26,15 @@ def _locked_case(case):
     return locked
 
 
-def _case_work_order(case):
-    work_order = case.work_orders.order_by("-created_at", "-pk").first()
+def _case_work_order(case, *, lock=False):
+    work_orders = case.work_orders.filter(
+        status=WorkOrder.Status.AWAITING_ACCEPTANCE
+    ).order_by("completed_at", "pk")
+    if lock:
+        work_orders = work_orders.select_for_update()
+    work_order = work_orders.first()
     if work_order is None:
-        raise ValidationError("Case has no work order.")
+        raise ValidationError("Case has no work order awaiting acceptance.")
     return work_order
 
 
@@ -189,10 +194,8 @@ def accept_work(
     timestamp=None,
 ) -> AcceptanceRecord:
     case = _locked_case(case)
-    work_order = _case_work_order(case)
+    work_order = _case_work_order(case, lock=True)
     actor = require_management(membership.user, case.building_id)
-    if work_order.status != WorkOrder.Status.AWAITING_ACCEPTANCE:
-        raise ValidationError("Work order is not awaiting acceptance.")
     if AcceptanceRecord.objects.filter(case=case).exists():
         raise ValidationError("Case has already been accepted.")
     if type(actual_cost_vnd) is not int or actual_cost_vnd <= 0:

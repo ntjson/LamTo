@@ -130,6 +130,38 @@ class ProposalVersionTests(TestCase):
         ):
             create_proposal(work_order.case, operator)
 
+    def test_create_proposal_proposes_all_non_terminal_linked_reports_only(self):
+        operator, work_order, _quotation, _account = self.make_signed_proposal_inputs()
+        case = work_order.case
+        source = case.decision.report
+        pending = IssueReport.objects.create(
+            reporter=source.reporter,
+            unit=source.unit,
+            text="Also shaking",
+            selected_location=source.selected_location,
+            location_path_snapshot=source.location_path_snapshot,
+            status=IssueReport.Status.IN_REVIEW,
+        )
+        completed = IssueReport.objects.create(
+            reporter=source.reporter,
+            unit=source.unit,
+            text="Already completed",
+            selected_location=source.selected_location,
+            location_path_snapshot=source.location_path_snapshot,
+            status=IssueReport.Status.COMPLETED,
+        )
+        CaseReport.objects.create(case=case, report=pending, grouped_by=operator.user)
+        CaseReport.objects.create(case=case, report=completed, grouped_by=operator.user)
+
+        create_proposal(case, operator)
+
+        source.refresh_from_db()
+        pending.refresh_from_db()
+        completed.refresh_from_db()
+        self.assertEqual(source.status, IssueReport.Status.PROPOSED)
+        self.assertEqual(pending.status, IssueReport.Status.PROPOSED)
+        self.assertEqual(completed.status, IssueReport.Status.COMPLETED)
+
     def signed_submission(
         self,
         proposal,

@@ -101,7 +101,9 @@ def notify_deadline_risk(work_order):
 
 
 def notify_work_accepted(record):
-    work_order = record.case.work_orders.order_by("-created_at", "-pk").first()
+    work_order = record.case.work_orders.filter(status="ACCEPTED").order_by(
+        "-completed_at", "-pk"
+    ).first()
     building_id = record.case.building_id
     recipients = ([work_order.assignee] if work_order else []) + _management_users(building_id)
     notify_users(

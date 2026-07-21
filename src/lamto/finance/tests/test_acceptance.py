@@ -302,8 +302,6 @@ class WorkAcceptanceTests(TestCase):
             acceptance_original,
             acceptance_redacted,
         ) = self.make_completed_work_inputs()
-        work.status = WorkOrder.Status.IN_PROGRESS
-        work.save(update_fields=["status"])
         signature, event_id, timestamp = self.sign_acceptance(
             work,
             board,
@@ -312,6 +310,8 @@ class WorkAcceptanceTests(TestCase):
             acceptance_original=acceptance_original,
             acceptance_redacted=acceptance_redacted,
         )
+        work.status = WorkOrder.Status.IN_PROGRESS
+        work.save(update_fields=["status"])
         with self.assertRaises(ValidationError):
             accept_work(
                 work.case,
@@ -423,3 +423,49 @@ class WorkAcceptanceTests(TestCase):
             AcceptanceRecord.objects.filter(pk=record.pk).update(actual_cost_vnd=1)
         with self.assertRaises(IntegrityError), transaction.atomic():
             AcceptanceRecord.objects.filter(pk=record.pk).delete()
+
+    def test_accept_work_selects_the_awaiting_execution_when_case_has_multiple_work_orders(self):
+        (
+            awaiting,
+            board,
+            invoice_original,
+            invoice_redacted,
+            acceptance_original,
+            acceptance_redacted,
+        ) = self.make_completed_work_inputs()
+        newer = WorkOrder.objects.create(
+            case=awaiting.case,
+            assignee=awaiting.assignee,
+            priority=awaiting.priority,
+            deadline_at=awaiting.deadline_at,
+            requires_spending=False,
+            authorization_status=WorkOrder.AuthorizationStatus.NOT_REQUIRED,
+            status=WorkOrder.Status.ASSIGNED,
+        )
+        signature, event_id, timestamp = self.sign_acceptance(
+            awaiting,
+            board,
+            invoice_original=invoice_original,
+            invoice_redacted=invoice_redacted,
+            acceptance_original=acceptance_original,
+            acceptance_redacted=acceptance_redacted,
+        )
+
+        record = accept_work(
+            awaiting.case,
+            board,
+            18_500_000,
+            invoice_original,
+            invoice_redacted,
+            acceptance_original,
+            acceptance_redacted,
+            signature,
+            event_id,
+            timestamp=timestamp,
+        )
+
+        awaiting.refresh_from_db()
+        newer.refresh_from_db()
+        self.assertEqual(record.case, awaiting.case)
+        self.assertEqual(awaiting.status, WorkOrder.Status.ACCEPTED)
+        self.assertEqual(newer.status, WorkOrder.Status.ASSIGNED)

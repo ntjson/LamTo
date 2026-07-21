@@ -491,6 +491,16 @@ class PublicationTests(TestCase):
             publication_id=publication_id,
             timestamp=pub_ts,
         )
+        accepted_work = proposal.case.work_orders.get(status=WorkOrder.Status.ACCEPTED)
+        newer = WorkOrder.objects.create(
+            case=proposal.case,
+            assignee=accepted_work.assignee,
+            priority=accepted_work.priority,
+            deadline_at=accepted_work.deadline_at,
+            requires_spending=False,
+            authorization_status=WorkOrder.AuthorizationStatus.NOT_REQUIRED,
+            status=WorkOrder.Status.ASSIGNED,
+        )
 
         self.assertFalse(PublishedLedgerEntry.objects.filter(proposal=proposal).exists())
         self.assertFalse(MaintenanceFundEntry.objects.filter(proposal=proposal).exists())
@@ -507,6 +517,8 @@ class PublicationTests(TestCase):
         second = finalize_publication(snapshot.id)
 
         self.assertEqual(first.id, second.id)
+        self.assertEqual(first.work_order, accepted_work)
+        self.assertNotEqual(first.work_order, newer)
         self.assertEqual(MaintenanceFundEntry.objects.filter(proposal=proposal).count(), 1)
         outflow = MaintenanceFundEntry.objects.get(proposal=proposal)
         self.assertEqual(outflow.entry_type, MaintenanceFundEntry.EntryType.OUTFLOW)
