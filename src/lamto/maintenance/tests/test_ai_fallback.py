@@ -66,6 +66,7 @@ class TriageTests(TestCase):
                 "duplicate_report_ids": [candidate.id],
                 "department": "Maintenance",
                 "deadline_minutes": 240,
+                "missing_information": [],
                 "provider_request_id": "req-123",
             }
         )
@@ -73,6 +74,8 @@ class TriageTests(TestCase):
         job = process_triage_job(report.triage_job.id)
 
         self.assertEqual(job.status, TriageJob.Status.SUCCEEDED)
+        report.refresh_from_db()
+        self.assertEqual(report.status, IssueReport.Status.IN_REVIEW)
         self.assertEqual(TriageSuggestion.objects.get(job=job).duplicate_report_ids, [candidate.id])
         request = urlopen.call_args.args[0]
         self.assertNotIn("photo", request.data.decode())
@@ -84,6 +87,8 @@ class TriageTests(TestCase):
         job = process_triage_job(report.triage_job.id)
 
         self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        report.refresh_from_db()
+        self.assertEqual(report.status, IssueReport.Status.IN_REVIEW)
         self.assertTrue(IssueReport.objects.filter(pk=report.pk).exists())
         self.assertIn("transport", job.failure_reason)
 
@@ -100,6 +105,7 @@ class TriageTests(TestCase):
                 "duplicate_report_ids": [999],
                 "department": "Maintenance",
                 "deadline_minutes": 240,
+                "missing_information": [],
                 "provider_request_id": "req-123",
             }
         )
@@ -122,6 +128,7 @@ class TriageTests(TestCase):
                 "duplicate_report_ids": [],
                 "department": "Maintenance",
                 "deadline_minutes": 240,
+                "missing_information": [],
                 "provider_request_id": "req-123",
             }
         )
@@ -132,6 +139,29 @@ class TriageTests(TestCase):
         self.assertTrue(IssueReport.objects.filter(pk=report.pk).exists())
         self.assertIsNotNone(job.completed_at)
 
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_non_list_missing_information_routes_to_manual_triage(self, urlopen):
+        report = self.submit("Elevator shakes")
+        urlopen.return_value = FakeResponse(
+            {
+                "category": "Elevator",
+                "interpreted_location": "Building B / Lift 2",
+                "urgency": "HIGH",
+                "confidence_percent": 87,
+                "requires_manual_review": False,
+                "duplicate_report_ids": [],
+                "department": "Maintenance",
+                "deadline_minutes": 240,
+                "missing_information": "photo",
+                "provider_request_id": "req-123",
+            }
+        )
+
+        job = process_triage_job(report.triage_job.id)
+
+        self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        self.assertIn("missing_information", job.failure_reason)
+
     def test_duplicate_candidates_are_limited_to_five(self):
         report = self.submit("Elevator shakes")
         for index in range(6):
@@ -141,3 +171,11 @@ class TriageTests(TestCase):
 
         self.assertEqual(len(candidates), 5)
         self.assertTrue(all(candidate.similarity >= 0.2 for candidate in candidates))
+
+    def test_private_reports_are_not_duplicate_candidates(self):
+        private = self.submit("Elevator shakes loudly")
+        private.is_private = True
+        private.save(update_fields=["is_private"])
+        report = self.submit("Elevator shakes")
+
+        self.assertNotIn(private, find_duplicate_candidates(report))

@@ -15,12 +15,18 @@ import 'reports_repository.dart';
 /// Plain-language status labels (DESIGN.md: color never alone).
 String reportStatusLabel(String status, AppLocalizations l10n) =>
     switch (status) {
-      'RESOLVED' => l10n.statusResolved,
+      'COMPLETED' || 'CLOSED' => l10n.statusResolved,
+      'SUBMITTED' ||
+      'IN_REVIEW' ||
+      'NEEDS_INFO' ||
+      'DECLINED' ||
+      'IN_PROGRESS' ||
+      'PROPOSED' => l10n.statusOpen,
       _ => l10n.statusOpen,
     };
 
-/// Active = not resolved. API enum today is OPEN/RESOLVED (amendment A3).
-bool isActiveReportStatus(String status) => status != 'RESOLVED';
+bool isActiveReportStatus(String status) =>
+    status != 'DECLINED' && status != 'COMPLETED' && status != 'CLOSED';
 
 /// Cursor-paginated list of **all** reports submitted by the authenticated
 /// user across units (user-global; amendment 12). Not filtered to the
@@ -119,7 +125,7 @@ class MyIssuesScreen extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       trailing: StatusChip(
-                        tone: report.status == 'RESOLVED'
+                        tone: !isActiveReportStatus(report.status)
                             ? StatusTone.success
                             : StatusTone.info,
                         label: reportStatusLabel(report.status, l10n),

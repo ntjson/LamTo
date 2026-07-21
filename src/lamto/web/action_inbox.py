@@ -100,7 +100,7 @@ def _manual_triage_items(building_id: int) -> list[ActionItem]:
     qs = (
         IssueReport.objects.filter(
             unit__building_id=building_id,
-            status=IssueReport.Status.OPEN,
+            status__in=[IssueReport.Status.SUBMITTED, IssueReport.Status.IN_REVIEW],
         )
         .filter(
             Q(triage_job__status=TriageJob.Status.NEEDS_MANUAL)

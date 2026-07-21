@@ -5,7 +5,7 @@ never included): ``report_id``, ``text``, ``location_path_snapshot``, and
 ``candidates`` (each candidate has ``id``, ``text``, and
 ``location_path_snapshot``). A successful response is exactly:
 
-``{"category": str, "interpreted_location": str, "urgency": "LOW"|"MEDIUM"|"HIGH", "confidence_percent": int, "requires_manual_review": bool, "duplicate_report_ids": [int], "department": str, "deadline_minutes": int, "provider_request_id": str}``.
+``{"category": str, "interpreted_location": str, "urgency": "LOW"|"MEDIUM"|"HIGH", "confidence_percent": int, "requires_manual_review": bool, "duplicate_report_ids": [int], "department": str, "deadline_minutes": int, "missing_information": [str], "provider_request_id": str}``.
 """
 
 import json
@@ -19,7 +19,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .candidates import find_duplicate_candidates
-from .models import TriageJob, TriageSuggestion
+from .models import IssueReport, TriageJob, TriageSuggestion
 
 
 class TriageValidationError(ValueError):
@@ -35,6 +35,7 @@ RESPONSE_KEYS = {
     "duplicate_report_ids",
     "department",
     "deadline_minutes",
+    "missing_information",
     "provider_request_id",
 }
 URGENCIES = {"LOW", "MEDIUM", "HIGH"}
@@ -93,6 +94,9 @@ def _validate_response(payload, candidate_ids):
         raise TriageValidationError("response duplicate_report_ids were not supplied as candidates")
     if type(payload["deadline_minutes"]) is not int or payload["deadline_minutes"] <= 0:
         raise TriageValidationError("response deadline_minutes is invalid")
+    missing = payload["missing_information"]
+    if type(missing) is not list or any(not _valid_string(item) for item in missing):
+        raise TriageValidationError("response missing_information is invalid")
     return payload
 
 
@@ -101,6 +105,9 @@ def _manual(job, reason):
     job.failure_reason = reason[:255]
     job.completed_at = timezone.now()
     job.save(update_fields=["status", "failure_reason", "completed_at"])
+    IssueReport.objects.filter(
+        pk=job.report_id, status=IssueReport.Status.SUBMITTED
+    ).update(status=IssueReport.Status.IN_REVIEW)
     return job
 
 
@@ -154,6 +161,7 @@ def _process_claimed_job(job):
         duplicate_report_ids=payload["duplicate_report_ids"],
         department=payload["department"],
         deadline_minutes=payload["deadline_minutes"],
+        missing_information=payload["missing_information"],
         raw_response=payload,
         provider_request_id=payload["provider_request_id"],
         validation_metadata={"candidate_ids": sorted(candidate_ids)},
@@ -162,6 +170,9 @@ def _process_claimed_job(job):
     job.status = TriageJob.Status.SUCCEEDED
     job.completed_at = timezone.now()
     job.save(update_fields=["status", "completed_at"])
+    IssueReport.objects.filter(
+        pk=job.report_id, status=IssueReport.Status.SUBMITTED
+    ).update(status=IssueReport.Status.IN_REVIEW)
     return job
 
 

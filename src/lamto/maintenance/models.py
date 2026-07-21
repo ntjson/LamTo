@@ -48,8 +48,14 @@ class BuildingLocation(models.Model):
 
 class IssueReport(models.Model):
     class Status(models.TextChoices):
-        OPEN = "OPEN", "Open"
-        RESOLVED = "RESOLVED", "Resolved"
+        SUBMITTED = "SUBMITTED", "Submitted"
+        IN_REVIEW = "IN_REVIEW", "In review"
+        NEEDS_INFO = "NEEDS_INFO", "Needs information"
+        DECLINED = "DECLINED", "Declined"
+        IN_PROGRESS = "IN_PROGRESS", "In progress"
+        PROPOSED = "PROPOSED", "Proposed"
+        COMPLETED = "COMPLETED", "Completed"
+        CLOSED = "CLOSED", "Closed"
 
     reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT)
@@ -60,7 +66,14 @@ class IssueReport(models.Model):
     text = models.TextField()
     selected_location = models.ForeignKey(BuildingLocation, on_delete=models.PROTECT)
     location_path_snapshot = models.CharField(max_length=1000)
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SUBMITTED)
+    is_private = models.BooleanField(default=False)
+    declined_reason = models.TextField(blank=True)
+    declined_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.PROTECT, related_name="declined_reports",
+    )
+    declined_at = models.DateTimeField(null=True, blank=True)
     client_ref = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -125,6 +138,7 @@ class TriageSuggestion(models.Model):
     duplicate_report_ids = models.JSONField(default=list)
     department = models.CharField(max_length=128)
     deadline_minutes = models.PositiveIntegerField()
+    missing_information = models.JSONField(default=list)
     raw_response = models.JSONField()
     provider_request_id = models.CharField(max_length=255)
     validation_metadata = models.JSONField(default=dict)
@@ -154,6 +168,8 @@ class MaintenanceCase(models.Model):
     department = models.CharField(max_length=128)
     deadline_at = models.DateTimeField()
     active = models.BooleanField(default=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
     reports = models.ManyToManyField(IssueReport, through="CaseReport", related_name="maintenance_cases")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -167,6 +183,26 @@ class CaseReport(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["case", "report"], name="case_report_once")
+        ]
+
+
+class InfoRequest(models.Model):
+    """Outcome A: one simple information-request loop per report at a time."""
+
+    report = models.ForeignKey(IssueReport, on_delete=models.PROTECT, related_name="info_requests")
+    message = models.TextField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reply_text = models.TextField(blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["report"],
+                condition=models.Q(resolved_at__isnull=True),
+                name="one_open_info_request_per_report",
+            )
         ]
 
 

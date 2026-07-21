@@ -64,7 +64,12 @@ def case_list(request):
     report_list = prepare_record_list(
         request,
         IssueReport.objects.filter(
-            unit__building_id=building_id, status=IssueReport.Status.OPEN
+            unit__building_id=building_id,
+            status__in=[
+                IssueReport.Status.SUBMITTED,
+                IssueReport.Status.IN_REVIEW,
+                IssueReport.Status.NEEDS_INFO,
+            ],
         ),
         search_fields=("text", "location_path_snapshot"),
         sorts=(("", "Newest first", ("-created_at",)),),
