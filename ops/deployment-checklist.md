@@ -40,14 +40,15 @@ Use this list before promoting a pilot environment. Every item is required unles
 - [ ] Recent re-authentication (password + OTP, ≤300s) for signed financial actions
 - [ ] Auth throttle: 5 failures / 15 minutes across workers
 - [ ] Session rotation on login/MFA; full revocation on logout
-- [ ] Break-glass: tech-admin only, mandatory reason, org authorizer, ≤60 minutes, insert-only revocation; support/health only
+- [ ] Every staff user has an active building-scoped Management membership
+- [ ] Cross-building object access returns 404; inactive or missing Management access returns 403
 
 ## Exports and health
 
-- [ ] Audit CSV export restricted to auditor org + `audit.export`
+- [ ] Audit CSV export restricted to authenticated Management users in the active building
 - [ ] Formula neutralization on CSV text cells
 - [ ] Exports never include raw file bytes, wallet private data, or bank account numbers
-- [ ] Ops health + pilot metrics restricted to `tech.admin`
+- [ ] Ops health + pilot metrics restricted to authenticated Management users in the active building
 - [ ] Health/metrics never display stakeholder signatures/private keys or document content
 
 ## Backup and recovery

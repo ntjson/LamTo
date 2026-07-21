@@ -72,7 +72,7 @@ class ConfirmTriageForm(forms.Form):
 class CreateWorkOrderForm(forms.Form):
     assignee = forms.ModelChoiceField(
         queryset=ManagementMembership.objects.none(),
-        label="Assignee (maintenance membership)",
+        label="Assignee (Management user)",
         widget=forms.Select(attrs={"class": "input"}),
     )
     requires_spending = forms.BooleanField(required=False, initial=True)

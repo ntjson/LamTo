@@ -3,14 +3,14 @@
 ## Purpose
 
 Prove one complete **real** normal maintenance/spend case end-to-end on the pilot
-building: report → triage → proposal → dual approval → work → acceptance →
-payment maker-checker → publication → resident ledger → auditor verify.
+building: report → triage → proposal → work → acceptance → payment
+maker-checker → publication → resident ledger → integrity verification.
 
 ## Preconditions
 
 - Non-production or controlled pilot environment only.
 - `PILOT_ALLOW_FIXTURES=1` only when loading seed data; production must keep it false.
-- PostgreSQL migrated; private object storage reachable; staff MFA enrolled for staff roles.
+- PostgreSQL migrated; private object storage reachable; manager MFA enrolled.
 - Optional: Besu/outbox worker for live chain confirmation. If chain is paused or
   unavailable, local dual-control still permits work start with
   **Pending blockchain anchoring**; publication waits for confirmed evidence.
@@ -32,34 +32,33 @@ payment maker-checker → publication → resident ledger → auditor verify.
   never delayed for pilot paperwork.
 - The pilot is **not held open** awaiting an emergency to complete acceptance.
 
-## Roles that must participate
+## Participants
 
-| Role | Capability focus |
-|------|------------------|
+| Participant | Responsibility |
+|-------------|----------------|
 | Resident | Report, inspect published ledger (redacted docs) |
-| Operator | Triage, work order, proposal create |
-| Board approver | Proposal approve, optional accept |
-| Resident representative | Co-approve proposal |
-| Maintenance | Start/complete work with before/after photos |
-| Board payment recorder | Accept work + record payment |
-| Board payment verifier | Verify payment (not same user as recorder) |
-| Eligible publisher | Publish ledger (not creator, board proposal approver, or payment recorder) |
-| Auditor | Verify ledger hashes / chain / fund balance; exports |
+| Management user | Triage, create the work order and proposal, and start/complete work |
+| Payment recorder | Accept work and record payment |
+| Payment verifier | Verify payment; must not be the recorder |
+| Publisher | Publish the ledger; separation rules are enforced by the application |
+| Verifier | Check ledger hashes, chain status, fund balance, and exports |
+
+The staff participants are ordinary building-scoped Management users. Use
+separate people where the application enforces maker-checker separation.
 
 ## Procedure (normal path)
 
 1. Resident submits issue report with photo and location.
-2. Operator confirms triage and creates a **paid** work order.
-3. Operator submits a signed proposal (amount + quotation pair).
-4. Board approver approves; resident representative co-approves.
-5. Maintenance starts work (may show **Pending blockchain anchoring** until
+2. A manager confirms triage and creates a **paid** work order.
+3. A manager submits a signed proposal (amount + quotation pair).
+4. A manager starts work (may show **Pending blockchain anchoring** until
    prerequisite outbox events confirm) and completes with cause/result photos.
-6. Board payment recorder accepts work and records payment evidence.
-7. Board payment verifier verifies payment (self-verify denied).
-8. Confirm chain/outbox events (`confirm_all_chain_events` in tests; worker in live).
-9. Eligible publisher signs publication snapshot; finalize after confirmation.
-10. Resident opens latest ledger entry: actual cost, **Record verified**, redacted docs only.
-11. Auditor runs verification: document hashes match, chain events match (or local
+5. A payment recorder accepts work and records payment evidence.
+6. A different manager verifies payment (self-verification is denied).
+7. Confirm chain/outbox events (`confirm_all_chain_events` in tests; worker in live).
+8. An eligible manager signs the publication snapshot; finalize after confirmation.
+9. Resident opens latest ledger entry: actual cost, **Record verified**, redacted docs only.
+10. A manager runs verification: document hashes match, chain events match (or local
     confirmed when registry unavailable), recomputed fund balance agrees.
 
 ## Automated proof
@@ -73,8 +72,8 @@ source /tmp/grok-goal-717590634826/implementer/env.sh  # or project env
 
 ## Acceptance artifacts
 
-Collect sign-off in `ops/acceptance-report-template.md` from Board, operator,
-resident representative, auditor, maintenance, and participating resident.
+Collect sign-off in `ops/acceptance-report-template.md` from the participating
+Management users and resident.
 
 ## Tenant integrity (nightly)
 
@@ -111,10 +110,12 @@ transport: `besu` (default, chain round-trip) or `disabled` (local settlement,
 .venv/bin/python manage.py onboard_building \
   --name "Toà nhà Example" \
   --locations "Sảnh, Thang máy 1, Hầm xe" \
-  --units "A-101,A-102,A-103"
+  --units "A-101,A-102,A-103" \
+  --managers "manager1@example.vn,manager2@example.vn"
 ```
 
-Then, per the printed next steps: create staff users + memberships, grant
-capabilities, register signer wallets, add resident occupancies (with phone
-numbers), and record + verify the fund opening balance. Run
-`manage.py tenant_integrity` afterwards.
+The command creates missing manager users with unusable passwords and gives
+existing or new users a Management membership for the building. Then, per the
+printed next steps: set manager passwords and TOTP, register signer wallets,
+add resident occupancies (with phone numbers), and record + verify the fund
+opening balance. Run `manage.py tenant_integrity` afterwards.

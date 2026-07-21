@@ -34,3 +34,11 @@ Removed the stale isolation exemption for the deleted support-elevation route, t
 
 - Isolation suite: `11 passed`
 - Full suite: `460 passed, 1 skipped`
+
+## Live guidance cleanup
+
+Updated the deployment checklist, pilot runbook, operations-health copy, and work-assignee label to describe only building-scoped Management access. The onboarding runbook now documents `--managers` and the command's password/TOTP, wallet, occupancy, and opening-balance next steps. Live code, tests, templates, and operations docs contain no stale support-elevation, technical-administrator, legacy membership, grant, or deleted-role guidance; historical migrations and design/plan archives remain intact.
+
+- Exports/health and Management workspace tests: `13 passed`
+- Full suite: `460 passed, 1 skipped`
+- `git diff --check`: clean
