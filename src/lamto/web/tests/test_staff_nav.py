@@ -11,7 +11,7 @@ from lamto.accounts.capabilities import (
     FUND_RECORD,
     FUND_VERIFY,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
+    LEDGER_PUBLISH,
 )
 from lamto.accounts.models import Building, Organization, OrganizationMembership
 from lamto.accounts.security import RECENT_REAUTH_KEY
@@ -37,7 +37,7 @@ class NavStructureTests(TestCase):
         return membership
 
     def test_finance_area_appears_once_for_finance_capabilities(self):
-        membership = self._board(PROPOSAL_APPROVE, PAYMENT_VERIFY, FUND_RECORD)
+        membership = self._board(LEDGER_PUBLISH, PAYMENT_VERIFY, FUND_RECORD)
         labels = [i["label"] for i in nav_items_for(membership)]
         self.assertEqual(labels.count("Finance"), 1)
         self.assertNotIn("Proposals", labels)
@@ -51,7 +51,7 @@ class NavStructureTests(TestCase):
 
     def test_ledger_area_not_present_phase0(self):
         """Six active areas only; Ledger is deferred (no nav entry)."""
-        membership = self._board(PROPOSAL_APPROVE, PAYMENT_VERIFY, FUND_RECORD)
+        membership = self._board(LEDGER_PUBLISH, PAYMENT_VERIFY, FUND_RECORD)
         labels = [i["label"] for i in nav_items_for(membership)]
         self.assertNotIn("Ledger", labels)
         for label in ("Inbox", "Finance"):
@@ -59,11 +59,11 @@ class NavStructureTests(TestCase):
 
     def test_finance_subnavigation_is_capability_filtered(self):
         board = self._board()
-        grant_capability(board, PROPOSAL_APPROVE)
+        grant_capability(board, LEDGER_PUBLISH)
         grant_capability(board, PAYMENT_VERIFY)
         self.assertEqual(
             [item["label"] for item in finance_nav_items_for(board)],
-            ["Proposals", "Payments"],
+            ["Proposals", "Payments", "Fund"],
         )
 
     def test_fund_only_membership_gets_only_fund_destination(self):

@@ -45,8 +45,6 @@ class LedgerApiTests(TestCase):
         driver.login(None, "resident").submit_report("Lobby lamp flickers", "Lift 2")
         driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
         driver.login(None, "operator").submit_signed_proposal()
-        driver.login(None, "board_approver").approve_proposal()
-        driver.login(None, "resident_representative").coapprove_proposal()
         driver.login(None, "maintenance").complete_assigned_work()
         driver.login(None, "board_payment_recorder").accept_and_record_payment()
         driver.login(None, "board_payment_verifier").verify_payment()
@@ -114,13 +112,18 @@ class LedgerApiTests(TestCase):
         assert body["what_was_fixed"] == "Cable secured"
         assert body["why"] == "Worn cable"
         assert body["actual_cost_vnd"] == self.entry.actual_cost_vnd
-        roles = {a["role"] for a in body["approvers"]}
-        assert "board" in roles
-        assert "resident_rep" in roles
-        for approver in body["approvers"]:
-            assert set(approver) == {"role", "name", "decision"}
-            assert approver["name"]
-            assert approver["decision"] == "APPROVE"
+        assert set(body["payload"]) == {
+            "report_id",
+            "case_id",
+            "work_order_id",
+            "proposal_id",
+            "proposal_version",
+            "proposed_amount_vnd",
+            "actual_cost_vnd",
+            "contractor_name",
+            "document_hashes",
+            "payment_verification",
+        }
         assert "report_id" in body["payload"]
         assert body["verification"]["decision"] == "VERIFIED"
         assert body["verification"]["verified_by"]

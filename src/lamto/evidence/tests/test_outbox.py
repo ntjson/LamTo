@@ -46,14 +46,6 @@ VALID_PAYLOADS = {
         "report_snapshot_hash": HASH, "quotation_original_hash": HASH,
         "quotation_redacted_hash": HASH,
     },
-    EvidenceType.BOARD_APPROVAL: {
-        "proposal_hash": HASH, "decision": "APPROVE",
-        "actor_organization_id": 1, "decision_timestamp": TIMESTAMP,
-    },
-    EvidenceType.REPRESENTATIVE_APPROVAL: {
-        "proposal_hash": HASH, "decision": "APPROVE",
-        "actor_organization_id": 1, "decision_timestamp": TIMESTAMP,
-    },
     EvidenceType.WORK_ACCEPTANCE: {
         "work_order_id": 1, "actual_cost_vnd": 1_000_000,
         "acceptance_timestamp": TIMESTAMP, "invoice_original_hash": HASH,
@@ -67,7 +59,7 @@ VALID_PAYLOADS = {
         "payment_proof_redacted_hash": HASH,
     },
     EvidenceType.PAYMENT_VERIFIED: {
-        "payment_hash": HASH, "decision": "APPROVE",
+        "payment_hash": HASH, "decision": "MATCH",
         "verification_result": "MATCH", "verification_timestamp": TIMESTAMP,
     },
     EvidenceType.PUBLICATION_SNAPSHOT: {
@@ -257,11 +249,11 @@ class EvidenceOutboxTests(TestCase):
                 changed_previous_signature,
             )
 
-        changed_type_payload = self.valid_payload(EvidenceType.BOARD_APPROVAL)
-        changed_type_signature = self.sign_event(account, event_id, 2, changed_type_payload)
+        changed_type_payload = self.valid_payload(EvidenceType.WORK_ACCEPTANCE)
+        changed_type_signature = self.sign_event(account, event_id, 6, changed_type_payload)
         with transaction.atomic(), self.assertRaises(EvidenceConflict):
             queue_signed_event(
-                event_id, 2, changed_type_payload, zero_hash, membership, changed_type_signature
+                event_id, 6, changed_type_payload, zero_hash, membership, changed_type_signature
             )
 
         replacement_account, _ = self.register(membership)
@@ -509,7 +501,13 @@ class EvidenceOutboxTests(TestCase):
         self.assertEqual(
             set(VALID_PAYLOADS),
             set(EvidenceType)
-            - {EvidenceType.RESERVED_4, EvidenceType.RESERVED_5, EvidenceType.RESERVED_10},
+            - {
+                EvidenceType.RESERVED_2,
+                EvidenceType.RESERVED_3,
+                EvidenceType.RESERVED_4,
+                EvidenceType.RESERVED_5,
+                EvidenceType.RESERVED_10,
+            },
         )
         for event_type, payload in VALID_PAYLOADS.items():
             with self.subTest(event_type=event_type):
@@ -537,8 +535,7 @@ class EvidenceOutboxTests(TestCase):
 
     def test_payload_schemas_reject_bad_enums_timestamps_and_digest_lists(self):
         cases = (
-            (EvidenceType.BOARD_APPROVAL, {"decision": "private approval reason"}),
-            (EvidenceType.BOARD_APPROVAL, {"decision_timestamp": "not-a-timestamp"}),
+            (EvidenceType.PAYMENT_VERIFIED, {"decision": "private reason"}),
             (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": []}),
             (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": [HASH, 1]}),
             (EvidenceType.PUBLICATION_SNAPSHOT, {"document_hashes": "not-a-list"}),

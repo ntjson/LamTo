@@ -10,8 +10,6 @@ from lamto.notifications.services import (
     EVENT_PAYMENT_RECORDED,
     EVENT_PAYMENT_REJECTED,
     EVENT_PAYMENT_VERIFIED,
-    EVENT_PROPOSAL_APPROVAL,
-    EVENT_PROPOSAL_REJECTION,
     EVENT_PUBLICATION,
     EVENT_QUARANTINED_UPLOAD,
     EVENT_REPORT_RECEIPT,
@@ -100,30 +98,6 @@ def notify_deadline_risk(work_order):
         body=f"Work order #{work_order.pk} approaches deadline {work_order.deadline_at}.",
         event_code=EVENT_DEADLINE_RISK,
         building=work_order.case.building_id,
-    )
-
-
-def notify_proposal_decision(approval):
-    version = approval.version
-    proposal = version.proposal
-    building_id = proposal.work_order.case.building_id
-    code = (
-        EVENT_PROPOSAL_APPROVAL
-        if approval.decision == "APPROVE"
-        else EVENT_PROPOSAL_REJECTION
-    )
-    recipients = (
-        [proposal.creator_membership.user]
-        + _users_with_capability(building_id, "proposal.approve")
-        + _users_with_capability(building_id, "proposal.create")
-    )
-    notify_users(
-        recipients,
-        event_key=f"{code}:approval:{approval.pk}",
-        subject="Proposal decision",
-        body=f"Proposal #{proposal.pk} {approval.decision} at stage {approval.stage}.",
-        event_code=code,
-        building=building_id,
     )
 
 

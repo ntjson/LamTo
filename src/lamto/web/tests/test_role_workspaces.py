@@ -18,7 +18,7 @@ from eth_account.messages import encode_typed_data
 from lamto.accounts.capabilities import (
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
+    LEDGER_PUBLISH,
     PROPOSAL_CREATE,
     REPORT_TRIAGE,
 )
@@ -204,7 +204,7 @@ class RoleWorkspaceTests(TestCase):
             building,
             OrganizationMembership.Role.BOARD,
             "board",
-            capabilities=(PAYMENT_VERIFY, PROPOSAL_APPROVE),
+            capabilities=(PAYMENT_VERIFY, LEDGER_PUBLISH),
             with_wallet=True,
         )
         # Separate recorder membership for FK attribution
@@ -365,8 +365,8 @@ class RoleWorkspaceTests(TestCase):
         board = self.make_membership(
             building,
             OrganizationMembership.Role.BOARD,
-            "approver",
-            capabilities=(PROPOSAL_APPROVE,),
+            "publisher",
+            capabilities=(LEDGER_PUBLISH,),
         )
         self.client.force_login(board.user)
         self.enroll_mfa(board.user)

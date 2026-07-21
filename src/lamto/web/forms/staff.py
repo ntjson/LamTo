@@ -6,8 +6,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from lamto.accounts.models import OrganizationMembership
 from lamto.documents.models import Document, DocumentVersion
 from lamto.finance.acceptance import accept_work
-from lamto.finance.approvals import decide_proposal
-from lamto.finance.models import ApprovalDecision, MaintenanceFundEntry, PaymentVerification
+from lamto.finance.models import MaintenanceFundEntry, PaymentVerification
 from lamto.finance.payments import record_payment, verify_payment
 from lamto.maintenance.models import BuildingLocation
 from lamto.maintenance.triage import confirm_triage
@@ -174,26 +173,6 @@ class SignedDecisionForm(forms.Form):
                 "registered for this role, and submit again."
             )
         return value
-
-
-class ProposalDecisionForm(SignedDecisionForm):
-    decision = forms.ChoiceField(
-        choices=[
-            (ApprovalDecision.Decision.APPROVE, "Approve"),
-            (ApprovalDecision.Decision.REJECT, "Reject"),
-        ],
-        widget=forms.Select(attrs={"class": "input"}),
-    )
-
-    def save(self, version, membership):
-        return decide_proposal(
-            version,
-            membership,
-            self.cleaned_data["decision"],
-            self.cleaned_data.get("reason") or "",
-            self.cleaned_data["signature"],
-            self.cleaned_data["event_id"],
-        )
 
 
 class AcceptWorkForm(SignedDecisionForm):

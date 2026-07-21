@@ -51,15 +51,11 @@ class StaffUiContractTests(SimpleTestCase):
         self.assertIn('role="status" aria-live="polite"', templates)
         self.assertIn("data-signing-error", templates)
 
-    def test_proposal_decision_switches_proof_without_reloading_or_losing_reason(self):
+    def test_proposal_publication_does_not_reload_during_signing(self):
         proposal = (STAFF_TEMPLATES / "proposal_detail.html").read_text(encoding="utf-8")
-        view = PROPOSAL_VIEW.read_text(encoding="utf-8")
-        wallet = WALLET_JS.read_text(encoding="utf-8")
 
         self.assertNotIn("window.location.href", proposal)
-        self.assertIn("data-typed-data-options", proposal)
-        self.assertIn("typed_data_options", view)
-        self.assertIn("bindTypedDataOptions", wallet)
+        self.assertIn("publish_typed_data", proposal)
 
     def test_hidden_signature_error_offers_only_visible_recovery_steps(self):
         forms = STAFF_FORMS.read_text(encoding="utf-8")
@@ -164,7 +160,7 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         )
         self.assertIn("What you are signing", templates)
         self.assertIn("What happens next", templates)
-        self.assertIn("Sign and approve proposal", templates)
+        self.assertIn("Sign and publish to resident ledger", templates)
         self.assertIn("Sign and accept work", templates)
         self.assertIn("Sign and record payment", templates)
         self.assertIn("bindReviewSummary", WALLET_JS.read_text(encoding="utf-8"))
@@ -337,7 +333,7 @@ class AccountabilityChainTests(SimpleTestCase):
             ["complete", "complete", "current", "upcoming", "upcoming", "upcoming", "upcoming"],
         )
 
-    def test_stage_proposal_after_work_done_without_approval(self):
+    def test_stage_proposal_after_work_done_without_publication(self):
         from types import SimpleNamespace
 
         wo = SimpleNamespace(
@@ -352,7 +348,7 @@ class AccountabilityChainTests(SimpleTestCase):
             ["complete", "complete", "complete", "current", "upcoming", "upcoming", "upcoming"],
         )
 
-    def test_stage_acceptance_after_proposal_approved(self):
+    def test_stage_acceptance_after_proposal_authorized(self):
         from types import SimpleNamespace
 
         proposal = SimpleNamespace(pk=2, status="NORMAL_AUTHORIZED")

@@ -9,7 +9,6 @@ from eth_account import Account
 from eth_account.messages import encode_typed_data
 
 from lamto.accounts.capabilities import (
-    PROPOSAL_APPROVE,
     PROPOSAL_CREATE,
     WORK_ACCEPT,
     WORK_ASSIGN,
@@ -26,8 +25,7 @@ from lamto.finance.acceptance import (
     build_acceptance_evidence_payload,
     build_acceptance_evidence_typed_data,
 )
-from lamto.finance.approvals import decide_proposal
-from lamto.finance.models import AcceptanceRecord, ApprovalDecision, Proposal
+from lamto.finance.models import AcceptanceRecord, Proposal
 from lamto.finance.proposals import create_proposal, submit_proposal_version
 from lamto.maintenance.models import (
     BuildingLocation,
@@ -207,47 +205,9 @@ class WorkAcceptanceTests(TestCase):
         )
 
         board, board_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PROPOSAL_APPROVE, "board-approve"
+            building, OrganizationMembership.Role.BOARD, WORK_ACCEPT, "board-accept"
         )
-        grant_capability(board, WORK_ACCEPT)
-        representative, rep_account = self.make_signer(
-            building,
-            OrganizationMembership.Role.RESIDENT_REP,
-            PROPOSAL_APPROVE,
-            "representative",
-        )
-        self.accounts = {
-            board.pk: board_account,
-            representative.pk: rep_account,
-        }
-        board_event = "0x" + secrets.token_hex(32)
-        rep_event = "0x" + secrets.token_hex(32)
-        from lamto.finance.approvals import build_approval_evidence_payload
-
-        board_payload = build_approval_evidence_payload(version, board, "APPROVE")
-        board_typed = build_evidence_typed_data(
-            board_event,
-            EvidenceType.BOARD_APPROVAL,
-            "0x" + payload_hash(board_payload),
-            "0x" + version.outbox_event.payload_hash,
-        )
-        board_sig = Account.sign_message(
-            encode_typed_data(full_message=board_typed), board_account.key
-        ).signature.hex()
-        rep_payload = build_approval_evidence_payload(version, representative, "APPROVE")
-        rep_typed = build_evidence_typed_data(
-            rep_event,
-            EvidenceType.REPRESENTATIVE_APPROVAL,
-            "0x" + payload_hash(rep_payload),
-            "0x" + payload_hash(board_payload),
-        )
-        rep_sig = Account.sign_message(
-            encode_typed_data(full_message=rep_typed), rep_account.key
-        ).signature.hex()
-        decide_proposal(version, board, "APPROVE", "Within budget", board_sig, board_event)
-        decide_proposal(
-            version, representative, "APPROVE", "Evidence checked", rep_sig, rep_event
-        )
+        self.accounts = {board.pk: board_account}
 
         work_order.refresh_from_db()
         start_work_order(work_order, maintenance)
@@ -353,12 +313,9 @@ class WorkAcceptanceTests(TestCase):
                 action="work.accept", target_id=str(record.pk), result="accepted"
             ).exists()
         )
-        previous = ApprovalDecision.objects.get(
-            version=work.proposal.current_version,
-            stage=ApprovalDecision.Stage.RESIDENT_REP,
-        )
         self.assertEqual(
-            record.outbox_event.previous_hash, "0x" + previous.outbox_event.payload_hash
+            record.outbox_event.previous_hash,
+            "0x" + work.proposal.current_version.outbox_event.payload_hash,
         )
 
     def test_accept_work_rejects_wrong_status_and_non_positive_cost(self):

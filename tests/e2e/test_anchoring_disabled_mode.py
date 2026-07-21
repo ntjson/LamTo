@@ -61,7 +61,7 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
     driver.pause_chain()
 
     # --- Publication flow -------------------------------------------------
-    driver.prepare_locally_approved_normal_work(page)
+    driver.prepare_local_normal_work(page)
     driver.complete_assigned_work()
     driver.accept_and_record_payment()
     driver.verify_payment()

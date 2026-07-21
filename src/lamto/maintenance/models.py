@@ -216,9 +216,7 @@ class WorkOrder(models.Model):
         version = getattr(proposal, "current_version", None) if proposal else None
         if version is None:
             return None
-        from lamto.finance.approvals import proposal_verification_label
-
-        return proposal_verification_label(version)
+        return version.verification_label
 
     class Meta:
         constraints = [

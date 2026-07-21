@@ -75,7 +75,7 @@ class Command(BaseCommand):
                 "Idempotent reuse: no new rows created. Documented logins use prefix pilot-:\n"
                 f"  pilot-resident@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-operator@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-board-approver@{PILOT_EMAIL_DOMAIN}\n"
+                f"  pilot-board-acceptor@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-resident-rep@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-maintenance@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-board-payment-recorder@{PILOT_EMAIL_DOMAIN}\n"

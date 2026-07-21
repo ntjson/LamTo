@@ -51,7 +51,7 @@ STAFF_CASES = {
     "web:proposal-create": ("work_pk", "operator", "POST"),
     "web:payment-record-detail": ("acceptance_pk", "board_payment_recorder", "GET"),
     "web:payment-verify-detail": ("payment_pk", "board_payment_verifier", "GET"),
-    "web:work-accept": ("work_pk", "board_approver", "POST"),
+    "web:work-accept": ("work_pk", "board_acceptor", "POST"),
     "web:fund-verify": ("fund_entry_pk", "fund_verifier", "POST"),
 }
 
@@ -165,8 +165,6 @@ class CrossBuildingAccessTests(TestCase):
         )
         driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
         driver.login(None, "operator").submit_signed_proposal()
-        driver.login(None, "board_approver").approve_proposal()
-        driver.login(None, "resident_representative").coapprove_proposal()
         driver.login(None, "maintenance").complete_assigned_work()
         driver.login(None, "board_payment_recorder").accept_and_record_payment()
         driver.login(None, "board_payment_verifier").verify_payment()
@@ -395,7 +393,7 @@ class CrossBuildingAccessTests(TestCase):
         assert self.b["notification_pk"] not in notice_ids
 
     def test_staff_lists_and_exports_never_leak_other_building(self):
-        for role_key in ("operator", "board_approver", "auditor"):
+        for role_key in ("operator", "board_acceptor", "auditor"):
             self._staff_login(role_key)
             for route in LIST_ROUTES:
                 with self.subTest(role=role_key, route=route):

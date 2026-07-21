@@ -185,7 +185,7 @@ def collect_pilot_metrics() -> dict:
 
     # Work response time: assignment → first in-progress (proxy: created vs updated status).
     work_response = None
-    # Approval time / anchoring delay left as coarse aggregates when timestamps exist.
+    # Publication time / anchoring delay remain coarse aggregates when timestamps exist.
     anchoring_delay_seconds = None
     confirmed = BlockchainOutboxEvent.objects.filter(
         status=BlockchainOutboxEvent.Status.CONFIRMED,
@@ -209,7 +209,7 @@ def collect_pilot_metrics() -> dict:
         "duplicate_confirmation_results": duplicate_confirmations,
         "triage_latency_ms_avg": triage_latency_ms,
         "work_response_time_seconds_avg": work_response,
-        "approval_time_seconds_avg": None,
+        "publication_time_seconds_avg": None,
         "anchoring_delay_seconds_avg": anchoring_delay_seconds,
         "anchoring_backend": settings.EVIDENCE_ANCHORING_BACKEND,
         "authoritative": False,

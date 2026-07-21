@@ -6,13 +6,6 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from lamto.evidence.models import BlockchainOutboxEvent
-from lamto.finance.approvals import (
-    ANCHORED_LABEL,
-    LOCAL_SIGNED_LABEL,
-    MISMATCH_LABEL,
-    PENDING_ANCHORING_LABEL,
-    proposal_verification_label,
-)
 from lamto.finance.models import PublishedLedgerEntry
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 from lamto.web.views.exports import _outbox_rows
@@ -43,7 +36,7 @@ class EvidenceLevelLabelTests(TestCase):
             building_name="Label Building", create_sample_report=False
         )
         driver = PilotDomainDriver(cls.seed)
-        driver.prepare_locally_approved_normal_work(None)
+        driver.prepare_local_normal_work(None)
         driver.complete_assigned_work()
         driver.accept_and_record_payment()
         driver.verify_payment()
@@ -55,39 +48,32 @@ class EvidenceLevelLabelTests(TestCase):
 
     def _proposal_event_ids(self):
         version = self.entry.proposal.current_version
-        ids = [version.outbox_event_id]
-        ids.extend(
-            BlockchainOutboxEvent.objects.filter(
-                approval_decision__version=version
-            ).values_list("pk", flat=True)
-        )
-        return ids
+        return [version.outbox_event_id]
 
     def test_staff_label_is_three_way(self):
         version = self.entry.proposal.current_version
-        self.assertEqual(proposal_verification_label(version), ANCHORED_LABEL)
+        self.assertEqual(version.verification_label, "Blockchain anchored")
 
         BlockchainOutboxEvent.objects.filter(pk__in=self._proposal_event_ids()).update(
             status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None
         )
-        self.assertEqual(proposal_verification_label(version), LOCAL_SIGNED_LABEL)
+        version.outbox_event.refresh_from_db()
+        self.assertEqual(version.verification_label, "Locally signed (anchoring disabled)")
 
         BlockchainOutboxEvent.objects.filter(pk=version.outbox_event_id).update(
             status=BlockchainOutboxEvent.Status.PENDING
         )
-        self.assertEqual(proposal_verification_label(version), PENDING_ANCHORING_LABEL)
+        version.outbox_event.refresh_from_db()
+        self.assertEqual(version.verification_label, "Pending blockchain anchoring")
 
     def test_staff_label_mismatch_is_distinct(self):
         version = self.entry.proposal.current_version
         BlockchainOutboxEvent.objects.filter(pk__in=self._proposal_event_ids()).update(
             status=BlockchainOutboxEvent.Status.MISMATCH
         )
-        label = proposal_verification_label(version)
-        self.assertEqual(label, MISMATCH_LABEL)
+        version.outbox_event.refresh_from_db()
+        label = version.verification_label
         self.assertEqual(label, "Anchoring mismatch detected")
-        self.assertNotEqual(label, PENDING_ANCHORING_LABEL)
-        self.assertNotEqual(label, ANCHORED_LABEL)
-        self.assertNotEqual(label, LOCAL_SIGNED_LABEL)
 
     def test_resident_detail_shows_offchain_label_for_local(self):
         BlockchainOutboxEvent.objects.filter(

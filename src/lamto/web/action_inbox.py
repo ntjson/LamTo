@@ -18,7 +18,6 @@ from lamto.accounts.capabilities import (
     LEDGER_PUBLISH,
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
     PROPOSAL_CREATE,
     REPORT_TRIAGE,
     WORK_ACCEPT,
@@ -29,7 +28,6 @@ from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
     AcceptanceRecord,
-    ApprovalDecision,
     PaymentEvidence,
     PaymentVerification,
     Proposal,
@@ -103,9 +101,6 @@ def action_items_for(membership: OrganizationMembership) -> list[ActionItem]:
 
     if _has(membership, PROPOSAL_CREATE):
         items.extend(_proposal_create_candidates(building_id))
-
-    if _has(membership, PROPOSAL_APPROVE):
-        items.extend(_proposal_approval_items(membership, building_id))
 
     if _has(membership, WORK_ACCEPT):
         items.extend(_work_acceptance_items(building_id))
@@ -258,58 +253,6 @@ def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
                 target_id=wo.pk,
                 url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
                 priority=25,
-            )
-        )
-    return items
-
-
-def _proposal_approval_items(membership, building_id: int) -> list[ActionItem]:
-    items = []
-    stage = (
-        ApprovalDecision.Stage.BOARD
-        if membership.organization.kind == Organization.Kind.BOARD
-        else ApprovalDecision.Stage.RESIDENT_REP
-    )
-    title = (
-        "Proposal approval"
-        if stage == ApprovalDecision.Stage.BOARD
-        else "Representative co-approval"
-    )
-    qs = (
-        Proposal.objects.filter(
-            work_order__case__building_id=building_id,
-            status=Proposal.Status.IN_REVIEW,
-            current_version__isnull=False,
-        )
-        .exclude(
-            current_version__approval_decisions__stage=stage,
-        )
-        .select_related("current_version")
-        .order_by("created_at")[:50]
-    )
-    # RESIDENT_REP must wait for board approve
-    for proposal in qs:
-        version = proposal.current_version
-        if version is None:
-            continue
-        if stage == ApprovalDecision.Stage.RESIDENT_REP:
-            board = ApprovalDecision.objects.filter(
-                version=version,
-                stage=ApprovalDecision.Stage.BOARD,
-                decision=ApprovalDecision.Decision.APPROVE,
-            ).exists()
-            if not board:
-                continue
-        items.append(
-            ActionItem(
-                kind="proposal_approval",
-                title=title,
-                summary=f"Proposal #{proposal.pk}",
-                target_type="Proposal",
-                target_id=proposal.pk,
-                url=reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
-                priority=20 if stage == ApprovalDecision.Stage.BOARD else 22,
-                amount_vnd=version.amount_vnd,
             )
         )
     return items

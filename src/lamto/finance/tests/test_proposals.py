@@ -198,8 +198,8 @@ class ProposalVersionTests(TestCase):
         self.assertEqual(second.number, 2)
         self.assertEqual(first.amount_vnd, 18_500_000)
         self.assertEqual(proposal.current_version_id, second.pk)
-        self.assertEqual(proposal.status, proposal.Status.IN_REVIEW)
-        self.assertEqual(work_order.authorization_status, WorkOrder.AuthorizationStatus.PENDING)
+        self.assertEqual(proposal.status, proposal.Status.NORMAL_AUTHORIZED)
+        self.assertEqual(work_order.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED)
 
     def test_submission_requires_positive_amount_and_safe_quotation_pair(self):
         operator, work_order, quotation, account = self.make_signed_proposal_inputs()

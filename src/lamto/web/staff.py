@@ -142,11 +142,11 @@ def nav_items_for(membership) -> list[dict]:
     # Finance groups proposals · payments · fund; appears once, landing on the
     # first sub-area the membership can open.
     finance_caps = {
-        "proposal.create", "proposal.approve", "ledger.publish",
+        "proposal.create", "ledger.publish",
         "payment.record", "payment.verify", "fund.record", "fund.verify",
     }
     if caps & finance_caps:
-        if caps & {"proposal.create", "proposal.approve", "ledger.publish"}:
+        if caps & {"proposal.create", "ledger.publish"}:
             finance_url = "web:proposal-list"
         elif caps & {"payment.record", "payment.verify"}:
             finance_url = "web:payment-list"
@@ -189,7 +189,7 @@ def nav_items_for(membership) -> list[dict]:
 def finance_nav_items_for(membership) -> list[dict[str, str]]:
     caps = capabilities_for(membership)
     destinations = (
-        (_("Proposals"), "web:proposal-list", "proposals", {"proposal.create", "proposal.approve", "ledger.publish"}),
+        (_("Proposals"), "web:proposal-list", "proposals", {"proposal.create", "ledger.publish"}),
         (_("Payments"), "web:payment-list", "payments", {"payment.record", "payment.verify"}),
         (_("Fund"), "web:fund-home", "fund", {"fund.record", "fund.verify", "ledger.publish"}),
     )

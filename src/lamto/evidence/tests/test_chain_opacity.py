@@ -22,6 +22,8 @@ class ChainOpacityTests(SimpleTestCase):
             set(EVIDENCE_PAYLOAD_SCHEMAS),
             set(EvidenceType.values)
             - {
+                EvidenceType.RESERVED_2.value,
+                EvidenceType.RESERVED_3.value,
                 EvidenceType.RESERVED_4.value,
                 EvidenceType.RESERVED_5.value,
                 EvidenceType.RESERVED_10.value,

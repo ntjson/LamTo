@@ -18,7 +18,6 @@ from lamto.accounts.capabilities import (
     LEDGER_PUBLISH,
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
     PROPOSAL_CREATE,
     WORK_ACCEPT,
     WORK_ASSIGN,
@@ -32,7 +31,6 @@ from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
 from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.acceptance import accept_work, build_acceptance_evidence_typed_data
-from lamto.finance.approvals import build_approval_evidence_payload, decide_proposal
 from lamto.finance.fund import fund_balance, get_or_create_fund, record_fund_source, verify_fund_source
 from lamto.finance.fund import (
     allocate_fund_entry_id,
@@ -257,48 +255,14 @@ class PublicationTests(TestCase):
             proposal, 18_500_000, "Company X", [quotation_original], signature, event_id
         )
 
-        board_approver, board_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PROPOSAL_APPROVE, "board-approve"
+        board_actor, board_account = self.make_signer(
+            building, OrganizationMembership.Role.BOARD, WORK_ACCEPT, "board-actor"
         )
-        grant_capability(board_approver, WORK_ACCEPT)
-        grant_capability(board_approver, PAYMENT_RECORD)
-        representative, rep_account = self.make_signer(
-            building,
-            OrganizationMembership.Role.RESIDENT_REP,
-            PROPOSAL_APPROVE,
-            "representative",
-        )
+        grant_capability(board_actor, PAYMENT_RECORD)
         self.accounts = {
             operator.pk: operator_account,
-            board_approver.pk: board_account,
-            representative.pk: rep_account,
+            board_actor.pk: board_account,
         }
-        board_event = "0x" + secrets.token_hex(32)
-        rep_event = "0x" + secrets.token_hex(32)
-        board_payload = build_approval_evidence_payload(version, board_approver, "APPROVE")
-        board_typed = build_evidence_typed_data(
-            board_event,
-            EvidenceType.BOARD_APPROVAL,
-            "0x" + payload_hash(board_payload),
-            "0x" + version.outbox_event.payload_hash,
-        )
-        board_sig = Account.sign_message(
-            encode_typed_data(full_message=board_typed), board_account.key
-        ).signature.hex()
-        rep_payload = build_approval_evidence_payload(version, representative, "APPROVE")
-        rep_typed = build_evidence_typed_data(
-            rep_event,
-            EvidenceType.REPRESENTATIVE_APPROVAL,
-            "0x" + payload_hash(rep_payload),
-            "0x" + payload_hash(board_payload),
-        )
-        rep_sig = Account.sign_message(
-            encode_typed_data(full_message=rep_typed), rep_account.key
-        ).signature.hex()
-        decide_proposal(version, board_approver, "APPROVE", "Within budget", board_sig, board_event)
-        decide_proposal(
-            version, representative, "APPROVE", "Evidence checked", rep_sig, rep_event
-        )
 
         work_order.refresh_from_db()
         start_work_order(work_order, maintenance_user)
@@ -318,7 +282,7 @@ class PublicationTests(TestCase):
         accept_event = "0x" + secrets.token_hex(32)
         accept_typed = build_acceptance_evidence_typed_data(
             work_order,
-            board_approver,
+            board_actor,
             18_500_000,
             invoice_original,
             invoice_redacted,
@@ -332,7 +296,7 @@ class PublicationTests(TestCase):
         ).signature.hex()
         acceptance = accept_work(
             work_order,
-            board_approver,
+            board_actor,
             18_500_000,
             invoice_original,
             invoice_redacted,
@@ -346,8 +310,8 @@ class PublicationTests(TestCase):
         payment_recorder, payment_recorder_account = self.make_signer(
             building, OrganizationMembership.Role.BOARD, PAYMENT_RECORD, "pay-recorder"
         )
-        # Same user as board_approver is allowed for payment record, but use distinct for dual-control clarity.
-        # Actually we can use board_approver as recorder. For publisher exclusion we need distinct publisher.
+        # Same user as board_acceptor is allowed for payment record, but use distinct for dual-control clarity.
+        # Actually we can use board_acceptor as recorder. For publisher exclusion we need distinct publisher.
         payment_verifier, payment_verifier_account = self.make_signer(
             building, OrganizationMembership.Role.BOARD, PAYMENT_VERIFY, "pay-verifier"
         )
@@ -415,8 +379,6 @@ class PublicationTests(TestCase):
         # Confirm all prerequisite outbox events.
         self.confirm_chain(
             version.outbox_event,
-            version.approval_decisions.get(stage="BOARD").outbox_event,
-            version.approval_decisions.get(stage="RESIDENT_REP").outbox_event,
             acceptance.outbox_event,
             payment.outbox_event,
             verification.outbox_event,
@@ -499,12 +461,8 @@ class PublicationTests(TestCase):
         resident_payload = _resident_payload(
             proposal, version, acceptance, payment, verification, document_hashes
         )
-        board_decision = version.approval_decisions.get(stage="BOARD")
-        rep_decision = version.approval_decisions.get(stage="RESIDENT_REP")
         prerequisite_event_hashes = [
             version.outbox_event.payload_hash,
-            board_decision.outbox_event.payload_hash,
-            rep_decision.outbox_event.payload_hash,
             acceptance.outbox_event.payload_hash,
             payment.outbox_event.payload_hash,
             verification.outbox_event.payload_hash,
@@ -533,7 +491,7 @@ class PublicationTests(TestCase):
             publication_id,
             pub_ts,
             payment_recorder,
-            board_approver,
+            board_actor,
             payment_verifier,
             building,
         )
@@ -547,7 +505,7 @@ class PublicationTests(TestCase):
             publication_id,
             pub_ts,
             _payment_recorder,
-            _board_approver,
+            _board_actor,
             _payment_verifier,
             building,
         ) = self.make_ready_proposal_and_publisher()
@@ -588,7 +546,7 @@ class PublicationTests(TestCase):
             ).exists()
         )
 
-    def test_publisher_dual_control_blocks_creator_approver_and_recorder(self):
+    def test_publisher_dual_control_blocks_creator_and_recorder(self):
         (
             proposal,
             publisher,
@@ -597,7 +555,7 @@ class PublicationTests(TestCase):
             publication_id,
             pub_ts,
             payment_recorder,
-            board_approver,
+            board_actor,
             payment_verifier,
             building,
         ) = self.make_ready_proposal_and_publisher()
@@ -620,12 +578,8 @@ class PublicationTests(TestCase):
         resident_payload = _resident_payload(
             proposal, version, acceptance, payment, verification, document_hashes
         )
-        board_decision = version.approval_decisions.get(stage="BOARD")
-        rep_decision = version.approval_decisions.get(stage="RESIDENT_REP")
         prerequisite_event_hashes = [
             version.outbox_event.payload_hash,
-            board_decision.outbox_event.payload_hash,
-            rep_decision.outbox_event.payload_hash,
             acceptance.outbox_event.payload_hash,
             payment.outbox_event.payload_hash,
             verification.outbox_event.payload_hash,
@@ -662,34 +616,6 @@ class PublicationTests(TestCase):
                 proposal=proposal, gate_code="PUBLISHER_INELIGIBLE"
             ).exists()
         )
-
-        # Board approver cannot publish.
-        grant_capability(board_approver, LEDGER_PUBLISH)
-        pub_id = allocate_publication_id()
-        pub_event = "0x" + secrets.token_hex(32)
-        typed = build_publication_evidence_typed_data(
-            proposal,
-            board_approver,
-            pub_id,
-            prerequisite_event_hashes,
-            resident_payload,
-            document_hashes,
-            pub_event,
-            timestamp=pub_ts,
-            previous_hash=previous_hash,
-        )
-        bad_sig = Account.sign_message(
-            encode_typed_data(full_message=typed), self.accounts[board_approver.pk].key
-        ).signature.hex()
-        with self.assertRaises(PermissionDenied):
-            prepare_publication(
-                proposal,
-                board_approver,
-                bad_sig,
-                pub_event,
-                publication_id=pub_id,
-                timestamp=pub_ts,
-            )
 
         # Payment verifier may publish.
         pub_id = allocate_publication_id()
@@ -734,7 +660,7 @@ class PublicationTests(TestCase):
             publication_id,
             pub_ts,
             payment_recorder,
-            _board_approver,
+            _board_actor,
             _payment_verifier,
             _building,
         ) = self.make_ready_proposal_and_publisher()
@@ -809,7 +735,7 @@ class PublicationTests(TestCase):
             publication_id,
             pub_ts,
             _payment_recorder,
-            _board_approver,
+            _board_acceptor,
             _payment_verifier,
             _building,
         ) = self.make_ready_proposal_and_publisher()

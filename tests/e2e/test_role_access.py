@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 
 def test_role_access_denies_prohibited_document_reads(page, seeded_pilot):
-    seeded_pilot.prepare_locally_approved_normal_work(page)
+    seeded_pilot.prepare_local_normal_work(page)
     seeded_pilot.complete_assigned_work()
     seeded_pilot.accept_and_record_payment()
     seeded_pilot.verify_payment()
@@ -68,14 +68,12 @@ def test_ai_outage_preserves_manual_triage_authority(page, seeded_pilot):
     assert work.pk is not None
 
 
-def test_proposal_change_after_signature_requires_reapproval(page, seeded_pilot):
+def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilot):
     seeded_pilot.login(page, "resident").submit_report("Elevator", "Lift 2", None)
     seeded_pilot.login(page, "operator").confirm_triage_and_create_paid_work_order()
     version1 = seeded_pilot.login(page, "operator").submit_signed_proposal(
         amount_vnd=DEFAULT_AMOUNT_VND
     )
-    seeded_pilot.login(page, "board_approver").approve_proposal()
-    seeded_pilot.login(page, "resident_representative").coapprove_proposal()
 
     operator = seeded_pilot.seed.roles["operator"]
     proposal = seeded_pilot.seed.proposal
@@ -97,6 +95,6 @@ def test_proposal_change_after_signature_requires_reapproval(page, seeded_pilot)
     work = seeded_pilot.seed.work_order
     work.refresh_from_db()
     assert version2.number == 2
-    assert work.authorization_status == WorkOrder.AuthorizationStatus.PENDING
-    with pytest.raises(PermissionDenied):
-        start_work_order(work, seeded_pilot.seed.users["maintenance"])
+    assert work.authorization_status == WorkOrder.AuthorizationStatus.AUTHORIZED
+    started = start_work_order(work, seeded_pilot.seed.users["maintenance"])
+    assert started.status == WorkOrder.Status.IN_PROGRESS

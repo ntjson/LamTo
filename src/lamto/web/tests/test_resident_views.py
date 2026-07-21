@@ -327,13 +327,6 @@ class ResidentViewTests(TestCase):
                 "payment_id": payment.pk,
                 "verification_event_hash": verification.outbox_event.payload_hash,
             },
-            "approvals": {
-                "board": {
-                    "membership_id": publisher_membership.pk,
-                    "decision": "APPROVE",
-                    "user_id": publisher_membership.user_id,
-                }
-            },
         }
         snapshot = PublicationSnapshot.objects.create(
             proposal=proposal,

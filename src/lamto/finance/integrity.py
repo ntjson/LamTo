@@ -32,9 +32,6 @@ def _related_outbox_events(entry):
         verification.outbox_event,
         entry.snapshot.outbox_event,
     ]
-    if version is not None:
-        for decision in version.approval_decisions.select_related("outbox_event"):
-            events.append(decision.outbox_event)
     return [event for event in events if event is not None]
 
 

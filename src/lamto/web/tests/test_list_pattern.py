@@ -11,7 +11,7 @@ from django_otp.util import random_hex
 from lamto.accounts.capabilities import (
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
+    LEDGER_PUBLISH,
     REPORT_TRIAGE,
 )
 from lamto.accounts.models import (
@@ -201,7 +201,7 @@ class ListPatternTests(TestCase):
             role=OrganizationMembership.Role.BOARD,
             org_kind=Organization.Kind.BOARD,
         )
-        grant_capability(membership, PROPOSAL_APPROVE)
+        grant_capability(membership, LEDGER_PUBLISH)
         work = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
         draft = Proposal.objects.create(
             work_order=work,
@@ -275,8 +275,6 @@ class ListPatternTests(TestCase):
             d.login(None, "resident").submit_report("x", "Lift")
             d.login(None, "operator").confirm_triage_and_create_paid_work_order()
             d.login(None, "operator").submit_signed_proposal()
-            d.login(None, "board_approver").approve_proposal()
-            d.login(None, "resident_representative").coapprove_proposal()
             d.login(None, "maintenance").complete_assigned_work()
             d.login(None, "board_payment_recorder").accept_and_record_payment()
             d.confirm_all_chain_events()

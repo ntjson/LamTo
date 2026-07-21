@@ -18,11 +18,7 @@ from lamto.audit.models import AuditEvent
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
-from lamto.finance.models import (
-    ApprovalDecision,
-    MaintenanceFundEntry,
-    VerificationObservation,
-)
+from lamto.finance.models import MaintenanceFundEntry, VerificationObservation
 from lamto.web.staff import require_staff_capability
 
 
@@ -92,8 +88,6 @@ def audit_export(request):
     try:
         if kind == "fund_entries":
             header, rows = _fund_entry_rows(building_id)
-        elif kind == "approvals":
-            header, rows = _approval_rows(building_id)
         elif kind == "documents":
             header, rows = _document_rows(building_id)
         elif kind == "outbox":
@@ -206,43 +200,6 @@ def _fund_entry_rows(building_id):
         )
     return header, rows
 
-def _approval_rows(building_id):
-    header = [
-        "id",
-        "proposal_version_id",
-        "stage",
-        "decision",
-        "membership_id",
-        "wallet_address",
-        "signature",
-        "outbox_event_id",
-        "transaction_hash",
-        "decided_at",
-    ]
-    rows = []
-    for row in (
-        ApprovalDecision.objects.filter(
-            version__proposal__work_order__case__building_id=building_id
-        )
-        .select_related("wallet", "outbox_event", "membership")
-        .order_by("id")
-        .iterator(chunk_size=200)
-    ):
-        rows.append(
-            [
-                row.id,
-                row.version_id,
-                row.stage,
-                row.decision,
-                row.membership_id,
-                row.wallet.address if row.wallet_id else "",
-                row.signature,
-                row.outbox_event.event_id if row.outbox_event_id else "",
-                row.outbox_event.transaction_hash if row.outbox_event_id else "",
-                row.decided_at.isoformat() if row.decided_at else "",
-            ]
-        )
-    return header, rows
 
 
 def _document_rows(building_id):

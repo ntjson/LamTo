@@ -108,7 +108,7 @@ class ProposalCreateTests(TestCase):
         version = ProposalVersion.objects.get(proposal=proposal)
         self.assertEqual(version.amount_vnd, 5_000_000)
         self.work.refresh_from_db()
-        self.assertEqual(self.work.authorization_status, WorkOrder.AuthorizationStatus.PENDING)
+        self.assertEqual(self.work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED)
 
     def test_non_operator_forbidden(self):
         self.client.force_login(self.seed.roles["maintenance"].user)

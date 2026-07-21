@@ -26,7 +26,7 @@ class AuditImmutabilityTests(TestCase):
         event = record_audit(
             actor=membership.user,
             membership=membership,
-            action="proposal.approve",
+            action="proposal.create",
             target_type="ProposalVersion",
             target_id="42",
             result="allowed",
@@ -43,7 +43,7 @@ class AuditImmutabilityTests(TestCase):
         event = record_audit(
             actor=membership.user,
             membership=membership,
-            action="proposal.approve",
+            action="proposal.create",
             target_type="ProposalVersion",
             target_id="42",
             result="allowed",
@@ -70,7 +70,7 @@ class AuditImmutabilityTests(TestCase):
             record_audit(
                 actor=membership.user,
                 membership=membership,
-                action="proposal.approve",
+                action="proposal.create",
                 target_type="ProposalVersion",
                 target_id="42",
                 result="allowed",
@@ -87,7 +87,7 @@ class AuditImmutabilityTests(TestCase):
             record_audit(
                 actor=other_actor,
                 membership=membership,
-                action="proposal.approve",
+                action="proposal.create",
                 target_type="ProposalVersion",
                 target_id="42",
                 result="allowed",

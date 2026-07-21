@@ -13,7 +13,7 @@ from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.maintenance.models import WorkOrder, WorkUpdate, WorkUpdateEvidence
 
-from .models import AcceptanceRecord, ApprovalDecision, Proposal
+from .models import AcceptanceRecord, Proposal
 
 
 
@@ -106,18 +106,7 @@ def _acceptance_previous_hash(work_order):
     version = proposal.current_version
     if version is None:
         raise ValidationError("A current proposal version is required before acceptance.")
-    decision = (
-        ApprovalDecision.objects.select_related("outbox_event")
-        .filter(
-            version=version,
-            stage=ApprovalDecision.Stage.RESIDENT_REP,
-            decision=ApprovalDecision.Decision.APPROVE,
-        )
-        .first()
-    )
-    if decision is None:
-        raise ValidationError("Resident co-approval is required before acceptance.")
-    return "0x" + decision.outbox_event.payload_hash
+    return "0x" + version.outbox_event.payload_hash
 
 
 def build_acceptance_evidence_payload(

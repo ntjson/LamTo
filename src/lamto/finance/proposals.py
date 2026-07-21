@@ -223,10 +223,10 @@ def submit_proposal_version(
         ]
     )
     locked_proposal.current_version = version
-    locked_proposal.status = Proposal.Status.IN_REVIEW
+    locked_proposal.status = Proposal.Status.NORMAL_AUTHORIZED
     locked_proposal.save(update_fields=["current_version", "status"])
     if work_order.requires_spending:
-        work_order.authorization_status = WorkOrder.AuthorizationStatus.PENDING
+        work_order.authorization_status = WorkOrder.AuthorizationStatus.AUTHORIZED
         work_order.save(update_fields=["authorization_status"])
     record_audit(
         membership.user,
@@ -237,20 +237,4 @@ def submit_proposal_version(
         "accepted",
         {"proposal_id": locked_proposal.pk, "number": number, "event_id": event.event_id},
     )
-    try:
-        from lamto.accounts.models import OrganizationMembership
-        from lamto.notifications.hooks import _users_with_capability
-        from lamto.notifications.services import EVENT_PROPOSAL_APPROVAL, notify_users
-
-        building_id = work_order.case.building_id
-        recipients = _users_with_capability(building_id, "proposal.approve")
-        notify_users(
-            recipients,
-            event_key=f"{EVENT_PROPOSAL_APPROVAL}:version:{version.pk}",
-            subject="Proposal submitted for approval",
-            body=f"Proposal #{locked_proposal.pk} version {number} is ready for review.",
-            event_code=EVENT_PROPOSAL_APPROVAL,
-        )
-    except Exception:
-        pass
     return version

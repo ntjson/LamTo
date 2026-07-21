@@ -298,7 +298,7 @@ def issue_break_glass_consent(
     """Issue a short-lived signed consent token after the authorizer re-auths.
 
     Tech admins cannot self-nominate an arbitrary membership id: start_break_glass
-    requires a token that proves the named authorizer approved this elevation.
+    requires a token that proves the named authorizer confirmed this elevation.
     """
     if not authorizing_membership.active:
         raise ValidationError("Authorizing membership must be active.")

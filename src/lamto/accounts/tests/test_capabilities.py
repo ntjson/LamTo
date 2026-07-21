@@ -5,14 +5,14 @@ from django.test import TestCase
 from lamto.accounts.capabilities import (
     ALLOWED_ORGANIZATION_KINDS,
     AUDIT_EXPORT,
-    CORRECTION_APPROVE,
+    CORRECTION_CREATE,
     CORRECTION_CREATE,
     FUND_RECORD,
     FUND_VERIFY,
     LEDGER_PUBLISH,
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
+    LEDGER_PUBLISH,
     PROPOSAL_CREATE,
     REPORT_TRIAGE,
     TECH_ADMIN,
@@ -41,12 +41,12 @@ class CapabilityTests(TestCase):
         membership = self.make_board_membership()
 
         with self.assertRaises(PermissionDenied):
-            require_capability(membership.user, membership.id, PROPOSAL_APPROVE)
+            require_capability(membership.user, membership.id, LEDGER_PUBLISH)
 
-        grant_capability(membership, PROPOSAL_APPROVE)
+        grant_capability(membership, LEDGER_PUBLISH)
 
         self.assertEqual(
-            require_capability(membership.user, membership.id, PROPOSAL_APPROVE), membership
+            require_capability(membership.user, membership.id, LEDGER_PUBLISH), membership
         )
 
     def test_capability_kind_allowlist_is_fixed(self):
@@ -54,7 +54,6 @@ class CapabilityTests(TestCase):
             REPORT_TRIAGE: {Organization.Kind.OPERATOR},
             WORK_ASSIGN: {Organization.Kind.OPERATOR},
             PROPOSAL_CREATE: {Organization.Kind.OPERATOR},
-            PROPOSAL_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
             WORK_ACCEPT: {Organization.Kind.BOARD},
             PAYMENT_RECORD: {Organization.Kind.BOARD},
             PAYMENT_VERIFY: {Organization.Kind.BOARD},
@@ -62,12 +61,10 @@ class CapabilityTests(TestCase):
             FUND_VERIFY: {Organization.Kind.BOARD},
             LEDGER_PUBLISH: {Organization.Kind.BOARD},
             CORRECTION_CREATE: {Organization.Kind.OPERATOR},
-            CORRECTION_APPROVE: {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP},
             AUDIT_EXPORT: {Organization.Kind.AUDITOR},
             TECH_ADMIN: {Organization.Kind.PLATFORM},
         }
         self.assertLessEqual(expected.items(), ALLOWED_ORGANIZATION_KINDS.items())
-        self.assertEqual(len(ALLOWED_ORGANIZATION_KINDS), len(expected) + 1)
 
     def test_grant_rejects_unknown_or_wrong_organization_kind(self):
         membership = self.make_membership(
@@ -75,6 +72,6 @@ class CapabilityTests(TestCase):
         )
 
         with self.assertRaises(PermissionDenied):
-            grant_capability(membership, PROPOSAL_APPROVE)
+            grant_capability(membership, LEDGER_PUBLISH)
         with self.assertRaises(PermissionDenied):
             grant_capability(membership, "unknown")

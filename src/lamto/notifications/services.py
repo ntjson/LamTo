@@ -22,8 +22,6 @@ EVENT_TRIAGE_STATUS = "triage.status"
 EVENT_CASE_STATUS = "case.status"
 EVENT_WORK_ASSIGNED = "work.assigned"
 EVENT_DEADLINE_RISK = "work.deadline_risk"
-EVENT_PROPOSAL_APPROVAL = "proposal.approval"
-EVENT_PROPOSAL_REJECTION = "proposal.rejection"
 EVENT_WORK_ACCEPTED = "work.accepted"
 EVENT_WORK_COMPLETED = "work.completed"
 EVENT_PAYMENT_RECORDED = "payment.recorded"
@@ -42,8 +40,6 @@ REQUIRED_IN_APP_EVENT_CODES = frozenset(
         EVENT_CASE_STATUS,
         EVENT_WORK_ASSIGNED,
         EVENT_DEADLINE_RISK,
-        EVENT_PROPOSAL_APPROVAL,
-        EVENT_PROPOSAL_REJECTION,
         EVENT_WORK_ACCEPTED,
         EVENT_PAYMENT_RECORDED,
         EVENT_PAYMENT_VERIFIED,
@@ -61,7 +57,6 @@ PREFERENCE_EVENT_CHOICES = (
     (EVENT_WORK_COMPLETED, "Work completed (rate prompt)"),
     (EVENT_WORK_ASSIGNED, "Work assignment"),
     (EVENT_DEADLINE_RISK, "Deadline risk"),
-    (EVENT_PROPOSAL_APPROVAL, "Proposal approval / rejection"),
     (EVENT_PAYMENT_RECORDED, "Payment actions"),
     (EVENT_PUBLICATION, "Ledger publication"),
     (EVENT_INTEGRITY_MISMATCH, "Integrity mismatch"),

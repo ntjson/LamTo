@@ -35,7 +35,7 @@ SIGNING_ROLES = {
 }
 HASH_RE = re.compile(r"(?:0x)?[0-9a-f]{64}\Z")
 UTC_RFC3339_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\Z")
-APPROVAL = frozenset({"APPROVE", "REJECT"})
+PAYMENT_DECISION = frozenset({"MATCH", "REJECT"})
 # Closed vocabulary of payload value shapes (spec 2.2 opacity). Free-text shapes
 # must not be added — chain hashes remain non-invertible only if payloads stay opaque.
 OPAQUE_PAYLOAD_SHAPES = frozenset({
@@ -51,14 +51,6 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
         "report_snapshot_hash": "hash", "quotation_original_hash": "hash",
         "quotation_redacted_hash": "hash",
     }, {"estimated_amount_vnd": "money", "photo_hash": "hash", "photo_hashes": "hashes"}),
-    EvidenceType.BOARD_APPROVAL: ({
-        "proposal_hash": "hash", "decision": APPROVAL,
-        "actor_organization_id": "id", "decision_timestamp": "timestamp",
-    }, {}),
-    EvidenceType.REPRESENTATIVE_APPROVAL: ({
-        "proposal_hash": "hash", "decision": APPROVAL,
-        "actor_organization_id": "id", "decision_timestamp": "timestamp",
-    }, {}),
     EvidenceType.WORK_ACCEPTANCE: ({
         "work_order_id": "id", "actual_cost_vnd": "money",
         "acceptance_timestamp": "timestamp", "invoice_original_hash": "hash",
@@ -72,7 +64,7 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
         "payment_proof_redacted_hash": "hash",
     }, {}),
     EvidenceType.PAYMENT_VERIFIED: ({
-        "payment_hash": "hash", "decision": APPROVAL,
+        "payment_hash": "hash", "decision": PAYMENT_DECISION,
         "verification_result": frozenset({"MATCH", "MISMATCH"}),
         "verification_timestamp": "timestamp",
     }, {}),

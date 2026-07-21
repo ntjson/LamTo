@@ -35,7 +35,6 @@ from lamto.accounts.capabilities import (
     LEDGER_PUBLISH,
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
     PROPOSAL_CREATE,
     REPORT_TRIAGE,
     TECH_ADMIN,
@@ -57,7 +56,6 @@ from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType, is_settle
 from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.acceptance import accept_work, build_acceptance_evidence_typed_data
-from lamto.finance.approvals import build_approval_evidence_payload, decide_proposal
 from lamto.finance.fund import (
     allocate_fund_entry_id,
     build_fund_source_evidence_typed_data,
@@ -110,8 +108,7 @@ DEFAULT_FUND_OPENING_VND = 100_000_000
 ROLE_KEYS = (
     "resident",
     "operator",
-    "board_approver",
-    "resident_representative",
+    "board_acceptor",
     "maintenance",
     "board_payment_recorder",
     "board_payment_verifier",
@@ -352,7 +349,7 @@ def seed_pilot_world(
         building=building, name="Pilot Board", kind=Organization.Kind.BOARD
     )
     board_roles = {
-        "board_approver": ([PROPOSAL_APPROVE, WORK_ACCEPT], "Board Approver"),
+        "board_acceptor": ([WORK_ACCEPT], "Board Acceptor"),
         "board_payment_recorder": ([PAYMENT_RECORD, WORK_ACCEPT], "Payment Recorder"),
         "board_payment_verifier": ([PAYMENT_VERIFY, LEDGER_PUBLISH], "Payment Verifier"),
         "eligible_publisher": ([LEDGER_PUBLISH], "Eligible Publisher"),
@@ -376,19 +373,6 @@ def seed_pilot_world(
 
     # Verifier may also publish (dual-control path covered separately).
     grant_capability(seed.roles["board_payment_verifier"], LEDGER_PUBLISH)
-
-    rep, rep_account = make_signer(
-        building,
-        OrganizationMembership.Role.RESIDENT_REP,
-        [PROPOSAL_APPROVE],
-        email=email("resident-rep"),
-        display_name="Pilot Resident Representative",
-        password=password,
-        org_name="Pilot Resident Rep Body",
-    )
-    seed.accounts[rep.pk] = rep_account
-    seed.roles["resident_representative"] = rep
-    seed.users["resident_representative"] = rep.user
 
     # Auditor and tech admin are not wallet-signing roles.
     auditor_user = get_user_model().objects.create_user(
@@ -643,48 +627,6 @@ class PilotDomainDriver:
         self._ctx["amount_vnd"] = amount_vnd
         return version
 
-    def approve_proposal(self):
-        version = self._ctx["proposal_version"]
-        membership = self.seed.roles["board_approver"]
-        event_id = new_event_id()
-        payload = build_approval_evidence_payload(version, membership, "APPROVE")
-        typed = build_evidence_typed_data(
-            event_id,
-            EvidenceType.BOARD_APPROVAL,
-            "0x" + payload_hash(payload),
-            "0x" + version.outbox_event.payload_hash,
-        )
-        signature = self.seed.sign_typed(membership, typed)
-        decision = decide_proposal(
-            version, membership, "APPROVE", "Within pilot budget", signature, event_id
-        )
-        self._ctx["board_decision"] = decision
-        return decision
-
-    def coapprove_proposal(self):
-        version = self._ctx["proposal_version"]
-        membership = self.seed.roles["resident_representative"]
-        board_decision = self._ctx["board_decision"]
-        event_id = new_event_id()
-        payload = build_approval_evidence_payload(version, membership, "APPROVE")
-        typed = build_evidence_typed_data(
-            event_id,
-            EvidenceType.REPRESENTATIVE_APPROVAL,
-            "0x" + payload_hash(payload),
-            "0x" + board_decision.outbox_event.payload_hash,
-        )
-        signature = self.seed.sign_typed(membership, typed)
-        decision = decide_proposal(
-            version,
-            membership,
-            "APPROVE",
-            "Evidence checked by representative",
-            signature,
-            event_id,
-        )
-        self._ctx["rep_decision"] = decision
-        return decision
-
     def start_assigned_work(self):
         work = self.seed.work_order or self._ctx["work_order"]
         work.refresh_from_db()
@@ -717,9 +659,9 @@ class PilotDomainDriver:
         work = self.seed.work_order
         work.refresh_from_db()
         accepter = self.seed.roles["board_payment_recorder"]
-        # Prefer dedicated accepter with WORK_ACCEPT; fall back to board_approver if needed.
+        # Prefer the payment recorder; fall back to the dedicated accepter.
         if not accepter.capabilitygrant_set.filter(code=WORK_ACCEPT).exists():
-            accepter = self.seed.roles["board_approver"]
+            accepter = self.seed.roles["board_acceptor"]
         inv_o, inv_r = self.seed.document_pair(
             Document.Kind.INVOICE, accepter.user, "invoice"
         )
@@ -853,13 +795,7 @@ class PilotDomainDriver:
         resident_payload = _resident_payload(
             proposal, version, acceptance, payment, verification, document_hashes
         )
-        board_decision = version.approval_decisions.filter(stage="BOARD").first()
-        rep_decision = version.approval_decisions.filter(stage="RESIDENT_REP").first()
         prerequisite_event_hashes = [version.outbox_event.payload_hash]
-        if board_decision is not None:
-            prerequisite_event_hashes.append(board_decision.outbox_event.payload_hash)
-        if rep_decision is not None:
-            prerequisite_event_hashes.append(rep_decision.outbox_event.payload_hash)
         prerequisite_event_hashes.extend(
             [
                 acceptance.outbox_event.payload_hash,
@@ -899,15 +835,13 @@ class PilotDomainDriver:
             return entry
         return snapshot
 
-    def prepare_locally_approved_normal_work(self, page=None):
-        """Bring a normal paid work order through dual approval (chain may stay paused)."""
+    def prepare_local_normal_work(self, page=None):
+        """Bring a normal paid work order through proposal submission."""
         self.login(page, "resident").submit_report(
             "Elevator shakes heavily", "Building B / Lift 2", None
         )
         self.login(page, "operator").confirm_triage_and_create_paid_work_order()
         self.login(page, "operator").submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
-        self.login(page, "board_approver").approve_proposal()
-        self.login(page, "resident_representative").coapprove_proposal()
         return self.seed.work_order
 
     def open_latest_ledger_entry(self):

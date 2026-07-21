@@ -57,9 +57,12 @@ class ProposalVersion(InsertOnlyModel):
 
     @property
     def verification_label(self):
-        from lamto.finance.approvals import proposal_verification_label
-
-        return proposal_verification_label(self)
+        labels = {
+            "CONFIRMED": "Blockchain anchored",
+            "LOCAL": "Locally signed (anchoring disabled)",
+            "MISMATCH": "Anchoring mismatch detected",
+        }
+        return labels.get(self.outbox_event.status, "Pending blockchain anchoring")
 
     class Meta:
         constraints = [

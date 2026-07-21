@@ -21,8 +21,6 @@ def test_realistic_normal_flow(page, seeded_pilot):
     operator.confirm_triage_and_create_paid_work_order()
     operator.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
 
-    seeded_pilot.login(page, "board_approver").approve_proposal()
-    seeded_pilot.login(page, "resident_representative").coapprove_proposal()
     seeded_pilot.login(page, "maintenance").complete_assigned_work()
     seeded_pilot.login(page, "board_payment_recorder").accept_and_record_payment()
     seeded_pilot.login(page, "board_payment_verifier").verify_payment()

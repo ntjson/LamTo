@@ -97,8 +97,6 @@ class PilotAcceptanceTests(TestCase):
         operator.confirm_triage_and_create_paid_work_order()
         operator.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
 
-        driver.login(None, "board_approver").approve_proposal()
-        driver.login(None, "resident_representative").coapprove_proposal()
         driver.login(None, "maintenance").complete_assigned_work()
         driver.login(None, "board_payment_recorder").accept_and_record_payment()
         driver.login(None, "board_payment_verifier").verify_payment()
@@ -123,7 +121,7 @@ class PilotAcceptanceTests(TestCase):
     def test_normal_work_can_start_pending_anchor_but_cannot_publish(self):
         driver = self.driver
         driver.pause_chain()
-        driver.prepare_locally_approved_normal_work()
+        driver.prepare_local_normal_work()
         work = driver.login(None, "maintenance").start_assigned_work()
 
         self.assertEqual(work.verification_label, "Pending blockchain anchoring")
@@ -149,7 +147,7 @@ class PilotAcceptanceTests(TestCase):
 
     def test_payment_recorder_self_verification_denied_and_publisher_dual_control(self):
         driver = self.driver
-        driver.prepare_locally_approved_normal_work()
+        driver.prepare_local_normal_work()
         driver.complete_assigned_work()
         payment = driver.accept_and_record_payment()
         recorder = driver.seed.roles["board_payment_recorder"]
@@ -179,8 +177,8 @@ class PilotAcceptanceTests(TestCase):
         driver.verify_payment()
         driver.confirm_all_chain_events()
 
-        # Forbidden publishers: board approver and payment recorder (creator is operator org).
-        for role_key in ("board_approver", "board_payment_recorder"):
+        # The payment recorder remains ineligible to publish.
+        for role_key in ("board_payment_recorder",):
             membership = driver.seed.roles[role_key]
             grant_capability(membership, LEDGER_PUBLISH)
             original = driver.seed.roles["eligible_publisher"]
@@ -197,15 +195,13 @@ class PilotAcceptanceTests(TestCase):
         self.assertIsNotNone(entry)
         self.assertEqual(driver.ledger_count(), 1)
 
-    def test_proposal_revision_after_signature_requires_new_approval(self):
+    def test_proposal_revision_after_signature_requires_new_publication(self):
         driver = self.driver
         driver.login(None, "resident").submit_report("Elevator issue", "Lift 2", None)
         driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
         version1 = driver.login(None, "operator").submit_signed_proposal(
             amount_vnd=DEFAULT_AMOUNT_VND
         )
-        driver.login(None, "board_approver").approve_proposal()
-        driver.login(None, "resident_representative").coapprove_proposal()
         work = driver.seed.work_order
         work.refresh_from_db()
         self.assertEqual(
@@ -239,10 +235,10 @@ class PilotAcceptanceTests(TestCase):
         self.assertEqual(version2.number, 2)
         self.assertEqual(proposal.current_version_id, version2.pk)
         self.assertEqual(
-            work.authorization_status, WorkOrder.AuthorizationStatus.PENDING
+            work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED
         )
-        with self.assertRaises(PermissionDenied):
-            start_work_order(work, driver.seed.users["maintenance"])
+        started = start_work_order(work, driver.seed.users["maintenance"])
+        self.assertEqual(started.status, WorkOrder.Status.IN_PROGRESS)
 
     def test_ai_outage_leaves_report_and_inbox_authoritative(self):
         driver = self.driver
@@ -258,7 +254,7 @@ class PilotAcceptanceTests(TestCase):
 
     def test_role_object_file_export_matrix_denies_prohibited_access(self):
         driver = self.driver
-        driver.prepare_locally_approved_normal_work()
+        driver.prepare_local_normal_work()
         driver.complete_assigned_work()
         driver.accept_and_record_payment()
         driver.verify_payment()
@@ -295,7 +291,7 @@ class PilotAcceptanceTests(TestCase):
 
     def test_tampered_document_blocks_publish(self):
         driver = self.driver
-        driver.prepare_locally_approved_normal_work()
+        driver.prepare_local_normal_work()
         driver.complete_assigned_work()
         driver.accept_and_record_payment()
         driver.verify_payment()
@@ -312,7 +308,7 @@ class PilotAcceptanceTests(TestCase):
 
     def test_backup_restore_and_outbox_replay_idempotent_hashes(self):
         driver = self.driver
-        driver.prepare_locally_approved_normal_work()
+        driver.prepare_local_normal_work()
         driver.complete_assigned_work()
         driver.accept_and_record_payment()
         driver.verify_payment()

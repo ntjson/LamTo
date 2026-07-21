@@ -19,7 +19,7 @@ pytestmark = pytest.mark.django_db
 def test_payment_recorder_cannot_self_verify_and_forbidden_publishers_blocked(
     page, seeded_pilot
 ):
-    seeded_pilot.prepare_locally_approved_normal_work(page)
+    seeded_pilot.prepare_local_normal_work(page)
     seeded_pilot.complete_assigned_work()
     payment = seeded_pilot.accept_and_record_payment()
     recorder = seeded_pilot.seed.roles["board_payment_recorder"]
@@ -43,7 +43,7 @@ def test_payment_recorder_cannot_self_verify_and_forbidden_publishers_blocked(
     seeded_pilot.verify_payment()
     seeded_pilot.confirm_all_chain_events()
 
-    for role_key in ("board_approver", "board_payment_recorder"):
+    for role_key in ("board_payment_recorder",):
         membership = seeded_pilot.seed.roles[role_key]
         grant_capability(membership, LEDGER_PUBLISH)
         original = seeded_pilot.seed.roles["eligible_publisher"]
@@ -52,7 +52,7 @@ def test_payment_recorder_cannot_self_verify_and_forbidden_publishers_blocked(
         seeded_pilot.seed.roles["eligible_publisher"] = original
         assert blocked.blocked, f"{role_key} must be denied publication"
 
-    # Verifier-as-publisher is allowed when not creator/approver/recorder.
+    # Verifier-as-publisher is allowed when not creator/publisher/recorder.
     entry = seeded_pilot.sign_publication_snapshot()
     assert entry is not None
     assert seeded_pilot.ledger_count() == 1

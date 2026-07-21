@@ -281,7 +281,6 @@ def ledger_detail(request, pk):
             "entry": entry,
             "payload": payload,
             "proposed_amount": detail["proposed_amount"],
-            "approvals": payload.get("approvals") or {},
             "verification": detail["verification"],
             "redacted_docs": detail["redacted_docs"],
             "transaction_ids": detail["transaction_ids"],

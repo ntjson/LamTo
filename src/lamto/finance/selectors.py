@@ -56,7 +56,6 @@ def published_ledger_entry_for_proof(building_id, pk):
             "payment__verification__outbox_event",
             "proposal__current_version",
         )
-        .prefetch_related("proposal__current_version__approval_decisions__membership__user")
         .first()
     )
 
@@ -172,10 +171,8 @@ def _ledger_story_fields(entry, payload):
     """Resident-visible plain-language story for §6.3(6).
 
     Prefer completion narratives on the work order; fall back to report text /
-    case category. Approvers are display names (never invent empty names).
+    case category.
     """
-    from lamto.finance.models import ApprovalDecision, Proposal
-
     work = entry.work_order
     case = entry.case
     report = None
@@ -190,34 +187,9 @@ def _ledger_story_fields(entry, payload):
     what_was_fixed = result or report_text or category
     why = cause or category
 
-    approvers = []
-    version = entry.proposal.current_version if entry.proposal_id else None
-    if version is not None:
-        stage_to_role = {
-            ApprovalDecision.Stage.BOARD: "board",
-            ApprovalDecision.Stage.RESIDENT_REP: "resident_rep",
-        }
-        for approval in version.approval_decisions.all():
-            if approval.decision != ApprovalDecision.Decision.APPROVE:
-                continue
-            role = stage_to_role.get(approval.stage)
-            if role is None:
-                continue
-            name = approval.membership.user.display_name
-            if not name:
-                continue
-            approvers.append(
-                {
-                    "role": role,
-                    "name": name,
-                    "decision": approval.decision,
-                }
-            )
-
     return {
         "what_was_fixed": what_was_fixed,
         "why": why,
-        "approvers": approvers,
     }
 
 
@@ -280,7 +252,6 @@ def ledger_entry_proof(entry):
         "evidence_level": evidence_level(entry.snapshot.outbox_event.status),
         "what_was_fixed": story["what_was_fixed"],
         "why": story["why"],
-        "approvers": story["approvers"],
     }
 
 
@@ -313,12 +284,9 @@ def pending_reconciliation_proposals(building_id):
     - proposal has current_version
     - no PublishedLedgerEntry and no PublicationSnapshot yet
     - prerequisite outbox events settled
-    - settled board + resident-rep approvals
     """
-    from lamto.accounts.models import Organization
     from lamto.evidence.models import SETTLED_STATUSES
     from lamto.finance.models import (
-        ApprovalDecision,
         PaymentEvidence,
         PaymentVerification,
         Proposal,
@@ -349,23 +317,6 @@ def pending_reconciliation_proposals(building_id):
             "current_version",
             "work_order",
         )
-        .prefetch_related(
-            "current_version__approval_decisions__outbox_event",
-            "current_version__approval_decisions__membership__organization",
-        )
         .order_by("-created_at")
     )
-    eligible = []
-    for proposal in qs:
-        approvals = list(proposal.current_version.approval_decisions.all())
-        approved_kinds = {
-            a.membership.organization.kind
-            for a in approvals
-            if a.decision == ApprovalDecision.Decision.APPROVE
-            and a.outbox_event_id
-            and a.outbox_event.status in SETTLED_STATUSES
-        }
-        if not {Organization.Kind.BOARD, Organization.Kind.RESIDENT_REP} <= approved_kinds:
-            continue
-        eligible.append(proposal)
-    return eligible
+    return list(qs)

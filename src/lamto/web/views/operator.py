@@ -10,7 +10,6 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.capabilities import (
     LEDGER_PUBLISH,
-    PROPOSAL_APPROVE,
     PROPOSAL_CREATE,
     REPORT_TRIAGE,
     WORK_ASSIGN,
@@ -28,7 +27,6 @@ from lamto.finance.models import (
     PublishedLedgerEntry,
 )
 from lamto.accounts.models import SignerWallet
-from lamto.finance.approvals import build_approval_evidence_typed_data
 from lamto.finance.proposals import (
     ZERO_HASH,
     build_proposal_evidence_payload,
@@ -41,7 +39,6 @@ from lamto.web.forms.staff import (
     CreateProposalForm,
     CreateWorkOrderForm,
     PreparePublicationForm,
-    ProposalDecisionForm,
     SignProposalForm,
 )
 from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
@@ -294,7 +291,6 @@ def proposal_list(request):
     )
     if (
         PROPOSAL_CREATE not in caps
-        and PROPOSAL_APPROVE not in caps
         and LEDGER_PUBLISH not in caps
     ):
         record_audit(
@@ -384,7 +380,6 @@ def proposal_list(request):
             can_publish=LEDGER_PUBLISH in caps,
             publish_only=LEDGER_PUBLISH in caps
             and PROPOSAL_CREATE not in caps
-            and PROPOSAL_APPROVE not in caps,
         ),
     )
 
@@ -396,7 +391,6 @@ def proposal_detail(request, pk):
     caps = set(membership.capabilitygrant_set.values_list("code", flat=True))
     if (
         PROPOSAL_CREATE not in caps
-        and PROPOSAL_APPROVE not in caps
         and LEDGER_PUBLISH not in caps
     ):
         raise PermissionDenied("proposal access")
@@ -408,20 +402,16 @@ def proposal_detail(request, pk):
         pk=pk,
         work_order__case__building_id=membership.organization.building_id,
     )
-    form = ProposalDecisionForm(request.POST or None)
     publish_form = PreparePublicationForm(request.POST or None)
     can_publish = LEDGER_PUBLISH in caps and _proposal_publishable(proposal)
-    can_approve = PROPOSAL_APPROVE in caps
     version = proposal.current_version
-    typed_data = None
-    typed_data_options = None
     publish_typed_data = None
     publish_expected_signer = ""
 
     if request.method == "POST":
-        action = request.POST.get("action") or "decide"
+        action = request.POST.get("action") or "publish"
         # Signed financial / accountability actions require recent re-auth.
-        if action in ("publish", "decide"):
+        if action == "publish":
             require_recent_auth(request)
         if action == "publish":
             if not can_publish:
@@ -511,82 +501,6 @@ def proposal_detail(request, pk):
                         f"Publication not saved: {detail} "
                         "Your entries are still here. Connect the registered publisher wallet and try again.",
                     )
-        elif action == "decide" and can_approve:
-            if form.is_valid():
-                try:
-                    form.save(version, membership)
-                except (ValidationError, PermissionDenied) as error:
-                    # Keep a visible flash — rebuilding the sign form below
-                    # replaces the bound form and would hide field errors.
-                    signed_action_failure(
-                        request,
-                        error,
-                        action="The decision",
-                        next_step="Check your decision and reason, then sign again.",
-                    )
-                else:
-                    messages.success(
-                        request,
-                        "Decision recorded and added to the evidence chain. If approved, "
-                        "the proposal moves to the next required approval; if rejected, "
-                        "it returns to the creator for revision.",
-                    )
-                    return redirect("web:proposal-detail", pk=proposal.pk)
-            else:
-                # e.g. empty signature (MetaMask did not run / user left field blank)
-                detail = "; ".join(
-                    e for errs in form.errors.values() for e in errs
-                ) or "Form invalid."
-                messages.error(
-                    request,
-                    f"Decision not saved: {detail} "
-                    "Your reason and decision are still here. Connect the registered wallet and submit again.",
-                )
-
-    # Embed EIP-712 typed data so wallet-signing.js + MetaMask can fill signature.
-    if can_approve and version is not None:
-        # Always mint a fresh event id on render so a failed attempt cannot
-        # resubmit a stale signature against a new payload.
-        decision = "APPROVE"
-        reason = ""
-        if request.method == "POST" and form is not None and form.is_bound:
-            decision = (form.data.get("decision") or "APPROVE").upper()
-            reason = form.data.get("reason") or ""
-        elif request.method == "GET":
-            decision = (request.GET.get("decision") or "APPROVE").upper()
-        if decision not in ("APPROVE", "REJECT"):
-            decision = "APPROVE"
-        event_id = new_event_id()
-        form = ProposalDecisionForm(
-            initial={
-                "event_id": event_id,
-                "decision": decision,
-                "reason": reason,
-            }
-        )
-        try:
-            options = {
-                value: build_approval_evidence_typed_data(
-                    version, membership, value, event_id
-                )
-                for value in ("APPROVE", "REJECT")
-            }
-            typed_data = json.dumps(options[decision])
-            typed_data_options = json.dumps(options)
-        except (ValidationError, PermissionDenied, ValueError):
-            typed_data = None
-            typed_data_options = None
-
-    expected_signer = ""
-    if can_approve:
-        wallet = (
-            SignerWallet.objects.filter(membership=membership, active=True)
-            .order_by("pk")
-            .first()
-        )
-        if wallet is not None:
-            expected_signer = wallet.address
-
     if can_publish:
         from django.utils import timezone as dj_tz
 
@@ -627,7 +541,7 @@ def proposal_detail(request, pk):
             if package.get("forbidden_publisher"):
                 messages.warning(
                     request,
-                    "This user is blocked from publishing (creator / board approver / "
+                    "This user is blocked from publishing (creator / "
                     "payment recorder). Use pilot-eligible-publisher.",
                 )
         except (ValidationError, PermissionDenied, ValueError) as error:
@@ -682,13 +596,8 @@ def proposal_detail(request, pk):
             list_mode=False,
             proposal=proposal,
             version=version,
-            form=form if can_approve else None,
-            can_approve=can_approve,
             publish_form=publish_form if can_publish else None,
             can_publish=can_publish,
-            typed_data=typed_data,
-            typed_data_options=typed_data_options,
-            expected_signer=expected_signer,
             publish_typed_data=publish_typed_data,
             publish_expected_signer=publish_expected_signer,
             publication_pending=publication_pending,

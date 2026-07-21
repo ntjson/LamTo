@@ -19,7 +19,6 @@ from lamto.accounts.capabilities import (
     LEDGER_PUBLISH,
     PAYMENT_RECORD,
     PAYMENT_VERIFY,
-    PROPOSAL_APPROVE,
     PROPOSAL_CREATE,
     WORK_ACCEPT,
     WORK_ASSIGN,
@@ -32,7 +31,6 @@ from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
 from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.acceptance import accept_work, build_acceptance_evidence_typed_data
-from lamto.finance.approvals import build_approval_evidence_payload, decide_proposal
 from lamto.finance.fund import (
     allocate_fund_entry_id,
     build_fund_source_evidence_typed_data,
@@ -257,43 +255,10 @@ class IntegrityTests(TestCase):
             proposal, 18_500_000, "Company X", [quotation_original], signature, event_id
         )
 
-        board_approver, board_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PROPOSAL_APPROVE, "board-approve"
+        board_actor, board_account = self.make_signer(
+            building, OrganizationMembership.Role.BOARD, WORK_ACCEPT, "board-actor"
         )
-        grant_capability(board_approver, WORK_ACCEPT)
-        grant_capability(board_approver, PAYMENT_RECORD)
-        representative, rep_account = self.make_signer(
-            building,
-            OrganizationMembership.Role.RESIDENT_REP,
-            PROPOSAL_APPROVE,
-            "representative",
-        )
-        board_event = "0x" + secrets.token_hex(32)
-        rep_event = "0x" + secrets.token_hex(32)
-        board_payload = build_approval_evidence_payload(version, board_approver, "APPROVE")
-        board_typed = build_evidence_typed_data(
-            board_event,
-            EvidenceType.BOARD_APPROVAL,
-            "0x" + payload_hash(board_payload),
-            "0x" + version.outbox_event.payload_hash,
-        )
-        board_sig = Account.sign_message(
-            encode_typed_data(full_message=board_typed), board_account.key
-        ).signature.hex()
-        rep_payload = build_approval_evidence_payload(version, representative, "APPROVE")
-        rep_typed = build_evidence_typed_data(
-            rep_event,
-            EvidenceType.REPRESENTATIVE_APPROVAL,
-            "0x" + payload_hash(rep_payload),
-            "0x" + payload_hash(board_payload),
-        )
-        rep_sig = Account.sign_message(
-            encode_typed_data(full_message=rep_typed), rep_account.key
-        ).signature.hex()
-        decide_proposal(version, board_approver, "APPROVE", "Within budget", board_sig, board_event)
-        decide_proposal(
-            version, representative, "APPROVE", "Evidence checked", rep_sig, rep_event
-        )
+        grant_capability(board_actor, PAYMENT_RECORD)
 
         work_order.refresh_from_db()
         start_work_order(work_order, maintenance_user)
@@ -313,7 +278,7 @@ class IntegrityTests(TestCase):
         accept_event = "0x" + secrets.token_hex(32)
         accept_typed = build_acceptance_evidence_typed_data(
             work_order,
-            board_approver,
+            board_actor,
             18_500_000,
             invoice_original,
             invoice_redacted,
@@ -327,7 +292,7 @@ class IntegrityTests(TestCase):
         ).signature.hex()
         acceptance = accept_work(
             work_order,
-            board_approver,
+            board_actor,
             18_500_000,
             invoice_original,
             invoice_redacted,
@@ -402,8 +367,6 @@ class IntegrityTests(TestCase):
 
         self.confirm_chain(
             version.outbox_event,
-            version.approval_decisions.get(stage="BOARD").outbox_event,
-            version.approval_decisions.get(stage="RESIDENT_REP").outbox_event,
             acceptance.outbox_event,
             payment.outbox_event,
             verification.outbox_event,
@@ -473,12 +436,8 @@ class IntegrityTests(TestCase):
         resident_payload = _resident_payload(
             proposal, version, acceptance, payment, verification, document_hashes
         )
-        board_decision = version.approval_decisions.get(stage="BOARD")
-        rep_decision = version.approval_decisions.get(stage="RESIDENT_REP")
         prerequisite_event_hashes = [
             version.outbox_event.payload_hash,
-            board_decision.outbox_event.payload_hash,
-            rep_decision.outbox_event.payload_hash,
             acceptance.outbox_event.payload_hash,
             payment.outbox_event.payload_hash,
             verification.outbox_event.payload_hash,
@@ -621,7 +580,7 @@ class AnchoringAwareIntegrityTests(TestCase):
             building_name="Integrity Anchor Building", create_sample_report=False
         )
         driver = PilotDomainDriver(cls.seed)
-        driver.prepare_locally_approved_normal_work(None)
+        driver.prepare_local_normal_work(None)
         driver.complete_assigned_work()
         driver.accept_and_record_payment()
         driver.verify_payment()
@@ -676,4 +635,3 @@ class AnchoringAwareIntegrityTests(TestCase):
         self.assertEqual(
             observation.result, VerificationObservation.Result.UNAVAILABLE
         )
-

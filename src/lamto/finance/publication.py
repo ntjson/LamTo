@@ -18,7 +18,6 @@ from lamto.maintenance.models import WorkOrder
 from .fund import create_publication_outflow, get_or_create_fund
 from .models import (
     AcceptanceRecord,
-    ApprovalDecision,
     PaymentEvidence,
     PaymentVerification,
     Proposal,
@@ -150,37 +149,8 @@ def _load_execution_chain(proposal):
     return acceptance, payment, verification
 
 
-def _board_approval(version):
-    return (
-        ApprovalDecision.objects.select_related("outbox_event", "membership__user")
-        .filter(
-            version=version,
-            stage=ApprovalDecision.Stage.BOARD,
-            decision=ApprovalDecision.Decision.APPROVE,
-        )
-        .first()
-    )
-
-
-def _rep_approval(version):
-    return (
-        ApprovalDecision.objects.select_related("outbox_event", "membership__user")
-        .filter(
-            version=version,
-            stage=ApprovalDecision.Stage.RESIDENT_REP,
-            decision=ApprovalDecision.Decision.APPROVE,
-        )
-        .first()
-    )
-
-
 def _forbidden_publisher_user_ids(proposal, payment):
     forbidden = {proposal.creator_membership.user_id}
-    version = proposal.current_version
-    if version is not None:
-        board = _board_approval(version)
-        if board is not None:
-            forbidden.add(board.membership.user_id)
     forbidden.add(payment.recorder.user_id)
     return forbidden
 
@@ -189,7 +159,7 @@ def _assert_publisher_eligible(actor, proposal, payment):
     forbidden = _forbidden_publisher_user_ids(proposal, payment)
     if actor.user_id in forbidden:
         raise PermissionDenied(
-            "Publisher must not be the proposal creator, Board proposal approver, or payment recorder."
+            "Publisher must not be the proposal creator or payment recorder."
         )
 
 
@@ -204,8 +174,6 @@ def _resident_payload(
     work_order = proposal.work_order
     case = work_order.case
     report_id = case.decision.report_id
-    board = _board_approval(version)
-    rep = _rep_approval(version)
     payload = {
         "report_id": report_id,
         "case_id": case.pk,
@@ -221,20 +189,7 @@ def _resident_payload(
             "payment_id": payment.pk,
             "verification_event_hash": verification.outbox_event.payload_hash,
         },
-        "approvals": {},
     }
-    if board is not None:
-        payload["approvals"]["board"] = {
-            "membership_id": board.membership_id,
-            "decision": board.decision,
-            "user_id": board.membership.user_id,
-        }
-    if rep is not None:
-        payload["approvals"]["resident_rep"] = {
-            "membership_id": rep.membership_id,
-            "decision": rep.decision,
-            "user_id": rep.membership.user_id,
-        }
     return payload
 
 
@@ -383,11 +338,7 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
         raise ValidationError("Payment evidence status must be COMPLETED.")
 
     prerequisite_events = []
-    board = _board_approval(version)
-    rep = _rep_approval(version)
-    if board is None or rep is None:
-        raise ValidationError("Publication requires Board and resident-representative approvals.")
-    prerequisite_events.extend([version.outbox_event, board.outbox_event, rep.outbox_event])
+    prerequisite_events.append(version.outbox_event)
 
     prerequisite_events.extend(
         [acceptance.outbox_event, payment.outbox_event, verification.outbox_event]
@@ -473,11 +424,7 @@ def prepare_publication(
             raise ValidationError("Payment evidence status must be COMPLETED.")
 
         prerequisite_events = []
-        board = _board_approval(version)
-        rep = _rep_approval(version)
-        if board is None or rep is None:
-            raise ValidationError("Publication requires Board and resident-representative approvals.")
-        prerequisite_events.extend([version.outbox_event, board.outbox_event, rep.outbox_event])
+        prerequisite_events.append(version.outbox_event)
 
         prerequisite_events.extend(
             [
@@ -585,7 +532,7 @@ def prepare_publication(
             {"reason": "publisher dual-control violation"},
         )
         raise PermissionDenied(
-            "Publisher must not be the proposal creator, Board proposal approver, or payment recorder."
+            "Publisher must not be the proposal creator or payment recorder."
         )
     if gate_failure is not None:
         _record_gate_failure(

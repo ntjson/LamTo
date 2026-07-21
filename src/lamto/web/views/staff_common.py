@@ -237,7 +237,7 @@ ACCOUNTABILITY_STAGES = (
     ("report", _("Report")),
     ("triage", _("Triage")),
     ("work", _("Work")),
-    ("proposal", _("Proposal and approval")),
+    ("proposal", _("Proposal publication")),
     ("acceptance", _("Acceptance")),
     ("payment", _("Payment")),
     ("publication", _("Publication")),
@@ -281,7 +281,7 @@ def pop_sign_confirmation(request):
     return request.session.pop(SESSION_SIGN_CONFIRMATION_KEY, None)
 
 # Proposal statuses that clear the proposal stage.
-_PROPOSAL_APPROVED = frozenset({"NORMAL_AUTHORIZED"})
+_PROPOSAL_AUTHORIZED = frozenset({"NORMAL_AUTHORIZED"})
 _WORK_DONE = frozenset({"AWAITING_ACCEPTANCE", "ACCEPTED", "CLOSED"})
 _WORK_CLOSED = frozenset({"ACCEPTED", "CLOSED"})
 
@@ -456,9 +456,9 @@ def resolve_accountability_stage(
             return "payment", False, False
 
         proposal_status = getattr(proposal, "status", None) if proposal else None
-        approved = proposal_status in _PROPOSAL_APPROVED
+        authorized = proposal_status in _PROPOSAL_AUTHORIZED
         rejected = proposal_status == Proposal.Status.REJECTED or proposal_status == "REJECTED"
-        if approved:
+        if authorized:
             return "acceptance", False, False
 
         if requires_spending:

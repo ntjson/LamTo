@@ -9,7 +9,7 @@ pytestmark = pytest.mark.django_db
 
 def test_normal_work_can_start_pending_anchor_but_cannot_publish(page, seeded_pilot):
     seeded_pilot.pause_chain()
-    seeded_pilot.prepare_locally_approved_normal_work(page)
+    seeded_pilot.prepare_local_normal_work(page)
     work = seeded_pilot.login(page, "maintenance").start_assigned_work()
 
     assert work.verification_label == "Pending blockchain anchoring"

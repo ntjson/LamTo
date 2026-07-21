@@ -5,8 +5,8 @@ from lamto.accounts.models import SignerWallet
 
 class EvidenceType(models.IntegerChoices):
     PROPOSAL_CREATED = 1, "Proposal created"
-    BOARD_APPROVAL = 2, "Board approval"
-    REPRESENTATIVE_APPROVAL = 3, "Representative approval"
+    RESERVED_2 = 2, "Reserved"
+    RESERVED_3 = 3, "Reserved"
     RESERVED_4 = 4, "Reserved"
     RESERVED_5 = 5, "Reserved"
     WORK_ACCEPTANCE = 6, "Work acceptance"

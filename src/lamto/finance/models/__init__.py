@@ -1,4 +1,3 @@
-from .approvals import ApprovalDecision
 from .execution import AcceptanceRecord, PaymentEvidence, PaymentVerification
 from .ledger import (
     FundEntryVerification,
@@ -13,7 +12,6 @@ from .proposals import Proposal, ProposalDocument, ProposalVersion
 
 __all__ = [
     "AcceptanceRecord",
-    "ApprovalDecision",
     "FundEntryVerification",
     "MaintenanceFund",
     "MaintenanceFundEntry",

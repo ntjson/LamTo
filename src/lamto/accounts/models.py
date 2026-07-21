@@ -223,7 +223,7 @@ class BreakGlassSession(models.Model):
     """Insert-only elevated support session for technical administrators.
 
     Grants only account/organization support and health access — never
-    business approvals, financial/document contents, or stakeholder keys.
+    business decisions, financial/document contents, or stakeholder keys.
     """
 
     membership = models.ForeignKey(
