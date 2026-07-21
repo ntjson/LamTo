@@ -17,7 +17,7 @@ class ReportClientRefConflict(Exception):
 
 
 @transaction.atomic
-def submit_report(resident, unit, text, location, photo_versions, client_ref=None) -> IssueReport:
+def submit_report(resident, unit, text, location, photo_versions, client_ref=None, is_private=False) -> IssueReport:
     unit = Unit.objects.select_for_update().select_related("building").filter(
         pk=getattr(unit, "pk", None)
     ).first()
@@ -81,6 +81,7 @@ def submit_report(resident, unit, text, location, photo_versions, client_ref=Non
         selected_location=location,
         location_path_snapshot=location_path_snapshot,
         client_ref=client_ref,
+        is_private=is_private,
     )
     ReportPhoto.objects.bulk_create(
         [
@@ -119,7 +120,7 @@ def _content_matches(existing, text, unit, location) -> bool:
     )
 
 
-def submit_report_idempotent(resident, unit, text, location, photo_versions, client_ref):
+def submit_report_idempotent(resident, unit, text, location, photo_versions, client_ref, is_private=False):
     """Idempotent POST /reports entry point (spec 3.5). Returns (report, created)."""
     existing = IssueReport.objects.filter(reporter=resident, client_ref=client_ref).first()
     if existing is not None:
@@ -127,7 +128,10 @@ def submit_report_idempotent(resident, unit, text, location, photo_versions, cli
             return existing, False
         raise ReportClientRefConflict("client_ref reused with different content.")
     try:
-        report = submit_report(resident, unit, text, location, photo_versions, client_ref=client_ref)
+        report = submit_report(
+            resident, unit, text, location, photo_versions,
+            client_ref=client_ref, is_private=is_private,
+        )
     except IntegrityError:
         # Concurrent duplicate on the partial unique (reporter, client_ref): re-fetch.
         # Unrelated integrity failures (no matching row) must not masquerade as 409.

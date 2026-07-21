@@ -68,10 +68,17 @@ def resident_report_timeline(report):
                 "work_orders": work_orders,
             }
         )
+    info = report.info_requests.filter(resolved_at__isnull=True).first()
     return {
         "id": report.pk,
         "text": report.text,
         "status": report.status,
+        "declined_reason": report.declined_reason or None,
+        "is_private": report.is_private,
+        "open_info_request": (
+            {"id": info.pk, "message": info.message, "created_at": info.created_at}
+            if info else None
+        ),
         "location_path_snapshot": report.location_path_snapshot,
         "unit_label": report.unit.label,
         "created_at": report.created_at,

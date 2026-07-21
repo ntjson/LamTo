@@ -51,6 +51,7 @@ from lamto.api.serializers import (
     NotificationPreferenceUpdateSerializer,
     ReportCreateSerializer,
     ReportDetailSerializer,
+    InfoReplySerializer,
     ReportPhotoSerializer,
     ReportPhotoUploadSerializer,
     ReportSummarySerializer,
@@ -99,6 +100,7 @@ from lamto.finance.selectors import (
     published_ledger_entry_for_proof,
 )
 from lamto.maintenance.models import BuildingLocation, IssueReport, WorkOrder
+from lamto.maintenance.cases import reply_information
 from lamto.maintenance.ratings import rate_completed_work
 from lamto.maintenance.reporting import (
     ReportClientRefConflict,
@@ -497,6 +499,7 @@ class ReportListCreateView(generics.ListCreateAPIView):
                 location,
                 [],
                 serializer.validated_data["client_ref"],
+                serializer.validated_data["is_private"],
             )
         except ReportClientRefConflict:
             raise problems.ClientRefConflict()
@@ -529,6 +532,27 @@ class ReportDetailView(APIView):
                 args=[issue_download_token(request.user.pk, photo["id"])],
             )
         return Response(ReportDetailSerializer(timeline).data)
+
+
+class ReportInfoReplyView(APIView):
+    @extend_schema(
+        request=InfoReplySerializer,
+        responses={200: ReportSummarySerializer, **problem_responses(400, 401, 403, 404)},
+    )
+    def post(self, request, pk):
+        report = IssueReport.objects.filter(pk=pk, reporter=request.user).first()
+        if report is None:
+            raise exceptions.NotFound("Report not found.")
+        serializer = InfoReplySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            reply_information(request.user, report, serializer.validated_data["text"])
+        except DjangoValidationError as error:
+            raise exceptions.ValidationError(error.messages)
+        except DjangoPermissionDenied:
+            raise exceptions.PermissionDenied("Only the reporter may reply.")
+        report.refresh_from_db(fields=["status"])
+        return Response({"report_id": report.pk, "status": report.status})
 
 
 class ReportPhotoUploadView(APIView):

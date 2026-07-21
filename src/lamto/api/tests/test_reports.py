@@ -8,6 +8,7 @@ from knox.models import AuthToken
 
 from lamto.accounts.models import ResidentOccupancy
 from lamto.maintenance.models import IssueReport
+from lamto.maintenance.cases import request_information
 from lamto.testing.factories import seed_pilot_world
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-api-reports-")
@@ -72,6 +73,22 @@ class ReportCreateTests(TestCase):
         )
         assert again.status_code == 200, again.content
         assert IssueReport.objects.filter(reporter=self.resident).count() == 1
+
+    def test_private_create_and_info_reply(self):
+        created = self.client.post(
+            reverse("api:reports"), data=self._body(is_private=True),
+            content_type="application/json", headers=self._auth(),
+        )
+        report = IssueReport.objects.get(pk=created.json()["id"])
+        assert report.is_private is True
+        request_information(report, self.seed.management_users[0], "Which lift?")
+        response = self.client.post(
+            reverse("api:report-info-reply", kwargs={"pk": report.pk}),
+            data={"text": "The east lift"}, content_type="application/json",
+            headers=self._auth(),
+        )
+        assert response.status_code == 200, response.content
+        assert response.json()["status"] == IssueReport.Status.IN_REVIEW
 
     def test_same_ref_different_text_is_409(self):
         ref = str(uuid.uuid4())

@@ -8,7 +8,10 @@ from .models import AuditEvent
 def record_audit(actor, membership, action, target_type, target_id, result, metadata=None) -> AuditEvent:
     if membership is None:
         occupancy_id = (metadata or {}).get("occupancy_id")
-        resident_report = action == "report.submit" and target_type == "IssueReport"
+        resident_report = (action, target_type) in {
+            ("report.submit", "IssueReport"),
+            ("request.info_replied", "InfoRequest"),
+        }
         resident_rating = action == "work.rate" and target_type == "CompletionRating"
         resident_document = action == "document.upload" and target_type == "DocumentVersion"
         valid_occupancy = occupancy_id is not None and ResidentOccupancy.objects.filter(

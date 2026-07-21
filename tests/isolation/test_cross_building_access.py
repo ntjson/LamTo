@@ -108,6 +108,7 @@ API_TENANT_OBJECT = {
     "api:ledger-detail": ("ledger_pk", "GET", 404),
     "api:report-detail": ("report_pk", "GET", 404),
     "api:report-photos": ("report_pk", "POST", 404),
+    "api:report-info-reply": ("report_pk", "POST", 404),
     "api:work-rating": ("work_pk", "POST", 404),
     "api:notification-read": ("notification_pk", "POST", 404),
 }

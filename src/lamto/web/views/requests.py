@@ -27,9 +27,12 @@ from lamto.finance.proposals import (
     create_proposal,
     submit_proposal_version,
 )
-from lamto.maintenance.models import IssueReport, MaintenanceCase, WorkOrder
+from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion, WorkOrder
+from lamto.maintenance.cases import TERMINAL_STATUSES, decline_report, request_information
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
+    DeclineReportForm,
+    InfoRequestForm,
     CreateProposalForm,
     CreateWorkOrderForm,
     PreparePublicationForm,
@@ -162,6 +165,8 @@ def report_detail(request, pk):
         return redirect("web:case-detail", pk=link.case_id)
 
     form = ConfirmTriageForm(request.POST or None, building_id=building_id)
+    info_form = InfoRequestForm(request.POST or None)
+    decline_form = DeclineReportForm(request.POST or None)
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "confirm_triage":
@@ -188,6 +193,22 @@ def report_detail(request, pk):
                         "Triage confirmed. Create a work order to assign the repair.",
                     )
                     return redirect("web:case-detail", pk=case.pk)
+        elif action == "request_info" and info_form.is_valid():
+            try:
+                request_information(report, request.user, info_form.cleaned_data["message"])
+            except ValidationError as error:
+                messages.error(request, "; ".join(error.messages))
+            else:
+                messages.success(request, "Information requested.")
+            return redirect("web:staff-report-detail", pk=report.pk)
+        elif action == "decline" and decline_form.is_valid():
+            try:
+                decline_report(report, request.user, decline_form.cleaned_data["reason"])
+            except ValidationError as error:
+                messages.error(request, "; ".join(error.messages))
+            else:
+                messages.success(request, "Request declined.")
+            return redirect("web:staff-report-detail", pk=report.pk)
 
     return render(
         request,
@@ -204,6 +225,11 @@ def report_detail(request, pk):
             work_orders=[],
             list_mode=False,
             mode="report",
+            info_form=info_form,
+            decline_form=decline_form,
+            terminal=report.status in TERMINAL_STATUSES,
+            open_info_request=report.info_requests.filter(resolved_at__isnull=True).first(),
+            suggestion=TriageSuggestion.objects.filter(job__report=report).first(),
         ),
     )
 

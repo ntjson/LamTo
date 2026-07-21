@@ -73,6 +73,7 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
     now = timezone.now()
 
     items.extend(_manual_triage_items(building_id))
+    items.extend(_review_queue_items(building_id))
     items.extend(_deadline_risk_items(building_id))
     items.extend(_assigned_work_items(membership.user_id, building_id))
     items.extend(_work_acceptance_items(building_id))
@@ -124,6 +125,20 @@ def _manual_triage_items(building_id: int) -> list[ActionItem]:
             )
         )
     return items
+
+
+def _review_queue_items(building_id: int) -> list[ActionItem]:
+    return [
+        ActionItem(
+            kind="review_report", title=f"Review request #{report.pk}",
+            summary=report.text[:120], target_type="IssueReport", target_id=report.pk,
+            url=reverse("web:staff-report-detail", kwargs={"pk": report.pk}), priority=11,
+        )
+        for report in IssueReport.objects.filter(
+            building_id=building_id, status=IssueReport.Status.IN_REVIEW,
+            triage_decision__isnull=True,
+        ).order_by("created_at")[:20]
+    ]
 
 
 def _deadline_risk_items(building_id: int) -> list[ActionItem]:

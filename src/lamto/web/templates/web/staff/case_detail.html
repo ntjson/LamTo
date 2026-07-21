@@ -34,7 +34,7 @@
   <dl class="detail-list">
     <div><dt>{% trans "Category" %}</dt><dd>{{ case.category }}</dd></div>
     <div><dt>{% trans "Urgency" %}</dt><dd>{{ case.urgency|title }}</dd></div>
-    <div><dt>{% trans "Department" %}</dt><dd>{{ case.department }}</dd></div>
+    <div><dt>{% trans "Management queue" %}</dt><dd>{{ case.department }}</dd></div>
     <div><dt>{% trans "Deadline" %}</dt><dd>{% if case.deadline_at %}{{ case.deadline_at|staff_datetime }}{% else %}{% trans "Not set" %}{% endif %}</dd></div>
   </dl>
   <h2>{% trans "Work orders" %}</h2>
@@ -61,6 +61,12 @@
   </form>
   {% endif %}
   {% elif form %}
+  {% if report.declined_reason %}<p><strong>{% trans "Decline reason" %}:</strong> {{ report.declined_reason }}</p>{% endif %}
+  {% if open_info_request %}<p><strong>{% trans "Information requested" %}:</strong> {{ open_info_request.message }}{% if open_info_request.reply_text %}<br>{{ open_info_request.reply_text }}{% endif %}</p>{% endif %}
+  {% if suggestion %}
+  <p>{% trans "AI confidence" %}: {{ suggestion.confidence_percent }}%</p>
+  {% if suggestion.missing_information %}<ul>{% for item in suggestion.missing_information %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+  {% endif %}
   <h2>{% trans "Confirm triage" %}</h2>
   <form method="post" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
@@ -68,6 +74,12 @@
     {{ form.as_p }}
     <button type="submit" class="button button-primary">{% trans "Confirm triage" %}</button>
   </form>
+  {% if not terminal %}
+  <h2>{% trans "Request information" %}</h2>
+  <form method="post" class="stack-form">{% csrf_token %}<input type="hidden" name="action" value="request_info">{{ info_form.as_p }}<button type="submit" class="button">{% trans "Request information" %}</button></form>
+  <h2>{% trans "Decline request" %}</h2>
+  <form method="post" class="stack-form">{% csrf_token %}<input type="hidden" name="action" value="decline">{{ decline_form.as_p }}<button type="submit" class="button">{% trans "Decline request" %}</button></form>
+  {% endif %}
   {% endif %}
 </section>
 {% endif %}

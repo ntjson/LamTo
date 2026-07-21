@@ -114,6 +114,28 @@ class ManagementWorkspaceTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, f"Case #{case.pk}")
 
+    def test_report_info_and_decline_actions(self):
+        membership = self.login_management()
+        location = BuildingLocation.objects.create(building=membership.building, name="Lobby")
+        resident = get_user_model().objects.create_user(
+            email="outcomes@example.test", password="secret", display_name="Resident"
+        )
+        unit = Unit.objects.create(building=membership.building, label="A-2")
+        report = IssueReport.objects.create(
+            reporter=resident, unit=unit, building=membership.building, text="Leak",
+            selected_location=location, location_path_snapshot="Tower / Lobby",
+            status=IssueReport.Status.IN_REVIEW,
+        )
+        url = reverse("web:staff-report-detail", kwargs={"pk": report.pk})
+        self.client.post(url, {"action": "request_info", "message": "Which tap?"})
+        report.refresh_from_db()
+        self.assertEqual(report.status, IssueReport.Status.NEEDS_INFO)
+        report.info_requests.update(resolved_at=timezone.now())
+        self.client.post(url, {"action": "decline", "reason": "Already repaired"})
+        report.refresh_from_db()
+        self.assertEqual(report.status, IssueReport.Status.DECLINED)
+        self.assertEqual(report.declined_reason, "Already repaired")
+
     def test_recorder_and_second_manager_can_reach_separate_payment_steps(self):
         seed = seed_pilot_world(
             building_name="Payment Tower",

@@ -69,6 +69,14 @@ class ConfirmTriageForm(forms.Form):
         )
 
 
+class InfoRequestForm(forms.Form):
+    message = forms.CharField(widget=forms.Textarea, label="What information is missing?")
+
+
+class DeclineReportForm(forms.Form):
+    reason = forms.CharField(widget=forms.Textarea, label="Reason shown to the resident")
+
+
 class CreateWorkOrderForm(forms.Form):
     assignee = forms.ModelChoiceField(
         queryset=ManagementMembership.objects.none(),

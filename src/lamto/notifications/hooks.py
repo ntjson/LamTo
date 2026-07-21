@@ -44,6 +44,23 @@ def notify_report_receipt(report):
     )
 
 
+def notify_info_requested(info_request):
+    report = info_request.report
+    notify_users(
+        [report.reporter], event_key=f"info_requested:report:{report.pk}:info:{info_request.pk}",
+        subject="More information requested", body=info_request.message,
+        event_code="info_requested", building=report.unit.building_id,
+    )
+
+
+def notify_report_declined(report):
+    notify_users(
+        [report.reporter], event_key=f"report_declined:report:{report.pk}",
+        subject="Request declined", body=report.declined_reason,
+        event_code="report_declined", building=report.unit.building_id,
+    )
+
+
 def notify_triage_confirmed(case, report):
     recipients = [report.reporter] + _management_users(case.building_id)
     notify_users(

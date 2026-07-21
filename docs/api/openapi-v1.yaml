@@ -788,6 +788,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Resource not found (code=not_found).
+  /api/v1/reports/{id}/info-reply:
+    post:
+      operationId: reports_info_reply_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfoReplyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InfoReplyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InfoReplyRequest'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSummary'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
   /api/v1/reports/{id}/photos:
     post:
       operationId: reports_photos_create
@@ -985,6 +1042,14 @@ components:
       - period_days
       - period_inflows_vnd
       - period_outflows_vnd
+    InfoReplyRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+      required:
+      - text
     LedgerEntryDetail:
       type: object
       properties:
@@ -1394,6 +1459,9 @@ components:
           type: string
           minLength: 1
           maxLength: 5000
+        is_private:
+          type: boolean
+          default: false
         location_id:
           type: integer
           description: Active BuildingLocation id in the resolved occupancy building.
@@ -1409,7 +1477,16 @@ components:
         text:
           type: string
         status:
+          $ref: '#/components/schemas/StatusEnum'
+        declined_reason:
           type: string
+          nullable: true
+        is_private:
+          type: boolean
+        open_info_request:
+          type: object
+          additionalProperties: {}
+          nullable: true
         location_path_snapshot:
           type: string
         unit_label:
@@ -1435,8 +1512,11 @@ components:
       - cases
       - category
       - created_at
+      - declined_reason
       - id
+      - is_private
       - location_path_snapshot
+      - open_info_request
       - photos
       - status
       - text
@@ -1475,7 +1555,7 @@ components:
         text:
           type: string
         status:
-          type: string
+          $ref: '#/components/schemas/StatusEnum'
         location_path_snapshot:
           type: string
         created_at:
@@ -1514,6 +1594,26 @@ components:
       - deadline_at
       - id
       - status
+    StatusEnum:
+      enum:
+      - SUBMITTED
+      - IN_REVIEW
+      - NEEDS_INFO
+      - DECLINED
+      - IN_PROGRESS
+      - PROPOSED
+      - COMPLETED
+      - CLOSED
+      type: string
+      description: |-
+        * `SUBMITTED` - Submitted
+        * `IN_REVIEW` - In review
+        * `NEEDS_INFO` - Needs information
+        * `DECLINED` - Declined
+        * `IN_PROGRESS` - In progress
+        * `PROPOSED` - Proposed
+        * `COMPLETED` - Completed
+        * `CLOSED` - Closed
     TokenResponse:
       type: object
       properties:

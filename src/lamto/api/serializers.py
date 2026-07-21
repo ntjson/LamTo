@@ -2,6 +2,8 @@
 
 from rest_framework import serializers
 
+from lamto.maintenance.models import IssueReport
+
 
 class ProblemSerializer(serializers.Serializer):
     """RFC 9457 problem+json body with a LamTo stable machine ``code`` (spec 3.1).
@@ -200,6 +202,7 @@ class ReportCreateSerializer(serializers.Serializer):
         help_text="Client-generated UUID, unique per user (spec 3.5)."
     )
     text = serializers.CharField(max_length=5000)
+    is_private = serializers.BooleanField(required=False, default=False)
     location_id = serializers.IntegerField(
         help_text="Active BuildingLocation id in the resolved occupancy building."
     )
@@ -208,7 +211,7 @@ class ReportCreateSerializer(serializers.Serializer):
 class ReportSummarySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     text = serializers.CharField()
-    status = serializers.CharField()
+    status = serializers.ChoiceField(choices=IssueReport.Status.choices)
     location_path_snapshot = serializers.CharField()
     created_at = serializers.DateTimeField()
 
@@ -245,7 +248,10 @@ class ReportCaseSerializer(serializers.Serializer):
 class ReportDetailSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     text = serializers.CharField()
-    status = serializers.CharField()
+    status = serializers.ChoiceField(choices=IssueReport.Status.choices)
+    declined_reason = serializers.CharField(allow_null=True)
+    is_private = serializers.BooleanField()
+    open_info_request = serializers.DictField(allow_null=True)
     location_path_snapshot = serializers.CharField()
     unit_label = serializers.CharField()
     created_at = serializers.DateTimeField()
@@ -253,6 +259,10 @@ class ReportDetailSerializer(serializers.Serializer):
     category = serializers.CharField(allow_null=True)
     photos = ReportPhotoSerializer(many=True)
     cases = ReportCaseSerializer(many=True)
+
+
+class InfoReplySerializer(serializers.Serializer):
+    text = serializers.CharField()
 
 
 class WorkRatingSerializer(serializers.Serializer):
