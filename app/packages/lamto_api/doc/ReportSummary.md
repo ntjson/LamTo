@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **int** |  | 
 **text** | **String** |  | 
-**status** | **String** |  | 
+**status** | [**StatusEnum**](StatusEnum.md) |  | 
 **locationPathSnapshot** | **String** |  | 
 **createdAt** | [**DateTime**](DateTime.md) |  | 
 

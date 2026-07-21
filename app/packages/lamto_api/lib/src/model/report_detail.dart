@@ -6,6 +6,8 @@
 import 'package:built_collection/built_collection.dart';
 import 'package:lamto_api/src/model/report_case.dart';
 import 'package:lamto_api/src/model/report_photo.dart';
+import 'package:built_value/json_object.dart';
+import 'package:lamto_api/src/model/status_enum.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -17,6 +19,9 @@ part 'report_detail.g.dart';
 /// * [id] 
 /// * [text] 
 /// * [status] 
+/// * [declinedReason] 
+/// * [isPrivate] 
+/// * [openInfoRequest] 
 /// * [locationPathSnapshot] 
 /// * [unitLabel] 
 /// * [createdAt] 
@@ -33,7 +38,17 @@ abstract class ReportDetail implements Built<ReportDetail, ReportDetailBuilder> 
   String get text;
 
   @BuiltValueField(wireName: r'status')
-  String get status;
+  StatusEnum get status;
+  // enum statusEnum {  SUBMITTED,  IN_REVIEW,  NEEDS_INFO,  DECLINED,  IN_PROGRESS,  PROPOSED,  COMPLETED,  CLOSED,  };
+
+  @BuiltValueField(wireName: r'declined_reason')
+  String? get declinedReason;
+
+  @BuiltValueField(wireName: r'is_private')
+  bool get isPrivate;
+
+  @BuiltValueField(wireName: r'open_info_request')
+  BuiltMap<String, JsonObject?>? get openInfoRequest;
 
   @BuiltValueField(wireName: r'location_path_snapshot')
   String get locationPathSnapshot;
@@ -92,7 +107,22 @@ class _$ReportDetailSerializer implements PrimitiveSerializer<ReportDetail> {
     yield r'status';
     yield serializers.serialize(
       object.status,
-      specifiedType: const FullType(String),
+      specifiedType: const FullType(StatusEnum),
+    );
+    yield r'declined_reason';
+    yield object.declinedReason == null ? null : serializers.serialize(
+      object.declinedReason,
+      specifiedType: const FullType.nullable(String),
+    );
+    yield r'is_private';
+    yield serializers.serialize(
+      object.isPrivate,
+      specifiedType: const FullType(bool),
+    );
+    yield r'open_info_request';
+    yield object.openInfoRequest == null ? null : serializers.serialize(
+      object.openInfoRequest,
+      specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
     );
     yield r'location_path_snapshot';
     yield serializers.serialize(
@@ -169,9 +199,32 @@ class _$ReportDetailSerializer implements PrimitiveSerializer<ReportDetail> {
         case r'status':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType(StatusEnum),
+          ) as StatusEnum;
           result.status = valueDes;
+          break;
+        case r'declined_reason':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.declinedReason = valueDes;
+          break;
+        case r'is_private':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.isPrivate = valueDes;
+          break;
+        case r'open_info_request':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+          ) as BuiltMap<String, JsonObject?>?;
+          if (valueDes == null) continue;
+          result.openInfoRequest.replace(valueDes);
           break;
         case r'location_path_snapshot':
           final valueDes = serializers.deserialize(

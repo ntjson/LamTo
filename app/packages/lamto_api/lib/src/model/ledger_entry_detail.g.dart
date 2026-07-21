@@ -24,15 +24,15 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
   @override
   final String why;
   @override
-  final BuiltList<LedgerApprover> approvers;
-  @override
   final JsonObject? payload;
   @override
   final Verification? verification;
   @override
-  final BuiltList<RedactedDocument> redactedDocuments;
+  final BuiltList<JsonObject?> approvers;
   @override
-  final BuiltList<Correction> corrections;
+  final BuiltList<JsonObject?> corrections;
+  @override
+  final BuiltList<RedactedDocument> redactedDocuments;
   @override
   final Proof proof;
 
@@ -49,11 +49,11 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
       required this.integrityStatus,
       required this.whatWasFixed,
       required this.why,
-      required this.approvers,
       this.payload,
       this.verification,
-      required this.redactedDocuments,
+      required this.approvers,
       required this.corrections,
+      required this.redactedDocuments,
       required this.proof})
       : super._();
   @override
@@ -76,11 +76,11 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
         integrityStatus == other.integrityStatus &&
         whatWasFixed == other.whatWasFixed &&
         why == other.why &&
-        approvers == other.approvers &&
         payload == other.payload &&
         verification == other.verification &&
-        redactedDocuments == other.redactedDocuments &&
+        approvers == other.approvers &&
         corrections == other.corrections &&
+        redactedDocuments == other.redactedDocuments &&
         proof == other.proof;
   }
 
@@ -95,11 +95,11 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
     _$hash = $jc(_$hash, integrityStatus.hashCode);
     _$hash = $jc(_$hash, whatWasFixed.hashCode);
     _$hash = $jc(_$hash, why.hashCode);
-    _$hash = $jc(_$hash, approvers.hashCode);
     _$hash = $jc(_$hash, payload.hashCode);
     _$hash = $jc(_$hash, verification.hashCode);
-    _$hash = $jc(_$hash, redactedDocuments.hashCode);
+    _$hash = $jc(_$hash, approvers.hashCode);
     _$hash = $jc(_$hash, corrections.hashCode);
+    _$hash = $jc(_$hash, redactedDocuments.hashCode);
     _$hash = $jc(_$hash, proof.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -116,11 +116,11 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
           ..add('integrityStatus', integrityStatus)
           ..add('whatWasFixed', whatWasFixed)
           ..add('why', why)
-          ..add('approvers', approvers)
           ..add('payload', payload)
           ..add('verification', verification)
-          ..add('redactedDocuments', redactedDocuments)
+          ..add('approvers', approvers)
           ..add('corrections', corrections)
+          ..add('redactedDocuments', redactedDocuments)
           ..add('proof', proof))
         .toString();
   }
@@ -166,12 +166,6 @@ class LedgerEntryDetailBuilder
   String? get why => _$this._why;
   set why(String? why) => _$this._why = why;
 
-  ListBuilder<LedgerApprover>? _approvers;
-  ListBuilder<LedgerApprover> get approvers =>
-      _$this._approvers ??= ListBuilder<LedgerApprover>();
-  set approvers(ListBuilder<LedgerApprover>? approvers) =>
-      _$this._approvers = approvers;
-
   JsonObject? _payload;
   JsonObject? get payload => _$this._payload;
   set payload(JsonObject? payload) => _$this._payload = payload;
@@ -182,17 +176,23 @@ class LedgerEntryDetailBuilder
   set verification(VerificationBuilder? verification) =>
       _$this._verification = verification;
 
+  ListBuilder<JsonObject?>? _approvers;
+  ListBuilder<JsonObject?> get approvers =>
+      _$this._approvers ??= ListBuilder<JsonObject?>();
+  set approvers(ListBuilder<JsonObject?>? approvers) =>
+      _$this._approvers = approvers;
+
+  ListBuilder<JsonObject?>? _corrections;
+  ListBuilder<JsonObject?> get corrections =>
+      _$this._corrections ??= ListBuilder<JsonObject?>();
+  set corrections(ListBuilder<JsonObject?>? corrections) =>
+      _$this._corrections = corrections;
+
   ListBuilder<RedactedDocument>? _redactedDocuments;
   ListBuilder<RedactedDocument> get redactedDocuments =>
       _$this._redactedDocuments ??= ListBuilder<RedactedDocument>();
   set redactedDocuments(ListBuilder<RedactedDocument>? redactedDocuments) =>
       _$this._redactedDocuments = redactedDocuments;
-
-  ListBuilder<Correction>? _corrections;
-  ListBuilder<Correction> get corrections =>
-      _$this._corrections ??= ListBuilder<Correction>();
-  set corrections(ListBuilder<Correction>? corrections) =>
-      _$this._corrections = corrections;
 
   ProofBuilder? _proof;
   ProofBuilder get proof => _$this._proof ??= ProofBuilder();
@@ -213,11 +213,11 @@ class LedgerEntryDetailBuilder
       _integrityStatus = $v.integrityStatus;
       _whatWasFixed = $v.whatWasFixed;
       _why = $v.why;
-      _approvers = $v.approvers.toBuilder();
       _payload = $v.payload;
       _verification = $v.verification?.toBuilder();
-      _redactedDocuments = $v.redactedDocuments.toBuilder();
+      _approvers = $v.approvers.toBuilder();
       _corrections = $v.corrections.toBuilder();
+      _redactedDocuments = $v.redactedDocuments.toBuilder();
       _proof = $v.proof.toBuilder();
       _$v = null;
     }
@@ -257,25 +257,24 @@ class LedgerEntryDetailBuilder
                 whatWasFixed, r'LedgerEntryDetail', 'whatWasFixed'),
             why: BuiltValueNullFieldError.checkNotNull(
                 why, r'LedgerEntryDetail', 'why'),
-            approvers: approvers.build(),
             payload: payload,
             verification: _verification?.build(),
-            redactedDocuments: redactedDocuments.build(),
+            approvers: approvers.build(),
             corrections: corrections.build(),
+            redactedDocuments: redactedDocuments.build(),
             proof: proof.build(),
           );
     } catch (_) {
       late String _$failedField;
       try {
-        _$failedField = 'approvers';
-        approvers.build();
-
         _$failedField = 'verification';
         _verification?.build();
-        _$failedField = 'redactedDocuments';
-        redactedDocuments.build();
+        _$failedField = 'approvers';
+        approvers.build();
         _$failedField = 'corrections';
         corrections.build();
+        _$failedField = 'redactedDocuments';
+        redactedDocuments.build();
         _$failedField = 'proof';
         proof.build();
       } catch (e) {

@@ -32,8 +32,23 @@ void main() {
       // TODO
     });
 
-    // BuiltList<ReportWorkOrder> workOrders
-    test('to test the property `workOrders`', () async {
+    // DateTime completedAt
+    test('to test the property `completedAt`', () async {
+      // TODO
+    });
+
+    // DateTime closedAt
+    test('to test the property `closedAt`', () async {
+      // TODO
+    });
+
+    // BuiltList<ReportWorkUpdate> updates
+    test('to test the property `updates`', () async {
+      // TODO
+    });
+
+    // bool canRate
+    test('to test the property `canRate`', () async {
       // TODO
     });
 

@@ -12,7 +12,13 @@ class _$ReportDetail extends ReportDetail {
   @override
   final String text;
   @override
-  final String status;
+  final StatusEnum status;
+  @override
+  final String? declinedReason;
+  @override
+  final bool isPrivate;
+  @override
+  final BuiltMap<String, JsonObject?>? openInfoRequest;
   @override
   final String locationPathSnapshot;
   @override
@@ -35,6 +41,9 @@ class _$ReportDetail extends ReportDetail {
       {required this.id,
       required this.text,
       required this.status,
+      this.declinedReason,
+      required this.isPrivate,
+      this.openInfoRequest,
       required this.locationPathSnapshot,
       required this.unitLabel,
       required this.createdAt,
@@ -57,6 +66,9 @@ class _$ReportDetail extends ReportDetail {
         id == other.id &&
         text == other.text &&
         status == other.status &&
+        declinedReason == other.declinedReason &&
+        isPrivate == other.isPrivate &&
+        openInfoRequest == other.openInfoRequest &&
         locationPathSnapshot == other.locationPathSnapshot &&
         unitLabel == other.unitLabel &&
         createdAt == other.createdAt &&
@@ -72,6 +84,9 @@ class _$ReportDetail extends ReportDetail {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
+    _$hash = $jc(_$hash, declinedReason.hashCode);
+    _$hash = $jc(_$hash, isPrivate.hashCode);
+    _$hash = $jc(_$hash, openInfoRequest.hashCode);
     _$hash = $jc(_$hash, locationPathSnapshot.hashCode);
     _$hash = $jc(_$hash, unitLabel.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
@@ -89,6 +104,9 @@ class _$ReportDetail extends ReportDetail {
           ..add('id', id)
           ..add('text', text)
           ..add('status', status)
+          ..add('declinedReason', declinedReason)
+          ..add('isPrivate', isPrivate)
+          ..add('openInfoRequest', openInfoRequest)
           ..add('locationPathSnapshot', locationPathSnapshot)
           ..add('unitLabel', unitLabel)
           ..add('createdAt', createdAt)
@@ -112,9 +130,24 @@ class ReportDetailBuilder
   String? get text => _$this._text;
   set text(String? text) => _$this._text = text;
 
-  String? _status;
-  String? get status => _$this._status;
-  set status(String? status) => _$this._status = status;
+  StatusEnum? _status;
+  StatusEnum? get status => _$this._status;
+  set status(StatusEnum? status) => _$this._status = status;
+
+  String? _declinedReason;
+  String? get declinedReason => _$this._declinedReason;
+  set declinedReason(String? declinedReason) =>
+      _$this._declinedReason = declinedReason;
+
+  bool? _isPrivate;
+  bool? get isPrivate => _$this._isPrivate;
+  set isPrivate(bool? isPrivate) => _$this._isPrivate = isPrivate;
+
+  MapBuilder<String, JsonObject?>? _openInfoRequest;
+  MapBuilder<String, JsonObject?> get openInfoRequest =>
+      _$this._openInfoRequest ??= MapBuilder<String, JsonObject?>();
+  set openInfoRequest(MapBuilder<String, JsonObject?>? openInfoRequest) =>
+      _$this._openInfoRequest = openInfoRequest;
 
   String? _locationPathSnapshot;
   String? get locationPathSnapshot => _$this._locationPathSnapshot;
@@ -157,6 +190,9 @@ class ReportDetailBuilder
       _id = $v.id;
       _text = $v.text;
       _status = $v.status;
+      _declinedReason = $v.declinedReason;
+      _isPrivate = $v.isPrivate;
+      _openInfoRequest = $v.openInfoRequest?.toBuilder();
       _locationPathSnapshot = $v.locationPathSnapshot;
       _unitLabel = $v.unitLabel;
       _createdAt = $v.createdAt;
@@ -193,6 +229,10 @@ class ReportDetailBuilder
                 text, r'ReportDetail', 'text'),
             status: BuiltValueNullFieldError.checkNotNull(
                 status, r'ReportDetail', 'status'),
+            declinedReason: declinedReason,
+            isPrivate: BuiltValueNullFieldError.checkNotNull(
+                isPrivate, r'ReportDetail', 'isPrivate'),
+            openInfoRequest: _openInfoRequest?.build(),
             locationPathSnapshot: BuiltValueNullFieldError.checkNotNull(
                 locationPathSnapshot, r'ReportDetail', 'locationPathSnapshot'),
             unitLabel: BuiltValueNullFieldError.checkNotNull(
@@ -207,6 +247,9 @@ class ReportDetailBuilder
     } catch (_) {
       late String _$failedField;
       try {
+        _$failedField = 'openInfoRequest';
+        _openInfoRequest?.build();
+
         _$failedField = 'photos';
         photos.build();
         _$failedField = 'cases';

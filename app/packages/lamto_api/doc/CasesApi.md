@@ -1,4 +1,4 @@
-# lamto_api.api.WorkApi
+# lamto_api.api.CasesApi
 
 ## Load the API package
 ```dart
@@ -9,11 +9,11 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**workRatingCreate**](WorkApi.md#workratingcreate) | **POST** /api/v1/work/{id}/rating | 
+[**casesRatingCreate**](CasesApi.md#casesratingcreate) | **POST** /api/v1/cases/{id}/rating | 
 
 
-# **workRatingCreate**
-> WorkRatingResult workRatingCreate(id, workRatingRequest)
+# **casesRatingCreate**
+> CaseRatingResult casesRatingCreate(id, caseRatingRequest)
 
 
 
@@ -25,15 +25,15 @@ import 'package:lamto_api/api.dart';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
-final api = LamtoApi().getWorkApi();
+final api = LamtoApi().getCasesApi();
 final int id = 56; // int | 
-final WorkRatingRequest workRatingRequest = ; // WorkRatingRequest | 
+final CaseRatingRequest caseRatingRequest = ; // CaseRatingRequest | 
 
 try {
-    final response = api.workRatingCreate(id, workRatingRequest);
+    final response = api.casesRatingCreate(id, caseRatingRequest);
     print(response);
 } catch on DioException (e) {
-    print('Exception when calling WorkApi->workRatingCreate: $e\n');
+    print('Exception when calling CasesApi->casesRatingCreate: $e\n');
 }
 ```
 
@@ -42,11 +42,11 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **int**|  | 
- **workRatingRequest** | [**WorkRatingRequest**](WorkRatingRequest.md)|  | 
+ **caseRatingRequest** | [**CaseRatingRequest**](CaseRatingRequest.md)|  | 
 
 ### Return type
 
-[**WorkRatingResult**](WorkRatingResult.md)
+[**CaseRatingResult**](CaseRatingResult.md)
 
 ### Authorization
 

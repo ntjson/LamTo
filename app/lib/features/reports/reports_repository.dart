@@ -12,7 +12,7 @@ abstract final class ReportsApiPaths {
   static const reportDetail = '/api/v1/reports/{id}';
   static const reportPhotos = '/api/v1/reports/{id}/photos';
   static const locations = '/api/v1/locations';
-  static const workRating = '/api/v1/work/{id}/rating';
+  static const caseRating = '/api/v1/cases/{id}/rating';
 }
 
 abstract class ReportsRepository {
@@ -28,9 +28,9 @@ abstract class ReportsRepository {
     required String path,
     required String filename,
   });
-  Future<WorkRatingResult> rateWork({
-    required int workOrderId,
-    required int score,
+  Future<CaseRatingResult> rateCase({
+    required int caseId,
+    required bool satisfied,
     String comment = '',
   });
   Future<List<Location>> fetchLocations();
@@ -40,13 +40,13 @@ abstract class ReportsRepository {
 /// (token + X-LamTo-Occupancy interceptors already installed).
 class DioReportsRepository implements ReportsRepository {
   DioReportsRepository(Dio dio)
-      : _reports = ReportsApi(dio, standardSerializers),
-        _locations = LocationsApi(dio, standardSerializers),
-        _work = WorkApi(dio, standardSerializers);
+    : _reports = ReportsApi(dio, standardSerializers),
+      _locations = LocationsApi(dio, standardSerializers),
+      _cases = CasesApi(dio, standardSerializers);
 
   final ReportsApi _reports;
   final LocationsApi _locations;
-  final WorkApi _work;
+  final CasesApi _cases;
 
   @override
   Future<ReportSummary> createReport({
@@ -97,16 +97,16 @@ class DioReportsRepository implements ReportsRepository {
   }
 
   @override
-  Future<WorkRatingResult> rateWork({
-    required int workOrderId,
-    required int score,
+  Future<CaseRatingResult> rateCase({
+    required int caseId,
+    required bool satisfied,
     String comment = '',
   }) async {
-    final res = await _work.workRatingCreate(
-      id: workOrderId,
-      workRatingRequest: WorkRatingRequest(
+    final res = await _cases.casesRatingCreate(
+      id: caseId,
+      caseRatingRequest: CaseRatingRequest(
         (b) => b
-          ..score = score
+          ..satisfied = satisfied
           ..comment = comment,
       ),
     );
@@ -130,21 +130,22 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
   (ref) => DioReportsRepository(ref.watch(dioProvider)),
 );
 
-final reportDraftStoreProvider =
-    Provider<ReportDraftStore>((ref) => ReportDraftStore());
+final reportDraftStoreProvider = Provider<ReportDraftStore>(
+  (ref) => ReportDraftStore(),
+);
 
-final reportPhotoFileStoreProvider =
-    Provider<ReportPhotoFileStore>((ref) => ReportPhotoFileStore());
+final reportPhotoFileStoreProvider = Provider<ReportPhotoFileStore>(
+  (ref) => ReportPhotoFileStore(),
+);
 
 /// Building-scoped caches rebuild on occupancy change (providers.dart contract).
-final locationsProvider =
-    FutureProvider.autoDispose<List<Location>>((ref) {
+final locationsProvider = FutureProvider.autoDispose<List<Location>>((ref) {
   ref.watch(occupancyScopedProviders);
   return ref.watch(reportsRepositoryProvider).fetchLocations();
 });
 
-final reportDetailProvider =
-    FutureProvider.autoDispose.family<ReportDetail, int>((ref, id) {
-  ref.watch(occupancyScopedProviders);
-  return ref.watch(reportsRepositoryProvider).fetchReport(id);
-});
+final reportDetailProvider = FutureProvider.autoDispose
+    .family<ReportDetail, int>((ref, id) {
+      ref.watch(occupancyScopedProviders);
+      return ref.watch(reportsRepositoryProvider).fetchReport(id);
+    });

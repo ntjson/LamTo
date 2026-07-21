@@ -13,23 +13,26 @@ import 'issue_detail_screen.dart';
 import 'reports_repository.dart';
 
 /// Plain-language status labels (DESIGN.md: color never alone).
-String reportStatusLabel(String status, AppLocalizations l10n) =>
+String reportStatusLabel(StatusEnum status, AppLocalizations l10n) =>
     switch (status) {
-      'COMPLETED' || 'CLOSED' => l10n.statusResolved,
-      'SUBMITTED' ||
-      'IN_REVIEW' ||
-      'NEEDS_INFO' ||
-      'IN_PROGRESS' ||
-      'PROPOSED' => l10n.statusOpen,
-      _ => status,
+      StatusEnum.COMPLETED || StatusEnum.CLOSED => l10n.statusResolved,
+      StatusEnum.DECLINED => l10n.statusDeclined,
+      StatusEnum.SUBMITTED ||
+      StatusEnum.IN_REVIEW ||
+      StatusEnum.NEEDS_INFO ||
+      StatusEnum.IN_PROGRESS ||
+      StatusEnum.PROPOSED => l10n.statusOpen,
+      _ => status.name,
     };
 
-bool isActiveReportStatus(String status) =>
-    status != 'DECLINED' && status != 'COMPLETED' && status != 'CLOSED';
+bool isActiveReportStatus(StatusEnum status) =>
+    status != StatusEnum.DECLINED &&
+    status != StatusEnum.COMPLETED &&
+    status != StatusEnum.CLOSED;
 
-StatusTone reportStatusTone(String status) => switch (status) {
-  'COMPLETED' || 'CLOSED' => StatusTone.success,
-  'DECLINED' => StatusTone.warning,
+StatusTone reportStatusTone(StatusEnum status) => switch (status) {
+  StatusEnum.COMPLETED || StatusEnum.CLOSED => StatusTone.success,
+  StatusEnum.DECLINED => StatusTone.warning,
   _ => StatusTone.info,
 };
 

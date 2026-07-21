@@ -42,7 +42,7 @@ void main() {
       ReportsApiPaths.reportDetail,
       ReportsApiPaths.reportPhotos,
       ReportsApiPaths.locations,
-      ReportsApiPaths.workRating,
+      ReportsApiPaths.caseRating,
     ]) {
       expect(openApiPaths, contains(path), reason: path);
     }

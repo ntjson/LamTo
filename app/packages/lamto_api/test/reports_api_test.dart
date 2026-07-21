@@ -12,6 +12,11 @@ void main() {
       // TODO
     });
 
+    //Future<InfoReplyResult> reportsInfoReplyCreate(int id, InfoReplyRequest infoReplyRequest) async
+    test('test reportsInfoReplyCreate', () async {
+      // TODO
+    });
+
     //Future<PaginatedReportSummaryList> reportsList({ String cursor }) async
     test('test reportsList', () async {
       // TODO

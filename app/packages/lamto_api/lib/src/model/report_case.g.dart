@@ -18,7 +18,13 @@ class _$ReportCase extends ReportCase {
   @override
   final bool active;
   @override
-  final BuiltList<ReportWorkOrder> workOrders;
+  final DateTime? completedAt;
+  @override
+  final DateTime? closedAt;
+  @override
+  final BuiltList<ReportWorkUpdate> updates;
+  @override
+  final bool canRate;
 
   factory _$ReportCase([void Function(ReportCaseBuilder)? updates]) =>
       (ReportCaseBuilder()..update(updates))._build();
@@ -29,7 +35,10 @@ class _$ReportCase extends ReportCase {
       required this.urgency,
       required this.deadlineAt,
       required this.active,
-      required this.workOrders})
+      this.completedAt,
+      this.closedAt,
+      required this.updates,
+      required this.canRate})
       : super._();
   @override
   ReportCase rebuild(void Function(ReportCaseBuilder) updates) =>
@@ -47,7 +56,10 @@ class _$ReportCase extends ReportCase {
         urgency == other.urgency &&
         deadlineAt == other.deadlineAt &&
         active == other.active &&
-        workOrders == other.workOrders;
+        completedAt == other.completedAt &&
+        closedAt == other.closedAt &&
+        updates == other.updates &&
+        canRate == other.canRate;
   }
 
   @override
@@ -58,7 +70,10 @@ class _$ReportCase extends ReportCase {
     _$hash = $jc(_$hash, urgency.hashCode);
     _$hash = $jc(_$hash, deadlineAt.hashCode);
     _$hash = $jc(_$hash, active.hashCode);
-    _$hash = $jc(_$hash, workOrders.hashCode);
+    _$hash = $jc(_$hash, completedAt.hashCode);
+    _$hash = $jc(_$hash, closedAt.hashCode);
+    _$hash = $jc(_$hash, updates.hashCode);
+    _$hash = $jc(_$hash, canRate.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -71,7 +86,10 @@ class _$ReportCase extends ReportCase {
           ..add('urgency', urgency)
           ..add('deadlineAt', deadlineAt)
           ..add('active', active)
-          ..add('workOrders', workOrders))
+          ..add('completedAt', completedAt)
+          ..add('closedAt', closedAt)
+          ..add('updates', updates)
+          ..add('canRate', canRate))
         .toString();
   }
 }
@@ -99,11 +117,23 @@ class ReportCaseBuilder implements Builder<ReportCase, ReportCaseBuilder> {
   bool? get active => _$this._active;
   set active(bool? active) => _$this._active = active;
 
-  ListBuilder<ReportWorkOrder>? _workOrders;
-  ListBuilder<ReportWorkOrder> get workOrders =>
-      _$this._workOrders ??= ListBuilder<ReportWorkOrder>();
-  set workOrders(ListBuilder<ReportWorkOrder>? workOrders) =>
-      _$this._workOrders = workOrders;
+  DateTime? _completedAt;
+  DateTime? get completedAt => _$this._completedAt;
+  set completedAt(DateTime? completedAt) => _$this._completedAt = completedAt;
+
+  DateTime? _closedAt;
+  DateTime? get closedAt => _$this._closedAt;
+  set closedAt(DateTime? closedAt) => _$this._closedAt = closedAt;
+
+  ListBuilder<ReportWorkUpdate>? _updates;
+  ListBuilder<ReportWorkUpdate> get updates =>
+      _$this._updates ??= ListBuilder<ReportWorkUpdate>();
+  set updates(ListBuilder<ReportWorkUpdate>? updates) =>
+      _$this._updates = updates;
+
+  bool? _canRate;
+  bool? get canRate => _$this._canRate;
+  set canRate(bool? canRate) => _$this._canRate = canRate;
 
   ReportCaseBuilder() {
     ReportCase._defaults(this);
@@ -117,7 +147,10 @@ class ReportCaseBuilder implements Builder<ReportCase, ReportCaseBuilder> {
       _urgency = $v.urgency;
       _deadlineAt = $v.deadlineAt;
       _active = $v.active;
-      _workOrders = $v.workOrders.toBuilder();
+      _completedAt = $v.completedAt;
+      _closedAt = $v.closedAt;
+      _updates = $v.updates.toBuilder();
+      _canRate = $v.canRate;
       _$v = null;
     }
     return this;
@@ -150,13 +183,17 @@ class ReportCaseBuilder implements Builder<ReportCase, ReportCaseBuilder> {
                 deadlineAt, r'ReportCase', 'deadlineAt'),
             active: BuiltValueNullFieldError.checkNotNull(
                 active, r'ReportCase', 'active'),
-            workOrders: workOrders.build(),
+            completedAt: completedAt,
+            closedAt: closedAt,
+            updates: updates.build(),
+            canRate: BuiltValueNullFieldError.checkNotNull(
+                canRate, r'ReportCase', 'canRate'),
           );
     } catch (_) {
       late String _$failedField;
       try {
-        _$failedField = 'workOrders';
-        workOrders.build();
+        _$failedField = 'updates';
+        updates.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'ReportCase', _$failedField, e.toString());

@@ -200,6 +200,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusResolved => 'Resolved';
 
   @override
+  String get statusDeclined => 'Declined';
+
+  @override
   String issueDetailTitle(int id) {
     return 'Report #$id';
   }
@@ -233,9 +236,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rateWorkTitle => 'How was the work?';
 
   @override
-  String rateStarLabel(int score) {
-    return '$score out of 5 stars';
-  }
+  String get rateSatisfied => 'Satisfied';
+
+  @override
+  String get rateNotSatisfied => 'Not satisfied';
 
   @override
   String get rateCommentLabel => 'Comment (optional)';

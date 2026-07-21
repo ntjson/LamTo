@@ -34,7 +34,7 @@ from lamto.finance.models import (
     Proposal,
     PublishedLedgerEntry,
 )
-from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase, WorkOrder
+from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
 from lamto.notifications.models import NotificationDelivery
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 from lamto.web.staff import nav_items_for
@@ -49,11 +49,10 @@ STAFF_CASES = {
     "web:staff-report-detail": ("report_pk", "GET"),
     "web:case-detail": ("case_pk", "GET"),
     "web:proposal-detail": ("proposal_pk", "GET"),
-    "web:work-order-detail": ("work_pk", "GET"),
-    "web:proposal-create": ("work_pk", "POST"),
+    "web:proposal-create": ("case_pk", "POST"),
     "web:payment-record-detail": ("acceptance_pk", "GET"),
     "web:payment-verify-detail": ("payment_pk", "GET"),
-    "web:work-accept": ("work_pk", "POST"),
+    "web:work-accept": ("case_pk", "POST"),
     "web:fund-verify": ("fund_entry_pk", "POST"),
 }
 
@@ -67,7 +66,6 @@ EXEMPT = {
 LIST_ROUTES = [
     "web:action-inbox",
     "web:case-list",
-    "web:work-order-list",
     "web:proposal-list",
     "web:payment-list",
     "web:audit-export",
@@ -109,7 +107,7 @@ API_TENANT_OBJECT = {
     "api:report-detail": ("report_pk", "GET", 404),
     "api:report-photos": ("report_pk", "POST", 404),
     "api:report-info-reply": ("report_pk", "POST", 404),
-    "api:work-rating": ("work_pk", "POST", 404),
+    "api:case-rating": ("case_pk", "POST", 404),
     "api:notification-read": ("notification_pk", "POST", 404),
 }
 
@@ -160,7 +158,7 @@ class CrossBuildingAccessTests(TestCase):
         driver.submit_report(
             f"{B_LEAK_MARKER} lift noise", "Lift 2"
         )
-        driver.confirm_triage_and_create_paid_work_order()
+        driver.confirm_triage_case()
         driver.submit_signed_proposal()
         driver.complete_assigned_work()
         driver.accept_and_record_payment()
@@ -172,7 +170,6 @@ class CrossBuildingAccessTests(TestCase):
         b_building = cls.seed_b.building
         report = IssueReport.objects.get(unit__building=b_building)
         case = MaintenanceCase.objects.get(building=b_building)
-        work = WorkOrder.objects.get(case=case)
         proposal = Proposal.objects.get(case=case)
         acceptance = AcceptanceRecord.objects.get(case=case)
         payment = PaymentEvidence.objects.get(acceptance=acceptance)
@@ -185,7 +182,6 @@ class CrossBuildingAccessTests(TestCase):
         cls.b = {
             "report_pk": report.pk,
             "case_pk": case.pk,
-            "work_pk": work.pk,
             "proposal_pk": proposal.pk,
             "acceptance_pk": acceptance.pk,
             "payment_pk": payment.pk,
@@ -269,10 +265,10 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_six_areas_and_non_manager_is_denied(self):
+    def test_management_has_five_areas_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
-            "inbox", "cases", "work", "finance", "exports", "ops"
+            "inbox", "cases", "finance", "exports", "ops"
         ]
         self._management_login()
         assert self.client.get(reverse("web:case-list")).status_code == 200

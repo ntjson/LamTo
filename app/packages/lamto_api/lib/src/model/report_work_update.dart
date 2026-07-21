@@ -6,72 +6,78 @@
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'ledger_approver.g.dart';
+part 'report_work_update.g.dart';
 
-/// Who authorized the spend (board / resident rep / emergency).
+/// ReportWorkUpdate
 ///
 /// Properties:
-/// * [role] - Machine role: board, resident_rep, or emergency.
-/// * [name] - Display name of the approver.
-/// * [decision] - Decision code (e.g. APPROVE).
+/// * [id] 
+/// * [cause] 
+/// * [result] 
+/// * [createdAt] 
 @BuiltValue()
-abstract class LedgerApprover implements Built<LedgerApprover, LedgerApproverBuilder> {
-  /// Machine role: board, resident_rep, or emergency.
-  @BuiltValueField(wireName: r'role')
-  String get role;
+abstract class ReportWorkUpdate implements Built<ReportWorkUpdate, ReportWorkUpdateBuilder> {
+  @BuiltValueField(wireName: r'id')
+  int get id;
 
-  /// Display name of the approver.
-  @BuiltValueField(wireName: r'name')
-  String get name;
+  @BuiltValueField(wireName: r'cause')
+  String get cause;
 
-  /// Decision code (e.g. APPROVE).
-  @BuiltValueField(wireName: r'decision')
-  String get decision;
+  @BuiltValueField(wireName: r'result')
+  String get result;
 
-  LedgerApprover._();
+  @BuiltValueField(wireName: r'created_at')
+  DateTime get createdAt;
 
-  factory LedgerApprover([void updates(LedgerApproverBuilder b)]) = _$LedgerApprover;
+  ReportWorkUpdate._();
+
+  factory ReportWorkUpdate([void updates(ReportWorkUpdateBuilder b)]) = _$ReportWorkUpdate;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(LedgerApproverBuilder b) => b;
+  static void _defaults(ReportWorkUpdateBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<LedgerApprover> get serializer => _$LedgerApproverSerializer();
+  static Serializer<ReportWorkUpdate> get serializer => _$ReportWorkUpdateSerializer();
 }
 
-class _$LedgerApproverSerializer implements PrimitiveSerializer<LedgerApprover> {
+class _$ReportWorkUpdateSerializer implements PrimitiveSerializer<ReportWorkUpdate> {
   @override
-  final Iterable<Type> types = const [LedgerApprover, _$LedgerApprover];
+  final Iterable<Type> types = const [ReportWorkUpdate, _$ReportWorkUpdate];
 
   @override
-  final String wireName = r'LedgerApprover';
+  final String wireName = r'ReportWorkUpdate';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    LedgerApprover object, {
+    ReportWorkUpdate object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'role';
+    yield r'id';
     yield serializers.serialize(
-      object.role,
+      object.id,
+      specifiedType: const FullType(int),
+    );
+    yield r'cause';
+    yield serializers.serialize(
+      object.cause,
       specifiedType: const FullType(String),
     );
-    yield r'name';
+    yield r'result';
     yield serializers.serialize(
-      object.name,
+      object.result,
       specifiedType: const FullType(String),
     );
-    yield r'decision';
+    yield r'created_at';
     yield serializers.serialize(
-      object.decision,
-      specifiedType: const FullType(String),
+      object.createdAt,
+      specifiedType: const FullType(DateTime),
     );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    LedgerApprover object, {
+    ReportWorkUpdate object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -82,33 +88,40 @@ class _$LedgerApproverSerializer implements PrimitiveSerializer<LedgerApprover> 
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required LedgerApproverBuilder result,
+    required ReportWorkUpdateBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
-        case r'role':
+        case r'id':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
-          result.role = valueDes;
+            specifiedType: const FullType(int),
+          ) as int;
+          result.id = valueDes;
           break;
-        case r'name':
+        case r'cause':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType(String),
           ) as String;
-          result.name = valueDes;
+          result.cause = valueDes;
           break;
-        case r'decision':
+        case r'result':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType(String),
           ) as String;
-          result.decision = valueDes;
+          result.result = valueDes;
+          break;
+        case r'created_at':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(DateTime),
+          ) as DateTime;
+          result.createdAt = valueDes;
           break;
         default:
           unhandled.add(key);
@@ -119,12 +132,12 @@ class _$LedgerApproverSerializer implements PrimitiveSerializer<LedgerApprover> 
   }
 
   @override
-  LedgerApprover deserialize(
+  ReportWorkUpdate deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = LedgerApproverBuilder();
+    final result = ReportWorkUpdateBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

@@ -18,7 +18,7 @@ ReportSummary _summary() => ReportSummary(
   (b) => b
     ..id = 42
     ..text = 'Leak'
-    ..status = 'OPEN'
+    ..status = StatusEnum.SUBMITTED
     ..locationPathSnapshot = 'B / Hall'
     ..createdAt = DateTime.utc(2026, 7, 17),
 );
@@ -54,9 +54,9 @@ class _FakeRepo implements ReportsRepository {
   Future<PaginatedReportSummaryList> listReports({String? cursor}) =>
       throw UnimplementedError();
   @override
-  Future<WorkRatingResult> rateWork({
-    required int workOrderId,
-    required int score,
+  Future<CaseRatingResult> rateCase({
+    required int caseId,
+    required bool satisfied,
     String comment = '',
   }) => throw UnimplementedError();
   @override

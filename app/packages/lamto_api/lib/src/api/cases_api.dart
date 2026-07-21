@@ -9,24 +9,24 @@ import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:lamto_api/src/api_util.dart';
+import 'package:lamto_api/src/model/case_rating_request.dart';
+import 'package:lamto_api/src/model/case_rating_result.dart';
 import 'package:lamto_api/src/model/problem.dart';
-import 'package:lamto_api/src/model/work_rating_request.dart';
-import 'package:lamto_api/src/model/work_rating_result.dart';
 
-class WorkApi {
+class CasesApi {
 
   final Dio _dio;
 
   final Serializers _serializers;
 
-  const WorkApi(this._dio, this._serializers);
+  const CasesApi(this._dio, this._serializers);
 
-  /// workRatingCreate
+  /// casesRatingCreate
   /// 
   ///
   /// Parameters:
   /// * [id] 
-  /// * [workRatingRequest] 
+  /// * [caseRatingRequest] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -34,11 +34,11 @@ class WorkApi {
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [WorkRatingResult] as data
+  /// Returns a [Future] containing a [Response] with a [CaseRatingResult] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<WorkRatingResult>> workRatingCreate({ 
+  Future<Response<CaseRatingResult>> casesRatingCreate({ 
     required int id,
-    required WorkRatingRequest workRatingRequest,
+    required CaseRatingRequest caseRatingRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -46,7 +46,7 @@ class WorkApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/api/v1/work/{id}/rating'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(int)).toString());
+    final _path = r'/api/v1/cases/{id}/rating'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(int)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -70,8 +70,8 @@ class WorkApi {
     dynamic _bodyData;
 
     try {
-      const _type = FullType(WorkRatingRequest);
-      _bodyData = _serializers.serialize(workRatingRequest, specifiedType: _type);
+      const _type = FullType(CaseRatingRequest);
+      _bodyData = _serializers.serialize(caseRatingRequest, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(
@@ -94,14 +94,14 @@ class WorkApi {
       onReceiveProgress: onReceiveProgress,
     );
 
-    WorkRatingResult? _responseData;
+    CaseRatingResult? _responseData;
 
     try {
       final rawResponse = _response.data;
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
-        specifiedType: const FullType(WorkRatingResult),
-      ) as WorkRatingResult;
+        specifiedType: const FullType(CaseRatingResult),
+      ) as CaseRatingResult;
 
     } catch (error, stackTrace) {
       throw DioException(
@@ -113,7 +113,7 @@ class WorkApi {
       );
     }
 
-    return Response<WorkRatingResult>(
+    return Response<CaseRatingResult>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

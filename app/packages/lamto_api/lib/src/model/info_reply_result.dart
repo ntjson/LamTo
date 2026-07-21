@@ -3,72 +3,65 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:lamto_api/src/model/status_enum.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'work_rating_result.g.dart';
+part 'info_reply_result.g.dart';
 
-/// WorkRatingResult
+/// InfoReplyResult
 ///
 /// Properties:
-/// * [id] 
-/// * [workOrderId] 
-/// * [score] 
+/// * [reportId] 
+/// * [status] 
 @BuiltValue()
-abstract class WorkRatingResult implements Built<WorkRatingResult, WorkRatingResultBuilder> {
-  @BuiltValueField(wireName: r'id')
-  int get id;
+abstract class InfoReplyResult implements Built<InfoReplyResult, InfoReplyResultBuilder> {
+  @BuiltValueField(wireName: r'report_id')
+  int get reportId;
 
-  @BuiltValueField(wireName: r'work_order_id')
-  int get workOrderId;
+  @BuiltValueField(wireName: r'status')
+  StatusEnum get status;
+  // enum statusEnum {  SUBMITTED,  IN_REVIEW,  NEEDS_INFO,  DECLINED,  IN_PROGRESS,  PROPOSED,  COMPLETED,  CLOSED,  };
 
-  @BuiltValueField(wireName: r'score')
-  int get score;
+  InfoReplyResult._();
 
-  WorkRatingResult._();
-
-  factory WorkRatingResult([void updates(WorkRatingResultBuilder b)]) = _$WorkRatingResult;
+  factory InfoReplyResult([void updates(InfoReplyResultBuilder b)]) = _$InfoReplyResult;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(WorkRatingResultBuilder b) => b;
+  static void _defaults(InfoReplyResultBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<WorkRatingResult> get serializer => _$WorkRatingResultSerializer();
+  static Serializer<InfoReplyResult> get serializer => _$InfoReplyResultSerializer();
 }
 
-class _$WorkRatingResultSerializer implements PrimitiveSerializer<WorkRatingResult> {
+class _$InfoReplyResultSerializer implements PrimitiveSerializer<InfoReplyResult> {
   @override
-  final Iterable<Type> types = const [WorkRatingResult, _$WorkRatingResult];
+  final Iterable<Type> types = const [InfoReplyResult, _$InfoReplyResult];
 
   @override
-  final String wireName = r'WorkRatingResult';
+  final String wireName = r'InfoReplyResult';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    WorkRatingResult object, {
+    InfoReplyResult object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'id';
+    yield r'report_id';
     yield serializers.serialize(
-      object.id,
+      object.reportId,
       specifiedType: const FullType(int),
     );
-    yield r'work_order_id';
+    yield r'status';
     yield serializers.serialize(
-      object.workOrderId,
-      specifiedType: const FullType(int),
-    );
-    yield r'score';
-    yield serializers.serialize(
-      object.score,
-      specifiedType: const FullType(int),
+      object.status,
+      specifiedType: const FullType(StatusEnum),
     );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    WorkRatingResult object, {
+    InfoReplyResult object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -79,33 +72,26 @@ class _$WorkRatingResultSerializer implements PrimitiveSerializer<WorkRatingResu
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required WorkRatingResultBuilder result,
+    required InfoReplyResultBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
-        case r'id':
+        case r'report_id':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType(int),
           ) as int;
-          result.id = valueDes;
+          result.reportId = valueDes;
           break;
-        case r'work_order_id':
+        case r'status':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(int),
-          ) as int;
-          result.workOrderId = valueDes;
-          break;
-        case r'score':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(int),
-          ) as int;
-          result.score = valueDes;
+            specifiedType: const FullType(StatusEnum),
+          ) as StatusEnum;
+          result.status = valueDes;
           break;
         default:
           unhandled.add(key);
@@ -116,12 +102,12 @@ class _$WorkRatingResultSerializer implements PrimitiveSerializer<WorkRatingResu
   }
 
   @override
-  WorkRatingResult deserialize(
+  InfoReplyResult deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = WorkRatingResultBuilder();
+    final result = InfoReplyResultBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

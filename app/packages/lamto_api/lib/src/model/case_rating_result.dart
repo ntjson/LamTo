@@ -6,62 +6,69 @@
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'work_rating_request.g.dart';
+part 'case_rating_result.g.dart';
 
-/// WorkRatingRequest
+/// CaseRatingResult
 ///
 /// Properties:
-/// * [score] 
-/// * [comment] 
+/// * [id] 
+/// * [caseId] 
+/// * [satisfied] 
 @BuiltValue()
-abstract class WorkRatingRequest implements Built<WorkRatingRequest, WorkRatingRequestBuilder> {
-  @BuiltValueField(wireName: r'score')
-  int get score;
+abstract class CaseRatingResult implements Built<CaseRatingResult, CaseRatingResultBuilder> {
+  @BuiltValueField(wireName: r'id')
+  int get id;
 
-  @BuiltValueField(wireName: r'comment')
-  String? get comment;
+  @BuiltValueField(wireName: r'case_id')
+  int get caseId;
 
-  WorkRatingRequest._();
+  @BuiltValueField(wireName: r'satisfied')
+  bool get satisfied;
 
-  factory WorkRatingRequest([void updates(WorkRatingRequestBuilder b)]) = _$WorkRatingRequest;
+  CaseRatingResult._();
+
+  factory CaseRatingResult([void updates(CaseRatingResultBuilder b)]) = _$CaseRatingResult;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(WorkRatingRequestBuilder b) => b;
+  static void _defaults(CaseRatingResultBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<WorkRatingRequest> get serializer => _$WorkRatingRequestSerializer();
+  static Serializer<CaseRatingResult> get serializer => _$CaseRatingResultSerializer();
 }
 
-class _$WorkRatingRequestSerializer implements PrimitiveSerializer<WorkRatingRequest> {
+class _$CaseRatingResultSerializer implements PrimitiveSerializer<CaseRatingResult> {
   @override
-  final Iterable<Type> types = const [WorkRatingRequest, _$WorkRatingRequest];
+  final Iterable<Type> types = const [CaseRatingResult, _$CaseRatingResult];
 
   @override
-  final String wireName = r'WorkRatingRequest';
+  final String wireName = r'CaseRatingResult';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    WorkRatingRequest object, {
+    CaseRatingResult object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'score';
+    yield r'id';
     yield serializers.serialize(
-      object.score,
+      object.id,
       specifiedType: const FullType(int),
     );
-    if (object.comment != null) {
-      yield r'comment';
-      yield serializers.serialize(
-        object.comment,
-        specifiedType: const FullType(String),
-      );
-    }
+    yield r'case_id';
+    yield serializers.serialize(
+      object.caseId,
+      specifiedType: const FullType(int),
+    );
+    yield r'satisfied';
+    yield serializers.serialize(
+      object.satisfied,
+      specifiedType: const FullType(bool),
+    );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    WorkRatingRequest object, {
+    CaseRatingResult object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -72,26 +79,33 @@ class _$WorkRatingRequestSerializer implements PrimitiveSerializer<WorkRatingReq
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required WorkRatingRequestBuilder result,
+    required CaseRatingResultBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
-        case r'score':
+        case r'id':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType(int),
           ) as int;
-          result.score = valueDes;
+          result.id = valueDes;
           break;
-        case r'comment':
+        case r'case_id':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
-          result.comment = valueDes;
+            specifiedType: const FullType(int),
+          ) as int;
+          result.caseId = valueDes;
+          break;
+        case r'satisfied':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.satisfied = valueDes;
           break;
         default:
           unhandled.add(key);
@@ -102,12 +116,12 @@ class _$WorkRatingRequestSerializer implements PrimitiveSerializer<WorkRatingReq
   }
 
   @override
-  WorkRatingRequest deserialize(
+  CaseRatingResult deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = WorkRatingRequestBuilder();
+    final result = CaseRatingResultBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

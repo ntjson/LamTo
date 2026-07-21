@@ -16,13 +16,16 @@ def test_realistic_normal_flow(page, seeded_pilot):
         "tests/fixtures/elevator.jpg",
     )
 
-    seeded_pilot.confirm_triage_and_create_paid_work_order()
+    seeded_pilot.confirm_triage_case()
     seeded_pilot.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
 
+    seeded_pilot.start_assigned_work()
+    seeded_pilot.publish_work_progress()
     seeded_pilot.complete_assigned_work()
     seeded_pilot.accept_and_record_payment()
     seeded_pilot.verify_payment()
     seeded_pilot.confirm_all_chain_events()
+    seeded_pilot.rate_completed_case(satisfied=True)
     seeded_pilot.sign_publication_snapshot()
     seeded_pilot.confirm_all_chain_events()
 

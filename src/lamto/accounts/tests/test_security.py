@@ -244,7 +244,7 @@ class SecurityTests(TestCase):
         for membership, url_name in (
             (board, "web:payment-list"),
             (auditor, "web:audit-export"),
-            (maint, "web:work-order-list"),
+            (maint, "web:case-list"),
         ):
             with self.subTest(url=url_name):
                 client = Client()

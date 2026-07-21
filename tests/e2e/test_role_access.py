@@ -13,8 +13,7 @@ from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import PublishedLedgerEntry
 from lamto.finance.proposals import build_proposal_evidence_payload, submit_proposal_version
 from lamto.maintenance.ai import process_triage_job
-from lamto.maintenance.models import TriageJob, WorkOrder
-from lamto.maintenance.workorders import start_work_order
+from lamto.maintenance.models import IssueReport, TriageJob
 from lamto.testing.factories import DEFAULT_AMOUNT_VND, new_event_id
 
 pytestmark = pytest.mark.django_db
@@ -45,13 +44,13 @@ def test_ai_outage_preserves_manual_triage_authority(page, seeded_pilot):
     with patch("lamto.maintenance.ai.urlopen", side_effect=URLError("offline")):
         job = process_triage_job(report.triage_job.id)
     assert job.status == TriageJob.Status.NEEDS_MANUAL
-    work = seeded_pilot.confirm_triage_and_create_paid_work_order()
-    assert work.pk is not None
+    case = seeded_pilot.confirm_triage_case()
+    assert case.pk is not None
 
 
 def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilot):
     seeded_pilot.submit_report("Elevator", "Lift 2", None)
-    seeded_pilot.confirm_triage_and_create_paid_work_order()
+    seeded_pilot.confirm_triage_case()
     version1 = seeded_pilot.submit_signed_proposal(
         amount_vnd=DEFAULT_AMOUNT_VND
     )
@@ -73,9 +72,10 @@ def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilo
     version2 = submit_proposal_version(
         proposal, 19_000_000, "Changed", [quotation], signature, event_id
     )
-    work = seeded_pilot.seed.work_order
-    work.refresh_from_db()
+    case = seeded_pilot.seed.case
+    case.refresh_from_db()
     assert version2.number == 2
-    assert work.authorization_status == WorkOrder.AuthorizationStatus.AUTHORIZED
-    started = start_work_order(work, seeded_pilot.seed.management_users[0])
-    assert started.status == WorkOrder.Status.IN_PROGRESS
+    seeded_pilot.start_assigned_work()
+    report = seeded_pilot.seed.report
+    report.refresh_from_db()
+    assert report.status == IssueReport.Status.IN_PROGRESS

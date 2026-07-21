@@ -3,8 +3,8 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:lamto_api/src/model/report_work_update.dart';
 import 'package:built_collection/built_collection.dart';
-import 'package:lamto_api/src/model/report_work_order.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -18,7 +18,10 @@ part 'report_case.g.dart';
 /// * [urgency] 
 /// * [deadlineAt] 
 /// * [active] 
-/// * [workOrders] 
+/// * [completedAt] 
+/// * [closedAt] 
+/// * [updates] 
+/// * [canRate] 
 @BuiltValue()
 abstract class ReportCase implements Built<ReportCase, ReportCaseBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -36,8 +39,17 @@ abstract class ReportCase implements Built<ReportCase, ReportCaseBuilder> {
   @BuiltValueField(wireName: r'active')
   bool get active;
 
-  @BuiltValueField(wireName: r'work_orders')
-  BuiltList<ReportWorkOrder> get workOrders;
+  @BuiltValueField(wireName: r'completed_at')
+  DateTime? get completedAt;
+
+  @BuiltValueField(wireName: r'closed_at')
+  DateTime? get closedAt;
+
+  @BuiltValueField(wireName: r'updates')
+  BuiltList<ReportWorkUpdate> get updates;
+
+  @BuiltValueField(wireName: r'can_rate')
+  bool get canRate;
 
   ReportCase._();
 
@@ -87,10 +99,25 @@ class _$ReportCaseSerializer implements PrimitiveSerializer<ReportCase> {
       object.active,
       specifiedType: const FullType(bool),
     );
-    yield r'work_orders';
+    yield r'completed_at';
+    yield object.completedAt == null ? null : serializers.serialize(
+      object.completedAt,
+      specifiedType: const FullType.nullable(DateTime),
+    );
+    yield r'closed_at';
+    yield object.closedAt == null ? null : serializers.serialize(
+      object.closedAt,
+      specifiedType: const FullType.nullable(DateTime),
+    );
+    yield r'updates';
     yield serializers.serialize(
-      object.workOrders,
-      specifiedType: const FullType(BuiltList, [FullType(ReportWorkOrder)]),
+      object.updates,
+      specifiedType: const FullType(BuiltList, [FullType(ReportWorkUpdate)]),
+    );
+    yield r'can_rate';
+    yield serializers.serialize(
+      object.canRate,
+      specifiedType: const FullType(bool),
     );
   }
 
@@ -150,12 +177,35 @@ class _$ReportCaseSerializer implements PrimitiveSerializer<ReportCase> {
           ) as bool;
           result.active = valueDes;
           break;
-        case r'work_orders':
+        case r'completed_at':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(ReportWorkOrder)]),
-          ) as BuiltList<ReportWorkOrder>;
-          result.workOrders.replace(valueDes);
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.completedAt = valueDes;
+          break;
+        case r'closed_at':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.closedAt = valueDes;
+          break;
+        case r'updates':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(ReportWorkUpdate)]),
+          ) as BuiltList<ReportWorkUpdate>;
+          result.updates.replace(valueDes);
+          break;
+        case r'can_rate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.canRate = valueDes;
           break;
         default:
           unhandled.add(key);

@@ -18,6 +18,11 @@ void main() {
       // TODO
     });
 
+    // bool isPrivate (default value: false)
+    test('to test the property `isPrivate`', () async {
+      // TODO
+    });
+
     // Active BuildingLocation id in the resolved occupancy building.
     // int locationId
     test('to test the property `locationId`', () async {

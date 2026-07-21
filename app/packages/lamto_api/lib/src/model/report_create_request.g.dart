@@ -12,6 +12,8 @@ class _$ReportCreateRequest extends ReportCreateRequest {
   @override
   final String text;
   @override
+  final bool? isPrivate;
+  @override
   final int locationId;
 
   factory _$ReportCreateRequest(
@@ -19,7 +21,10 @@ class _$ReportCreateRequest extends ReportCreateRequest {
       (ReportCreateRequestBuilder()..update(updates))._build();
 
   _$ReportCreateRequest._(
-      {required this.clientRef, required this.text, required this.locationId})
+      {required this.clientRef,
+      required this.text,
+      this.isPrivate,
+      required this.locationId})
       : super._();
   @override
   ReportCreateRequest rebuild(
@@ -36,6 +41,7 @@ class _$ReportCreateRequest extends ReportCreateRequest {
     return other is ReportCreateRequest &&
         clientRef == other.clientRef &&
         text == other.text &&
+        isPrivate == other.isPrivate &&
         locationId == other.locationId;
   }
 
@@ -44,6 +50,7 @@ class _$ReportCreateRequest extends ReportCreateRequest {
     var _$hash = 0;
     _$hash = $jc(_$hash, clientRef.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
+    _$hash = $jc(_$hash, isPrivate.hashCode);
     _$hash = $jc(_$hash, locationId.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -54,6 +61,7 @@ class _$ReportCreateRequest extends ReportCreateRequest {
     return (newBuiltValueToStringHelper(r'ReportCreateRequest')
           ..add('clientRef', clientRef)
           ..add('text', text)
+          ..add('isPrivate', isPrivate)
           ..add('locationId', locationId))
         .toString();
   }
@@ -71,6 +79,10 @@ class ReportCreateRequestBuilder
   String? get text => _$this._text;
   set text(String? text) => _$this._text = text;
 
+  bool? _isPrivate;
+  bool? get isPrivate => _$this._isPrivate;
+  set isPrivate(bool? isPrivate) => _$this._isPrivate = isPrivate;
+
   int? _locationId;
   int? get locationId => _$this._locationId;
   set locationId(int? locationId) => _$this._locationId = locationId;
@@ -84,6 +96,7 @@ class ReportCreateRequestBuilder
     if ($v != null) {
       _clientRef = $v.clientRef;
       _text = $v.text;
+      _isPrivate = $v.isPrivate;
       _locationId = $v.locationId;
       _$v = null;
     }
@@ -110,6 +123,7 @@ class ReportCreateRequestBuilder
               clientRef, r'ReportCreateRequest', 'clientRef'),
           text: BuiltValueNullFieldError.checkNotNull(
               text, r'ReportCreateRequest', 'text'),
+          isPrivate: isPrivate,
           locationId: BuiltValueNullFieldError.checkNotNull(
               locationId, r'ReportCreateRequest', 'locationId'),
         );

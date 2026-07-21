@@ -6,61 +6,43 @@
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'correction.g.dart';
+part 'info_reply_request.g.dart';
 
-/// Correction
+/// InfoReplyRequest
 ///
 /// Properties:
-/// * [id] 
-/// * [status] 
-/// * [reason] 
+/// * [text] 
 @BuiltValue()
-abstract class Correction implements Built<Correction, CorrectionBuilder> {
-  @BuiltValueField(wireName: r'id')
-  int get id;
+abstract class InfoReplyRequest implements Built<InfoReplyRequest, InfoReplyRequestBuilder> {
+  @BuiltValueField(wireName: r'text')
+  String get text;
 
-  @BuiltValueField(wireName: r'status')
-  String get status;
+  InfoReplyRequest._();
 
-  @BuiltValueField(wireName: r'reason')
-  String get reason;
-
-  Correction._();
-
-  factory Correction([void updates(CorrectionBuilder b)]) = _$Correction;
+  factory InfoReplyRequest([void updates(InfoReplyRequestBuilder b)]) = _$InfoReplyRequest;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(CorrectionBuilder b) => b;
+  static void _defaults(InfoReplyRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<Correction> get serializer => _$CorrectionSerializer();
+  static Serializer<InfoReplyRequest> get serializer => _$InfoReplyRequestSerializer();
 }
 
-class _$CorrectionSerializer implements PrimitiveSerializer<Correction> {
+class _$InfoReplyRequestSerializer implements PrimitiveSerializer<InfoReplyRequest> {
   @override
-  final Iterable<Type> types = const [Correction, _$Correction];
+  final Iterable<Type> types = const [InfoReplyRequest, _$InfoReplyRequest];
 
   @override
-  final String wireName = r'Correction';
+  final String wireName = r'InfoReplyRequest';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    Correction object, {
+    InfoReplyRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'id';
+    yield r'text';
     yield serializers.serialize(
-      object.id,
-      specifiedType: const FullType(int),
-    );
-    yield r'status';
-    yield serializers.serialize(
-      object.status,
-      specifiedType: const FullType(String),
-    );
-    yield r'reason';
-    yield serializers.serialize(
-      object.reason,
+      object.text,
       specifiedType: const FullType(String),
     );
   }
@@ -68,7 +50,7 @@ class _$CorrectionSerializer implements PrimitiveSerializer<Correction> {
   @override
   Object serialize(
     Serializers serializers,
-    Correction object, {
+    InfoReplyRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -79,33 +61,19 @@ class _$CorrectionSerializer implements PrimitiveSerializer<Correction> {
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required CorrectionBuilder result,
+    required InfoReplyRequestBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
-        case r'id':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(int),
-          ) as int;
-          result.id = valueDes;
-          break;
-        case r'status':
+        case r'text':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType(String),
           ) as String;
-          result.status = valueDes;
-          break;
-        case r'reason':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(String),
-          ) as String;
-          result.reason = valueDes;
+          result.text = valueDes;
           break;
         default:
           unhandled.add(key);
@@ -116,12 +84,12 @@ class _$CorrectionSerializer implements PrimitiveSerializer<Correction> {
   }
 
   @override
-  Correction deserialize(
+  InfoReplyRequest deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = CorrectionBuilder();
+    final result = InfoReplyRequestBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

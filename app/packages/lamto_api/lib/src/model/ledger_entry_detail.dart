@@ -6,9 +6,7 @@
 import 'package:lamto_api/src/model/verification.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:lamto_api/src/model/redacted_document.dart';
-import 'package:lamto_api/src/model/ledger_approver.dart';
 import 'package:lamto_api/src/model/proof.dart';
-import 'package:lamto_api/src/model/correction.dart';
 import 'package:built_value/json_object.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -25,12 +23,12 @@ part 'ledger_entry_detail.g.dart';
 /// * [proposedAmountVnd] 
 /// * [integrityStatus] 
 /// * [whatWasFixed] - Resident-visible narrative of work completed.
-/// * [why] - Resident-visible rationale (cause / purpose / emergency reason).
-/// * [approvers] 
+/// * [why] - Resident-visible rationale (cause or purpose).
 /// * [payload] 
 /// * [verification] 
-/// * [redactedDocuments] 
+/// * [approvers] 
 /// * [corrections] 
+/// * [redactedDocuments] 
 /// * [proof] 
 @BuiltValue()
 abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntryDetailBuilder> {
@@ -56,12 +54,9 @@ abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntry
   @BuiltValueField(wireName: r'what_was_fixed')
   String get whatWasFixed;
 
-  /// Resident-visible rationale (cause / purpose / emergency reason).
+  /// Resident-visible rationale (cause or purpose).
   @BuiltValueField(wireName: r'why')
   String get why;
-
-  @BuiltValueField(wireName: r'approvers')
-  BuiltList<LedgerApprover> get approvers;
 
   @BuiltValueField(wireName: r'payload')
   JsonObject? get payload;
@@ -69,11 +64,14 @@ abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntry
   @BuiltValueField(wireName: r'verification')
   Verification? get verification;
 
-  @BuiltValueField(wireName: r'redacted_documents')
-  BuiltList<RedactedDocument> get redactedDocuments;
+  @BuiltValueField(wireName: r'approvers')
+  BuiltList<JsonObject?> get approvers;
 
   @BuiltValueField(wireName: r'corrections')
-  BuiltList<Correction> get corrections;
+  BuiltList<JsonObject?> get corrections;
+
+  @BuiltValueField(wireName: r'redacted_documents')
+  BuiltList<RedactedDocument> get redactedDocuments;
 
   @BuiltValueField(wireName: r'proof')
   Proof get proof;
@@ -141,11 +139,6 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
       object.why,
       specifiedType: const FullType(String),
     );
-    yield r'approvers';
-    yield serializers.serialize(
-      object.approvers,
-      specifiedType: const FullType(BuiltList, [FullType(LedgerApprover)]),
-    );
     yield r'payload';
     yield object.payload == null ? null : serializers.serialize(
       object.payload,
@@ -156,15 +149,20 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
       object.verification,
       specifiedType: const FullType.nullable(Verification),
     );
-    yield r'redacted_documents';
+    yield r'approvers';
     yield serializers.serialize(
-      object.redactedDocuments,
-      specifiedType: const FullType(BuiltList, [FullType(RedactedDocument)]),
+      object.approvers,
+      specifiedType: const FullType(BuiltList, [FullType.nullable(JsonObject)]),
     );
     yield r'corrections';
     yield serializers.serialize(
       object.corrections,
-      specifiedType: const FullType(BuiltList, [FullType(Correction)]),
+      specifiedType: const FullType(BuiltList, [FullType.nullable(JsonObject)]),
+    );
+    yield r'redacted_documents';
+    yield serializers.serialize(
+      object.redactedDocuments,
+      specifiedType: const FullType(BuiltList, [FullType(RedactedDocument)]),
     );
     yield r'proof';
     yield serializers.serialize(
@@ -251,13 +249,6 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
           ) as String;
           result.why = valueDes;
           break;
-        case r'approvers':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(BuiltList, [FullType(LedgerApprover)]),
-          ) as BuiltList<LedgerApprover>;
-          result.approvers.replace(valueDes);
-          break;
         case r'payload':
           final valueDes = serializers.deserialize(
             value,
@@ -274,19 +265,26 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
           if (valueDes == null) continue;
           result.verification.replace(valueDes);
           break;
+        case r'approvers':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType.nullable(JsonObject)]),
+          ) as BuiltList<JsonObject?>;
+          result.approvers.replace(valueDes);
+          break;
+        case r'corrections':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType.nullable(JsonObject)]),
+          ) as BuiltList<JsonObject?>;
+          result.corrections.replace(valueDes);
+          break;
         case r'redacted_documents':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType(BuiltList, [FullType(RedactedDocument)]),
           ) as BuiltList<RedactedDocument>;
           result.redactedDocuments.replace(valueDes);
-          break;
-        case r'corrections':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(BuiltList, [FullType(Correction)]),
-          ) as BuiltList<Correction>;
-          result.corrections.replace(valueDes);
           break;
         case r'proof':
           final valueDes = serializers.deserialize(

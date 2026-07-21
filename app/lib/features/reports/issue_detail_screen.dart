@@ -11,17 +11,6 @@ import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import 'reports_repository.dart';
 
-String workStatusLabel(String status, AppLocalizations l10n) =>
-    switch (status) {
-      'ASSIGNED' => l10n.workStatusAssigned,
-      'IN_PROGRESS' => l10n.workStatusInProgress,
-      'AWAITING_ACCEPTANCE' => l10n.workStatusAwaiting,
-      'ACCEPTED' => l10n.workStatusAccepted,
-      'CLOSED' => l10n.workStatusClosed,
-      'CANCELLED' => l10n.workStatusCancelled,
-      _ => status,
-    };
-
 String _date(DateTime value) =>
     DateFormat('dd/MM/yyyy').format(value.toLocal());
 
@@ -76,29 +65,21 @@ class IssueDetailScreen extends ConsumerWidget {
           l10n.timelineCase(caseItem.category),
           null,
         ),
-        for (final work in caseItem.workOrders) ...[
+        for (final update in caseItem.updates)
           (
             Icons.build_outlined,
-            l10n.timelineWork(
-              workStatusLabel(work.status, l10n),
-              _date(work.deadlineAt),
-            ),
+            l10n.timelineWork(update.result, _date(caseItem.deadlineAt)),
             null,
           ),
-          if (work.completedAt != null)
-            (
-              Icons.check_circle_outline,
-              '${l10n.timelineCompleted} · ${_date(work.completedAt!)}',
-              StatusTone.success,
-            ),
-        ],
+        if (caseItem.completedAt != null)
+          (
+            Icons.check_circle_outline,
+            '${l10n.timelineCompleted} · ${_date(caseItem.completedAt!)}',
+            StatusTone.success,
+          ),
       ],
     ];
-    final rateable = [
-      for (final caseItem in report.cases)
-        for (final work in caseItem.workOrders)
-          if (work.canRate) work,
-    ];
+    final rateable = report.cases.where((caseItem) => caseItem.canRate);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -143,13 +124,13 @@ class IssueDetailScreen extends ConsumerWidget {
             ),
             title: Text(label),
           ),
-        for (final work in rateable)
+        for (final caseItem in rateable)
           Padding(
             padding: const EdgeInsets.only(top: 16),
             child: FilledButton.icon(
               icon: const Icon(Icons.star_outline),
               label: Text(l10n.rateWorkCta),
-              onPressed: () => _openRateSheet(context, ref, l10n, work.id),
+              onPressed: () => _openRateSheet(context, ref, l10n, caseItem.id),
             ),
           ),
       ],
@@ -160,12 +141,12 @@ class IssueDetailScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     AppLocalizations l10n,
-    int workOrderId,
+    int caseId,
   ) async {
     final rated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _RateWorkSheet(workOrderId: workOrderId),
+      builder: (_) => _RateCaseSheet(caseId: caseId),
     );
     if (rated == true && context.mounted) {
       ref.invalidate(reportDetailProvider(reportId));
@@ -176,16 +157,16 @@ class IssueDetailScreen extends ConsumerWidget {
   }
 }
 
-class _RateWorkSheet extends ConsumerStatefulWidget {
-  const _RateWorkSheet({required this.workOrderId});
-  final int workOrderId;
+class _RateCaseSheet extends ConsumerStatefulWidget {
+  const _RateCaseSheet({required this.caseId});
+  final int caseId;
 
   @override
-  ConsumerState<_RateWorkSheet> createState() => _RateWorkSheetState();
+  ConsumerState<_RateCaseSheet> createState() => _RateCaseSheetState();
 }
 
-class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
-  int _score = 0;
+class _RateCaseSheetState extends ConsumerState<_RateCaseSheet> {
+  bool? _satisfied;
   final _comment = TextEditingController();
   bool _busy = false;
   String? _error;
@@ -215,24 +196,16 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var star = 1; star <= 5; star++)
-                Semantics(
-                  label: l10n.rateStarLabel(star),
-                  button: true,
-                  selected: star == _score,
-                  excludeSemantics: true,
-                  child: IconButton(
-                    iconSize: 40, // >=44pt effective target with padding
-                    icon: Icon(star <= _score ? Icons.star : Icons.star_border),
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() => _score = star),
-                  ),
-                ),
+          SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(value: true, label: Text(l10n.rateSatisfied)),
+              ButtonSegment(value: false, label: Text(l10n.rateNotSatisfied)),
             ],
+            selected: _satisfied == null ? {} : {_satisfied!},
+            emptySelectionAllowed: true,
+            onSelectionChanged: _busy
+                ? null
+                : (selection) => setState(() => _satisfied = selection.first),
           ),
           TextField(
             controller: _comment,
@@ -248,7 +221,7 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
           ],
           const SizedBox(height: 8),
           FilledButton(
-            onPressed: _busy || _score == 0 ? null : _submit,
+            onPressed: _busy || _satisfied == null ? null : _submit,
             child: Text(l10n.rateSubmit),
           ),
         ],
@@ -265,9 +238,9 @@ class _RateWorkSheetState extends ConsumerState<_RateWorkSheet> {
     try {
       await ref
           .read(reportsRepositoryProvider)
-          .rateWork(
-            workOrderId: widget.workOrderId,
-            score: _score,
+          .rateCase(
+            caseId: widget.caseId,
+            satisfied: _satisfied!,
             comment: _comment.text.trim(),
           );
       if (mounted) Navigator.pop(context, true);

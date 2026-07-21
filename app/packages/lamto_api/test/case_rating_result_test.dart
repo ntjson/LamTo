@@ -1,24 +1,24 @@
 import 'package:test/test.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-// tests for WorkRatingResult
+// tests for CaseRatingResult
 void main() {
-  final instance = WorkRatingResultBuilder();
+  final instance = CaseRatingResultBuilder();
   // TODO add properties to the builder and call build()
 
-  group(WorkRatingResult, () {
+  group(CaseRatingResult, () {
     // int id
     test('to test the property `id`', () async {
       // TODO
     });
 
-    // int workOrderId
-    test('to test the property `workOrderId`', () async {
+    // int caseId
+    test('to test the property `caseId`', () async {
       // TODO
     });
 
-    // int score
-    test('to test the property `score`', () async {
+    // bool satisfied
+    test('to test the property `satisfied`', () async {
       // TODO
     });
 

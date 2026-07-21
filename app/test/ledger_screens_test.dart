@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:built_collection/built_collection.dart';
+import 'package:built_value/json_object.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,19 +50,13 @@ LedgerEntryDetail _detail() => LedgerEntryDetail(
     ..integrityStatus = 'VERIFIED'
     ..whatWasFixed = 'Cable secured'
     ..why = 'Worn cable'
-    ..approvers = ListBuilder<LedgerApprover>([
-      LedgerApprover(
-        (a) => a
-          ..role = 'board'
-          ..name = 'Ông Minh'
-          ..decision = 'APPROVE',
-      ),
-      LedgerApprover(
-        (a) => a
-          ..role = 'resident_rep'
-          ..name = 'Bà Hoa'
-          ..decision = 'APPROVE',
-      ),
+    ..approvers = ListBuilder<JsonObject?>([
+      JsonObject({'role': 'board', 'name': 'Ông Minh', 'decision': 'APPROVE'}),
+      JsonObject({
+        'role': 'resident_rep',
+        'name': 'Bà Hoa',
+        'decision': 'APPROVE',
+      }),
     ])
     ..verification = Verification(
       (v) => v
@@ -78,7 +73,7 @@ LedgerEntryDetail _detail() => LedgerEntryDetail(
           ..downloadUrl = '/api/v1/documents/test-token',
       ),
     ])
-    ..corrections = ListBuilder<Correction>()
+    ..corrections = ListBuilder<JsonObject?>()
     ..proof = Proof(
       (p) => p
         ..evidenceLevel = 'LOCAL_SIGNED'

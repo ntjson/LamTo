@@ -70,16 +70,16 @@ class _EmptyReports implements ReportsRepository {
 
   @override
   Future<ReportDetail> fetchReport(int id) async => ReportDetail(
-        (b) => b
-          ..id = id
-          ..text = 'report $id'
-          ..status = 'OPEN'
-          ..locationPathSnapshot = 'B'
-          ..unitLabel = 'A-1'
-          ..createdAt = DateTime.utc(2026, 7, 1)
-          ..photos = ListBuilder<ReportPhoto>()
-          ..cases = ListBuilder(),
-      );
+    (b) => b
+      ..id = id
+      ..text = 'report $id'
+      ..status = StatusEnum.SUBMITTED
+      ..locationPathSnapshot = 'B'
+      ..unitLabel = 'A-1'
+      ..createdAt = DateTime.utc(2026, 7, 1)
+      ..photos = ListBuilder<ReportPhoto>()
+      ..cases = ListBuilder(),
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -88,19 +88,21 @@ class _EmptyReports implements ReportsRepository {
 class _EmptyTransparency implements TransparencyRepository {
   @override
   Future<FundSummary> fetchFundSummary() async => FundSummary(
-        (b) => b
-          ..balanceVnd = 0
-          ..periodDays = 30
-          ..periodInflowsVnd = 0
-          ..periodOutflowsVnd = 0,
-      );
+    (b) => b
+      ..balanceVnd = 0
+      ..periodDays = 30
+      ..periodInflowsVnd = 0
+      ..periodOutflowsVnd = 0,
+  );
 
   @override
-  Future<PaginatedLedgerEntryListList> listLedger(
-          {String? cursor, int? year, int? month}) async =>
-      PaginatedLedgerEntryListList(
-        (b) => b..results = ListBuilder<LedgerEntryList>(),
-      );
+  Future<PaginatedLedgerEntryListList> listLedger({
+    String? cursor,
+    int? year,
+    int? month,
+  }) async => PaginatedLedgerEntryListList(
+    (b) => b..results = ListBuilder<LedgerEntryList>(),
+  );
 
   @override
   Future<LedgerEntryDetail> fetchLedgerEntry(int id) async {
@@ -112,104 +114,108 @@ class _EmptyTransparency implements TransparencyRepository {
 }
 
 Me _me() => Me(
-      (b) => b
-        ..displayName = 'R'
-        ..email = 'r@example.com'
-        ..phone = null
-        ..occupancies = ListBuilder<Occupancy>([
-          Occupancy(
-            (o) => o
-              ..id = 1
-              ..unitLabel = 'A-1'
-              ..buildingName = 'Toa A',
-          ),
-        ])
-        ..notificationPreferences = ListBuilder<NotificationPreference>(),
-    );
+  (b) => b
+    ..displayName = 'R'
+    ..email = 'r@example.com'
+    ..phone = null
+    ..occupancies = ListBuilder<Occupancy>([
+      Occupancy(
+        (o) => o
+          ..id = 1
+          ..unitLabel = 'A-1'
+          ..buildingName = 'Toa A',
+      ),
+    ])
+    ..notificationPreferences = ListBuilder<NotificationPreference>(),
+);
 
 List _overrides({
   required TokenStore store,
   required AuthRepository auth,
   required PushTokenSource push,
-}) =>
-    [
-      tokenStoreProvider.overrideWithValue(store),
-      authRepositoryProvider.overrideWithValue(auth),
-      pushTokenSourceProvider.overrideWithValue(push),
-      reportsRepositoryProvider.overrideWithValue(_EmptyReports()),
-      transparencyRepositoryProvider.overrideWithValue(_EmptyTransparency()),
-    ];
+}) => [
+  tokenStoreProvider.overrideWithValue(store),
+  authRepositoryProvider.overrideWithValue(auth),
+  pushTokenSourceProvider.overrideWithValue(push),
+  reportsRepositoryProvider.overrideWithValue(_EmptyReports()),
+  transparencyRepositoryProvider.overrideWithValue(_EmptyTransparency()),
+];
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('unauthenticated push open does not navigate; buffers until auth',
-      (tester) async {
+  testWidgets(
+    'unauthenticated push open does not navigate; buffers until auth',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = _FakeStore(); // no token → Login
+      final push = _ControllablePushSource();
+      final auth = _AuthRepo(_me());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [..._overrides(store: store, auth: auth, push: push)],
+          child: const LamToApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Đăng nhập'), findsWidgets);
+      expect(find.byType(IssueDetailScreen), findsNothing);
+
+      // Background/foreground open while still on Login — must not push routes.
+      push.emitOpened({'type': 'report', 'id': '42'});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(IssueDetailScreen), findsNothing);
+      expect(find.byType(LedgerDetailScreen), findsNothing);
+      expect(find.byType(NotificationsScreen), findsNothing);
+
+      // Sign in → buffered allowlisted link applies once.
+      await tester.enterText(find.byType(TextField).at(0), 'r@example.com');
+      await tester.enterText(find.byType(TextField).at(1), 'secret');
+      await tester.tap(find.widgetWithText(FilledButton, 'Đăng nhập'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IssueDetailScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'authenticated cold-start initial message navigates allowlisted report',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = _FakeStore('knox');
+      final push = _ControllablePushSource()
+        ..initial = {'type': 'report', 'id': '7'};
+      final auth = _AuthRepo(_me());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [..._overrides(store: store, auth: auth, push: push)],
+          child: const LamToApp(),
+        ),
+      );
+      // Bootstrap + post-frame wire + flush.
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IssueDetailScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets('authenticated stream open navigates ledger without re-open', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
-    final store = _FakeStore(); // no token → Login
+    final store = _FakeStore('knox');
     final push = _ControllablePushSource();
     final auth = _AuthRepo(_me());
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        ..._overrides(store: store, auth: auth, push: push),
-      ],
-      child: const LamToApp(),
-    ));
-    await tester.pumpAndSettle();
-    expect(find.text('Đăng nhập'), findsWidgets);
-    expect(find.byType(IssueDetailScreen), findsNothing);
-
-    // Background/foreground open while still on Login — must not push routes.
-    push.emitOpened({'type': 'report', 'id': '42'});
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(IssueDetailScreen), findsNothing);
-    expect(find.byType(LedgerDetailScreen), findsNothing);
-    expect(find.byType(NotificationsScreen), findsNothing);
-
-    // Sign in → buffered allowlisted link applies once.
-    await tester.enterText(find.byType(TextField).at(0), 'r@example.com');
-    await tester.enterText(find.byType(TextField).at(1), 'secret');
-    await tester.tap(find.widgetWithText(FilledButton, 'Đăng nhập'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(IssueDetailScreen), findsOneWidget);
-  });
-
-  testWidgets('authenticated cold-start initial message navigates allowlisted report',
-      (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final store = _FakeStore('knox');
-    final push = _ControllablePushSource()
-      ..initial = {'type': 'report', 'id': '7'};
-    final auth = _AuthRepo(_me());
-
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        ..._overrides(store: store, auth: auth, push: push),
-      ],
-      child: const LamToApp(),
-    ));
-    // Bootstrap + post-frame wire + flush.
-    await tester.pumpAndSettle();
-
-    expect(find.byType(IssueDetailScreen), findsOneWidget);
-  });
-
-  testWidgets('authenticated stream open navigates ledger without re-open',
-      (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final store = _FakeStore('knox');
-    final push = _ControllablePushSource();
-    final auth = _AuthRepo(_me());
-
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        ..._overrides(store: store, auth: auth, push: push),
-      ],
-      child: const LamToApp(),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [..._overrides(store: store, auth: auth, push: push)],
+        child: const LamToApp(),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(LedgerDetailScreen), findsNothing);
 

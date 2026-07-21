@@ -43,14 +43,9 @@ void main() {
       // TODO
     });
 
-    // Resident-visible rationale (cause / purpose / emergency reason).
+    // Resident-visible rationale (cause or purpose).
     // String why
     test('to test the property `why`', () async {
-      // TODO
-    });
-
-    // BuiltList<LedgerApprover> approvers
-    test('to test the property `approvers`', () async {
       // TODO
     });
 
@@ -64,13 +59,18 @@ void main() {
       // TODO
     });
 
-    // BuiltList<RedactedDocument> redactedDocuments
-    test('to test the property `redactedDocuments`', () async {
+    // BuiltList<JsonObject> approvers
+    test('to test the property `approvers`', () async {
       // TODO
     });
 
-    // BuiltList<Correction> corrections
+    // BuiltList<JsonObject> corrections
     test('to test the property `corrections`', () async {
+      // TODO
+    });
+
+    // BuiltList<RedactedDocument> redactedDocuments
+    test('to test the property `redactedDocuments`', () async {
       // TODO
     });
 

@@ -51,7 +51,7 @@ LedgerEntryList _entry(int id) => LedgerEntryList(
     ..evidenceLevel = 'CHAIN_CONFIRMED',
 );
 
-ReportSummary _report(String text, String status) => ReportSummary(
+ReportSummary _report(String text, StatusEnum status) => ReportSummary(
   (b) => b
     ..id = 1
     ..text = text
@@ -66,8 +66,8 @@ class _FakeReports implements ReportsRepository {
       PaginatedReportSummaryList(
         (b) => b
           ..results = ListBuilder<ReportSummary>([
-            _report('Thang máy kêu', 'OPEN'),
-            _report('Đèn hỏng', 'RESOLVED'),
+            _report('Thang máy kêu', StatusEnum.SUBMITTED),
+            _report('Đèn hỏng', StatusEnum.COMPLETED),
           ]),
       );
 

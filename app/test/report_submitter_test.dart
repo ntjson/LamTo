@@ -7,13 +7,13 @@ import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 ReportSummary _summary(int id) => ReportSummary(
-      (b) => b
-        ..id = id
-        ..text = 'Leak'
-        ..status = 'OPEN'
-        ..locationPathSnapshot = 'B / Hall'
-        ..createdAt = DateTime.utc(2026, 7, 17),
-    );
+  (b) => b
+    ..id = id
+    ..text = 'Leak'
+    ..status = StatusEnum.SUBMITTED
+    ..locationPathSnapshot = 'B / Hall'
+    ..createdAt = DateTime.utc(2026, 7, 17),
+);
 
 DioException _problem(int status, String code) {
   final req = RequestOptions(path: '/api/v1/reports');
@@ -22,7 +22,12 @@ DioException _problem(int status, String code) {
     response: Response(
       requestOptions: req,
       statusCode: status,
-      data: {'code': code, 'status': status, 'title': 'x', 'type': 'about:blank'},
+      data: {
+        'code': code,
+        'status': status,
+        'title': 'x',
+        'type': 'about:blank',
+      },
     ),
     type: DioExceptionType.badResponse,
   );
@@ -33,6 +38,7 @@ class _FakeRepo implements ReportsRepository {
   final uploaded = <String>[];
   Object? createError;
   Set<String> failPhotoPaths = {};
+
   /// Paths that throw a non-Dio error (e.g. missing local file).
   Set<String> throwLocalPaths = {};
 
@@ -76,9 +82,11 @@ class _FakeRepo implements ReportsRepository {
   @override
   Future<ReportDetail> fetchReport(int id) => throw UnimplementedError();
   @override
-  Future<WorkRatingResult> rateWork(
-          {required int workOrderId, required int score, String comment = ''}) =>
-      throw UnimplementedError();
+  Future<CaseRatingResult> rateCase({
+    required int caseId,
+    required bool satisfied,
+    String comment = '',
+  }) => throw UnimplementedError();
   @override
   Future<List<Location>> fetchLocations() => throw UnimplementedError();
 }
@@ -97,12 +105,8 @@ void main() {
     submitter = ReportSubmitter(repository: repo, draftStore: drafts);
   });
 
-  ReportDraft draftOf({List<String> photos = const []}) =>
-      ReportDraft.fresh().copyWith(
-        text: 'Leak',
-        locationId: 3,
-        photoPaths: photos,
-      );
+  ReportDraft draftOf({List<String> photos = const []}) => ReportDraft.fresh()
+      .copyWith(text: 'Leak', locationId: 3, photoPaths: photos);
 
   test('submit commits text, clears draft, uploads photos in order', () async {
     final draft = draftOf(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
@@ -114,20 +118,27 @@ void main() {
     expect(await drafts.read(7), isNull); // text committed -> draft gone
   });
 
-  test('retry after network failure reuses the SAME client_ref (spec 3.5)',
-      () async {
-    final draft = draftOf();
-    repo.createError = DioException(
-      requestOptions: RequestOptions(path: '/api/v1/reports'),
-      type: DioExceptionType.connectionTimeout,
-    );
-    await expectLater(
-        submitter.submit(draft: draft, occupancyId: 7), throwsA(anything));
-    repo.createError = null;
-    await submitter.submit(draft: draft, occupancyId: 7); // server replays 200
-    expect(repo.createdRefs, hasLength(2));
-    expect(repo.createdRefs[0], repo.createdRefs[1]);
-  });
+  test(
+    'retry after network failure reuses the SAME client_ref (spec 3.5)',
+    () async {
+      final draft = draftOf();
+      repo.createError = DioException(
+        requestOptions: RequestOptions(path: '/api/v1/reports'),
+        type: DioExceptionType.connectionTimeout,
+      );
+      await expectLater(
+        submitter.submit(draft: draft, occupancyId: 7),
+        throwsA(anything),
+      );
+      repo.createError = null;
+      await submitter.submit(
+        draft: draft,
+        occupancyId: 7,
+      ); // server replays 200
+      expect(repo.createdRefs, hasLength(2));
+      expect(repo.createdRefs[0], repo.createdRefs[1]);
+    },
+  );
 
   test('409 client_ref_conflict surfaces ReportConflictException', () async {
     repo.createError = _problem(409, 'client_ref_conflict');
@@ -145,12 +156,12 @@ void main() {
     expect(outcome.reportId, 42);
     expect(outcome.allPhotosUploaded, isFalse);
     expect(await drafts.read(7), isNull); // report text is safe regardless
-    final failed =
-        outcome.photos.singleWhere((p) => p.status == PhotoUploadStatus.failed);
+    final failed = outcome.photos.singleWhere(
+      (p) => p.status == PhotoUploadStatus.failed,
+    );
 
     repo.failPhotoPaths = {};
-    final retried =
-        await submitter.retryPhoto(reportId: 42, photo: failed);
+    final retried = await submitter.retryPhoto(reportId: 42, photo: failed);
     expect(retried.status, PhotoUploadStatus.uploaded);
   });
 
@@ -163,8 +174,7 @@ void main() {
     final photo = outcome.photos.single;
     expect(photo.status, PhotoUploadStatus.uploaded);
     final before = repo.uploaded.length;
-    final again =
-        await submitter.retryPhoto(reportId: 42, photo: photo);
+    final again = await submitter.retryPhoto(reportId: 42, photo: photo);
     expect(again.status, PhotoUploadStatus.uploaded);
     expect(repo.uploaded.length, before); // no second upload
   });

@@ -68,6 +68,7 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**authLoginCreate**](doc/AuthApi.md#authlogincreate) | **POST** /api/v1/auth/login | 
 [*AuthApi*](doc/AuthApi.md) | [**authLogoutAllCreate**](doc/AuthApi.md#authlogoutallcreate) | **POST** /api/v1/auth/logout-all | 
 [*AuthApi*](doc/AuthApi.md) | [**authLogoutCreate**](doc/AuthApi.md#authlogoutcreate) | **POST** /api/v1/auth/logout | 
+[*CasesApi*](doc/CasesApi.md) | [**casesRatingCreate**](doc/CasesApi.md#casesratingcreate) | **POST** /api/v1/cases/{id}/rating | 
 [*DevicesApi*](doc/DevicesApi.md) | [**devicesCreate**](doc/DevicesApi.md#devicescreate) | **POST** /api/v1/devices | 
 [*DevicesApi*](doc/DevicesApi.md) | [**devicesDestroy**](doc/DevicesApi.md#devicesdestroy) | **DELETE** /api/v1/devices/{install_id} | 
 [*DocumentsApi*](doc/DocumentsApi.md) | [**documentsRetrieve**](doc/DocumentsApi.md#documentsretrieve) | **GET** /api/v1/documents/{token} | 
@@ -81,21 +82,23 @@ Class | Method | HTTP request | Description
 [*NotificationsApi*](doc/NotificationsApi.md) | [**notificationsList**](doc/NotificationsApi.md#notificationslist) | **GET** /api/v1/notifications | 
 [*NotificationsApi*](doc/NotificationsApi.md) | [**notificationsReadCreate**](doc/NotificationsApi.md#notificationsreadcreate) | **POST** /api/v1/notifications/{id}/read | 
 [*ReportsApi*](doc/ReportsApi.md) | [**reportsCreate**](doc/ReportsApi.md#reportscreate) | **POST** /api/v1/reports | 
+[*ReportsApi*](doc/ReportsApi.md) | [**reportsInfoReplyCreate**](doc/ReportsApi.md#reportsinforeplycreate) | **POST** /api/v1/reports/{id}/info-reply | 
 [*ReportsApi*](doc/ReportsApi.md) | [**reportsList**](doc/ReportsApi.md#reportslist) | **GET** /api/v1/reports | 
 [*ReportsApi*](doc/ReportsApi.md) | [**reportsPhotosCreate**](doc/ReportsApi.md#reportsphotoscreate) | **POST** /api/v1/reports/{id}/photos | 
 [*ReportsApi*](doc/ReportsApi.md) | [**reportsRetrieve**](doc/ReportsApi.md#reportsretrieve) | **GET** /api/v1/reports/{id} | 
-[*WorkApi*](doc/WorkApi.md) | [**workRatingCreate**](doc/WorkApi.md#workratingcreate) | **POST** /api/v1/work/{id}/rating | 
 
 
 ## Documentation For Models
 
- - [Correction](doc/Correction.md)
+ - [CaseRatingRequest](doc/CaseRatingRequest.md)
+ - [CaseRatingResult](doc/CaseRatingResult.md)
  - [Device](doc/Device.md)
  - [DeviceRegisterRequest](doc/DeviceRegisterRequest.md)
  - [FundSeries](doc/FundSeries.md)
  - [FundSeriesPoint](doc/FundSeriesPoint.md)
  - [FundSummary](doc/FundSummary.md)
- - [LedgerApprover](doc/LedgerApprover.md)
+ - [InfoReplyRequest](doc/InfoReplyRequest.md)
+ - [InfoReplyResult](doc/InfoReplyResult.md)
  - [LedgerEntryDetail](doc/LedgerEntryDetail.md)
  - [LedgerEntryList](doc/LedgerEntryList.md)
  - [Location](doc/Location.md)
@@ -120,11 +123,10 @@ Class | Method | HTTP request | Description
  - [ReportDetail](doc/ReportDetail.md)
  - [ReportPhoto](doc/ReportPhoto.md)
  - [ReportSummary](doc/ReportSummary.md)
- - [ReportWorkOrder](doc/ReportWorkOrder.md)
+ - [ReportWorkUpdate](doc/ReportWorkUpdate.md)
+ - [StatusEnum](doc/StatusEnum.md)
  - [TokenResponse](doc/TokenResponse.md)
  - [Verification](doc/Verification.md)
- - [WorkRatingRequest](doc/WorkRatingRequest.md)
- - [WorkRatingResult](doc/WorkRatingResult.md)
 
 
 ## Documentation For Authorization

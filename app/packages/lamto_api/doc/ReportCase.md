@@ -13,7 +13,10 @@ Name | Type | Description | Notes
 **urgency** | **String** |  | 
 **deadlineAt** | [**DateTime**](DateTime.md) |  | 
 **active** | **bool** |  | 
-**workOrders** | [**BuiltList&lt;ReportWorkOrder&gt;**](ReportWorkOrder.md) |  | 
+**completedAt** | [**DateTime**](DateTime.md) |  | 
+**closedAt** | [**DateTime**](DateTime.md) |  | 
+**updates** | [**BuiltList&lt;ReportWorkUpdate&gt;**](ReportWorkUpdate.md) |  | 
+**canRate** | **bool** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -200,6 +200,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get statusResolved => 'Đã xử lý';
 
   @override
+  String get statusDeclined => 'Đã từ chối';
+
+  @override
   String issueDetailTitle(int id) {
     return 'Phản ánh #$id';
   }
@@ -233,9 +236,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get rateWorkTitle => 'Công việc thế nào?';
 
   @override
-  String rateStarLabel(int score) {
-    return '$score trên 5 sao';
-  }
+  String get rateSatisfied => 'Hài lòng';
+
+  @override
+  String get rateNotSatisfied => 'Không hài lòng';
 
   @override
   String get rateCommentLabel => 'Nhận xét (không bắt buộc)';

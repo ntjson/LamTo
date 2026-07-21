@@ -1,4 +1,4 @@
-# lamto_api.model.Correction
+# lamto_api.model.CaseRatingResult
 
 ## Load the model package
 ```dart
@@ -9,8 +9,8 @@ import 'package:lamto_api/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **int** |  | 
-**status** | **String** |  | 
-**reason** | **String** |  | 
+**caseId** | **int** |  | 
+**satisfied** | **bool** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

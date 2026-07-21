@@ -17,8 +17,23 @@ void main() {
       // TODO
     });
 
-    // String status
+    // StatusEnum status
     test('to test the property `status`', () async {
+      // TODO
+    });
+
+    // String declinedReason
+    test('to test the property `declinedReason`', () async {
+      // TODO
+    });
+
+    // bool isPrivate
+    test('to test the property `isPrivate`', () async {
+      // TODO
+    });
+
+    // BuiltMap<String, JsonObject> openInfoRequest
+    test('to test the property `openInfoRequest`', () async {
       // TODO
     });
 

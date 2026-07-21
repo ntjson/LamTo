@@ -73,7 +73,8 @@ from lamto.finance.publication import (
     _resident_payload,
 )
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
-from lamto.maintenance.cases import complete_case_work, start_case_work
+from lamto.maintenance.cases import complete_case_work, publish_progress, start_case_work
+from lamto.maintenance.ratings import rate_completed_case
 from lamto.maintenance.reporting import submit_report
 from lamto.maintenance.triage import confirm_triage
 
@@ -485,6 +486,13 @@ class PilotDomainDriver:
             case=started,
         )
 
+    def publish_work_progress(self):
+        case = self.seed.case or self._ctx["case"]
+        manager = self.seed.management_users[0]
+        update = publish_progress(case, manager, "Worn cable", "Cable secured")
+        self._ctx["work_update"] = update
+        return update
+
     def complete_assigned_work(self):
         work = self.seed.case or self._ctx["case"]
         work.refresh_from_db()
@@ -499,6 +507,14 @@ class PilotDomainDriver:
         self._ctx["case"] = completed
         self.seed.case = completed
         return completed
+
+    def rate_completed_case(self, satisfied: bool = True, comment: str = ""):
+        case = self.seed.case or self._ctx["case"]
+        rating = rate_completed_case(
+            self.seed.residents[0], case, satisfied=satisfied, comment=comment
+        )
+        self._ctx["rating"] = rating
+        return rating
 
     def accept_and_record_payment(self, amount_vnd: int | None = None):
         amount_vnd = amount_vnd or self._ctx.get("amount_vnd", DEFAULT_AMOUNT_VND)
@@ -679,7 +695,7 @@ class PilotDomainDriver:
         return snapshot
 
     def prepare_local_normal_work(self, page=None):
-        """Bring a normal paid work order through proposal submission."""
+        """Bring a normal paid case through proposal submission."""
         self.page = page
         self.submit_report(
             "Elevator shakes heavily", "Building B / Lift 2", None

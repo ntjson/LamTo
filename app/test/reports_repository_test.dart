@@ -42,7 +42,7 @@ void main() {
     answerWith(201, {
       'id': 5,
       'text': 'Leak',
-      'status': 'OPEN',
+      'status': 'SUBMITTED',
       'location_path_snapshot': 'B / Hall',
       'created_at': '2026-07-17T00:00:00Z',
     });
@@ -95,7 +95,7 @@ void main() {
       final body = {
         'id': 5,
         'text': 'Leak',
-        'status': 'OPEN',
+        'status': 'SUBMITTED',
         'location_path_snapshot': 'B / Hall',
         'created_at': '2026-07-17T00:00:00Z',
       };

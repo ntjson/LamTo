@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:built_value/json_object.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -14,6 +15,9 @@ import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../transparency/transparency_repository.dart';
 import 'evidence_labels.dart';
+
+String _jsonField(JsonObject? object, String key) =>
+    ((object?.value as Map?)?[key] ?? '').toString();
 
 /// Ledger entry detail (spec 6.3(6) / A1): plain language first — what was
 /// fixed, why, amount, who approved, payment verification — then expandable
@@ -121,7 +125,13 @@ class LedgerDetailScreen extends ConsumerWidget {
               number: 3,
               title: l10n.ledgerChainApprovals,
               body: entry.approvers
-                  .map((a) => approverLine(a.role, a.name, l10n))
+                  .map(
+                    (a) => approverLine(
+                      _jsonField(a, 'role'),
+                      _jsonField(a, 'name'),
+                      l10n,
+                    ),
+                  )
                   .join('\n'),
             ),
             _ChainStep(
@@ -196,8 +206,8 @@ class LedgerDetailScreen extends ConsumerWidget {
               minTileHeight: 48,
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.change_circle_outlined),
-              title: Text(correction.reason),
-              subtitle: Text(correction.status),
+              title: Text(_jsonField(correction, 'reason')),
+              subtitle: Text(_jsonField(correction, 'status')),
             ),
         ],
       ],

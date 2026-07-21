@@ -1,29 +1,24 @@
 import 'package:test/test.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-// tests for ReportSummary
+// tests for ReportWorkUpdate
 void main() {
-  final instance = ReportSummaryBuilder();
+  final instance = ReportWorkUpdateBuilder();
   // TODO add properties to the builder and call build()
 
-  group(ReportSummary, () {
+  group(ReportWorkUpdate, () {
     // int id
     test('to test the property `id`', () async {
       // TODO
     });
 
-    // String text
-    test('to test the property `text`', () async {
+    // String cause
+    test('to test the property `cause`', () async {
       // TODO
     });
 
-    // StatusEnum status
-    test('to test the property `status`', () async {
-      // TODO
-    });
-
-    // String locationPathSnapshot
-    test('to test the property `locationPathSnapshot`', () async {
+    // String result
+    test('to test the property `result`', () async {
       // TODO
     });
 

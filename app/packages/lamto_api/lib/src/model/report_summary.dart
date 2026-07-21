@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:lamto_api/src/model/status_enum.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -25,7 +26,8 @@ abstract class ReportSummary implements Built<ReportSummary, ReportSummaryBuilde
   String get text;
 
   @BuiltValueField(wireName: r'status')
-  String get status;
+  StatusEnum get status;
+  // enum statusEnum {  SUBMITTED,  IN_REVIEW,  NEEDS_INFO,  DECLINED,  IN_PROGRESS,  PROPOSED,  COMPLETED,  CLOSED,  };
 
   @BuiltValueField(wireName: r'location_path_snapshot')
   String get locationPathSnapshot;
@@ -69,7 +71,7 @@ class _$ReportSummarySerializer implements PrimitiveSerializer<ReportSummary> {
     yield r'status';
     yield serializers.serialize(
       object.status,
-      specifiedType: const FullType(String),
+      specifiedType: const FullType(StatusEnum),
     );
     yield r'location_path_snapshot';
     yield serializers.serialize(
@@ -121,8 +123,8 @@ class _$ReportSummarySerializer implements PrimitiveSerializer<ReportSummary> {
         case r'status':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType(StatusEnum),
+          ) as StatusEnum;
           result.status = valueDes;
           break;
         case r'location_path_snapshot':

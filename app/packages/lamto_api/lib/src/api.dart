@@ -10,6 +10,7 @@ import 'package:lamto_api/src/auth/basic_auth.dart';
 import 'package:lamto_api/src/auth/bearer_auth.dart';
 import 'package:lamto_api/src/auth/oauth.dart';
 import 'package:lamto_api/src/api/auth_api.dart';
+import 'package:lamto_api/src/api/cases_api.dart';
 import 'package:lamto_api/src/api/devices_api.dart';
 import 'package:lamto_api/src/api/documents_api.dart';
 import 'package:lamto_api/src/api/fund_api.dart';
@@ -18,7 +19,6 @@ import 'package:lamto_api/src/api/locations_api.dart';
 import 'package:lamto_api/src/api/me_api.dart';
 import 'package:lamto_api/src/api/notifications_api.dart';
 import 'package:lamto_api/src/api/reports_api.dart';
-import 'package:lamto_api/src/api/work_api.dart';
 
 class LamtoApi {
   static const String basePath = r'http://localhost';
@@ -80,6 +80,12 @@ class LamtoApi {
     return AuthApi(dio, serializers);
   }
 
+  /// Get CasesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  CasesApi getCasesApi() {
+    return CasesApi(dio, serializers);
+  }
+
   /// Get DevicesApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   DevicesApi getDevicesApi() {
@@ -126,11 +132,5 @@ class LamtoApi {
   /// by doing that all interceptors will not be executed
   ReportsApi getReportsApi() {
     return ReportsApi(dio, serializers);
-  }
-
-  /// Get WorkApi instance, base route and serializer can be overridden by a given but be careful,
-  /// by doing that all interceptors will not be executed
-  WorkApi getWorkApi() {
-    return WorkApi(dio, serializers);
   }
 }

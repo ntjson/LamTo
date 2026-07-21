@@ -14,13 +14,15 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:lamto_api/src/date_serializer.dart';
 import 'package:lamto_api/src/model/date.dart';
 
-import 'package:lamto_api/src/model/correction.dart';
+import 'package:lamto_api/src/model/case_rating_request.dart';
+import 'package:lamto_api/src/model/case_rating_result.dart';
 import 'package:lamto_api/src/model/device.dart';
 import 'package:lamto_api/src/model/device_register_request.dart';
 import 'package:lamto_api/src/model/fund_series.dart';
 import 'package:lamto_api/src/model/fund_series_point.dart';
 import 'package:lamto_api/src/model/fund_summary.dart';
-import 'package:lamto_api/src/model/ledger_approver.dart';
+import 'package:lamto_api/src/model/info_reply_request.dart';
+import 'package:lamto_api/src/model/info_reply_result.dart';
 import 'package:lamto_api/src/model/ledger_entry_detail.dart';
 import 'package:lamto_api/src/model/ledger_entry_list.dart';
 import 'package:lamto_api/src/model/location.dart';
@@ -45,22 +47,23 @@ import 'package:lamto_api/src/model/report_create_request.dart';
 import 'package:lamto_api/src/model/report_detail.dart';
 import 'package:lamto_api/src/model/report_photo.dart';
 import 'package:lamto_api/src/model/report_summary.dart';
-import 'package:lamto_api/src/model/report_work_order.dart';
+import 'package:lamto_api/src/model/report_work_update.dart';
+import 'package:lamto_api/src/model/status_enum.dart';
 import 'package:lamto_api/src/model/token_response.dart';
 import 'package:lamto_api/src/model/verification.dart';
-import 'package:lamto_api/src/model/work_rating_request.dart';
-import 'package:lamto_api/src/model/work_rating_result.dart';
 
 part 'serializers.g.dart';
 
 @SerializersFor([
-  Correction,
+  CaseRatingRequest,
+  CaseRatingResult,
   Device,
   DeviceRegisterRequest,
   FundSeries,
   FundSeriesPoint,
   FundSummary,
-  LedgerApprover,
+  InfoReplyRequest,
+  InfoReplyResult,
   LedgerEntryDetail,
   LedgerEntryList,
   Location,
@@ -85,11 +88,10 @@ part 'serializers.g.dart';
   ReportDetail,
   ReportPhoto,
   ReportSummary,
-  ReportWorkOrder,
+  ReportWorkUpdate,
+  StatusEnum,
   TokenResponse,
   Verification,
-  WorkRatingRequest,
-  WorkRatingResult,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(

@@ -13,6 +13,7 @@ part 'report_create_request.g.dart';
 /// Properties:
 /// * [clientRef] - Client-generated UUID, unique per user (spec 3.5).
 /// * [text] 
+/// * [isPrivate] 
 /// * [locationId] - Active BuildingLocation id in the resolved occupancy building.
 @BuiltValue()
 abstract class ReportCreateRequest implements Built<ReportCreateRequest, ReportCreateRequestBuilder> {
@@ -23,6 +24,9 @@ abstract class ReportCreateRequest implements Built<ReportCreateRequest, ReportC
   @BuiltValueField(wireName: r'text')
   String get text;
 
+  @BuiltValueField(wireName: r'is_private')
+  bool? get isPrivate;
+
   /// Active BuildingLocation id in the resolved occupancy building.
   @BuiltValueField(wireName: r'location_id')
   int get locationId;
@@ -32,7 +36,8 @@ abstract class ReportCreateRequest implements Built<ReportCreateRequest, ReportC
   factory ReportCreateRequest([void updates(ReportCreateRequestBuilder b)]) = _$ReportCreateRequest;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(ReportCreateRequestBuilder b) => b;
+  static void _defaults(ReportCreateRequestBuilder b) => b
+      ..isPrivate = false;
 
   @BuiltValueSerializer(custom: true)
   static Serializer<ReportCreateRequest> get serializer => _$ReportCreateRequestSerializer();
@@ -60,6 +65,13 @@ class _$ReportCreateRequestSerializer implements PrimitiveSerializer<ReportCreat
       object.text,
       specifiedType: const FullType(String),
     );
+    if (object.isPrivate != null) {
+      yield r'is_private';
+      yield serializers.serialize(
+        object.isPrivate,
+        specifiedType: const FullType(bool),
+      );
+    }
     yield r'location_id';
     yield serializers.serialize(
       object.locationId,
@@ -101,6 +113,13 @@ class _$ReportCreateRequestSerializer implements PrimitiveSerializer<ReportCreat
             specifiedType: const FullType(String),
           ) as String;
           result.text = valueDes;
+          break;
+        case r'is_private':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.isPrivate = valueDes;
           break;
         case r'location_id':
           final valueDes = serializers.deserialize(

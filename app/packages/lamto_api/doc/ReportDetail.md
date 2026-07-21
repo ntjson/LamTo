@@ -10,7 +10,10 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **int** |  | 
 **text** | **String** |  | 
-**status** | **String** |  | 
+**status** | [**StatusEnum**](StatusEnum.md) |  | 
+**declinedReason** | **String** |  | 
+**isPrivate** | **bool** |  | 
+**openInfoRequest** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) |  | 
 **locationPathSnapshot** | **String** |  | 
 **unitLabel** | **String** |  | 
 **createdAt** | [**DateTime**](DateTime.md) |  | 

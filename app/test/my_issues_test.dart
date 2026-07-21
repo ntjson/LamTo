@@ -9,15 +9,18 @@ import 'package:lamto/l10n/app_localizations_en.dart';
 import 'package:lamto/theme.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-ReportSummary _report(int id, String text, {String status = 'SUBMITTED'}) =>
-    ReportSummary(
-      (b) => b
-        ..id = id
-        ..text = text
-        ..status = status
-        ..locationPathSnapshot = 'B / Hall'
-        ..createdAt = DateTime.utc(2026, 7, 17),
-    );
+ReportSummary _report(
+  int id,
+  String text, {
+  StatusEnum status = StatusEnum.SUBMITTED,
+}) => ReportSummary(
+  (b) => b
+    ..id = id
+    ..text = text
+    ..status = status
+    ..locationPathSnapshot = 'B / Hall'
+    ..createdAt = DateTime.utc(2026, 7, 17),
+);
 
 PaginatedReportSummaryList _page(List<ReportSummary> items, {String? next}) =>
     PaginatedReportSummaryList(
@@ -48,9 +51,9 @@ class _FakeRepo implements ReportsRepository {
   @override
   Future<ReportDetail> fetchReport(int id) => throw UnimplementedError();
   @override
-  Future<WorkRatingResult> rateWork({
-    required int workOrderId,
-    required int score,
+  Future<CaseRatingResult> rateCase({
+    required int caseId,
+    required bool satisfied,
     String comment = '',
   }) => throw UnimplementedError();
   @override
@@ -63,9 +66,12 @@ class _FakeRepo implements ReportsRepository {
 
 void main() {
   test('declined reports are terminal without a success presentation', () {
-    expect(isActiveReportStatus('DECLINED'), isFalse);
-    expect(reportStatusLabel('DECLINED', AppLocalizationsEn()), 'DECLINED');
-    expect(reportStatusTone('DECLINED'), StatusTone.warning);
+    expect(isActiveReportStatus(StatusEnum.DECLINED), isFalse);
+    expect(
+      reportStatusLabel(StatusEnum.DECLINED, AppLocalizationsEn()),
+      'Declined',
+    );
+    expect(reportStatusTone(StatusEnum.DECLINED), StatusTone.warning);
   });
 
   testWidgets('lists reports with status chip and loads the next page', (

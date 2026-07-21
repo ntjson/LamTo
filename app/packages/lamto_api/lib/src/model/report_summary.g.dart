@@ -12,7 +12,7 @@ class _$ReportSummary extends ReportSummary {
   @override
   final String text;
   @override
-  final String status;
+  final StatusEnum status;
   @override
   final String locationPathSnapshot;
   @override
@@ -82,9 +82,9 @@ class ReportSummaryBuilder
   String? get text => _$this._text;
   set text(String? text) => _$this._text = text;
 
-  String? _status;
-  String? get status => _$this._status;
-  set status(String? status) => _$this._status = status;
+  StatusEnum? _status;
+  StatusEnum? get status => _$this._status;
+  set status(StatusEnum? status) => _$this._status = status;
 
   String? _locationPathSnapshot;
   String? get locationPathSnapshot => _$this._locationPathSnapshot;

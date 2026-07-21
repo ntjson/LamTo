@@ -452,6 +452,12 @@ abstract class AppLocalizations {
   /// **'Resolved'**
   String get statusResolved;
 
+  /// No description provided for @statusDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined'**
+  String get statusDeclined;
+
   /// No description provided for @issueDetailTitle.
   ///
   /// In en, this message translates to:
@@ -506,11 +512,17 @@ abstract class AppLocalizations {
   /// **'How was the work?'**
   String get rateWorkTitle;
 
-  /// No description provided for @rateStarLabel.
+  /// No description provided for @rateSatisfied.
   ///
   /// In en, this message translates to:
-  /// **'{score} out of 5 stars'**
-  String rateStarLabel(int score);
+  /// **'Satisfied'**
+  String get rateSatisfied;
+
+  /// No description provided for @rateNotSatisfied.
+  ///
+  /// In en, this message translates to:
+  /// **'Not satisfied'**
+  String get rateNotSatisfied;
 
   /// No description provided for @rateCommentLabel.
   ///
