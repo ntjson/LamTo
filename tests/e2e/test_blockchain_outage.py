@@ -14,8 +14,8 @@ def test_normal_work_can_start_pending_anchor_but_cannot_publish(page, seeded_pi
 
     assert work.verification_label == "Pending blockchain anchoring"
     seeded_pilot.complete_assigned_work()
-    seeded_pilot.accept_and_record_payment()
-    seeded_pilot.verify_payment()
+    seeded_pilot.record_settlement_transfer()
+    seeded_pilot.record_settlement_ack()
     before_ids = seeded_pilot.latest_outbox_event_ids()
     blocked = seeded_pilot.attempt_publication()
 

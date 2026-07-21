@@ -12,11 +12,7 @@ from lamto.evidence.models import EvidenceType, is_settled
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
 
-from .fund import create_publication_outflow, get_or_create_fund
 from .models import (
-    AcceptanceRecord,
-    PaymentEvidence,
-    PaymentVerification,
     Proposal,
     PublicationGateFailure,
     PublicationSnapshot,
@@ -130,40 +126,32 @@ def _require_settled(event, label):
 
 def _load_execution_chain(proposal):
     try:
-        acceptance = proposal.case.acceptance
-    except AcceptanceRecord.DoesNotExist as exc:
-        raise ValidationError("Accepted work is required before publication.") from exc
-    try:
-        payment = acceptance.payment
-    except PaymentEvidence.DoesNotExist as exc:
-        raise ValidationError("Payment evidence is required before publication.") from exc
-    try:
-        verification = payment.verification
-    except PaymentVerification.DoesNotExist as exc:
-        raise ValidationError("Payment verification is required before publication.") from exc
-    return acceptance, payment, verification
+        settlement = proposal.settlement
+    except Proposal.settlement.RelatedObjectDoesNotExist as exc:
+        raise ValidationError("Settlement is required before publication.") from exc
+    if settlement.settled_at is None or settlement.outbox_event_id is None:
+        raise ValidationError("Settlement must be completed before publication.")
+    return settlement
 
 
-def _forbidden_publisher_user_ids(proposal, payment):
+def _forbidden_publisher_user_ids(proposal, settlement):
     forbidden = {proposal.creator_membership.user_id}
-    forbidden.add(payment.recorder.user_id)
+    forbidden.add(settlement.transfer_recorded_by.user_id)
     return forbidden
 
 
-def _assert_publisher_eligible(actor, proposal, payment):
-    forbidden = _forbidden_publisher_user_ids(proposal, payment)
+def _assert_publisher_eligible(actor, proposal, settlement):
+    forbidden = _forbidden_publisher_user_ids(proposal, settlement)
     if actor.user_id in forbidden:
         raise PermissionDenied(
-            "Publisher must not be the proposal creator or payment recorder."
+            "Publisher must not be the proposal creator or settlement recorder."
         )
 
 
 def _resident_payload(
     proposal,
     version,
-    acceptance,
-    payment,
-    verification,
+    settlement,
     document_hashes,
 ):
     case = proposal.case
@@ -174,20 +162,19 @@ def _resident_payload(
         "proposal_id": proposal.pk,
         "proposal_version": version.number,
         "proposed_amount_vnd": version.amount_vnd,
-        "actual_cost_vnd": acceptance.actual_cost_vnd,
+        "actual_cost_vnd": settlement.amount_vnd,
         "contractor_name": version.contractor_name,
         "document_hashes": document_hashes,
-        "payment_verification": {
-            "decision": verification.decision,
-            "payment_id": payment.pk,
-            "verification_event_hash": verification.outbox_event.payload_hash,
+        "settlement": {
+            "settlement_id": settlement.pk,
+            "settlement_event_hash": settlement.outbox_event.payload_hash,
         },
     }
     return payload
 
 
 def _collect_document_checks(
-    proposal, version, acceptance, payment, verification, using="default"
+    proposal, version, settlement, using="default"
 ):
     from lamto.documents.models import DocumentVersion
 
@@ -197,47 +184,30 @@ def _collect_document_checks(
         redacted = DocumentVersion.objects.using(using).get(pk=item["redacted_id"])
         checks.append((original, item["original_sha256"], "QUOTATION_ORIGINAL"))
         checks.append((redacted, item["redacted_sha256"], "QUOTATION_REDACTED"))
-    acc_payload = acceptance.outbox_event.payload
     checks.extend(
         [
             (
-                acceptance.invoice_original,
-                acc_payload["invoice_original_hash"],
-                "INVOICE_ORIGINAL",
+                settlement.transfer_original,
+                settlement.transfer_original.sha256,
+                "SETTLEMENT_TRANSFER_ORIGINAL",
             ),
             (
-                acceptance.invoice_redacted,
-                acc_payload["invoice_redacted_hash"],
-                "INVOICE_REDACTED",
+                settlement.transfer_redacted,
+                settlement.transfer_redacted.sha256,
+                "SETTLEMENT_TRANSFER_REDACTED",
             ),
             (
-                acceptance.acceptance_original,
-                acc_payload["acceptance_report_original_hash"],
-                "ACCEPTANCE_ORIGINAL",
+                settlement.ack_original,
+                settlement.ack_original.sha256,
+                "SETTLEMENT_ACK_ORIGINAL",
             ),
             (
-                acceptance.acceptance_redacted,
-                acc_payload["acceptance_report_redacted_hash"],
-                "ACCEPTANCE_REDACTED",
+                settlement.ack_redacted,
+                settlement.ack_redacted.sha256,
+                "SETTLEMENT_ACK_REDACTED",
             ),
         ]
     )
-    pay_payload = payment.outbox_event.payload
-    checks.extend(
-        [
-            (
-                payment.proof_original,
-                pay_payload["payment_proof_original_hash"],
-                "PAYMENT_PROOF_ORIGINAL",
-            ),
-            (
-                payment.proof_redacted,
-                pay_payload["payment_proof_redacted_hash"],
-                "PAYMENT_PROOF_REDACTED",
-            ),
-        ]
-    )
-    _ = verification
     return checks
 
 
@@ -320,23 +290,19 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
     version = proposal.current_version
     if version is None:
         raise ValidationError("A current proposal version is required.")
-    acceptance, payment, verification = _load_execution_chain(proposal)
-    if verification.decision != PaymentVerification.Decision.VERIFIED:
-        raise ValidationError("Payment must be VERIFIED before publication.")
-    if payment.external_status != PaymentEvidence.ExternalStatus.COMPLETED:
-        raise ValidationError("Payment evidence status must be COMPLETED.")
+    settlement = _load_execution_chain(proposal)
 
     prerequisite_events = []
     prerequisite_events.append(version.outbox_event)
 
     prerequisite_events.extend(
-        [acceptance.outbox_event, payment.outbox_event, verification.outbox_event]
+        [settlement.outbox_event]
     )
     for event in prerequisite_events:
         _require_settled(event, "Prerequisite")
 
     document_checks = _collect_document_checks(
-        proposal, version, acceptance, payment, verification
+        proposal, version, settlement
     )
     document_hashes = []
     for version_doc, expected_hash, gate in document_checks:
@@ -348,15 +314,13 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
     resident_payload = _resident_payload(
         proposal,
         version,
-        acceptance,
-        payment,
-        verification,
+        settlement,
         document_hashes,
     )
     if type(publication_id) is not int or publication_id <= 0:
         raise ValidationError("Publication id must be a positive integer.")
     prerequisite_event_hashes = [event.payload_hash for event in prerequisite_events]
-    previous_hash = "0x" + verification.outbox_event.payload_hash
+    previous_hash = "0x" + settlement.outbox_event.payload_hash
     typed = build_publication_evidence_typed_data(
         proposal,
         actor,
@@ -373,7 +337,7 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
         "publication_id": publication_id,
         "event_id": event_id,
         "timestamp": timestamp,
-        "forbidden_publisher": actor.user_id in _forbidden_publisher_user_ids(proposal, payment),
+        "forbidden_publisher": actor.user_id in _forbidden_publisher_user_ids(proposal, settlement),
     }
 
 
@@ -402,32 +366,22 @@ def prepare_publication(
         version = proposal.current_version
         if version is None:
             raise ValidationError("A current proposal version is required.")
-        acceptance, payment, verification = _load_execution_chain(proposal)
-        if verification.decision != PaymentVerification.Decision.VERIFIED:
-            raise ValidationError("Payment must be VERIFIED before publication.")
-        if payment.external_status != PaymentEvidence.ExternalStatus.COMPLETED:
-            raise ValidationError("Payment evidence status must be COMPLETED.")
+        settlement = _load_execution_chain(proposal)
 
         prerequisite_events = []
         prerequisite_events.append(version.outbox_event)
 
-        prerequisite_events.extend(
-            [
-                acceptance.outbox_event,
-                payment.outbox_event,
-                verification.outbox_event,
-            ]
-        )
+        prerequisite_events.append(settlement.outbox_event)
         for event in prerequisite_events:
             _require_settled(event, "Prerequisite")
 
-        if actor.user_id in _forbidden_publisher_user_ids(proposal, payment):
+        if actor.user_id in _forbidden_publisher_user_ids(proposal, settlement):
             denied = True
             denied_actor = actor
             denied_proposal = proposal
         else:
             document_checks = _collect_document_checks(
-                proposal, version, acceptance, payment, verification
+                proposal, version, settlement
             )
             document_hashes = []
             for version_doc, expected_hash, gate in document_checks:
@@ -445,9 +399,7 @@ def prepare_publication(
                 resident_payload = _resident_payload(
                     proposal,
                     version,
-                    acceptance,
-                    payment,
-                    verification,
+                    settlement,
                     document_hashes,
                 )
 
@@ -463,7 +415,7 @@ def prepare_publication(
                 prerequisite_event_hashes = [
                     event.payload_hash for event in prerequisite_events
                 ]
-                previous_hash = "0x" + verification.outbox_event.payload_hash
+                previous_hash = "0x" + settlement.outbox_event.payload_hash
                 payload = build_publication_evidence_payload(
                     publication_id,
                     prerequisite_event_hashes,
@@ -517,7 +469,7 @@ def prepare_publication(
             {"reason": "publisher dual-control violation"},
         )
         raise PermissionDenied(
-            "Publisher must not be the proposal creator or payment recorder."
+            "Publisher must not be the proposal creator or settlement recorder."
         )
     if gate_failure is not None:
         _record_gate_failure(
@@ -560,30 +512,20 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
         return PublishedLedgerEntry.objects.get(proposal=proposal)
 
-    acceptance, payment, verification = _load_execution_chain(proposal)
-    if verification.decision != PaymentVerification.Decision.VERIFIED:
-        raise ValidationError("Payment must remain VERIFIED at finalization.")
+    settlement = _load_execution_chain(proposal)
     version = proposal.current_version
     case = proposal.case
     if case.completed_at is None:
         raise ValidationError("Completed case work is required before publication.")
 
-    fund = get_or_create_fund(case.building_id)
     published_at = timezone.now()
-    create_publication_outflow(
-        fund=fund,
-        proposal=proposal,
-        publication=snapshot,
-        amount_vnd=acceptance.actual_cost_vnd,
-        recorded_at=published_at,
-    )
     entry, created = PublishedLedgerEntry.objects.get_or_create(
         proposal=proposal,
         defaults={
             "snapshot": snapshot,
             "case": case,
-            "payment": payment,
-            "actual_cost_vnd": acceptance.actual_cost_vnd,
+            "payment": settlement,
+            "actual_cost_vnd": settlement.amount_vnd,
             "contractor_name": version.contractor_name,
             "published_at": published_at,
         },

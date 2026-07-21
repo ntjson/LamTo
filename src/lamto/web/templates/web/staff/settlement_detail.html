@@ -1,0 +1,23 @@
+{% extends "web/staff/shell.html" %}
+{% load humanize %}
+{% block content %}
+<h1>Settlements</h1>
+{% if list_mode %}
+  <h2>Record transfer</h2>
+  {% for proposal in pending %}<p><a href="{% url 'web:settlement-record-transfer' proposal.pk %}">Proposal #{{ proposal.pk }}</a></p>{% empty %}<p>No completed proposals await transfer evidence.</p>{% endfor %}
+  <h2>Recorded settlements</h2>
+  {% for item in settlements %}<p><a href="{% url 'web:settlement-detail' item.pk %}">Settlement #{{ item.pk }}</a> · {{ item.amount_vnd|intcomma }} VND</p>{% empty %}<p>No settlements.</p>{% endfor %}
+{% elif transfer_mode %}
+  <h2>Record transfer for proposal #{{ proposal.pk }}</h2>
+  <form method="post">{% csrf_token %}{{ transfer_form.as_p }}<button type="submit">Record transfer</button></form>
+{% elif ack_mode %}
+  <h2>Record acknowledgement for settlement #{{ settlement.pk }}</h2>
+  <form method="post">{% csrf_token %}{{ ack_form.as_p }}<button type="submit">Record acknowledgement</button></form>
+{% else %}
+  <p>{{ settlement.payee_name }} · {{ settlement.amount_vnd|intcomma }} VND</p>
+  <p>Transfer: {{ settlement.transfer_original.filename }} / {{ settlement.transfer_redacted.filename }}</p>
+  <p>Acknowledgement ({{ settlement.get_ack_kind_display }}): {% if settlement.ack_original %}{{ settlement.ack_original.filename }} / {{ settlement.ack_redacted.filename }}{% else %}Pending — <a href="{% url 'web:settlement-record-ack' settlement.pk %}">record acknowledgement</a>{% endif %}</p>
+  <p>Status: {% if settlement.settled_at %}Settled{% else %}Awaiting acknowledgement{% endif %}</p>
+  <p>Anchor: {% if settlement.outbox_event %}{{ settlement.outbox_event.get_status_display }}{% else %}Pending{% endif %}</p>
+{% endif %}
+{% endblock %}

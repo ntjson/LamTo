@@ -7,7 +7,7 @@ from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.maintenance.models import MaintenanceCase
 
-from .execution import PaymentEvidence
+from .execution import Settlement
 from .proposals import InsertOnlyModel, Proposal
 
 
@@ -253,7 +253,7 @@ class PublishedLedgerEntry(InsertOnlyModel):
     proposal = models.OneToOneField(
         Proposal, on_delete=models.PROTECT, related_name="published_ledger_entry"
     )
-    payment = models.ForeignKey(PaymentEvidence, on_delete=models.PROTECT)
+    payment = models.ForeignKey(Settlement, on_delete=models.PROTECT)
     actual_cost_vnd = models.BigIntegerField()
     contractor_name = models.CharField(max_length=255)
     published_at = models.DateTimeField()

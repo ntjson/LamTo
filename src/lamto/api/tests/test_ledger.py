@@ -46,8 +46,8 @@ class LedgerApiTests(TestCase):
         driver.confirm_triage_case()
         driver.submit_signed_proposal()
         driver.complete_assigned_work()
-        driver.accept_and_record_payment()
-        driver.verify_payment()
+        driver.record_settlement_transfer()
+        driver.record_settlement_ack()
         driver.confirm_all_chain_events()
         driver.sign_publication_snapshot()
         driver.confirm_all_chain_events()
@@ -129,11 +129,10 @@ class LedgerApiTests(TestCase):
             "actual_cost_vnd",
             "contractor_name",
             "document_hashes",
-            "payment_verification",
+            "settlement",
         }
         assert "report_id" in body["payload"]
-        assert body["verification"]["decision"] == "VERIFIED"
-        assert body["verification"]["verified_by"]
+        assert body["verification"] is None
         assert body["redacted_documents"], "redacted document hashes must be exposed"
         for doc in body["redacted_documents"]:
             assert set(doc) == {"label", "filename", "sha256", "download_url"}

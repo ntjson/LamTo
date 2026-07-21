@@ -47,9 +47,9 @@ VALID_PAYLOADS = {
     },
     EvidenceType.WORK_ACCEPTANCE: {
         "case_id": 1, "actual_cost_vnd": 1_000_000,
-        "acceptance_timestamp": TIMESTAMP, "invoice_original_hash": HASH,
-        "invoice_redacted_hash": HASH, "acceptance_report_original_hash": HASH,
-        "acceptance_report_redacted_hash": HASH, "photo_hashes": [HASH],
+        "settlement_timestamp": TIMESTAMP, "invoice_original_hash": HASH,
+        "invoice_redacted_hash": HASH, "settlement_report_original_hash": HASH,
+        "settlement_report_redacted_hash": HASH, "photo_hashes": [HASH],
     },
     EvidenceType.PAYMENT_RECORDED: {
         "case_id": 1, "payment_id": 1, "amount_vnd": 1_000_000,
@@ -66,6 +66,14 @@ VALID_PAYLOADS = {
         "resident_payload_hash": HASH, "document_hashes": [HASH],
         "publication_timestamp": TIMESTAMP,
     },
+    EvidenceType.SETTLEMENT: {
+        "schema": "settlement.v1", "settlement_id": 1, "proposal_id": 1,
+        "proposal_version": 1, "amount_vnd": 1_000_000, "payee_name": "Acme",
+        "bank_reference": "REF", "transfer_original_sha256": HASH,
+        "transfer_redacted_sha256": HASH, "ack_original_sha256": HASH,
+        "ack_redacted_sha256": HASH, "transfer_recorded_at": TIMESTAMP,
+        "ack_recorded_at": TIMESTAMP,
+    },
     EvidenceType.FUND_ENTRY: {
         "fund_entry_id": 1, "entry_type": "INFLOW", "amount_vnd": 1_000_000,
         "source_document_original_hash": HASH,
@@ -73,6 +81,10 @@ VALID_PAYLOADS = {
         "maker_membership_id": 1, "checker_membership_id": 2,
         "entry_timestamp": TIMESTAMP,
     },
+}
+VALID_PAYLOADS = {
+    event_type: payload for event_type, payload in VALID_PAYLOADS.items()
+    if event_type != EvidenceType.WORK_ACCEPTANCE
 }
 
 
@@ -238,11 +250,11 @@ class EvidenceOutboxTests(TestCase):
                 changed_previous_signature,
             )
 
-        changed_type_payload = self.valid_payload(EvidenceType.WORK_ACCEPTANCE)
-        changed_type_signature = self.sign_event(account, event_id, 6, changed_type_payload)
+        changed_type_payload = self.valid_payload(EvidenceType.PAYMENT_RECORDED)
+        changed_type_signature = self.sign_event(account, event_id, 7, changed_type_payload)
         with transaction.atomic(), self.assertRaises(EvidenceConflict):
             queue_signed_event(
-                event_id, 6, changed_type_payload, zero_hash, membership, changed_type_signature
+                event_id, 7, changed_type_payload, zero_hash, membership, changed_type_signature
             )
 
         replacement_account, _ = self.register(membership)
@@ -493,7 +505,7 @@ class EvidenceOutboxTests(TestCase):
                 EvidenceType.RESERVED_3,
                 EvidenceType.RESERVED_4,
                 EvidenceType.RESERVED_5,
-                EvidenceType.RESERVED_10,
+                EvidenceType.WORK_ACCEPTANCE,
             },
         )
         for event_type, payload in VALID_PAYLOADS.items():
@@ -523,8 +535,6 @@ class EvidenceOutboxTests(TestCase):
     def test_payload_schemas_reject_bad_enums_timestamps_and_digest_lists(self):
         cases = (
             (EvidenceType.PAYMENT_VERIFIED, {"decision": "private reason"}),
-            (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": []}),
-            (EvidenceType.WORK_ACCEPTANCE, {"photo_hashes": [HASH, 1]}),
             (EvidenceType.PUBLICATION_SNAPSHOT, {"document_hashes": "not-a-list"}),
             (EvidenceType.FUND_ENTRY, {"entry_type": "BANK_ACCOUNT_DETAILS"}),
         )

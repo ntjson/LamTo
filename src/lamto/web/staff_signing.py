@@ -172,10 +172,9 @@ def _hard_delete_document(document_id: int) -> int:
 def _referenced_document_ids():
     """Document pks whose versions are linked from domain evidence FKs."""
     from lamto.finance.models import (
-        AcceptanceRecord,
         MaintenanceFundEntry,
-        PaymentEvidence,
         ProposalDocument,
+        Settlement,
     )
     from lamto.maintenance.models import ReportPhoto, WorkUpdateEvidence
 
@@ -198,18 +197,13 @@ def _referenced_document_ids():
                 field, flat=True
             )
         )
-    for model, fields in (
-        (
-            AcceptanceRecord,
-            (
-                "invoice_original_id",
-                "invoice_redacted_id",
-                "acceptance_original_id",
-                "acceptance_redacted_id",
-            ),
-        ),
-        (PaymentEvidence, ("proof_original_id", "proof_redacted_id")),
-    ):
+    settlement_fields = (
+        "transfer_original_id",
+        "transfer_redacted_id",
+        "ack_original_id",
+        "ack_redacted_id",
+    )
+    for model, fields in ((Settlement, settlement_fields),):
         for field in fields:
             protected |= _docs_from_version_ids(
                 model.objects.exclude(**{field: None}).values_list(field, flat=True)
@@ -256,7 +250,7 @@ def cleanup_stale_prepared_ops(*, older_than_hours=24, dry_run=False):
     Removes:
     - Document rows whose versions are all older than the threshold and that
       are not referenced by any domain evidence FK (proposal docs, fund,
-      acceptance, payment, report photos, work-update evidence).
+      settlements, report photos, work-update evidence).
     - Proposal rows still without a current_version older than threshold.
 
     Also purges private-storage blobs for deleted document versions.

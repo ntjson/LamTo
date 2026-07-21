@@ -28,9 +28,8 @@ from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import (
-    AcceptanceRecord,
     MaintenanceFundEntry,
-    PaymentEvidence,
+    Settlement,
     Proposal,
     PublishedLedgerEntry,
 )
@@ -50,9 +49,9 @@ STAFF_CASES = {
     "web:case-detail": ("case_pk", "GET"),
     "web:proposal-detail": ("proposal_pk", "GET"),
     "web:proposal-create": ("case_pk", "POST"),
-    "web:payment-record-detail": ("acceptance_pk", "GET"),
-    "web:payment-verify-detail": ("payment_pk", "GET"),
-    "web:work-accept": ("case_pk", "POST"),
+    "web:settlement-record-transfer": ("proposal_pk", "POST"),
+    "web:settlement-record-ack": ("settlement_pk", "POST"),
+    "web:settlement-detail": ("settlement_pk", "GET"),
     "web:fund-verify": ("fund_entry_pk", "POST"),
 }
 
@@ -67,7 +66,7 @@ LIST_ROUTES = [
     "web:action-inbox",
     "web:case-list",
     "web:proposal-list",
-    "web:payment-list",
+    "web:settlement-list",
     "web:audit-export",
 ]
 
@@ -164,8 +163,8 @@ class CrossBuildingAccessTests(TestCase):
         driver.confirm_triage_case()
         driver.submit_signed_proposal()
         driver.complete_assigned_work()
-        driver.accept_and_record_payment()
-        driver.verify_payment()
+        driver.record_settlement_transfer()
+        driver.record_settlement_ack()
         driver.confirm_all_chain_events()
         driver.sign_publication_snapshot()
         driver.confirm_all_chain_events()
@@ -174,8 +173,8 @@ class CrossBuildingAccessTests(TestCase):
         report = IssueReport.objects.get(unit__building=b_building)
         case = MaintenanceCase.objects.get(building=b_building)
         proposal = Proposal.objects.get(case=case)
-        acceptance = AcceptanceRecord.objects.get(case=case)
-        payment = PaymentEvidence.objects.get(acceptance=acceptance)
+        settlement = Settlement.objects.get(proposal=proposal)
+
         ledger = PublishedLedgerEntry.objects.get(case=case)
 
         b_fund_entry = MaintenanceFundEntry.objects.get(
@@ -186,8 +185,8 @@ class CrossBuildingAccessTests(TestCase):
             "report_pk": report.pk,
             "case_pk": case.pk,
             "proposal_pk": proposal.pk,
-            "acceptance_pk": acceptance.pk,
-            "payment_pk": payment.pk,
+            "settlement_pk": settlement.pk,
+            "settlement_pk": settlement.pk,
             "ledger_pk": ledger.pk,
             "fund_entry_pk": b_fund_entry.pk,
         }
@@ -463,7 +462,7 @@ class CrossBuildingAccessTests(TestCase):
         auth_a = {"authorization": f"Token {token_a}"}
         # A redacted ledger document from B's published expenditure.
         entry_b = PublishedLedgerEntry.objects.get(case__building=self.seed_b.building)
-        redacted = entry_b.case.acceptance.invoice_redacted
+        redacted = entry_b.payment.transfer_redacted
         # A token bound to B's resident is not redeemable by A's resident.
         forged = issue_download_token(resident_b.pk, redacted.pk)
         assert (

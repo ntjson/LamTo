@@ -46,7 +46,7 @@ class ManagementWorkspaceTests(TestCase):
             "action-inbox",
             "case-list",
             "proposal-list",
-            "payment-list",
+            "settlement-list",
             "audit-export",
             "fund-home",
             "ops-health",
@@ -72,7 +72,7 @@ class ManagementWorkspaceTests(TestCase):
         )
         self.assertFalse(ManagementMembership.objects.filter(user=user).exists())
         self.client.force_login(user)
-        for path in ("/s/", "/s/cases/", "/s/payments/"):
+        for path in ("/s/", "/s/cases/", "/s/settlements/"):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 403)
 
@@ -149,29 +149,19 @@ class ManagementWorkspaceTests(TestCase):
         driver.confirm_triage_case()
         driver.submit_signed_proposal()
         driver.complete_assigned_work()
-        payment = driver.accept_and_record_payment()
-        acceptance = payment.acceptance
+        settlement = driver.record_settlement_transfer()
         recorder, verifier = seed.management_memberships
 
         self.authenticate_management(recorder)
-        record_response = self.client.get(
-            reverse("web:payment-record-detail", kwargs={"pk": acceptance.pk})
-        )
-        self.assertRedirects(
-            record_response,
-            reverse("web:payment-verify-detail", kwargs={"pk": payment.pk}),
-            fetch_redirect_response=False,
-        )
+        self.assertEqual(self.client.get(reverse("web:settlement-detail", kwargs={"pk": settlement.pk})).status_code, 200)
 
         self.client.logout()
         self.authenticate_management(verifier)
         verify_response = self.client.get(
-            reverse("web:payment-verify-detail", kwargs={"pk": payment.pk})
+            reverse("web:settlement-record-ack", kwargs={"pk": settlement.pk})
         )
         self.assertEqual(verify_response.status_code, 200)
         self.assertEqual(verify_response.context["membership"], verifier)
-        self.assertEqual(verify_response.context["payment"], payment)
-        self.assertContains(verify_response, f"Payment #{payment.pk}")
-        self.assertContains(verify_response, "Verify payment")
-        self.assertContains(verify_response, f"Management · {verifier.building.name}")
+        self.assertEqual(verify_response.context["settlement"], settlement)
+        self.assertContains(verify_response, f"settlement #{settlement.pk}", html=False)
         self.assertNotEqual(recorder, verifier)

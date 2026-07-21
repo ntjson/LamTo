@@ -16,7 +16,6 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import (
-    PaymentVerification,
     Proposal,
     PublicationSnapshot,
     PublishedLedgerEntry,
@@ -57,16 +56,8 @@ def _proposal_publishable(proposal) -> bool:
         return False
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
         return False
-    acceptance = getattr(proposal.case, "acceptance", None)
-    if acceptance is None:
-        return False
-    payment = getattr(acceptance, "payment", None)
-    if payment is None:
-        return False
-    verification = getattr(payment, "verification", None)
-    if verification is None:
-        return False
-    return verification.decision == PaymentVerification.Decision.VERIFIED
+    settlement = getattr(proposal, "settlement", None)
+    return settlement is not None and settlement.settled_at is not None
 
 
 @login_required

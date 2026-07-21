@@ -19,9 +19,7 @@ from lamto.accounts.models import (
 )
 from lamto.documents.models import Document, DocumentVersion
 from lamto.web.forms.staff import (
-    AcceptWorkForm,
     ProgressUpdateForm,
-    RecordPaymentForm,
 )
 from lamto.web.staff_signing import (
     cleanup_stale_prepared_ops,
@@ -339,70 +337,6 @@ class StaffEvidenceFormTests(TestCase):
             [self.after],
             transform=lambda x: x,
         )
-
-    def test_accept_work_form_uses_pair_choices_not_raw_ids(self):
-        invoice_value = "10:11"
-        invoice_label = "inv-o.pdf / inv-r.pdf"
-        acceptance_value = "20:21"
-        acceptance_label = "acc-o.pdf / acc-r.pdf"
-        accept = AcceptWorkForm(
-            invoice_choices=[(invoice_value, invoice_label)],
-            acceptance_choices=[(acceptance_value, acceptance_label)],
-        )
-        self.assertEqual(
-            accept.fields["invoice_pair"].choices[1], (invoice_value, invoice_label)
-        )
-        self.assertEqual(
-            accept.fields["acceptance_pair"].choices[1],
-            (acceptance_value, acceptance_label),
-        )
-        self.assertNotIn("invoice_original_id", accept.fields)
-        self.assertNotIn("invoice_redacted_id", accept.fields)
-        self.assertNotIn("acceptance_original_id", accept.fields)
-        self.assertNotIn("acceptance_redacted_id", accept.fields)
-
-    def test_accept_work_form_rejects_foreign_pair_value(self):
-        invoice_value = "10:11"
-        acceptance_value = "20:21"
-        accept = AcceptWorkForm(
-            data={
-                "actual_cost_vnd": "1000",
-                "invoice_pair": "999:998",  # not in choices
-                "acceptance_pair": acceptance_value,
-                "event_id": "0x" + "11" * 32,
-                "signature": "0x" + "22" * 65,
-                "reason": "ok",
-            },
-            invoice_choices=[(invoice_value, "inv")],
-            acceptance_choices=[(acceptance_value, "acc")],
-        )
-        self.assertFalse(accept.is_valid())
-        self.assertIn("Select valid evidence.", accept.errors.get("invoice_pair", []))
-
-    def test_record_payment_form_uses_proof_pair(self):
-        proof_value = "30:31"
-        form = RecordPaymentForm(
-            proof_choices=[(proof_value, "proof-o / proof-r")],
-        )
-        self.assertEqual(form.fields["proof_pair"].choices[1], (proof_value, "proof-o / proof-r"))
-        self.assertNotIn("proof_original_id", form.fields)
-        self.assertNotIn("proof_redacted_id", form.fields)
-
-    def test_record_payment_form_rejects_foreign_proof_pair(self):
-        form = RecordPaymentForm(
-            data={
-                "bank_reference": "REF",
-                "amount_vnd": "1000",
-                "external_status": "COMPLETED",
-                "proof_pair": "1:2",
-                "event_id": "0x" + "11" * 32,
-                "signature": "0x" + "22" * 65,
-                "completed_at": "2020-01-01T00:00:00Z",
-            },
-            proof_choices=[("30:31", "ok pair")],
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("Select valid evidence.", form.errors.get("proof_pair", []))
 
     def test_selected_pair_resolves_and_misses(self):
         original = object()

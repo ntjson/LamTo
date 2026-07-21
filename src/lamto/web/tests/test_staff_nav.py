@@ -40,7 +40,7 @@ class ManagementShellTests(TestCase):
         )
         self.assertEqual(
             [str(item["label"]) for item in finance_nav_items_for(self.membership)],
-            ["Proposals", "Payments", "Fund"],
+            ["Proposals", "Settlements", "Fund"],
         )
 
     def test_non_management_user_is_denied_staff_home(self):

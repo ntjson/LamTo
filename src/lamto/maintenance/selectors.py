@@ -26,7 +26,7 @@ def rateable_cases(user, report):
 
 
 def resident_report_timeline(report):
-    """Ownership timeline for one report (spec 3.3): triage -> case -> work -> acceptance."""
+    """Ownership timeline for one report (spec 3.3): triage -> case -> work -> settlement."""
     triage_job = getattr(report, "triage_job", None)
     decision = getattr(report, "triage_decision", None)
     rated_ids = set(

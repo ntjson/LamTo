@@ -64,7 +64,7 @@ def nav_items_for(membership) -> list[dict]:
 def finance_nav_items_for(membership) -> list[dict[str, str]]:
     return [
         {"label": _("Proposals"), "url_name": "web:proposal-list", "active_key": "proposals"},
-        {"label": _("Payments"), "url_name": "web:payment-list", "active_key": "payments"},
+        {"label": _("Settlements"), "url_name": "web:settlement-list", "active_key": "settlements"},
         {"label": _("Fund"), "url_name": "web:fund-home", "active_key": "fund"},
     ]
 

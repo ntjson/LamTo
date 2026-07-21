@@ -61,8 +61,8 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
     # --- Publication flow -------------------------------------------------
     driver.prepare_local_normal_work(page)
     driver.complete_assigned_work()
-    driver.accept_and_record_payment()
-    driver.verify_payment()
+    driver.record_settlement_transfer()
+    driver.record_settlement_ack()
     _settle_locally()
 
     snapshot = driver.sign_publication_snapshot()  # prerequisites are LOCAL-settled

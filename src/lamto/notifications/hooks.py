@@ -6,14 +6,11 @@ from lamto.notifications.services import (
     EVENT_CASE_STATUS,
     EVENT_DEADLINE_RISK,
     EVENT_INTEGRITY_MISMATCH,
-    EVENT_PAYMENT_RECORDED,
-    EVENT_PAYMENT_REJECTED,
     EVENT_PAYMENT_VERIFIED,
     EVENT_PUBLICATION,
     EVENT_QUARANTINED_UPLOAD,
     EVENT_REPORT_RECEIPT,
     EVENT_TRIAGE_STATUS,
-    EVENT_WORK_ACCEPTED,
     EVENT_WORK_COMPLETED,
     notify_users,
 )
@@ -85,19 +82,6 @@ def notify_deadline_risk(case):
     )
 
 
-def notify_work_accepted(record):
-    building_id = record.case.building_id
-    recipients = _management_users(building_id)
-    notify_users(
-        recipients,
-        event_key=f"{EVENT_WORK_ACCEPTED}:acceptance:{record.pk}",
-        subject="Work accepted",
-        body=f"Case #{record.case_id} accepted at {record.actual_cost_vnd} VND.",
-        event_code=EVENT_WORK_ACCEPTED,
-        building=building_id,
-    )
-
-
 def _case_reporters(case):
     from lamto.maintenance.models import CaseReport
     return [
@@ -124,38 +108,16 @@ def notify_case_completed(case):
     )
 
 
-def notify_payment_recorded(payment):
-    building_id = payment.acceptance.case.building_id
-    recipients = _management_users(building_id) + [
-        payment.recorder.user
-    ]
+def notify_settled(settlement):
+    proposal = settlement.proposal
+    reporters = _case_reporters(proposal.case) if proposal.case_id else []
     notify_users(
-        recipients,
-        event_key=f"{EVENT_PAYMENT_RECORDED}:payment:{payment.pk}",
-        subject="Payment recorded",
-        body=f"Payment #{payment.pk} for {payment.amount_vnd} VND awaiting verification.",
-        event_code=EVENT_PAYMENT_RECORDED,
-        building=building_id,
-    )
-
-
-def notify_payment_verified(verification):
-    payment = verification.payment
-    building_id = payment.acceptance.case.building_id
-    if verification.decision == "VERIFIED":
-        code = EVENT_PAYMENT_VERIFIED
-        subject = "Payment verified"
-    else:
-        code = EVENT_PAYMENT_REJECTED
-        subject = "Payment rejected"
-    recipients = [payment.recorder.user] + _management_users(building_id)
-    notify_users(
-        recipients,
-        event_key=f"{code}:verification:{verification.pk}",
-        subject=subject,
-        body=f"Payment #{payment.pk} {verification.decision}.",
-        event_code=code,
-        building=building_id,
+        reporters + _management_users(proposal.building_id),
+        event_key=f"settlement:settled:{settlement.pk}",
+        subject="Settlement recorded",
+        body=f"Proposal #{proposal.pk} settled for {settlement.amount_vnd} VND.",
+        event_code=EVENT_PAYMENT_VERIFIED,
+        building=proposal.building_id,
     )
 
 

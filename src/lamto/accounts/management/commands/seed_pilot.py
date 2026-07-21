@@ -25,7 +25,7 @@ from lamto.testing.factories import (
 
 
 class Command(BaseCommand):
-    help = "Seed deterministic pilot users/orgs/wallets for non-production acceptance."
+    help = "Seed deterministic pilot users/orgs/wallets for non-production scenarios."
 
     def add_arguments(self, parser):
         parser.add_argument(

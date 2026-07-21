@@ -77,7 +77,7 @@ class SecurityTests(TestCase):
             "proof_pair": "1:2",
             "event_id": "0x" + "11" * 32,
             "signature": "0x" + "22" * 65,
-            "acceptance_id": "1",
+            "settlement_id": "1",
         }
 
     def enroll_and_bind(self, client: Client, user) -> TOTPDevice:
@@ -98,7 +98,7 @@ class SecurityTests(TestCase):
         board = self.make_manager()
         self.client.force_login(board.user)
         response = self.client.post(
-            reverse("web:payment-record"), self.valid_payment_payload()
+            reverse("web:settlement-record-transfer", kwargs={"pk": 999999}), self.valid_payment_payload()
         )
         self.assertEqual(response.status_code, 403)
 
@@ -106,9 +106,9 @@ class SecurityTests(TestCase):
         board = self.make_manager()
         self.client.force_login(board.user)
         self.enroll_and_bind(self.client, board.user)
-        # Gate should not 403 for MFA/reauth; may 404/400 for missing acceptance.
+        # Gate should not 403 for MFA/reauth; may 404/400 for missing settlement.
         response = self.client.post(
-            reverse("web:payment-record"), self.valid_payment_payload()
+            reverse("web:settlement-record-transfer", kwargs={"pk": 999999}), self.valid_payment_payload()
         )
         self.assertNotEqual(response.status_code, 403)
 
@@ -242,7 +242,7 @@ class SecurityTests(TestCase):
         maint = self.make_membership("maint-mfa")
 
         for membership, url_name in (
-            (board, "web:payment-list"),
+            (board, "web:settlement-list"),
             (auditor, "web:audit-export"),
             (maint, "web:case-list"),
         ):
@@ -267,7 +267,7 @@ class SecurityTests(TestCase):
         session.save()
 
         response = self.client.post(
-            reverse("web:payment-record"), self.valid_payment_payload()
+            reverse("web:settlement-record-transfer", kwargs={"pk": 999999}), self.valid_payment_payload()
         )
         self.assertEqual(response.status_code, 302)
         self.assertIn("/s/security/reauth/", response["Location"])

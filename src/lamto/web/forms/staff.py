@@ -5,9 +5,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 
 from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import Document, DocumentVersion
-from lamto.finance.acceptance import accept_work
-from lamto.finance.models import MaintenanceFundEntry, PaymentVerification
-from lamto.finance.payments import record_payment, verify_payment
+from lamto.finance.models import MaintenanceFundEntry
 from lamto.maintenance.models import BuildingLocation
 from lamto.maintenance.triage import confirm_triage
 from lamto.notifications.models import NotificationPreference
@@ -144,118 +142,24 @@ class SignedDecisionForm(forms.Form):
         return value
 
 
-class AcceptWorkForm(SignedDecisionForm):
-    actual_cost_vnd = forms.IntegerField(
-        min_value=1, widget=forms.NumberInput(attrs={"class": "input"})
-    )
-    invoice_pair = forms.ChoiceField(
-        choices=(),
-        widget=forms.Select(attrs={"class": "input"}),
-        error_messages={"invalid_choice": "Select valid evidence."},
-        label="Invoice evidence",
-    )
-    acceptance_pair = forms.ChoiceField(
-        choices=(),
-        widget=forms.Select(attrs={"class": "input"}),
-        error_messages={"invalid_choice": "Select valid evidence."},
-        label="Acceptance report evidence",
-    )
-
-    def __init__(self, *args, invoice_choices=None, acceptance_choices=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        inv = [("", "Select evidence…")] + list(invoice_choices or [])
-        acc = [("", "Select evidence…")] + list(acceptance_choices or [])
-        self.fields["invoice_pair"].choices = inv
-        self.fields["acceptance_pair"].choices = acc
-
-    def save(self, case, membership, documents):
-        return accept_work(
-            case,
-            membership,
-            self.cleaned_data["actual_cost_vnd"],
-            documents["invoice_original"],
-            documents["invoice_redacted"],
-            documents["acceptance_original"],
-            documents["acceptance_redacted"],
-            self.cleaned_data["signature"],
-            self.cleaned_data["event_id"],
-        )
-
-
-class RecordPaymentForm(SignedDecisionForm):
-    bank_reference = forms.CharField(
-        max_length=128, widget=forms.TextInput(attrs={"class": "input"})
-    )
+class RecordSettlementTransferForm(forms.Form):
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
-    external_status = forms.ChoiceField(
-        choices=[("COMPLETED", "Completed"), ("FAILED", "Failed"), ("REVERSED", "Reversed")],
-        widget=forms.Select(attrs={"class": "input"}),
-    )
-    proof_pair = forms.ChoiceField(
-        choices=(),
-        widget=forms.Select(attrs={"class": "input"}),
-        error_messages={"invalid_choice": "Select valid evidence."},
-        label="Payment proof evidence",
-    )
-    payment_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
-    # Must match the timestamp baked into EIP-712 typed data shown to MetaMask.
-    # Using timezone.now() again on POST would change the payload hash and make
-    # ecrecover return a random "signed as" address for a valid recorder signature.
-    completed_at = forms.CharField(widget=forms.HiddenInput())
+    payee_name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": "input"}))
+    bank_reference = forms.CharField(max_length=64, widget=forms.TextInput(attrs={"class": "input"}))
+    proof_pair = forms.ChoiceField(choices=(), widget=forms.Select(attrs={"class": "input"}))
 
-    def __init__(self, *args, proof_choices=None, **kwargs):
+    def __init__(self, *args, proof_choices=(), **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["proof_pair"].choices = [("", "Select evidence…")] + list(
-            proof_choices or []
-        )
-
-    def save(self, acceptance, membership, proof_original, proof_redacted, completed_at=None):
-        from django.utils import timezone
-        from django.utils.dateparse import parse_datetime
-        from lamto.finance.payments import allocate_payment_id
-
-        payment_id = self.cleaned_data.get("payment_id") or allocate_payment_id()
-        pinned = completed_at
-        if pinned is None:
-            raw = (self.cleaned_data.get("completed_at") or "").strip()
-            pinned = parse_datetime(raw) if raw else None
-        if pinned is not None and timezone.is_naive(pinned):
-            pinned = timezone.make_aware(pinned, timezone.utc)
-        if pinned is None:
-            pinned = timezone.now()
-        return record_payment(
-            acceptance,
-            membership,
-            self.cleaned_data["bank_reference"],
-            self.cleaned_data["amount_vnd"],
-            self.cleaned_data["external_status"],
-            pinned,
-            proof_original,
-            proof_redacted,
-            self.cleaned_data["signature"],
-            self.cleaned_data["event_id"],
-            payment_id,
-        )
+        self.fields["proof_pair"].choices = [("", "Select evidence…"), *proof_choices]
 
 
-class VerifyPaymentForm(SignedDecisionForm):
-    decision = forms.ChoiceField(
-        choices=[
-            (PaymentVerification.Decision.VERIFIED, "Verified"),
-            (PaymentVerification.Decision.REJECTED, "Rejected"),
-        ],
-        widget=forms.Select(attrs={"class": "input"}),
-    )
+class RecordSettlementAcknowledgementForm(forms.Form):
+    event_id = forms.CharField(max_length=66, widget=forms.HiddenInput())
+    proof_pair = forms.ChoiceField(choices=(), widget=forms.Select(attrs={"class": "input"}))
 
-    def save(self, payment, membership):
-        return verify_payment(
-            payment,
-            membership,
-            self.cleaned_data["decision"],
-            self.cleaned_data.get("reason") or "",
-            self.cleaned_data["signature"],
-            self.cleaned_data["event_id"],
-        )
+    def __init__(self, *args, proof_choices=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["proof_pair"].choices = [("", "Select evidence…"), *proof_choices]
 
 
 class NotificationPreferenceForm(forms.Form):

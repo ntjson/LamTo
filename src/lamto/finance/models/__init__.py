@@ -1,4 +1,4 @@
-from .execution import AcceptanceRecord, PaymentEvidence, PaymentVerification
+from .execution import Settlement
 from .ledger import (
     FundEntryVerification,
     MaintenanceFund,
@@ -11,12 +11,10 @@ from .ledger import (
 from .proposals import Proposal, ProposalDocument, ProposalVersion
 
 __all__ = [
-    "AcceptanceRecord",
     "FundEntryVerification",
     "MaintenanceFund",
     "MaintenanceFundEntry",
-    "PaymentEvidence",
-    "PaymentVerification",
+    "Settlement",
     "Proposal",
     "ProposalDocument",
     "ProposalVersion",

@@ -1,7 +1,7 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from lamto.web.views import exports, fund, health, payments, proposals, requests, security, staff_common
+from lamto.web.views import exports, fund, health, proposals, requests, security, settlements, staff_common
 
 app_name = "web"
 
@@ -25,13 +25,10 @@ urlpatterns = [
     path("s/proposals/new/", proposals.standalone_proposal_create, name="standalone-proposal-create"),
     path("s/proposals/<int:pk>/", proposals.proposal_detail, name="proposal-detail"),
     path("s/cases/<int:pk>/propose/", proposals.proposal_create, name="proposal-create"),
-    # Work (dies in stage 2)
-    path("s/cases/<int:pk>/accept/", payments.accept_work, name="work-accept"),
-    # Payments
-    path("s/payments/", payments.payment_list, name="payment-list"),
-    path("s/payments/record/", payments.payment_record, name="payment-record"),
-    path("s/payments/record/<int:pk>/", payments.payment_record_detail, name="payment-record-detail"),
-    path("s/payments/verify/<int:pk>/", payments.payment_verify_detail, name="payment-verify-detail"),
+    path("s/settlements/", settlements.settlement_list, name="settlement-list"),
+    path("s/settlements/record/<int:pk>/", settlements.settlement_record_transfer, name="settlement-record-transfer"),
+    path("s/settlements/<int:pk>/ack/", settlements.settlement_record_ack, name="settlement-record-ack"),
+    path("s/settlements/<int:pk>/", settlements.settlement_detail, name="settlement-detail"),
     # Exports
     path("s/audit/export/", exports.audit_export, name="audit-export"),
     # Fund

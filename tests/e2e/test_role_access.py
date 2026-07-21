@@ -22,8 +22,8 @@ pytestmark = pytest.mark.django_db
 def test_role_access_denies_prohibited_document_reads(page, seeded_pilot):
     seeded_pilot.prepare_local_normal_work(page)
     seeded_pilot.complete_assigned_work()
-    seeded_pilot.accept_and_record_payment()
-    seeded_pilot.verify_payment()
+    seeded_pilot.record_settlement_transfer()
+    seeded_pilot.record_settlement_ack()
     seeded_pilot.confirm_all_chain_events()
     seeded_pilot.sign_publication_snapshot()
     seeded_pilot.confirm_all_chain_events()

@@ -17,9 +17,7 @@ from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
-    AcceptanceRecord,
-    PaymentEvidence,
-    PaymentVerification,
+    Settlement,
     Proposal,
     PublicationSnapshot,
     PublishedLedgerEntry,
@@ -78,9 +76,8 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
     items.extend(_in_progress_case_items(building_id))
     items.extend(_proposal_create_candidates(building_id))
     items.extend(_proposal_decision_items(building_id))
-    items.extend(_work_acceptance_items(building_id))
-    items.extend(_payment_record_items(building_id))
-    items.extend(_payment_verify_items(building_id))
+    items.extend(_settlement_transfer_items(building_id))
+    items.extend(_settlement_ack_items(building_id))
     items.extend(_pending_publication_items(building_id))
     items.extend(_integrity_mismatch_items(building_id))
     items.extend(_failed_outbox_items(building_id))
@@ -210,115 +207,16 @@ def _proposal_decision_items(building_id: int) -> list[ActionItem]:
     ).order_by("created_at")[:30]]
 
 
-def _work_acceptance_items(building_id: int) -> list[ActionItem]:
-    items = []
-    qs = MaintenanceCase.objects.filter(
-        building_id=building_id,
-        completed_at__isnull=False,
-        acceptance__isnull=True,
-    ).distinct().order_by("deadline_at")[:40]
-    for case in qs:
-        items.append(
-            ActionItem(
-                kind="work_acceptance",
-                title="Work acceptance",
-                summary=f"Case #{case.pk} awaiting acceptance",
-                target_type="MaintenanceCase",
-                target_id=case.pk,
-                url=reverse("web:work-accept", kwargs={"pk": case.pk}),
-                priority=18,
-                deadline_at=case.deadline_at,
-            )
-        )
-    return items
+def _settlement_transfer_items(building_id: int) -> list[ActionItem]:
+    return [ActionItem(kind="settlement_transfer", title="Record transfer", summary=f"Proposal #{p.pk}", target_type="Proposal", target_id=p.pk, url=reverse("web:proposal-detail", kwargs={"pk": p.pk}), priority=16, amount_vnd=p.current_version.amount_vnd) for p in Proposal.objects.filter(building_id=building_id, status=Proposal.Status.COMPLETED, settlement__isnull=True).select_related("current_version")[:40]]
 
 
-def _payment_record_items(building_id: int) -> list[ActionItem]:
-    items = []
-    qs = (
-        AcceptanceRecord.objects.filter(
-            case__building_id=building_id,
-            payment__isnull=True,
-        )
-        .select_related("case")
-        .order_by("accepted_at")[:40]
-    )
-    for acceptance in qs:
-        items.append(
-            ActionItem(
-                kind="payment_record",
-                title="Record payment",
-                summary=f"Case #{acceptance.case_id}",
-                target_type="AcceptanceRecord",
-                target_id=acceptance.pk,
-                url=reverse("web:payment-record-detail", kwargs={"pk": acceptance.pk}),
-                priority=16,
-                amount_vnd=acceptance.actual_cost_vnd,
-            )
-        )
-    return items
-
-
-def _payment_verify_items(building_id: int) -> list[ActionItem]:
-    items = []
-    qs = (
-        PaymentEvidence.objects.filter(
-            acceptance__case__building_id=building_id,
-            verification__isnull=True,
-        )
-        .select_related("acceptance")
-        .order_by("recorded_at")[:40]
-    )
-    for payment in qs:
-        items.append(
-            ActionItem(
-                kind="payment_verification",
-                title="Payment verification",
-                summary=f"Payment #{payment.pk}",
-                target_type="PaymentEvidence",
-                target_id=payment.pk,
-                url=reverse("web:payment-verify-detail", kwargs={"pk": payment.pk}),
-                priority=14,
-                amount_vnd=payment.amount_vnd,
-            )
-        )
-    return items
+def _settlement_ack_items(building_id: int) -> list[ActionItem]:
+    return [ActionItem(kind="settlement_ack", title="Record acknowledgement", summary=f"Settlement #{s.pk}", target_type="Settlement", target_id=s.pk, url=reverse("web:settlement-detail", kwargs={"pk": s.pk}), priority=14, amount_vnd=s.amount_vnd) for s in Settlement.objects.filter(proposal__building_id=building_id, settled_at__isnull=True)[:40]]
 
 
 def _pending_publication_items(building_id: int) -> list[ActionItem]:
     items = []
-    # Verified payments without published ledger
-    verified = (
-        PaymentVerification.objects.filter(
-            decision=PaymentVerification.Decision.VERIFIED,
-            payment__acceptance__case__building_id=building_id,
-        )
-        .exclude(
-            payment__acceptance__case__proposal__published_ledger_entry__isnull=False
-        )
-        .select_related("payment__acceptance__case__proposal")
-        .order_by("verified_at")[:40]
-    )
-    for verification in verified:
-        proposal = getattr(
-            verification.payment.acceptance.case, "proposal", None
-        )
-        if proposal is None:
-            continue
-        if hasattr(proposal, "published_ledger_entry"):
-            continue
-        items.append(
-            ActionItem(
-                kind="pending_publication",
-                title="Pending publication",
-                summary=f"Proposal #{proposal.pk} ready to publish",
-                target_type="Proposal",
-                target_id=proposal.pk,
-                url=reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
-                priority=17,
-                amount_vnd=verification.payment.amount_vnd,
-            )
-        )
     # Snapshots waiting finalize (settled outbox)
     snaps = PublicationSnapshot.objects.filter(
         proposal__case__building_id=building_id,

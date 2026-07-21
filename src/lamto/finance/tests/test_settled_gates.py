@@ -39,8 +39,8 @@ class SettledGateTests(TestCase):
         driver.pause_chain()  # suppress the driver's fake CONFIRMED updates
         driver.prepare_local_normal_work(None)
         driver.complete_assigned_work()
-        driver.accept_and_record_payment()
-        driver.verify_payment()
+        driver.record_settlement_transfer()
+        driver.record_settlement_ack()
         # Settle every pending flow event off-chain.
         BlockchainOutboxEvent.objects.filter(
             status=BlockchainOutboxEvent.Status.PENDING

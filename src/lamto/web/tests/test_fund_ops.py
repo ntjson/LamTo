@@ -33,8 +33,8 @@ def _full_publish(seed):
     d.confirm_triage_case()
     d.submit_signed_proposal()
     d.complete_assigned_work()
-    d.accept_and_record_payment()
-    d.verify_payment()
+    d.record_settlement_transfer()
+    d.record_settlement_ack()
     d.confirm_all_chain_events()
     return d
 
@@ -61,7 +61,7 @@ class FundSelectorTests(TestCase):
 
         seed = seed_pilot_world(building_name="Fund Sel Unsettled", email_prefix="fsu")
         _full_publish(seed)
-        v_event = seed.proposal.case.acceptance.payment.verification.outbox_event
+        v_event = seed.proposal.settlement.outbox_event
         # QUEUED is not a status in this codebase; PENDING is non-settled.
         BlockchainOutboxEvent.objects.filter(pk=v_event.pk).update(
             status=BlockchainOutboxEvent.Status.PENDING

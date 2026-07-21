@@ -24,7 +24,7 @@ class Document(InsertOnlyModel):
         AFTER_PHOTO = "AFTER_PHOTO", "After photo"
         QUOTATION = "QUOTATION", "Quotation"
         INVOICE = "INVOICE", "Invoice"
-        ACCEPTANCE_REPORT = "ACCEPTANCE_REPORT", "Acceptance report"
+        ACCEPTANCE_REPORT = "ACCEPTANCE_REPORT", "Completion report"
         PAYMENT_PROOF = "PAYMENT_PROOF", "Payment proof"
         CONTRACT = "CONTRACT", "Contract"
 

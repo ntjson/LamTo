@@ -1,143 +1,36 @@
 from django.db import models
 
-from lamto.accounts.models import ManagementMembership, SignerWallet
+from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
-from lamto.maintenance.models import MaintenanceCase
 
-from .proposals import InsertOnlyModel
-
-
-class AcceptanceRecord(InsertOnlyModel):
-    case = models.OneToOneField(
-        MaintenanceCase, on_delete=models.PROTECT, related_name="acceptance"
-    )
-    actual_cost_vnd = models.BigIntegerField()
-    invoice_original = models.ForeignKey(
-        DocumentVersion,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    invoice_redacted = models.ForeignKey(
-        DocumentVersion,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    acceptance_original = models.ForeignKey(
-        DocumentVersion,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    acceptance_redacted = models.ForeignKey(
-        DocumentVersion,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
-    wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
-    signature = models.CharField(max_length=132)
-    outbox_event = models.OneToOneField(
-        BlockchainOutboxEvent,
-        on_delete=models.PROTECT,
-        related_name="acceptance_record",
-    )
-    accepted_at = models.DateTimeField()
-
-    @property
-    def created_at(self):
-        return self.accepted_at
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(actual_cost_vnd__gt=0),
-                name="acceptance_actual_cost_positive",
-            ),
-        ]
+from .proposals import Proposal
 
 
-class PaymentEvidence(InsertOnlyModel):
-    class ExternalStatus(models.TextChoices):
-        COMPLETED = "COMPLETED", "Completed"
-        FAILED = "FAILED", "Failed"
-        REVERSED = "REVERSED", "Reversed"
+class Settlement(models.Model):
+    class AckKind(models.TextChoices):
+        MANAGEMENT_UPLOAD = "MANAGEMENT_UPLOAD", "Management-uploaded evidence"
+        PAYEE_LINK = "PAYEE_LINK", "Payee link (reserved)"
 
-    acceptance = models.OneToOneField(
-        AcceptanceRecord, on_delete=models.PROTECT, related_name="payment"
-    )
-    bank_reference = models.CharField(max_length=128, unique=True)
+    proposal = models.OneToOneField(Proposal, on_delete=models.PROTECT, related_name="settlement")
     amount_vnd = models.BigIntegerField()
-    external_status = models.CharField(max_length=16, choices=ExternalStatus.choices)
-    completed_at = models.DateTimeField()
-    proof_original = models.ForeignKey(
-        DocumentVersion,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    proof_redacted = models.ForeignKey(
-        DocumentVersion,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    recorder = models.ForeignKey(
-        ManagementMembership,
-        on_delete=models.PROTECT,
-        related_name="recorded_payments",
-    )
-    wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
-    signature = models.CharField(max_length=132)
-    outbox_event = models.OneToOneField(
-        BlockchainOutboxEvent,
-        on_delete=models.PROTECT,
-        related_name="payment_evidence",
-    )
-    recorded_at = models.DateTimeField()
-
-    @property
-    def created_at(self):
-        return self.recorded_at
-
-    @property
-    def membership(self):
-        return self.recorder
+    payee_name = models.CharField(max_length=255)
+    bank_reference = models.CharField(max_length=64)
+    transfer_original = models.ForeignKey(DocumentVersion, on_delete=models.PROTECT, related_name="+")
+    transfer_redacted = models.ForeignKey(DocumentVersion, on_delete=models.PROTECT, related_name="+")
+    transfer_recorded_by = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT, related_name="+")
+    transfer_recorded_at = models.DateTimeField()
+    ack_kind = models.CharField(max_length=24, choices=AckKind.choices, default=AckKind.MANAGEMENT_UPLOAD)
+    ack_original = models.ForeignKey(DocumentVersion, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    ack_redacted = models.ForeignKey(DocumentVersion, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    ack_recorded_by = models.ForeignKey(ManagementMembership, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    ack_recorded_at = models.DateTimeField(null=True, blank=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+    outbox_event = models.OneToOneField(BlockchainOutboxEvent, null=True, blank=True, on_delete=models.PROTECT, related_name="settlement")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
-            models.CheckConstraint(
-                condition=models.Q(amount_vnd__gt=0),
-                name="payment_amount_positive",
-            ),
+            models.CheckConstraint(condition=models.Q(settled_at__isnull=True) | (models.Q(ack_recorded_at__isnull=False) & models.Q(outbox_event__isnull=False)), name="settlement_requires_both_evidence_sides"),
+            models.CheckConstraint(condition=models.Q(amount_vnd__gt=0), name="settlement_amount_positive"),
         ]
-
-
-class PaymentVerification(InsertOnlyModel):
-    class Decision(models.TextChoices):
-        VERIFIED = "VERIFIED", "Verified"
-        REJECTED = "REJECTED", "Rejected"
-
-    payment = models.OneToOneField(
-        PaymentEvidence, on_delete=models.PROTECT, related_name="verification"
-    )
-    membership = models.ForeignKey(
-        ManagementMembership,
-        on_delete=models.PROTECT,
-        related_name="payment_verifications",
-    )
-    decision = models.CharField(max_length=16, choices=Decision.choices)
-    reason = models.TextField()
-    wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
-    signature = models.CharField(max_length=132)
-    outbox_event = models.OneToOneField(
-        BlockchainOutboxEvent,
-        on_delete=models.PROTECT,
-        related_name="payment_verification",
-    )
-    verified_at = models.DateTimeField()
-
-    @property
-    def created_at(self):
-        return self.verified_at
-
-    @property
-    def verifier(self):
-        return self.membership

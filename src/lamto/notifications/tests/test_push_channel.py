@@ -61,7 +61,7 @@ class PushQueueGatingTests(TestCase):
             d.confirm_triage_case()
             d.submit_signed_proposal()
             d.complete_assigned_work()
-            d.accept_and_record_payment()
+            d.record_settlement_transfer()
             d.confirm_all_chain_events()
             case = seed.case
             # notify_users queues via transaction.on_commit; fire it in-test.

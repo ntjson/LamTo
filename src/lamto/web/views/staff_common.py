@@ -222,8 +222,7 @@ ACCOUNTABILITY_STAGES = (
     ("triage", _("Triage")),
     ("work", _("Work")),
     ("proposal", _("Proposal publication")),
-    ("acceptance", _("Acceptance")),
-    ("payment", _("Payment")),
+    ("settlement", _("Settlement")),
     ("publication", _("Publication")),
 )
 
@@ -339,8 +338,7 @@ def resolve_accountability_stage(
     source=None,
     *,
     proposal=None,
-    payment=None,
-    acceptance=None,
+    settlement=None,
     entry=None,
     case=None,
     published: bool | None = None,
@@ -356,17 +354,15 @@ def resolve_accountability_stage(
     Publication as complete before independent confirmation.
     """
     from lamto.finance.models import PublicationSnapshot, PublishedLedgerEntry
-    from lamto.finance.models.execution import AcceptanceRecord, PaymentEvidence
+    from lamto.finance.models.execution import Settlement
     from lamto.finance.models.proposals import Proposal
     from lamto.maintenance.models import MaintenanceCase
 
     if source is not None:
         if isinstance(source, PublishedLedgerEntry):
             entry = source
-        elif isinstance(source, PaymentEvidence):
-            payment = source
-        elif isinstance(source, AcceptanceRecord):
-            acceptance = source
+        elif isinstance(source, Settlement):
+            settlement = source
         elif isinstance(source, Proposal):
             proposal = source
         elif isinstance(source, MaintenanceCase):
@@ -375,43 +371,32 @@ def resolve_accountability_stage(
     if entry is not None:
         return None, False, False
 
-    if payment is None and acceptance is not None:
-        payment = _related_or_none(acceptance, "payment")
-    if acceptance is None and payment is not None:
-        acceptance = getattr(payment, "acceptance", None)
-    if case is None and acceptance is not None:
-        case = getattr(acceptance, "case", None)
+    if proposal is None and settlement is not None:
+        proposal = settlement.proposal
     if case is None and proposal is not None:
         case = getattr(proposal, "case", None)
-    if case is None and payment is not None:
-        acc = getattr(payment, "acceptance", None)
-        case = getattr(acc, "case", None) if acc is not None else None
     if proposal is None and case is not None:
         proposal = _related_or_none(case, "proposal")
-    if acceptance is None and case is not None:
-        acceptance = _related_or_none(case, "acceptance")
-    if payment is None and acceptance is not None:
-        payment = _related_or_none(acceptance, "payment")
+    if settlement is None and proposal is not None:
+        settlement = _related_or_none(proposal, "settlement")
 
     if case is not None:
         if published is None:
             published = PublishedLedgerEntry.objects.filter(case=case).exists()
         if published:
             return None, False, False
-        if payment is not None:
+        if settlement is not None and settlement.settled_at is not None:
             if publication_pending is None:
                 publication_pending = PublicationSnapshot.objects.filter(proposal__case=case).exists()
             return "publication", False, bool(publication_pending)
-        if acceptance is not None:
-            return "payment", False, False
         proposal_status = getattr(proposal, "status", None) if proposal else None
         if proposal_status in _PROPOSAL_AUTHORIZED:
-            return "acceptance", False, False
+            return "settlement", False, False
         if proposal_status == Proposal.Status.NOT_PROCEEDING or proposal_status in {"NOT_PROCEEDING", "REJECTED"}:
             return "proposal", True, False
         if proposal is not None:
             return "proposal", False, False
-        return ("acceptance", False, False) if case.completed_at else ("work", False, False)
+        return ("settlement", False, False) if case.completed_at else ("work", False, False)
 
     if proposal is not None:
         return resolve_accountability_stage(

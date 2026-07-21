@@ -473,3 +473,14 @@ def create_publication_outflow(
         recorded_at=recorded_at or timezone.now(),
     )
     return entry
+
+
+def create_settlement_outflow(settlement) -> MaintenanceFundEntry:
+    """Record the settlement's off-chain fund outflow (Task 4 reshapes the ledger)."""
+    return create_publication_outflow(
+        fund=get_or_create_fund(settlement.proposal.building),
+        proposal=settlement.proposal,
+        publication=None,
+        amount_vnd=settlement.amount_vnd,
+        recorded_at=settlement.settled_at,
+    )

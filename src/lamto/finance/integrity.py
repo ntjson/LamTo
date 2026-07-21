@@ -24,12 +24,10 @@ def _stream_sha256(version):
 def _related_outbox_events(entry):
     proposal = entry.proposal
     version = proposal.current_version
-    acceptance, payment, verification = _load_execution_chain(proposal)
+    settlement = _load_execution_chain(proposal)
     events = [
         version.outbox_event if version is not None else None,
-        acceptance.outbox_event,
-        payment.outbox_event,
-        verification.outbox_event,
+        settlement.outbox_event,
         entry.snapshot.outbox_event,
     ]
     return [event for event in events if event is not None]
@@ -148,9 +146,9 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
 
         proposal = entry.proposal
         version = proposal.current_version
-        acceptance, payment, verification = _load_execution_chain(proposal)
+        settlement = _load_execution_chain(proposal)
         document_checks = _collect_document_checks(
-            proposal, version, acceptance, payment, verification, using=using
+            proposal, version, settlement, using=using
         )
 
         checked_hashes = []

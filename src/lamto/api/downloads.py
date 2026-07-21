@@ -96,9 +96,8 @@ def resident_can_download(user, version) -> bool:
             snapshot__outbox_event__status__in=SETTLED_STATUSES,
         )
         .filter(
-            Q(case__acceptance__invoice_redacted=version)
-            | Q(case__acceptance__acceptance_redacted=version)
-            | Q(payment__proof_redacted=version)
+            Q(payment__transfer_redacted=version)
+            | Q(payment__ack_redacted=version)
         )
         .exists()
     )

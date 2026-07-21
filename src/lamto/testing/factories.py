@@ -35,7 +35,6 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType, is_settled
 from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
-from lamto.finance.acceptance import accept_work, build_acceptance_evidence_typed_data
 from lamto.finance.fund import (
     allocate_fund_entry_id,
     build_fund_source_evidence_typed_data,
@@ -52,13 +51,7 @@ from lamto.finance.models import (
     PublicationSnapshot,
     PublishedLedgerEntry,
 )
-from lamto.finance.payments import (
-    allocate_payment_id,
-    build_payment_evidence_typed_data,
-    build_payment_verification_evidence_typed_data,
-    record_payment,
-    verify_payment,
-)
+from lamto.finance.settlements import record_acknowledgement, record_transfer
 from lamto.finance.proposals import (
     build_proposal_evidence_payload,
     create_proposal,
@@ -80,7 +73,7 @@ from lamto.maintenance.triage import confirm_triage
 
 
 PILOT_PASSWORD = "pilot-test-secret"
-PILOT_BUILDING_NAME = "Pilot Acceptance Building"
+PILOT_BUILDING_NAME = "Pilot Settlement Building"
 PILOT_EMAIL_DOMAIN = "pilot.lamto.test"
 DEFAULT_AMOUNT_VND = 18_500_000
 DEFAULT_FUND_OPENING_VND = 100_000_000
@@ -339,7 +332,7 @@ def seed_opening_fund(seed: PilotSeed, amount_vnd: int = DEFAULT_FUND_OPENING_VN
 
 
 class PilotDomainDriver:
-    """Drive REAL domain entry points for pilot acceptance scenarios.
+    """Drive real domain entry points for pilot scenarios.
 
     Browser-facing PilotDriver methods in tests/e2e delegate here when Playwright
     is unavailable, and Django tests use this class directly.
@@ -516,101 +509,41 @@ class PilotDomainDriver:
         self._ctx["rating"] = rating
         return rating
 
-    def accept_and_record_payment(self, amount_vnd: int | None = None):
+    def record_settlement_transfer(self, amount_vnd: int | None = None):
         amount_vnd = amount_vnd or self._ctx.get("amount_vnd", DEFAULT_AMOUNT_VND)
-        work = self.seed.case
-        work.refresh_from_db()
-        accepter = self.seed.management_memberships[0]
-        inv_o, inv_r = self.seed.document_pair(
-            Document.Kind.INVOICE, accepter.user, "invoice"
-        )
-        acc_o, acc_r = self.seed.document_pair(
-            Document.Kind.ACCEPTANCE_REPORT, accepter.user, "acceptance"
-        )
-        event_id = new_event_id()
-        typed = build_acceptance_evidence_typed_data(
-            work,
-            accepter,
-            amount_vnd,
-            inv_o,
-            inv_r,
-            acc_o,
-            acc_r,
-            event_id,
-            timestamp=work.completed_at,
-        )
-        signature = self.seed.sign_typed(accepter, typed)
-        acceptance = accept_work(
-            work,
-            accepter,
-            amount_vnd,
-            inv_o,
-            inv_r,
-            acc_o,
-            acc_r,
-            signature,
-            event_id,
-            timestamp=work.completed_at,
-        )
-        self._ctx["acceptance"] = acceptance
-
         recorder = self.seed.management_memberships[0]
-        proof_o, proof_r = self.seed.document_pair(
-            Document.Kind.PAYMENT_PROOF, recorder.user, "payment-proof"
+        original, redacted = self.seed.document_pair(
+            Document.Kind.PAYMENT_PROOF, recorder.user, "settlement-transfer"
         )
-        payment_id = allocate_payment_id()
-        payment_event = new_event_id()
-        completed_at = timezone.now()
-        bank_ref = f"BANK-PILOT-{payment_id}"
-        pay_typed = build_payment_evidence_typed_data(
-            acceptance,
+        settlement = record_transfer(
+            self.seed.proposal or self._ctx["proposal"],
             recorder,
-            payment_id,
-            bank_ref,
-            amount_vnd,
-            "COMPLETED",
-            completed_at,
-            proof_o,
-            proof_r,
-            payment_event,
+            amount_vnd=amount_vnd,
+            payee_name="Pilot Contractor Co",
+            bank_reference=f"BANK-PILOT-{new_event_id()[-12:]}",
+            transfer_original=original,
+            transfer_redacted=redacted,
         )
-        pay_sig = self.seed.sign_typed(recorder, pay_typed)
-        payment = record_payment(
-            acceptance,
-            recorder,
-            bank_ref,
-            amount_vnd,
-            "COMPLETED",
-            completed_at,
-            proof_o,
-            proof_r,
-            pay_sig,
-            payment_event,
-            payment_id,
-        )
-        self._ctx["payment"] = payment
-        self._ctx["payment_recorder"] = recorder
-        return payment
+        self._ctx["settlement"] = settlement
+        return settlement
 
-    def verify_payment(self):
-        payment = self._ctx["payment"]
-        verifier = self.seed.management_memberships[1]
-        event_id = new_event_id()
-        typed = build_payment_verification_evidence_typed_data(
-            payment, verifier, "VERIFIED", event_id, timestamp=payment.recorded_at
+    def record_settlement_ack(self):
+        settlement = self._ctx["settlement"]
+        recorder = self.seed.management_memberships[1]
+        original, redacted = self.seed.document_pair(
+            Document.Kind.PAYMENT_PROOF, recorder.user, "settlement-ack"
         )
-        signature = self.seed.sign_typed(verifier, typed)
-        verification = verify_payment(
-            payment,
-            verifier,
-            "VERIFIED",
-            "Matches accepted cost",
-            signature,
-            event_id,
-            timestamp=payment.recorded_at,
+        settlement = record_acknowledgement(
+            settlement,
+            recorder,
+            ack_original=original,
+            ack_redacted=redacted,
+            event_id=new_event_id(),
         )
-        self._ctx["payment_verification"] = verification
-        return verification
+        if not self.seed.chain_paused:
+            confirm_event(settlement.outbox_event)
+        self._ctx["settlement"] = settlement
+        return settlement
 
     def sign_publication_snapshot(self):
         proposal = self.seed.proposal or self._ctx["proposal"]
@@ -627,7 +560,7 @@ class PilotDomainDriver:
             return SimpleNamespace(reason=None, blocked=False)
         except ValidationError as exc:
             messages = "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
-            # Map domain wording to pilot acceptance phrasing used in the brief.
+            # Keep the pilot-facing message stable across domain wording changes.
             if (
                 "not chain-confirmed" in messages
                 or "chain-confirmed" in messages
@@ -644,28 +577,20 @@ class PilotDomainDriver:
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
         version = proposal.current_version
-        acceptance = proposal.case.acceptance
-        payment = acceptance.payment
-        verification = payment.verification
-        checks = _collect_document_checks(
-            proposal, version, acceptance, payment, verification
-        )
+        settlement = proposal.settlement
+        checks = _collect_document_checks(proposal, version, settlement)
         document_hashes = sorted({doc.sha256 for doc, _, _ in checks})
         resident_payload = _resident_payload(
-            proposal, version, acceptance, payment, verification, document_hashes
+            proposal, version, settlement, document_hashes
         )
-        prerequisite_event_hashes = [version.outbox_event.payload_hash]
-        prerequisite_event_hashes.extend(
-            [
-                acceptance.outbox_event.payload_hash,
-                payment.outbox_event.payload_hash,
-                verification.outbox_event.payload_hash,
-            ]
-        )
+        prerequisite_event_hashes = [
+            version.outbox_event.payload_hash,
+            settlement.outbox_event.payload_hash,
+        ]
         publication_id = allocate_publication_id()
         pub_event = new_event_id()
         pub_ts = timezone.now()
-        previous_hash = "0x" + verification.outbox_event.payload_hash
+        previous_hash = "0x" + settlement.outbox_event.payload_hash
         typed = build_publication_evidence_typed_data(
             proposal,
             publisher,
@@ -721,7 +646,7 @@ class PilotDomainDriver:
         # After the normal flow integrity verification may run; otherwise expose cost.
         redacted_ok = bool(
             entry.snapshot.resident_payload.get("document_hashes")
-            or entry.payment.proof_redacted_id
+            or entry.payment.transfer_redacted_id
         )
         return SimpleNamespace(
             actual_cost_vnd=entry.actual_cost_vnd,

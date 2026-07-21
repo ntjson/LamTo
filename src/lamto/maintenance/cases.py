@@ -162,6 +162,12 @@ def close_expired_completed_cases(now=None) -> int:
         completed_at__lte=now - timedelta(days=RATING_WINDOW_DAYS), closed_at__isnull=True,
     ))
     for proposal in proposals:
+        close_at = proposal.completed_at + timedelta(days=RATING_WINDOW_DAYS)
+        settlement = getattr(proposal, "settlement", None)
+        if settlement and settlement.settled_at and settlement.settled_at > close_at:
+            close_at = settlement.settled_at
+        if now < close_at:
+            continue
         proposal.status = Proposal.Status.CLOSED
         proposal.closed_at = now
         proposal.save(update_fields=["status", "closed_at"])

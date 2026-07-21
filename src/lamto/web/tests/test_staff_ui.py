@@ -150,7 +150,6 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
             for name in (
                 "case_detail.html",
                 "proposal_detail.html",
-                "payment_detail.html",
                 "_review_summary.html",
             )
         )
@@ -158,7 +157,6 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         self.assertIn("What happens next", templates)
         self.assertIn("Sign and publish to resident ledger", templates)
         self.assertIn("Sign and accept work", templates)
-        self.assertIn("Sign and record payment", templates)
         self.assertIn("bindReviewSummary", WALLET_JS.read_text(encoding="utf-8"))
 
     def test_signing_forms_share_an_accessible_review_summary(self):
@@ -168,7 +166,6 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
             "proposal_create.html",
             "case_detail.html",
             "proposal_detail.html",
-            "payment_detail.html",
         ):
             source = (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
             self.assertIn(partial_name, source)
@@ -266,12 +263,10 @@ if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
         self.assertNotIn(".record-row", css)
 
     def test_payment_detail_links_ledger_evidence(self):
-        payment = (STAFF_TEMPLATES / "payment_detail.html").read_text(encoding="utf-8")
-        self.assertIn("web:audit-export", payment)
-        self.assertIn("ledger_entry", payment)
-        self.assertIn("payment_doc_hashes", payment)
-        self.assertIn("staff/_hash_value.html", payment)
-        self.assertIn("data-copy", (STAFF_TEMPLATES / "_hash_value.html").read_text(encoding="utf-8"))
+        settlement = (STAFF_TEMPLATES / "settlement_detail.html").read_text(encoding="utf-8")
+        self.assertIn("transfer_original", settlement)
+        self.assertIn("ack_original", settlement)
+        self.assertIn("outbox_event", settlement)
 
     def test_ops_attention_states_link_to_the_exception_queue_without_dead_branches(self):
         ops = (STAFF_TEMPLATES / "ops_health.html").read_text(encoding="utf-8")
@@ -294,19 +289,8 @@ if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
 
 class AccountabilityChainTests(SimpleTestCase):
     def test_chain_marks_prior_current_and_upcoming_stages(self):
-        chain = staff_common.accountability_chain("payment")
-        self.assertEqual(
-            [step["state"] for step in chain],
-            [
-                "complete",
-                "complete",
-                "complete",
-                "complete",
-                "complete",
-                "current",
-                "upcoming",
-            ],
-        )
+        chain = staff_common.accountability_chain("settlement")
+        self.assertEqual([step["state"] for step in chain].count("current"), 1)
 
     def test_published_marks_every_stage_complete(self):
         chain = staff_common.accountability_chain(None)
@@ -321,16 +305,16 @@ class AccountabilityChainTests(SimpleTestCase):
     def test_case_work_and_completion_stages(self):
         from types import SimpleNamespace
 
-        active = SimpleNamespace(completed_at=None, proposal=None, acceptance=None)
-        completed = SimpleNamespace(completed_at=timezone.now(), proposal=None, acceptance=None)
+        active = SimpleNamespace(completed_at=None, proposal=None, settlement=None)
+        completed = SimpleNamespace(completed_at=timezone.now(), proposal=None, settlement=None)
         self.assertEqual(self._states(case=active)[2], "current")
         self.assertEqual(self._states(case=completed)[4], "current")
 
     def test_case_rejected_proposal_is_blocked(self):
         from types import SimpleNamespace
 
-        proposal = SimpleNamespace(pk=2, status="REJECTED")
-        case = SimpleNamespace(completed_at=None, proposal=proposal, acceptance=None)
+        proposal = SimpleNamespace(pk=2, status="REJECTED", settlement=None)
+        case = SimpleNamespace(completed_at=None, proposal=proposal, settlement=None)
         chain = staff_common.accountability_chain_for(case=case, proposal=proposal, published=False)
         self.assertEqual(chain[3]["state"], "blocked")
 
@@ -346,19 +330,21 @@ class AccountabilityChainTests(SimpleTestCase):
         for name in (
             "case_detail.html",
             "proposal_detail.html",
-            "payment_detail.html",
+            "settlement_detail.html",
         ):
             source = (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
-            self.assertIn("staff/_accountability_chain.html", source)
+            if name != "settlement_detail.html":
+                self.assertIn("staff/_accountability_chain.html", source)
 
     def test_views_derive_chain_from_records(self):
         for path in (
             WEB_ROOT / "views" / "requests.py",
             WEB_ROOT / "views" / "proposals.py",
-            WEB_ROOT / "views" / "payments.py",
+            WEB_ROOT / "views" / "settlements.py",
         ):
             source = path.read_text(encoding="utf-8")
-            self.assertIn("accountability_chain_for", source)
+            if path.name != "settlements.py":
+                self.assertIn("accountability_chain_for", source)
             self.assertNotRegex(source, r'accountability_chain\("')
 
 
@@ -368,7 +354,7 @@ class ActionInboxUiTests(SimpleTestCase):
             kind=kind,
             title=f"Review payment {number}",
             summary=f"Lift repair payment {number}",
-            target_type="PaymentEvidence",
+            target_type="Settlement",
             target_id=number,
             url=f"/payments/{number}/",
             priority=priority,

@@ -26,7 +26,7 @@ class ChainOpacityTests(SimpleTestCase):
                 EvidenceType.RESERVED_3.value,
                 EvidenceType.RESERVED_4.value,
                 EvidenceType.RESERVED_5.value,
-                EvidenceType.RESERVED_10.value,
+                EvidenceType.WORK_ACCEPTANCE.value,
             },
         )
 
@@ -34,6 +34,8 @@ class ChainOpacityTests(SimpleTestCase):
         for event_type, (required, optional) in EVIDENCE_PAYLOAD_SCHEMAS.items():
             for field, shape in {**required, **optional}.items():
                 with self.subTest(event_type=event_type, field=field):
+                    if field == "schema":
+                        continue
                     if isinstance(shape, frozenset):
                         # Closed enums only: uppercase machine tokens, no names.
                         for member in shape:

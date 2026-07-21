@@ -14,7 +14,7 @@ from lamto.accounts.models import (
     Unit,
 )
 from lamto.accounts.security import RECENT_REAUTH_KEY
-from lamto.finance.models import AcceptanceRecord, PaymentEvidence, Proposal
+from lamto.finance.models import Proposal
 from lamto.maintenance.models import (
     BuildingLocation,
     IssueReport,
@@ -185,61 +185,3 @@ class ListPatternTests(TestCase):
         self.assertContains(review, f"Proposal #{in_review.pk}")
         for label in ("Preparing", "Review", "Authorized"):
             self.assertContains(review, label)
-
-    def test_payment_list_filters_verify_queue_by_external_status(self):
-        """Filter chips on payment list narrow verify-queue by external_status."""
-        import tempfile
-        from unittest.mock import patch
-
-        from django.test import override_settings
-
-        from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
-
-        temp = tempfile.mkdtemp(prefix="lamto-payfilt-")
-        with override_settings(
-            STORAGES={
-                "default": {
-                    "BACKEND": "django.core.files.storage.FileSystemStorage",
-                    "OPTIONS": {"location": temp},
-                },
-                "private": {
-                    "BACKEND": "django.core.files.storage.FileSystemStorage",
-                    "OPTIONS": {"location": temp},
-                },
-                "staticfiles": {
-                    "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-                },
-            }
-        ):
-            seed = seed_pilot_world(building_name="Pay Filt", email_prefix="payf")
-            d = PilotDomainDriver(seed)
-            d.submit_report("x", "Lift")
-            d.confirm_triage_case()
-            d.submit_signed_proposal()
-            d.complete_assigned_work()
-            d.accept_and_record_payment()
-            d.confirm_all_chain_events()
-            payment = seed.proposal.case.acceptance.payment
-            self.assertEqual(
-                payment.external_status, PaymentEvidence.ExternalStatus.COMPLETED
-            )
-
-            membership = seed.management_memberships[1]
-            self._login(membership.user, membership)
-
-            all_resp = self.client.get(reverse("web:payment-list"))
-            self.assertEqual(all_resp.status_code, 200)
-            self.assertContains(all_resp, "queue-toolbar")
-            self.assertContains(all_resp, f"Payment #{payment.pk}")
-
-            filtered = self.client.get(
-                reverse("web:payment-list"),
-                {"status": PaymentEvidence.ExternalStatus.FAILED},
-            )
-            self.assertNotContains(filtered, f"Payment #{payment.pk}")
-
-            filtered_ok = self.client.get(
-                reverse("web:payment-list"),
-                {"status": PaymentEvidence.ExternalStatus.COMPLETED},
-            )
-            self.assertContains(filtered_ok, f"Payment #{payment.pk}")

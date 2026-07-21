@@ -29,8 +29,7 @@ def published_ledger_entries(building_id):
             "proposal",
             "proposal__current_version",
             "payment",
-            "payment__verification",
-            "payment__verification__membership__user",
+            "payment__outbox_event",
         )
         .order_by("-published_at", "-pk")
     )
@@ -39,7 +38,7 @@ def published_ledger_entries(building_id):
 def published_ledger_entry_for_proof(building_id, pk):
     """One settled published entry with relations needed by ``ledger_entry_proof``.
 
-    Extends the list selector with acceptance/redacted-doc/payment event joins
+    Extends the list selector with settlement document/event joins
     so detail assembly avoids obvious extra queries.
     """
     return (
@@ -47,12 +46,9 @@ def published_ledger_entry_for_proof(building_id, pk):
         .filter(pk=pk)
         .select_related(
             "case__decision__report",
-            "case__acceptance",
-            "case__acceptance__invoice_redacted",
-            "case__acceptance__acceptance_redacted",
-            "payment__proof_redacted",
+            "payment__transfer_redacted",
+            "payment__ack_redacted",
             "payment__outbox_event",
-            "payment__verification__outbox_event",
             "proposal__current_version",
         )
         .first()
@@ -198,38 +194,24 @@ def ledger_entry_proof(entry):
     """
     payload = entry.snapshot.resident_payload or {}
     version = entry.proposal.current_version
-    verification = getattr(entry.payment, "verification", None)
     redacted_docs = []
-    acceptance = getattr(entry.case, "acceptance", None)
-    if acceptance is not None:
-        for label, version_obj in (
-            ("Invoice (redacted)", acceptance.invoice_redacted),
-            ("Acceptance report (redacted)", acceptance.acceptance_redacted),
-        ):
-            if version_obj is not None:
-                redacted_docs.append(
-                    {
-                        "label": label,
-                        "filename": version_obj.filename,
-                        "sha256": version_obj.sha256,
-                        "version_id": version_obj.pk,
-                    }
-                )
-    proof_redacted = entry.payment.proof_redacted
-    if proof_redacted is not None:
-        redacted_docs.append(
-            {
-                "label": "Payment proof (redacted)",
-                "filename": proof_redacted.filename,
-                "sha256": proof_redacted.sha256,
-                "version_id": proof_redacted.pk,
-            }
-        )
+    for label, version_obj in (
+        ("Transfer evidence (redacted)", entry.payment.transfer_redacted),
+        ("Payee acknowledgement (redacted)", entry.payment.ack_redacted),
+    ):
+        if version_obj is not None:
+            redacted_docs.append(
+                {
+                    "label": label,
+                    "filename": version_obj.filename,
+                    "sha256": version_obj.sha256,
+                    "version_id": version_obj.pk,
+                }
+            )
     events = [
         event
         for event in (
             entry.snapshot.outbox_event,
-            getattr(verification, "outbox_event", None) if verification else None,
             entry.payment.outbox_event,
         )
         if event is not None
@@ -242,7 +224,7 @@ def ledger_entry_proof(entry):
             if version is not None
             else payload.get("proposed_amount_vnd")
         ),
-        "verification": verification,
+        "verification": None,
         "redacted_docs": redacted_docs,
         "events": events,
         "transaction_ids": [
@@ -276,18 +258,14 @@ def pending_fund_verification_entries(building_id):
 def pending_reconciliation_proposals(building_id):
     """Staff reconciliation aid: publication-eligible but not yet published.
 
-    Mirrors settled verification/publication eligibility used by
-    prepare_publication — not merely payment.decision == VERIFIED:
-    - payment verification decision VERIFIED
-    - payment external_status COMPLETED
+    Mirrors settled publication eligibility used by prepare_publication:
+    - settlement is finalized
     - proposal has current_version
     - no PublishedLedgerEntry and no PublicationSnapshot yet
     - prerequisite outbox events settled
     """
     from lamto.evidence.models import SETTLED_STATUSES
     from lamto.finance.models import (
-        PaymentEvidence,
-        PaymentVerification,
         Proposal,
         PublicationSnapshot,
         PublishedLedgerEntry,
@@ -303,18 +281,16 @@ def pending_reconciliation_proposals(building_id):
         Proposal.objects.filter(
             case__building_id=building_id,
             current_version__isnull=False,
-            case__acceptance__payment__verification__decision=PaymentVerification.Decision.VERIFIED,
-            case__acceptance__payment__external_status=PaymentEvidence.ExternalStatus.COMPLETED,
+            settlement__settled_at__isnull=False,
+            settlement__outbox_event__status__in=SETTLED_STATUSES,
             current_version__outbox_event__status__in=SETTLED_STATUSES,
-            case__acceptance__outbox_event__status__in=SETTLED_STATUSES,
-            case__acceptance__payment__outbox_event__status__in=SETTLED_STATUSES,
-            case__acceptance__payment__verification__outbox_event__status__in=SETTLED_STATUSES,
         )
         .exclude(pk__in=published_proposal_ids)
         .exclude(pk__in=snapshotted_ids)
         .select_related(
             "current_version",
             "case",
+            "settlement",
         )
         .order_by("-created_at")
     )

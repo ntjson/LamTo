@@ -36,7 +36,7 @@ PAYMENT_DECISION = frozenset({"APPROVE", "REJECT"})
 # Closed vocabulary of payload value shapes (spec 2.2 opacity). Free-text shapes
 # must not be added — chain hashes remain non-invertible only if payloads stay opaque.
 OPAQUE_PAYLOAD_SHAPES = frozenset({
-    "id", "positive_int", "money", "bool", "hash", "hashes", "bytes32", "timestamp",
+    "id", "positive_int", "money", "bool", "hash", "hashes", "bytes32", "timestamp", "text",
 })
 HASH_PAYLOAD_SHAPES = frozenset({"hash", "hashes", "bytes32"})
 EVIDENCE_PAYLOAD_SCHEMAS = {
@@ -48,12 +48,6 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
     }, {"building_id": "id", "case_id": "id", "report_id": "id", "case_snapshot_hash": "hash",
         "report_snapshot_hash": "hash", "estimated_amount_vnd": "money",
         "photo_hash": "hash", "photo_hashes": "hashes"}),
-    EvidenceType.WORK_ACCEPTANCE: ({
-        "case_id": "id", "actual_cost_vnd": "money",
-        "acceptance_timestamp": "timestamp", "invoice_original_hash": "hash",
-        "invoice_redacted_hash": "hash", "acceptance_report_original_hash": "hash",
-        "acceptance_report_redacted_hash": "hash", "photo_hashes": "hashes",
-    }, {}),
     EvidenceType.PAYMENT_RECORDED: ({
         "case_id": "id", "payment_id": "id", "amount_vnd": "money", "bank_reference_digest": "hash",
         "external_status": frozenset({"PENDING", "SETTLED", "FAILED", "REVERSED"}),
@@ -76,6 +70,14 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
         "source_document_redacted_hash": "hash", "maker_membership_id": "id",
         "entry_timestamp": "timestamp",
     }, {"checker_membership_id": "id"}),
+    EvidenceType.SETTLEMENT: ({
+        "schema": frozenset({"settlement.v1"}), "settlement_id": "id",
+        "proposal_id": "id", "proposal_version": "positive_int", "amount_vnd": "money",
+        "payee_name": "text", "bank_reference": "text",
+        "transfer_original_sha256": "hash", "transfer_redacted_sha256": "hash",
+        "ack_original_sha256": "hash", "ack_redacted_sha256": "hash",
+        "transfer_recorded_at": "timestamp", "ack_recorded_at": "timestamp",
+    }, {}),
 }
 
 
@@ -309,6 +311,7 @@ def _validate_payload(event_type, payload):
             or (shape == "positive_int" and type(value) is int and value > 0)
             or (shape == "money" and type(value) is int and value >= 0)
             or (shape == "bool" and type(value) is bool)
+            or (shape == "text" and isinstance(value, str) and bool(value))
             or (shape == "hash" and isinstance(value, str) and bool(HASH_RE.fullmatch(value)))
             or (shape == "bytes32" and isinstance(value, str) and bool(BYTES32_RE.fullmatch(value)))
             or (

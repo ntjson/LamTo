@@ -2,11 +2,9 @@ from django.test import SimpleTestCase
 
 from lamto.accounts.models import ManagementMembership
 from lamto.finance.models import (
-    AcceptanceRecord,
     MaintenanceFundEntry,
     FundEntryVerification,
-    PaymentEvidence,
-    PaymentVerification,
+    Settlement,
     PublicationGateFailure,
     PublicationSnapshot,
     Proposal,
@@ -19,9 +17,8 @@ class FinanceMembershipModelTests(SimpleTestCase):
         for model, field in (
             (Proposal, "creator_membership"),
             (ProposalVersion, "creator_membership"),
-            (AcceptanceRecord, "membership"),
-            (PaymentEvidence, "recorder"),
-            (PaymentVerification, "membership"),
+            (Settlement, "transfer_recorded_by"),
+            (Settlement, "ack_recorded_by"),
             (MaintenanceFundEntry, "recorder"),
             (FundEntryVerification, "membership"),
             (PublicationSnapshot, "publisher"),
