@@ -112,11 +112,12 @@ def submit_report(resident, unit, text, location, photo_versions, client_ref=Non
     return report
 
 
-def _content_matches(existing, text, unit, location) -> bool:
+def _content_matches(existing, text, unit, location, is_private=False) -> bool:
     return (
         existing.text == (text or "").strip()
         and existing.unit_id == getattr(unit, "pk", unit)
         and existing.selected_location_id == getattr(location, "pk", location)
+        and existing.is_private == is_private
     )
 
 
@@ -124,7 +125,7 @@ def submit_report_idempotent(resident, unit, text, location, photo_versions, cli
     """Idempotent POST /reports entry point (spec 3.5). Returns (report, created)."""
     existing = IssueReport.objects.filter(reporter=resident, client_ref=client_ref).first()
     if existing is not None:
-        if _content_matches(existing, text, unit, location):
+        if _content_matches(existing, text, unit, location, is_private):
             return existing, False
         raise ReportClientRefConflict("client_ref reused with different content.")
     try:
@@ -138,7 +139,7 @@ def submit_report_idempotent(resident, unit, text, location, photo_versions, cli
         existing = IssueReport.objects.filter(reporter=resident, client_ref=client_ref).first()
         if existing is None:
             raise
-        if _content_matches(existing, text, unit, location):
+        if _content_matches(existing, text, unit, location, is_private):
             return existing, False
         raise ReportClientRefConflict("client_ref reused with different content.")
     return report, True

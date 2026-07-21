@@ -818,7 +818,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReportSummary'
+                $ref: '#/components/schemas/InfoReplyResult'
           description: ''
         '400':
           content:
@@ -1050,6 +1050,16 @@ components:
           minLength: 1
       required:
       - text
+    InfoReplyResult:
+      type: object
+      properties:
+        report_id:
+          type: integer
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+      required:
+      - report_id
+      - status
     LedgerEntryDetail:
       type: object
       properties:

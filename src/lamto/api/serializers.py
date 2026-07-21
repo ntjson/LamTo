@@ -265,6 +265,11 @@ class InfoReplySerializer(serializers.Serializer):
     text = serializers.CharField()
 
 
+class InfoReplyResultSerializer(serializers.Serializer):
+    report_id = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=IssueReport.Status.choices)
+
+
 class WorkRatingSerializer(serializers.Serializer):
     score = serializers.IntegerField(min_value=1, max_value=5)
     comment = serializers.CharField(required=False, allow_blank=True, max_length=500)

@@ -12,9 +12,13 @@ from lamto.accounts.models import Building, ManagementMembership, ResidentOccupa
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase, TriageDecision
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
+from lamto.web.forms.staff import ConfirmTriageForm
 
 
 class ManagementWorkspaceTests(TestCase):
+    def test_triage_department_is_labeled_management_queue(self):
+        self.assertEqual(ConfirmTriageForm().fields["department"].label, "Management queue")
+
     def authenticate_management(self, membership):
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(

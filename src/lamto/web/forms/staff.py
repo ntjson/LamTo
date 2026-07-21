@@ -45,7 +45,11 @@ class ConfirmTriageForm(forms.Form):
         queryset=BuildingLocation.objects.none(),
         widget=forms.Select(attrs={"class": "input"}),
     )
-    department = forms.CharField(max_length=128, widget=forms.TextInput(attrs={"class": "input"}))
+    department = forms.CharField(
+        max_length=128,
+        label="Management queue",
+        widget=forms.TextInput(attrs={"class": "input"}),
+    )
     deadline_minutes = forms.IntegerField(
         min_value=1, widget=forms.NumberInput(attrs={"class": "input"})
     )

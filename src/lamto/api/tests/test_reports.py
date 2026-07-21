@@ -7,6 +7,7 @@ from django.urls import reverse
 from knox.models import AuthToken
 
 from lamto.accounts.models import ResidentOccupancy
+from lamto.api.serializers import InfoReplyResultSerializer
 from lamto.maintenance.models import IssueReport
 from lamto.maintenance.cases import request_information
 from lamto.testing.factories import seed_pilot_world
@@ -88,7 +89,10 @@ class ReportCreateTests(TestCase):
             headers=self._auth(),
         )
         assert response.status_code == 200, response.content
-        assert response.json()["status"] == IssueReport.Status.IN_REVIEW
+        result = response.json()
+        assert set(result) == {"report_id", "status"}
+        assert InfoReplyResultSerializer(data=result).is_valid()
+        assert result["status"] == IssueReport.Status.IN_REVIEW
 
     def test_same_ref_different_text_is_409(self):
         ref = str(uuid.uuid4())

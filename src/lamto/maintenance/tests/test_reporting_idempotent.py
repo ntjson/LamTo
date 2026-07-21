@@ -54,3 +54,13 @@ class IdempotentSubmitTests(TestCase):
             assert False, "expected ReportClientRefConflict"
         except ReportClientRefConflict:
             pass
+
+    def test_same_ref_changed_privacy_conflicts(self):
+        ref = uuid.uuid4()
+        submit_report_idempotent(
+            self.resident, self.unit, "Lift jerks", self.location, [], ref, is_private=False
+        )
+        with self.assertRaises(ReportClientRefConflict):
+            submit_report_idempotent(
+                self.resident, self.unit, "Lift jerks", self.location, [], ref, is_private=True
+            )

@@ -52,6 +52,7 @@ from lamto.api.serializers import (
     ReportCreateSerializer,
     ReportDetailSerializer,
     InfoReplySerializer,
+    InfoReplyResultSerializer,
     ReportPhotoSerializer,
     ReportPhotoUploadSerializer,
     ReportSummarySerializer,
@@ -537,7 +538,7 @@ class ReportDetailView(APIView):
 class ReportInfoReplyView(APIView):
     @extend_schema(
         request=InfoReplySerializer,
-        responses={200: ReportSummarySerializer, **problem_responses(400, 401, 403, 404)},
+        responses={200: InfoReplyResultSerializer, **problem_responses(400, 401, 403, 404)},
     )
     def post(self, request, pk):
         report = IssueReport.objects.filter(pk=pk, reporter=request.user).first()
