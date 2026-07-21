@@ -150,6 +150,21 @@ class ProposalApiTests(TestCase):
         detail_url = reverse("api:proposal-detail", args=[proposal.pk])
         auth = self._auth()
 
+        proposal.refresh_from_db()
+        completed_at = proposal.completed_at
+        proposal.completed_at = None
+        proposal.save(update_fields=["completed_at"])
+        malformed = self.client.get(detail_url, headers=auth).json()
+        assert malformed["can_rate"] is False
+        proposal.completed_at = completed_at
+        proposal.save(update_fields=["completed_at"])
+        assert self.client.get(detail_url, headers=auth).json()["can_rate"] is True
+        proposal.status = Proposal.Status.CLOSED
+        proposal.save(update_fields=["status"])
+        assert self.client.get(detail_url, headers=auth).json()["can_rate"] is False
+        proposal.status = Proposal.Status.COMPLETED
+        proposal.save(update_fields=["status"])
+
         absent = self.client.get(detail_url, headers=auth).json()
         assert absent["progress"][0]["result"] == "Work underway"
         assert absent["settlement"] is None

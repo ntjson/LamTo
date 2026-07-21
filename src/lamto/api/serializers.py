@@ -402,6 +402,7 @@ class ProposalSerializer(serializers.Serializer):
         return (
             proposal.case_id is None
             and proposal.status == "COMPLETED"
+            and proposal.completed_at is not None
             and not proposal.has_current_user_rating
         )
 
