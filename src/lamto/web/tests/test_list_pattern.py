@@ -272,11 +272,11 @@ class ListPatternTests(TestCase):
         ):
             seed = seed_pilot_world(building_name="Pay Filt", email_prefix="payf")
             d = PilotDomainDriver(seed)
-            d.login(None, "resident").submit_report("x", "Lift")
-            d.login(None, "operator").confirm_triage_and_create_paid_work_order()
-            d.login(None, "operator").submit_signed_proposal()
-            d.login(None, "maintenance").complete_assigned_work()
-            d.login(None, "board_payment_recorder").accept_and_record_payment()
+            d.submit_report("x", "Lift")
+            d.confirm_triage_and_create_paid_work_order()
+            d.submit_signed_proposal()
+            d.complete_assigned_work()
+            d.accept_and_record_payment()
             d.confirm_all_chain_events()
             payment = seed.proposal.work_order.acceptance.payment
             self.assertEqual(

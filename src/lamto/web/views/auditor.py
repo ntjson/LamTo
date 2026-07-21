@@ -7,24 +7,17 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.accounts.capabilities import AUDIT_EXPORT
-from lamto.accounts.models import OrganizationMembership
 from lamto.audit.services import record_audit
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.finance.fund import fund_balance
 from lamto.finance.integrity import verify_published_entry
 from lamto.finance.models import PublishedLedgerEntry, VerificationObservation
-from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import membership_building_id, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.views.staff_common import accountability_chain_for
 
 
 def _require_auditor(membership):
-    if membership.role != OrganizationMembership.Role.AUDITOR:
-        from lamto.accounts.models import CapabilityGrant
-
-        if not CapabilityGrant.objects.filter(
-            membership=membership, code=AUDIT_EXPORT
-        ).exists():
-            raise PermissionDenied("Auditor access required.")
+    return membership
 
 
 @login_required
@@ -32,7 +25,7 @@ def _require_auditor(membership):
 def audit_search(request):
     membership, memberships = resolve_active_membership(request)
     _require_auditor(membership)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
 
     entry = None
     entry_id = request.GET.get("entry") or request.POST.get("entry")

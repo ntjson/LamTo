@@ -42,14 +42,14 @@ class LedgerApiTests(TestCase):
             create_sample_report=False,
         )
         driver = PilotDomainDriver(cls.seed)
-        driver.login(None, "resident").submit_report("Lobby lamp flickers", "Lift 2")
-        driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
-        driver.login(None, "operator").submit_signed_proposal()
-        driver.login(None, "maintenance").complete_assigned_work()
-        driver.login(None, "board_payment_recorder").accept_and_record_payment()
-        driver.login(None, "board_payment_verifier").verify_payment()
+        driver.submit_report("Lobby lamp flickers", "Lift 2")
+        driver.confirm_triage_and_create_paid_work_order()
+        driver.submit_signed_proposal()
+        driver.complete_assigned_work()
+        driver.accept_and_record_payment()
+        driver.verify_payment()
         driver.confirm_all_chain_events()
-        driver.login(None, "eligible_publisher").sign_publication_snapshot()
+        driver.sign_publication_snapshot()
         driver.confirm_all_chain_events()
         cls.entry = PublishedLedgerEntry.objects.get(
             case__building=cls.seed.building

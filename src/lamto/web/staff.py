@@ -9,34 +9,40 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.utils.translation import gettext_lazy as _
 
-from lamto.accounts.models import CapabilityGrant, OrganizationMembership
-from lamto.accounts.security import (
-    deny_tech_admin_business_access,
-    require_staff_mfa,
-)
+from lamto.accounts.capabilities import ALLOWED_ORGANIZATION_KINDS
+from lamto.accounts.models import CapabilityGrant, ManagementMembership, OrganizationMembership
+from lamto.accounts.security import deny_tech_admin_business_access, require_staff_mfa
 from lamto.accounts.services import require_capability, require_management
-from lamto.audit.services import record_audit
 
 
 SESSION_MEMBERSHIP_KEY = "active_membership_id"
 
 
+def membership_building(membership):
+    return membership.building if isinstance(membership, ManagementMembership) else membership.organization.building
+
+
+def membership_building_id(membership):
+    return membership_building(membership).pk
+
+
 def user_memberships(user):
-    return (
-        OrganizationMembership.objects.select_related("organization", "organization__building")
-        .filter(user=user, active=True)
-        .order_by("organization__building__name", "role", "pk")
-    )
+    legacy = OrganizationMembership.objects.select_related(
+        "organization", "organization__building"
+    ).filter(user=user, active=True).order_by("organization__building__name", "role", "pk")
+    if legacy.exists():
+        return legacy
+    return ManagementMembership.objects.select_related("building").filter(
+        user=user, active=True
+    ).order_by("building__name", "pk")
 
 
 def capabilities_for(membership) -> set[str]:
     if membership is None:
         return set()
-    return set(
-        CapabilityGrant.objects.filter(membership=membership).values_list(
-            "code", flat=True
-        )
-    )
+    if isinstance(membership, ManagementMembership):
+        return set(ALLOWED_ORGANIZATION_KINDS)
+    return set(CapabilityGrant.objects.filter(membership=membership).values_list("code", flat=True))
 
 
 def resolve_active_membership(request, *, membership_id=None):
@@ -79,23 +85,11 @@ def require_staff_capability(request, code: str, *, membership_id=None):
     membership, memberships = resolve_active_membership(
         request, membership_id=membership_id
     )
-    # Technical admins never receive finance/document business capabilities.
+    if isinstance(membership, ManagementMembership):
+        return require_management(request.user, membership.building_id), memberships
     if code != "tech.admin":
         deny_tech_admin_business_access(membership)
-    try:
-        actor = require_capability(request.user, membership.pk, code)
-    except PermissionDenied:
-        record_audit(
-            request.user,
-            require_management(request.user, membership.organization.building_id),
-            f"workspace.{code}",
-            "OrganizationMembership",
-            str(membership.pk),
-            "denied",
-            {"capability": code},
-        )
-        raise
-    return actor, memberships
+    return require_capability(request.user, membership.pk, code), memberships
 
 
 def nav_items_for(membership) -> list[dict]:
@@ -103,8 +97,6 @@ def nav_items_for(membership) -> list[dict]:
     Work · Finance (proposals · payments · fund) · Audit · Ops.
     Ledger (seventh area) is deferred — not in this nav."""
     caps = capabilities_for(membership)
-    role = membership.role
-    Role = OrganizationMembership.Role
     items: list[dict] = [
         {
             "label": _("Inbox"),
@@ -126,10 +118,9 @@ def nav_items_for(membership) -> list[dict]:
 
     # Work: operators (assign), board acceptors (accept), and maintenance.
     # Preserves the pre-Plan-4 behavior where work.accept also surfaced Work.
-    if caps & {"work.assign", "work.accept"} or role == Role.MAINTENANCE:
-        maintenance_only = role == Role.MAINTENANCE and not (
-            caps & {"work.assign", "work.accept"}
-        )
+    role = getattr(membership, "role", None)
+    if caps & {"work.assign", "work.accept"} or role == OrganizationMembership.Role.MAINTENANCE:
+        maintenance_only = role == OrganizationMembership.Role.MAINTENANCE and not caps & {"work.assign", "work.accept"}
         items.append(
             {
                 "label": _("My work") if maintenance_only else _("Work"),
@@ -161,7 +152,7 @@ def nav_items_for(membership) -> list[dict]:
             }
         )
 
-    if role == Role.AUDITOR or "audit.export" in caps:
+    if role == OrganizationMembership.Role.AUDITOR or "audit.export" in caps:
         items.append(
             {
                 "label": _("Audit"),
@@ -171,7 +162,7 @@ def nav_items_for(membership) -> list[dict]:
             }
         )
 
-    if role == Role.TECH_ADMIN:
+    if role == OrganizationMembership.Role.TECH_ADMIN or "tech.admin" in caps:
         items.append(
             {
                 "label": _("Ops"),

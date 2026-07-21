@@ -34,7 +34,7 @@ from lamto.finance.selectors import (
     verified_fund_entries,
 )
 from lamto.web.forms.staff import RecordFundSourceForm, SignFundSourceForm, SignedDecisionForm
-from lamto.web.staff import capabilities_for, require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import capabilities_for, membership_building, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.staff_signing import new_event_id, upload_document_pair
 
 
@@ -62,7 +62,7 @@ def fund_home(request):
     from lamto.web.views.staff_common import prepare_record_list
 
     membership, memberships, caps = _require_fund_access(request)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     entries_list = prepare_record_list(
         request,
         verified_fund_entries(building_id).select_related("recorder", "verification"),
@@ -118,7 +118,7 @@ def fund_home(request):
 def fund_record(request):
     """Two-phase record of an opening-balance/inflow fund source (spec 4.3.2)."""
     membership, memberships = require_staff_capability(request, FUND_RECORD)
-    building = membership.organization.building
+    building = membership_building(membership)
     if request.method == "POST":
         require_recent_auth(request)
     fund = get_or_create_fund(building)
@@ -231,7 +231,7 @@ def fund_verify(request, pk):
     """Sign the verification of an unverified fund source (verifier != recorder,
     enforced by the domain service)."""
     membership, memberships = require_staff_capability(request, FUND_VERIFY)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     entry = get_object_or_404(
         MaintenanceFundEntry.objects.select_related("recorder", "outbox_event"),
         pk=pk,

@@ -84,30 +84,28 @@ class PilotAcceptanceTests(TestCase):
 
     def test_realistic_normal_flow(self):
         driver = self.driver
-        resident = driver.login(None, "resident")
-        resident.submit_report(
+        driver.submit_report(
             "Elevator shakes heavily",
             "Building B / Lift 2",
             "tests/fixtures/elevator.jpg",
         )
 
-        operator = driver.login(None, "operator")
-        operator.confirm_triage_and_create_paid_work_order()
-        operator.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
+        driver.confirm_triage_and_create_paid_work_order()
+        driver.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
 
-        driver.login(None, "maintenance").complete_assigned_work()
-        driver.login(None, "board_payment_recorder").accept_and_record_payment()
-        driver.login(None, "board_payment_verifier").verify_payment()
+        driver.complete_assigned_work()
+        driver.accept_and_record_payment()
+        driver.verify_payment()
         driver.confirm_all_chain_events()
-        driver.login(None, "eligible_publisher").sign_publication_snapshot()
+        driver.sign_publication_snapshot()
         driver.confirm_all_chain_events()
 
-        ledger = driver.login(None, "resident").open_latest_ledger_entry()
+        ledger = driver.open_latest_ledger_entry()
         self.assertEqual(ledger.actual_cost_vnd, DEFAULT_AMOUNT_VND)
         self.assertEqual(ledger.status, "Record verified")
         self.assertTrue(ledger.has_redacted_documents())
 
-        verification = driver.login(None, "auditor").verify_latest_ledger_entry()
+        verification = driver.verify_latest_ledger_entry()
         self.assertTrue(verification.document_hashes_match)
         self.assertTrue(verification.chain_events_match)
         self.assertEqual(
@@ -120,14 +118,14 @@ class PilotAcceptanceTests(TestCase):
         driver = self.driver
         driver.pause_chain()
         driver.prepare_local_normal_work()
-        work = driver.login(None, "maintenance").start_assigned_work()
+        work = driver.start_assigned_work()
 
         self.assertEqual(work.verification_label, "Pending blockchain anchoring")
-        driver.login(None, "maintenance").complete_assigned_work()
-        driver.login(None, "board_payment_recorder").accept_and_record_payment()
-        driver.login(None, "board_payment_verifier").verify_payment()
+        driver.complete_assigned_work()
+        driver.accept_and_record_payment()
+        driver.verify_payment()
         before_ids = driver.latest_outbox_event_ids()
-        blocked = driver.login(None, "eligible_publisher").attempt_publication()
+        blocked = driver.attempt_publication()
 
         self.assertEqual(
             blocked.reason, "Required blockchain evidence is still pending"
@@ -138,7 +136,7 @@ class PilotAcceptanceTests(TestCase):
         driver.confirm_all_chain_events()
         # Retries reuse the same event IDs (no new rows while paused confirm is no-op).
         self.assertEqual(driver.latest_outbox_event_ids(), before_ids)
-        driver.login(None, "eligible_publisher").sign_publication_snapshot()
+        driver.sign_publication_snapshot()
         self.assertEqual(driver.ledger_count(), 1)
         driver.confirm_all_chain_events()
         self.assertEqual(driver.ledger_count(), 1)
@@ -180,9 +178,9 @@ class PilotAcceptanceTests(TestCase):
 
     def test_proposal_revision_after_signature_requires_new_publication(self):
         driver = self.driver
-        driver.login(None, "resident").submit_report("Elevator issue", "Lift 2", None)
-        driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
-        version1 = driver.login(None, "operator").submit_signed_proposal(
+        driver.submit_report("Elevator issue", "Lift 2", None)
+        driver.confirm_triage_and_create_paid_work_order()
+        version1 = driver.submit_signed_proposal(
             amount_vnd=DEFAULT_AMOUNT_VND
         )
         work = driver.seed.work_order
@@ -191,7 +189,7 @@ class PilotAcceptanceTests(TestCase):
             work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED
         )
 
-        operator = driver.seed.management_memberships[0]
+        manager = driver.seed.management_memberships[0]
         proposal = driver.seed.proposal
         quotation = driver._ctx["quotation_original"]
         event_id = new_event_id()
@@ -204,7 +202,7 @@ class PilotAcceptanceTests(TestCase):
             "0x" + payload_hash(payload),
             "0x" + version1.outbox_event.payload_hash,
         )
-        signature = driver.seed.sign_typed(operator, typed)
+        signature = driver.seed.sign_typed(manager, typed)
         version2 = submit_proposal_version(
             proposal,
             19_000_000,
@@ -225,13 +223,13 @@ class PilotAcceptanceTests(TestCase):
 
     def test_ai_outage_leaves_report_and_inbox_authoritative(self):
         driver = self.driver
-        report = driver.login(None, "resident").submit_report(
+        report = driver.submit_report(
             "Elevator shakes — AI offline path", "Lift 2", None
         )
         with patch("lamto.maintenance.ai.urlopen", side_effect=URLError("offline")):
             job = process_triage_job(report.triage_job.id)
         self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
-        work = driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
+        work = driver.confirm_triage_and_create_paid_work_order()
         self.assertIsNotNone(work.pk)
         self.assertEqual(report.pk, driver.seed.report.pk)
 

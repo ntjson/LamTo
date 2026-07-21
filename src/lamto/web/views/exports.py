@@ -12,7 +12,7 @@ from django.http import HttpResponse, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 
 from lamto.accounts.capabilities import AUDIT_EXPORT
-from lamto.accounts.models import OrganizationMembership
+from lamto.accounts.models import ManagementMembership
 from lamto.accounts.security import deny_tech_admin_business_access, require_staff_mfa
 from lamto.accounts.services import require_management
 from lamto.audit.models import AuditEvent
@@ -20,7 +20,7 @@ from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import MaintenanceFundEntry, VerificationObservation
-from lamto.web.staff import require_staff_capability
+from lamto.web.staff import membership_building_id, require_staff_capability
 
 
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
@@ -52,11 +52,6 @@ def _csv_stream(header: list[str], rows):
 def _require_auditor_export(request):
     require_staff_mfa(request)
     membership, memberships = require_staff_capability(request, AUDIT_EXPORT)
-    deny_tech_admin_business_access(membership)
-    if membership.organization.kind != membership.organization.Kind.AUDITOR:
-        # Capability map already enforces auditor org, but double-check kind.
-        if membership.role != OrganizationMembership.Role.AUDITOR:
-            raise PermissionDenied("Auditor organization required.")
     return membership, memberships
 
 
@@ -69,7 +64,7 @@ def audit_export(request):
     except PermissionDenied as error:
         try:
             mid = request.session.get("active_membership_id")
-            m = OrganizationMembership.objects.filter(pk=mid, user=request.user).first()
+            m = ManagementMembership.objects.filter(pk=mid, user=request.user).first()
             record_audit(
                 request.user,
                 m,
@@ -83,7 +78,7 @@ def audit_export(request):
             pass
         raise
 
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     kind = (request.GET.get("kind") or "audit_events").strip()
 
     try:

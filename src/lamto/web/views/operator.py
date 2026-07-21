@@ -41,7 +41,7 @@ from lamto.web.forms.staff import (
     PreparePublicationForm,
     SignProposalForm,
 )
-from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import capabilities_for, membership_building, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
@@ -74,7 +74,7 @@ def _proposal_publishable(proposal) -> bool:
 @require_GET
 def case_list(request):
     membership, memberships = require_staff_capability(request, REPORT_TRIAGE)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     # Active cases filter by urgency (same ?status= chip pattern as work list).
     from lamto.maintenance.ai import URGENCIES
 
@@ -174,7 +174,7 @@ def case_list(request):
 def report_detail(request, pk):
     """Staff triage surface for IssueReport pk only (not MaintenanceCase)."""
     membership, memberships = resolve_active_membership(request)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     report = get_object_or_404(IssueReport, pk=pk, unit__building_id=building_id)
 
     link = report.case_reports.filter(case__active=True).select_related("case").first()
@@ -233,7 +233,7 @@ def report_detail(request, pk):
 def case_detail(request, pk):
     """MaintenanceCase pk only (not IssueReport)."""
     membership, memberships = resolve_active_membership(request)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     case = get_object_or_404(MaintenanceCase, pk=pk, building_id=building_id)
     report = case.reports.order_by("pk").first()
 
@@ -286,9 +286,7 @@ def case_detail(request, pk):
 @require_GET
 def proposal_list(request):
     membership, memberships = resolve_active_membership(request)
-    caps = set(
-        membership.capabilitygrant_set.values_list("code", flat=True)
-    )
+    caps = capabilities_for(membership)
     if (
         PROPOSAL_CREATE not in caps
         and LEDGER_PUBLISH not in caps
@@ -297,14 +295,14 @@ def proposal_list(request):
             request.user,
             membership,
             "workspace.proposal.list",
-            "OrganizationMembership",
+            "ManagementMembership",
             str(membership.pk),
             "denied",
             {},
         )
         raise PermissionDenied("proposal access")
 
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     status = request.GET.get("status") or ""
     status_groups = {
         "preparing": (Proposal.Status.DRAFT, Proposal.Status.REJECTED),
@@ -388,7 +386,7 @@ def proposal_list(request):
 @require_http_methods(["GET", "POST"])
 def proposal_detail(request, pk):
     membership, memberships = resolve_active_membership(request)
-    caps = set(membership.capabilitygrant_set.values_list("code", flat=True))
+    caps = capabilities_for(membership)
     if (
         PROPOSAL_CREATE not in caps
         and LEDGER_PUBLISH not in caps
@@ -400,7 +398,7 @@ def proposal_detail(request, pk):
             "current_version", "work_order__case", "creator_membership"
         ),
         pk=pk,
-        work_order__case__building_id=membership.organization.building_id,
+        work_order__case__building_id=membership_building_id(membership),
     )
     publish_form = PreparePublicationForm(request.POST or None)
     can_publish = LEDGER_PUBLISH in caps and _proposal_publishable(proposal)
@@ -459,7 +457,7 @@ def proposal_detail(request, pk):
                             action="Publish to resident ledger",
                             acting_as=(
                                 f"{membership.get_role_display()} · "
-                                f"{membership.organization.name}"
+                                f"{membership_building(membership).name}"
                             ),
                             details=[
                                 {
@@ -617,7 +615,7 @@ def proposal_create(request, pk):
     the immutable version via the domain service.
     """
     membership, memberships = require_staff_capability(request, PROPOSAL_CREATE)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     work_order = get_object_or_404(
         WorkOrder.objects.select_related("case"),
         pk=pk,

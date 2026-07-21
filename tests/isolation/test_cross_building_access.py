@@ -42,17 +42,17 @@ _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-isolation-")
 B_BUILDING_NAME = "Isolation Building B"
 B_LEAK_MARKER = "TEST-B-LEAK-MARKER"
 
-# route name -> (attribute on cls.b with the B-side pk, seed-A role key, method)
+# route name -> (attribute on cls.b with the B-side pk, method)
 STAFF_CASES = {
-    "web:staff-report-detail": ("report_pk", "operator", "GET"),
-    "web:case-detail": ("case_pk", "operator", "GET"),
-    "web:proposal-detail": ("proposal_pk", "operator", "GET"),
-    "web:work-order-detail": ("work_pk", "maintenance", "GET"),
-    "web:proposal-create": ("work_pk", "operator", "POST"),
-    "web:payment-record-detail": ("acceptance_pk", "board_payment_recorder", "GET"),
-    "web:payment-verify-detail": ("payment_pk", "board_payment_verifier", "GET"),
-    "web:work-accept": ("work_pk", "board_acceptor", "POST"),
-    "web:fund-verify": ("fund_entry_pk", "fund_verifier", "POST"),
+    "web:staff-report-detail": ("report_pk", "GET"),
+    "web:case-detail": ("case_pk", "GET"),
+    "web:proposal-detail": ("proposal_pk", "GET"),
+    "web:work-order-detail": ("work_pk", "GET"),
+    "web:proposal-create": ("work_pk", "POST"),
+    "web:payment-record-detail": ("acceptance_pk", "GET"),
+    "web:payment-verify-detail": ("payment_pk", "GET"),
+    "web:work-accept": ("work_pk", "POST"),
+    "web:fund-verify": ("fund_entry_pk", "POST"),
 }
 
 RESIDENT_CASES = {
@@ -161,16 +161,16 @@ class CrossBuildingAccessTests(TestCase):
             create_sample_report=False,
         )
         driver = PilotDomainDriver(cls.seed_b)
-        driver.login(None, "resident").submit_report(
+        driver.submit_report(
             f"{B_LEAK_MARKER} lift noise", "Lift 2"
         )
-        driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
-        driver.login(None, "operator").submit_signed_proposal()
-        driver.login(None, "maintenance").complete_assigned_work()
-        driver.login(None, "board_payment_recorder").accept_and_record_payment()
-        driver.login(None, "board_payment_verifier").verify_payment()
+        driver.confirm_triage_and_create_paid_work_order()
+        driver.submit_signed_proposal()
+        driver.complete_assigned_work()
+        driver.accept_and_record_payment()
+        driver.verify_payment()
         driver.confirm_all_chain_events()
-        driver.login(None, "eligible_publisher").sign_publication_snapshot()
+        driver.sign_publication_snapshot()
         driver.confirm_all_chain_events()
 
         b_building = cls.seed_b.building
@@ -204,7 +204,7 @@ class CrossBuildingAccessTests(TestCase):
         )
         cls.b["notification_pk"] = b_notice.pk
 
-    def _staff_login(self, role_key):
+    def _management_login(self):
         membership = self.seed_a.management_memberships[0]
         user = membership.user
         self.client.force_login(user)
@@ -274,9 +274,9 @@ class CrossBuildingAccessTests(TestCase):
             seen |= bucket
 
     def test_staff_cannot_reach_other_building_objects(self):
-        for route, (pk_attr, role_key, method) in STAFF_CASES.items():
+        for route, (pk_attr, method) in STAFF_CASES.items():
             with self.subTest(route=route):
-                self._staff_login(role_key)
+                self._management_login()
                 url = reverse(route, args=[self.b[pk_attr]])
                 response = (
                     self.client.post(url, {}) if method == "POST" else self.client.get(url)
@@ -284,7 +284,7 @@ class CrossBuildingAccessTests(TestCase):
                 # Design §2.3: pure cross-tenant object access is 404 (not 403).
                 # Roles here already hold the capability for the route inside
                 # their own building, so the only failure mode is wrong tenant.
-                assert response.status_code in {403, 404}, (route, response.status_code)
+                assert response.status_code == 404, (route, response.status_code)
                 if hasattr(response, "content"):
                     assert B_LEAK_MARKER.encode() not in response.content
                 self.client.logout()
@@ -394,21 +394,16 @@ class CrossBuildingAccessTests(TestCase):
         assert self.b["notification_pk"] not in notice_ids
 
     def test_staff_lists_and_exports_never_leak_other_building(self):
-        for role_key in ("operator", "board_acceptor", "auditor"):
-            self._staff_login(role_key)
-            for route in LIST_ROUTES:
-                with self.subTest(role=role_key, route=route):
-                    response = self.client.get(reverse(route))
-                    if response.status_code == 200:
-                        self.assertNotContains(response, B_BUILDING_NAME)
-                        self.assertNotContains(response, B_LEAK_MARKER)
-                    else:
-                        # Role lacks this workspace: 403 is the correct in-tenant answer.
-                        assert response.status_code == 403
-            self.client.logout()
+        self._management_login()
+        for route in LIST_ROUTES:
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route))
+                assert response.status_code == 200
+                self.assertNotContains(response, B_BUILDING_NAME)
+                self.assertNotContains(response, B_LEAK_MARKER)
 
     def test_auditor_export_never_leaks_other_building(self):
-        self._staff_login("auditor")
+        self._management_login()
         b_event_ids = list(
             BlockchainOutboxEvent.objects.filter(
                 building_id=self.seed_b.building.pk
@@ -417,9 +412,7 @@ class CrossBuildingAccessTests(TestCase):
         for kind in ("fund_entries", "outbox", "audit_events", "documents"):
             with self.subTest(kind=kind):
                 response = self.client.get(reverse("web:audit-export"), {"kind": kind})
-                assert response.status_code in {200, 400, 403}
-                if response.status_code != 200:
-                    continue
+                assert response.status_code == 200
                 body = (
                     b"".join(response.streaming_content)
                     if getattr(response, "streaming", False)

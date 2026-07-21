@@ -347,15 +347,9 @@ class PilotDomainDriver:
     def __init__(self, seed: PilotSeed):
         self.seed = seed
         self.page = None
-        self._active_role: str | None = None
         self._ctx: dict[str, Any] = {}
 
     # --- fixture / chain control -------------------------------------------------
-
-    def login(self, page=None, role: str = "resident"):
-        self.page = page
-        self._active_role = role
-        return self
 
     def pause_chain(self):
         self.seed.chain_paused = True
@@ -429,13 +423,13 @@ class PilotDomainDriver:
         return report
 
     def confirm_triage_and_create_paid_work_order(self):
-        operator = self.seed.management_memberships[0]
+        manager = self.seed.management_memberships[0]
         report = self.seed.report or self._ctx.get("report")
         if report is None:
             raise ValidationError("No report available for triage.")
         case = confirm_triage(
             report,
-            operator.user,
+            manager.user,
             category="Elevator",
             urgency="HIGH",
             location=self.seed.location,
@@ -444,8 +438,8 @@ class PilotDomainDriver:
         )
         work = create_work_order(
             case,
-            operator.user,
-            operator.user,
+            manager.user,
+            manager.user,
             requires_spending=True,
         )
         self.seed.work_order = work
@@ -454,12 +448,12 @@ class PilotDomainDriver:
         return work
 
     def submit_signed_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
-        operator = self.seed.management_memberships[0]
+        manager = self.seed.management_memberships[0]
         work = self.seed.work_order or self._ctx["work_order"]
         quotation_original, _ = self.seed.document_pair(
-            Document.Kind.QUOTATION, operator.user, "quotation"
+            Document.Kind.QUOTATION, manager.user, "quotation"
         )
-        proposal = create_proposal(work, operator)
+        proposal = create_proposal(work, manager)
         event_id = new_event_id()
         payload = build_proposal_evidence_payload(
             proposal, amount_vnd, "Pilot Contractor Co", [quotation_original]
@@ -470,7 +464,7 @@ class PilotDomainDriver:
             "0x" + payload_hash(payload),
             "0x" + "00" * 32,
         )
-        signature = self.seed.sign_typed(operator, typed)
+        signature = self.seed.sign_typed(manager, typed)
         version = submit_proposal_version(
             proposal,
             amount_vnd,
@@ -503,11 +497,11 @@ class PilotDomainDriver:
         work.refresh_from_db()
         if work.status == WorkOrder.Status.ASSIGNED:
             work = start_work_order(work, self.seed.management_users[0])
-        maintenance = self.seed.management_users[0]
-        before = self.seed.photo(Document.Kind.BEFORE_PHOTO, maintenance, "before")
-        after = self.seed.photo(Document.Kind.AFTER_PHOTO, maintenance, "after")
+        manager = self.seed.management_users[0]
+        before = self.seed.photo(Document.Kind.BEFORE_PHOTO, manager, "before")
+        after = self.seed.photo(Document.Kind.AFTER_PHOTO, manager, "after")
         completed = complete_work_order(
-            work, maintenance, "Worn cable", "Cable secured", [before], [after]
+            work, manager, "Worn cable", "Cable secured", [before], [after]
         )
         self._ctx["work_order"] = completed
         self.seed.work_order = completed
@@ -693,11 +687,12 @@ class PilotDomainDriver:
 
     def prepare_local_normal_work(self, page=None):
         """Bring a normal paid work order through proposal submission."""
-        self.login(page, "resident").submit_report(
+        self.page = page
+        self.submit_report(
             "Elevator shakes heavily", "Building B / Lift 2", None
         )
-        self.login(page, "operator").confirm_triage_and_create_paid_work_order()
-        self.login(page, "operator").submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
+        self.confirm_triage_and_create_paid_work_order()
+        self.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
         return self.seed.work_order
 
     def open_latest_ledger_entry(self):
@@ -714,7 +709,7 @@ class PilotDomainDriver:
             display = "Record verified" if status == "VERIFIED" else "Record published"
         else:
             display = status
-        # After our normal flow we run auditor verify; if not yet, still expose cost.
+        # After the normal flow integrity verification may run; otherwise expose cost.
         redacted_ok = bool(
             entry.snapshot.resident_payload.get("document_hashes")
             or entry.payment.proof_redacted_id

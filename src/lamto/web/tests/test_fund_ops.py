@@ -29,12 +29,12 @@ def _pdf(name, body):
 def _full_publish(seed):
     """Run the pilot expenditure through verified payment (not yet published)."""
     d = PilotDomainDriver(seed)
-    d.login(None, "resident").submit_report("Lift noise", "Lift 2")
-    d.login(None, "operator").confirm_triage_and_create_paid_work_order()
-    d.login(None, "operator").submit_signed_proposal()
-    d.login(None, "maintenance").complete_assigned_work()
-    d.login(None, "board_payment_recorder").accept_and_record_payment()
-    d.login(None, "board_payment_verifier").verify_payment()
+    d.submit_report("Lift noise", "Lift 2")
+    d.confirm_triage_and_create_paid_work_order()
+    d.submit_signed_proposal()
+    d.complete_assigned_work()
+    d.accept_and_record_payment()
+    d.verify_payment()
     d.confirm_all_chain_events()
     return d
 

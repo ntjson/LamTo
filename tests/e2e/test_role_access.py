@@ -39,24 +39,24 @@ def test_role_access_denies_prohibited_document_reads(page, seeded_pilot):
 
 
 def test_ai_outage_preserves_manual_triage_authority(page, seeded_pilot):
-    report = seeded_pilot.login(page, "resident").submit_report(
+    report = seeded_pilot.submit_report(
         "AI offline elevator", "Lift 2", None
     )
     with patch("lamto.maintenance.ai.urlopen", side_effect=URLError("offline")):
         job = process_triage_job(report.triage_job.id)
     assert job.status == TriageJob.Status.NEEDS_MANUAL
-    work = seeded_pilot.login(page, "operator").confirm_triage_and_create_paid_work_order()
+    work = seeded_pilot.confirm_triage_and_create_paid_work_order()
     assert work.pk is not None
 
 
 def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilot):
-    seeded_pilot.login(page, "resident").submit_report("Elevator", "Lift 2", None)
-    seeded_pilot.login(page, "operator").confirm_triage_and_create_paid_work_order()
-    version1 = seeded_pilot.login(page, "operator").submit_signed_proposal(
+    seeded_pilot.submit_report("Elevator", "Lift 2", None)
+    seeded_pilot.confirm_triage_and_create_paid_work_order()
+    version1 = seeded_pilot.submit_signed_proposal(
         amount_vnd=DEFAULT_AMOUNT_VND
     )
 
-    operator = seeded_pilot.seed.management_memberships[0]
+    manager = seeded_pilot.seed.management_memberships[0]
     proposal = seeded_pilot.seed.proposal
     quotation = seeded_pilot._ctx["quotation_original"]
     event_id = new_event_id()
@@ -69,7 +69,7 @@ def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilo
         "0x" + payload_hash(payload),
         "0x" + version1.outbox_event.payload_hash,
     )
-    signature = seeded_pilot.seed.sign_typed(operator, typed)
+    signature = seeded_pilot.seed.sign_typed(manager, typed)
     version2 = submit_proposal_version(
         proposal, 19_000_000, "Changed", [quotation], signature, event_id
     )

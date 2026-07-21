@@ -170,7 +170,8 @@ def action_inbox(request):
     require_staff_mfa(request)
     membership, memberships = resolve_active_membership(request)
     caps = capabilities_for(membership)
-    series = fund_series(membership.organization.building_id, range_key="6m")
+    from lamto.web.staff import membership_building_id
+    series = fund_series(membership_building_id(membership), range_key="6m")
     items = action_items_for(membership)
     params = request.GET.copy()
     params.pop("page", None)

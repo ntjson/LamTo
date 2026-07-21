@@ -41,4 +41,26 @@ No failure occurred outside `src/lamto/web/tests/*`.
 - Reused `ManagementMembership` and the existing wallet registration path; removed the eleven-key role emulation instead of adding a compatibility map.
 - Preserved payment self-verification and publication dual-control with two distinct managers.
 - Kept resident occupancy and the surviving report-to-publication domain behavior unchanged.
-- The transitional `PilotDomainDriver.login(role=...)` argument remains for browser-driver API compatibility but no longer changes authorization actors.
+- `PilotDomainDriver` exposes only domain-flow methods; actor selection stays explicit inside the two management membership lists.
+
+## Review follow-up
+
+- Removed `PilotDomainDriver.login`, `_active_role`, and all role-switch choreography from factory consumers, e2e, isolation, API, notification, and pilot acceptance tests.
+- Restored strict cross-building assertions: tenant object routes return exactly 404; scoped Management lists and audit exports return 200 and contain no other-building data.
+- Fixed the root 403: the shared staff resolver now recognizes `ManagementMembership` and provides the unified Management capabilities while retaining the temporary legacy fallback needed by deferred web tests.
+
+```text
+uv run pytest tests/isolation/test_cross_building_access.py -q
+10 passed in 6.77s
+
+uv run pytest tests/e2e src/lamto/finance/tests/test_pilot_acceptance.py -q
+18 passed in 15.91s
+
+uv run pytest src/lamto tests -q --ignore=src/lamto/web/tests
+378 passed, 1 skipped in 66.12s
+
+uv run pytest src/lamto tests -q --tb=no
+34 failed, 466 passed, 1 skipped in 80.42s
+```
+
+All full-suite failures remain confined to the seven previously listed `src/lamto/web/tests/*` files deferred to Tasks 11–12. Residue sweeps found no driver login API, `_active_role`, role-key choreography, or `seed.roles`/`seed.users` usage outside those deferred web tests.

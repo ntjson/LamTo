@@ -41,8 +41,8 @@ class ProposalCreateTests(TestCase):
     def setUp(self):
         self.seed = seed_pilot_world(building_name="Prop Create B", email_prefix="pc")
         driver = PilotDomainDriver(self.seed)
-        driver.login(None, "resident").submit_report("Lift jerks", "Lift 2")
-        driver.login(None, "operator").confirm_triage_and_create_paid_work_order()
+        driver.submit_report("Lift jerks", "Lift 2")
+        driver.confirm_triage_and_create_paid_work_order()
         self.work = self.seed.work_order
         self.operator = self.seed.roles["operator"]
         self.account = self.seed.accounts[self.operator.pk]

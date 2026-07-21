@@ -19,7 +19,7 @@ from lamto.web.forms.staff import (
     RecordPaymentForm,
     VerifyPaymentForm,
 )
-from lamto.web.staff import require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import capabilities_for, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
@@ -35,7 +35,7 @@ def payment_record(request):
     require_staff_mfa(request)
     require_recent_auth(request)
     membership, memberships = require_staff_capability(request, PAYMENT_RECORD)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     acceptance_id = request.POST.get("acceptance_id")
     acceptance = get_object_or_404(
         AcceptanceRecord,
@@ -87,10 +87,10 @@ def payment_record(request):
 @require_GET
 def payment_list(request):
     membership, memberships = resolve_active_membership(request)
-    caps = set(membership.capabilitygrant_set.values_list("code", flat=True))
+    caps = capabilities_for(membership)
     if PAYMENT_RECORD not in caps and PAYMENT_VERIFY not in caps:
         raise PermissionDenied("payment access")
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     status = request.GET.get("status") or ""
     status_groups = {
         "completed": (PaymentEvidence.ExternalStatus.COMPLETED,),
@@ -209,7 +209,7 @@ def payment_record_detail(request, pk):
     from lamto.web.staff_signing import new_event_id
 
     membership, memberships = require_staff_capability(request, PAYMENT_RECORD)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     acceptance = get_object_or_404(
         AcceptanceRecord.objects.select_related("work_order", "payment", "outbox_event"),
         pk=pk,
@@ -374,10 +374,10 @@ def payment_verify_detail(request, pk):
     from lamto.web.staff_signing import new_event_id
 
     membership, memberships = resolve_active_membership(request)
-    caps = set(membership.capabilitygrant_set.values_list("code", flat=True))
+    caps = capabilities_for(membership)
     if PAYMENT_VERIFY not in caps and PAYMENT_RECORD not in caps:
         raise PermissionDenied("payment access")
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     from lamto.finance.models import PublishedLedgerEntry
 
     payment = get_object_or_404(
@@ -524,7 +524,7 @@ def accept_work(request, pk):
     from lamto.web.staff_signing import new_event_id
 
     membership, memberships = require_staff_capability(request, WORK_ACCEPT)
-    building_id = membership.organization.building_id
+    building_id = membership_building_id(membership)
     work_order = get_object_or_404(
         WorkOrder,
         pk=pk,
