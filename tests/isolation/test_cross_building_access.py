@@ -62,9 +62,6 @@ RESIDENT_CASES = {}
 EXEMPT = {
     # Device revocation is user-scoped (own MFA devices), not tenant-scoped.
     "web:mfa-revoke": "user-scoped MFA device",
-    # Break-glass sessions are platform support records for tech admins;
-    # tenancy does not apply and the view enforces management access.
-    "web:break-glass-revoke": "platform-scoped support session",
 }
 
 LIST_ROUTES = [

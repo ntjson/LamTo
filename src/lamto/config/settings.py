@@ -302,7 +302,6 @@ LAMTO_AUTH_THROTTLE_MAX_FAILURES = int(os.getenv("LAMTO_AUTH_THROTTLE_MAX_FAILUR
 LAMTO_AUTH_THROTTLE_WINDOW_SECONDS = int(
     os.getenv("LAMTO_AUTH_THROTTLE_WINDOW_SECONDS", str(15 * 60))
 )
-LAMTO_BREAK_GLASS_MAX_MINUTES = int(os.getenv("LAMTO_BREAK_GLASS_MAX_MINUTES", "60"))
 
 # Backup / ops markers (private operations bucket may share private storage)
 BACKUP_OPS_PREFIX = os.getenv("BACKUP_OPS_PREFIX", "ops/backups")

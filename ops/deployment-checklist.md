@@ -56,7 +56,7 @@ Use this list before promoting a pilot environment. Every item is required unles
 - [ ] Object version backup + signed marker after each successful DB backup
 - [ ] Restore-drill cadence documented and executed (`ops/backup/restore-drill.sh`)
 - [ ] Drill report retained; isolated DB/prefix destroyed after report export
-- [ ] Documented key and session revocation runbook (staff password reset, TOTP revoke, break-glass revoke, wallet revoke)
+- [ ] Documented key and session revocation runbook (staff password reset, TOTP revoke, wallet revoke)
 
 ## Application config reminders
 

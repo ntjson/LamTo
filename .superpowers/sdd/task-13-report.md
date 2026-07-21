@@ -27,3 +27,10 @@ A stale `test_lamto` database was dropped, and the targeted test run rebuilt it 
 - `git diff --check`: clean
 
 The skipped test is pre-existing and unrelated to Task 13.
+
+## Follow-up residue cleanup
+
+Removed the stale isolation exemption for the deleted support-elevation route, the unused `LAMTO_BREAK_GLASS_MAX_MINUTES` setting, and its obsolete operations-checklist reference. A case-insensitive `break[-_ ]?glass` sweep across non-migration Python under `src/lamto` and `tests` now returns zero hits.
+
+- Isolation suite: `11 passed`
+- Full suite: `460 passed, 1 skipped`
