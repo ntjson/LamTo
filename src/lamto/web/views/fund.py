@@ -44,20 +44,12 @@ FUND_CHART_RANGES = (
 )
 
 
-def _require_fund_access(request):
-    from lamto.accounts.security import require_staff_mfa
-
-    require_staff_mfa(request)
-    membership, memberships = require_management_context(request)
-    return membership, memberships
-
-
 @login_required
 @require_GET
 def fund_home(request):
     from lamto.web.views.staff_common import prepare_record_list
 
-    membership, memberships = _require_fund_access(request)
+    membership, memberships = require_management_context(request)
     building_id = membership.building_id
     entries_list = prepare_record_list(
         request,

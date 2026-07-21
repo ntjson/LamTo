@@ -7,10 +7,7 @@
   <meta name="theme-color" content="#2f3a8f">
   <meta name="description" content="LamTo — maintenance accountability for residents">
   <title>{% block title %}LamTo{% endblock %}</title>
-  <link rel="manifest" href="{% url 'web:manifest' %}">
   <link rel="stylesheet" href="{% static 'web/app.css' %}">
-  <link rel="icon" href="{% static 'web/icons/icon-192.png' %}" sizes="192x192">
-  <link rel="apple-touch-icon" href="{% static 'web/icons/icon-192.png' %}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -37,37 +34,7 @@
   </main>
 
 {% block bottom_nav %}
-  <nav class="bottom-nav" role="navigation" aria-label="Resident">
-    <a class="nav-item{% if nav_active == 'home' %} is-active{% endif %}" href="{% url 'web:resident-home' %}">
-      <span class="nav-icon" aria-hidden="true">⌂</span>
-      <span class="nav-label">Home</span>
-    </a>
-    <a class="nav-item{% if nav_active == 'report' %} is-active{% endif %}" href="{% url 'web:report-create' %}">
-      <span class="nav-icon" aria-hidden="true">＋</span>
-      <span class="nav-label">Report</span>
-    </a>
-    <a class="nav-item{% if nav_active == 'issues' %} is-active{% endif %}" href="{% url 'web:report-list' %}">
-      <span class="nav-icon" aria-hidden="true">☰</span>
-      <span class="nav-label">My issues</span>
-    </a>
-    <a class="nav-item{% if nav_active == 'ledger' %} is-active{% endif %}" href="{% url 'web:ledger-list' %}">
-      <span class="nav-icon" aria-hidden="true">◎</span>
-      <span class="nav-label">Ledger</span>
-    </a>
-    <a class="nav-item{% if nav_active == 'account' %} is-active{% endif %}" href="{% url 'web:account' %}">
-      <span class="nav-icon" aria-hidden="true">☺</span>
-      <span class="nav-label">Account</span>
-    </a>
-  </nav>
 {% endblock %}
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", function () {
-        navigator.serviceWorker.register("{% url 'web:service-worker' %}", { scope: "/" }).catch(function () {});
-      });
-    }
-  </script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

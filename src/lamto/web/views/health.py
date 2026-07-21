@@ -25,10 +25,6 @@ from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
 from lamto.web.staff import require_management_context, staff_context
 
 
-def _require_tech_admin(request):
-    return require_management_context(request)
-
-
 def collect_health_snapshot() -> dict:
     now = timezone.now()
     pending_outbox = BlockchainOutboxEvent.objects.filter(
@@ -203,7 +199,7 @@ def collect_pilot_metrics() -> dict:
 @login_required
 @require_GET
 def ops_health(request):
-    membership, memberships = _require_tech_admin(request)
+    membership, memberships = require_management_context(request)
     snapshot = collect_health_snapshot()
     record_audit(
         request.user,
@@ -233,7 +229,7 @@ def ops_health(request):
 @login_required
 @require_GET
 def pilot_metrics(request):
-    membership, memberships = _require_tech_admin(request)
+    membership, memberships = require_management_context(request)
     metrics = collect_pilot_metrics()
     record_audit(
         request.user,

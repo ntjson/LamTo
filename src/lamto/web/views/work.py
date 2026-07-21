@@ -14,15 +14,10 @@ from lamto.web.staff import require_management_context, staff_context
 from lamto.web.views.staff_common import accountability_chain_for, prepare_record_list
 
 
-def _require_maintenance(membership):
-    return membership
-
-
 @login_required
 @require_GET
 def work_order_list(request):
     membership, memberships = require_management_context(request)
-    _require_maintenance(membership)
     building_id = membership.building_id
     qs = WorkOrder.objects.filter(case__building_id=building_id).select_related("case")
     status = request.GET.get("status") or ""
@@ -99,7 +94,6 @@ def work_order_list(request):
 @require_http_methods(["GET", "POST"])
 def work_order_detail(request, pk):
     membership, memberships = require_management_context(request)
-    _require_maintenance(membership)
     work_order = get_object_or_404(
         WorkOrder.objects.select_related("case", "assignee"),
         pk=pk,

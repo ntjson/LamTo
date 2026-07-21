@@ -44,7 +44,7 @@ class ProposalCreateTests(TestCase):
         driver.submit_report("Lift jerks", "Lift 2")
         driver.confirm_triage_and_create_paid_work_order()
         self.work = self.seed.work_order
-        self.operator = self.seed.roles["operator"]
+        self.operator = self.seed.management_memberships[0]
         self.account = self.seed.accounts[self.operator.pk]
 
     def _login_operator(self):
@@ -55,7 +55,7 @@ class ProposalCreateTests(TestCase):
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
-        session["active_membership_id"] = self.operator.pk
+        session["active_management_id"] = self.operator.pk
         session.save()
 
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
@@ -110,14 +110,15 @@ class ProposalCreateTests(TestCase):
         self.work.refresh_from_db()
         self.assertEqual(self.work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED)
 
-    def test_non_operator_forbidden(self):
-        self.client.force_login(self.seed.roles["maintenance"].user)
+    def test_second_manager_can_open_proposal_create(self):
+        manager = self.seed.management_memberships[1]
+        self.client.force_login(manager.user)
         device = TOTPDevice.objects.create(
-            user=self.seed.roles["maintenance"].user, name="t", confirmed=True, key=random_hex()
+            user=manager.user, name="t", confirmed=True, key=random_hex()
         )
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
         session.save()
         resp = self.client.get(reverse("web:proposal-create", kwargs={"pk": self.work.pk}))
-        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 200)

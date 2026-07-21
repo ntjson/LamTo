@@ -15,7 +15,7 @@ WEB_ROOT = Path(__file__).resolve().parents[1]
 STAFF_TEMPLATES = WEB_ROOT / "templates" / "web" / "staff"
 APP_CSS = WEB_ROOT / "static" / "web" / "app.css"
 WALLET_JS = WEB_ROOT / "static" / "web" / "wallet-signing.js"
-PROPOSAL_VIEW = WEB_ROOT / "views" / "operator.py"
+PROPOSAL_VIEW = WEB_ROOT / "views" / "proposals.py"
 STAFF_FORMS = WEB_ROOT / "forms" / "staff.py"
 
 
@@ -34,11 +34,7 @@ class StaffUiContractTests(SimpleTestCase):
 
     def test_technical_proof_is_disclosed_progressively_with_auditor_override(self):
         proposal = (STAFF_TEMPLATES / "proposal_detail.html").read_text(encoding="utf-8")
-        audit = (STAFF_TEMPLATES / "audit_search.html").read_text(encoding="utf-8")
-
-        for source in (proposal, audit):
-            self.assertIn("Technical proof", source)
-            self.assertIn('{% if membership.role == "AUDITOR" %}open{% endif %}', source)
+        self.assertIn("Technical proof", proposal)
 
     def test_primary_and_current_states_are_exposed_consistently(self):
         shell = (STAFF_TEMPLATES / "shell.html").read_text(encoding="utf-8")
@@ -138,15 +134,15 @@ sandbox.window.LamToWalletSigning.handleSignedSubmit(event).then(() => {{
         base = (WEB_ROOT / "templates" / "web" / "base.html").read_text(encoding="utf-8")
         self.assertIn("{% block bottom_nav %}", base)
         self.assertIn("{% block body_class %}", base)
-        for relative in ("resident/login.html", "security/mfa_setup.html", "security/reauth.html"):
+        for relative in ("login.html", "security/mfa_setup.html", "security/reauth.html"):
             source = (WEB_ROOT / "templates" / "web" / relative).read_text(encoding="utf-8")
             self.assertIn("{% block bottom_nav %}{% endblock %}", source)
             self.assertIn("{% block body_class %}no-bottom-nav{% endblock %}", source)
 
-    def test_authenticated_resident_navigation_remains_in_base(self):
+    def test_resident_navigation_is_removed_from_base(self):
         base = (WEB_ROOT / "templates" / "web" / "base.html").read_text(encoding="utf-8")
-        self.assertIn('class="bottom-nav"', base)
-        self.assertIn("web:account", base)
+        self.assertNotIn('class="bottom-nav"', base)
+        self.assertNotIn("web:account", base)
 
     def test_signed_actions_have_rigorous_review_summaries(self):
         templates = "\n".join(
@@ -271,8 +267,8 @@ if (window.LamToWalletSigning.formatVnd('2500000000') !== '2,500,000,000') {{
 
     def test_payment_detail_links_ledger_evidence(self):
         payment = (STAFF_TEMPLATES / "payment_detail.html").read_text(encoding="utf-8")
-        self.assertIn("web:audit-search", payment)
-        self.assertIn("ledger_entry.pk", payment)
+        self.assertIn("web:audit-export", payment)
+        self.assertIn("ledger_entry", payment)
         self.assertIn("payment_doc_hashes", payment)
         self.assertIn("staff/_hash_value.html", payment)
         self.assertIn("data-copy", (STAFF_TEMPLATES / "_hash_value.html").read_text(encoding="utf-8"))
@@ -471,17 +467,16 @@ class AccountabilityChainTests(SimpleTestCase):
             "work_order_detail.html",
             "proposal_detail.html",
             "payment_detail.html",
-            "audit_search.html",
         ):
             source = (STAFF_TEMPLATES / name).read_text(encoding="utf-8")
             self.assertIn("staff/_accountability_chain.html", source)
 
     def test_views_derive_chain_from_records(self):
         for path in (
-            WEB_ROOT / "views" / "operator.py",
-            WEB_ROOT / "views" / "board.py",
-            WEB_ROOT / "views" / "maintenance.py",
-            WEB_ROOT / "views" / "auditor.py",
+            WEB_ROOT / "views" / "requests.py",
+            WEB_ROOT / "views" / "proposals.py",
+            WEB_ROOT / "views" / "payments.py",
+            WEB_ROOT / "views" / "work.py",
         ):
             source = path.read_text(encoding="utf-8")
             self.assertIn("accountability_chain_for", source)

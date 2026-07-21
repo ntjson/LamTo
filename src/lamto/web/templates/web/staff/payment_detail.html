@@ -39,7 +39,7 @@
         <div><dt>{% trans "Payment status" %}</dt><dd>{{ payment.get_external_status_display }}</dd></div>
         <div><dt>{% trans "Evidence" %}</dt><dd>
           {% if ledger_entry %}
-          <a href="{% url 'web:audit-search' %}?entry={{ ledger_entry.pk }}">{% blocktrans with id=ledger_entry.pk %}Open ledger entry #{{ id }}{% endblocktrans %}</a>
+          <a href="{% url 'web:audit-export' %}">{% trans "Export audit records" %}</a>
           {% else %}
           {% trans "Original and resident-safe payment proof on record" %}
           {% endif %}

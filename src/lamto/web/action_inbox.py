@@ -379,7 +379,7 @@ def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
                 summary=f"Ledger entry #{obs.published_entry_id}",
                 target_type="PublishedLedgerEntry",
                 target_id=obs.published_entry_id,
-                url=reverse("web:audit-search")
+                url=reverse("web:audit-export")
                 + f"?entry={obs.published_entry_id}",
                 priority=8,
             )
@@ -402,7 +402,7 @@ def _failed_outbox_items(building_id: int) -> list[ActionItem]:
                 summary=f"Event {event.event_id[:18]}… · {event.last_error[:80]}",
                 target_type="BlockchainOutboxEvent",
                 target_id=event.pk,
-                url=reverse("web:audit-search") + f"?outbox={event.pk}",
+                url=reverse("web:audit-export") + f"?outbox={event.pk}",
                 priority=9,
             )
         )

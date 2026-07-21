@@ -58,7 +58,6 @@ FINANCE_DOCUMENT_URL_NAMES = frozenset(
         "web:payment-record-detail",
         "web:payment-verify-detail",
         "web:payment-record",
-        "web:audit-search",
         "web:audit-export",
     }
 )

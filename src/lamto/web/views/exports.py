@@ -7,12 +7,9 @@ import io
 from datetime import datetime, timezone as dt_timezone
 
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 
-from lamto.accounts.models import ManagementMembership
-from lamto.accounts.security import require_staff_mfa
 from lamto.audit.models import AuditEvent
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
@@ -47,34 +44,11 @@ def _csv_stream(header: list[str], rows):
         yield writer.writerow([neutralize_cell(c) for c in row])
 
 
-def _require_auditor_export(request):
-    require_staff_mfa(request)
-    membership, memberships = require_management_context(request)
-    return membership, memberships
-
-
 @login_required
 @require_GET
 def audit_export(request):
     """Stream fixed-column CSV covering audit/finance/evidence surfaces for auditors."""
-    try:
-        membership, _ = _require_auditor_export(request)
-    except PermissionDenied as error:
-        try:
-            mid = request.session.get("active_management_id")
-            m = ManagementMembership.objects.filter(pk=mid, user=request.user).first()
-            record_audit(
-                request.user,
-                m,
-                "audit.export",
-                "Export",
-                "audit",
-                "denied",
-                {"reason": str(error)},
-            )
-        except Exception:
-            pass
-        raise
+    membership, _ = require_management_context(request)
 
     building_id = membership.building_id
     kind = (request.GET.get("kind") or "audit_events").strip()

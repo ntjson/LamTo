@@ -49,7 +49,7 @@ class PhoneOrEmailAuthenticationForm(AuthenticationForm):
 
 
 class SecureLoginView(LoginView):
-    template_name = "web/resident/login.html"
+    template_name = "web/login.html"
     authentication_form = PhoneOrEmailAuthenticationForm
 
     def form_valid(self, form):

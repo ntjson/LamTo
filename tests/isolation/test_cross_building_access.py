@@ -57,11 +57,7 @@ STAFF_CASES = {
     "web:fund-verify": ("fund_entry_pk", "POST"),
 }
 
-RESIDENT_CASES = {
-    "web:report-detail": ("report_pk", "GET", 404),
-    "web:ledger-detail": ("ledger_pk", "GET", 404),
-    "web:work-rate": ("work_pk", "POST", 403),
-}
+RESIDENT_CASES = {}
 
 EXEMPT = {
     # Device revocation is user-scoped (own MFA devices), not tenant-scoped.
@@ -77,7 +73,7 @@ LIST_ROUTES = [
     "web:work-order-list",
     "web:proposal-list",
     "web:payment-list",
-    "web:audit-search",
+    "web:audit-export",
 ]
 
 # ---------------------------------------------------------------------------
@@ -278,11 +274,11 @@ class CrossBuildingAccessTests(TestCase):
     def test_management_has_six_areas_and_legacy_only_staff_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
-            "inbox", "cases", "work", "finance", "audit", "ops"
+            "inbox", "cases", "work", "finance", "exports", "ops"
         ]
         self._management_login()
         assert self.client.get(reverse("web:case-list")).status_code == 200
-        assert self.client.get(reverse("web:audit-search")).status_code == 200
+        assert self.client.get(reverse("web:audit-export")).status_code == 200
         self.client.logout()
 
         legacy_user = get_user_model().objects.create_user(

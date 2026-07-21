@@ -11,7 +11,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path(
         "accounts/login/",
-        SecureLoginView.as_view(template_name="web/resident/login.html"),
+        SecureLoginView.as_view(template_name="web/login.html"),
         name="login",
     ),
     path(

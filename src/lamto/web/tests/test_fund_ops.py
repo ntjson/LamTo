@@ -89,7 +89,7 @@ class FundSelectorTests(TestCase):
 )
 class FundHomeTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.roles[role_key]
+        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()
@@ -97,7 +97,7 @@ class FundHomeTests(TestCase):
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
-        session["active_membership_id"] = membership.pk
+        session["active_management_id"] = membership.pk
         session.save()
         self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
         return membership
@@ -148,10 +148,10 @@ class FundHomeTests(TestCase):
             ctx["window_closing_vnd"],
         )
 
-    def test_without_fund_capability_is_forbidden(self):
+    def test_management_can_open_fund_home(self):
         seed = seed_pilot_world(building_name="Fund Home Deny", email_prefix="fhd")
         self._login(seed, "maintenance")
-        self.assertEqual(self.client.get(reverse("web:fund-home")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("web:fund-home")).status_code, 200)
 
 
 @override_settings(
@@ -164,7 +164,7 @@ class FundHomeTests(TestCase):
 )
 class FundRecordTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.roles[role_key]
+        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()
@@ -172,7 +172,7 @@ class FundRecordTests(TestCase):
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
-        session["active_membership_id"] = membership.pk
+        session["active_management_id"] = membership.pk
         session.save()
         return membership
 
@@ -240,10 +240,10 @@ class FundRecordTests(TestCase):
         self.assertEqual(entry.amount_vnd, 2_000_000)
         self.assertFalse(hasattr(entry, "verification"))
 
-    def test_non_recorder_forbidden(self):
+    def test_management_can_open_fund_record(self):
         seed = seed_pilot_world(building_name="Fund Rec Deny", email_prefix="frd")
         self._login(seed, "fund_verifier")  # verify-only cannot record
-        self.assertEqual(self.client.get(reverse("web:fund-record")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("web:fund-record")).status_code, 200)
 
 
 @override_settings(
@@ -256,7 +256,7 @@ class FundRecordTests(TestCase):
 )
 class FundVerifyTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.roles[role_key]
+        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()
@@ -264,7 +264,7 @@ class FundVerifyTests(TestCase):
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
-        session["active_membership_id"] = membership.pk
+        session["active_management_id"] = membership.pk
         session.save()
         return membership
 
@@ -280,7 +280,7 @@ class FundVerifyTests(TestCase):
         from lamto.documents.models import Document
 
         fund = get_or_create_fund(seed.building)
-        recorder = seed.roles["fund_recorder"]
+        recorder = seed.management_memberships[0]
         original, redacted = seed.document_pair(Document.Kind.CONTRACT, recorder.user, "inflow")
         entry_id = allocate_fund_entry_id()
         ts = timezone.now()
@@ -323,12 +323,7 @@ class FundVerifyTests(TestCase):
 
         seed = seed_pilot_world(building_name="Fund Ver Deny", email_prefix="fvd")
         entry = self._unverified_entry(seed)
-        # Recorder also holds verify capability for this test.
-        from lamto.accounts.services import grant_capability
-        from lamto.accounts.capabilities import FUND_VERIFY
-
-        recorder = seed.roles["fund_recorder"]
-        grant_capability(recorder, FUND_VERIFY)
+        recorder = seed.management_memberships[0]
         self._login(seed, "fund_recorder")
         account = seed.accounts[recorder.pk]
         url = reverse("web:fund-verify", kwargs={"pk": entry.pk})
@@ -354,7 +349,7 @@ class FundVerifyTests(TestCase):
 )
 class ActionInboxChartTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.roles[role_key]
+        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()
@@ -362,7 +357,7 @@ class ActionInboxChartTests(TestCase):
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
-        session["active_membership_id"] = membership.pk
+        session["active_management_id"] = membership.pk
         session.save()
         return membership
 
@@ -377,11 +372,11 @@ class ActionInboxChartTests(TestCase):
         self.assertEqual(len(resp.context["fund_chart_points"]), 6)
         self.assertTrue(resp.context["fund_link_ok"])
 
-    def test_inbox_chart_without_fund_capability_has_no_fund_link(self):
+    def test_inbox_chart_has_fund_link_for_management(self):
         seed = seed_pilot_world(building_name="Inbox Chart D", email_prefix="icd")
         self._login(seed, "maintenance")
         resp = self.client.get(reverse("web:action-inbox"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'id="fund-chart-data"')
-        self.assertNotContains(resp, reverse("web:fund-home"))
-        self.assertFalse(resp.context["fund_link_ok"])
+        self.assertContains(resp, reverse("web:fund-home"))
+        self.assertTrue(resp.context["fund_link_ok"])

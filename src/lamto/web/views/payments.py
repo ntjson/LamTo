@@ -173,7 +173,6 @@ def payment_list(request):
             can_verify=True,
         ),
     )
-
 @login_required
 @require_http_methods(["GET", "POST"])
 def payment_record_detail(request, pk):

@@ -75,31 +75,6 @@ class EvidenceLevelLabelTests(TestCase):
         label = version.verification_label
         self.assertEqual(label, "Anchoring mismatch detected")
 
-    def test_resident_detail_shows_offchain_label_for_local(self):
-        BlockchainOutboxEvent.objects.filter(
-            pk=self.entry.snapshot.outbox_event_id
-        ).update(status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None)
-        client = Client()
-        client.force_login(self.seed.residents[0])
-
-        response = client.get(
-            reverse("web:ledger-detail", kwargs={"pk": self.entry.pk})
-        )
-
-        self.assertContains(response, "anchoring is off for this deployment")
-        self.assertNotContains(response, "Blockchain anchored")
-
-    def test_resident_detail_shows_anchored_for_confirmed(self):
-        client = Client()
-        client.force_login(self.seed.residents[0])
-
-        response = client.get(
-            reverse("web:ledger-detail", kwargs={"pk": self.entry.pk})
-        )
-
-        self.assertContains(response, "Blockchain anchored")
-        self.assertNotContains(response, "anchoring is off for this deployment")
-
     def test_outbox_export_carries_evidence_level_verbatim(self):
         BlockchainOutboxEvent.objects.filter(
             pk=self.entry.snapshot.outbox_event_id
