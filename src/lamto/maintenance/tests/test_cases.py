@@ -7,6 +7,8 @@ from django.test import TestCase, TransactionTestCase
 
 from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.audit.models import AuditEvent
+from lamto.finance.proposals import create_proposal
+from lamto.maintenance.cases import start_case_work
 from lamto.maintenance.models import (
     BuildingLocation,
     CaseReport,
@@ -26,7 +28,7 @@ class CaseFixture:
         self.operator = get_user_model().objects.create_user(
             email=f"operator-{self.fixture_id}@example.test", password="secret", display_name="Operator"
         )
-        ManagementMembership.objects.create(user=self.operator, building=self.building)
+        self.membership = ManagementMembership.objects.create(user=self.operator, building=self.building)
 
     def make_report(self, number, building=None, location=None):
         building = building or self.building
@@ -61,6 +63,57 @@ class CaseFixture:
 
 
 class CaseTests(CaseFixture, TestCase):
+
+    def test_late_grouping_adopts_in_progress_case_phase(self):
+        case = confirm_triage(
+            self.make_report(1), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        start_case_work(case, self.operator)
+        late = self.make_report(2)
+
+        group_report(case, late, self.operator)
+
+        late.refresh_from_db()
+        self.assertEqual(late.status, IssueReport.Status.IN_PROGRESS)
+
+    def test_late_grouping_adopts_proposed_case_phase(self):
+        case = confirm_triage(
+            self.make_report(1), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        create_proposal(case, self.membership)
+        late = self.make_report(2)
+
+        group_report(case, late, self.operator)
+
+        late.refresh_from_db()
+        self.assertEqual(late.status, IssueReport.Status.PROPOSED)
+
+    def test_late_grouping_adopts_ordinary_review_case_phase(self):
+        case = confirm_triage(
+            self.make_report(1), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        late = self.make_report(2)
+
+        group_report(case, late, self.operator)
+
+        late.refresh_from_db()
+        self.assertEqual(late.status, IssueReport.Status.IN_REVIEW)
+
+    def test_private_report_cannot_join_case_with_proposal(self):
+        case = confirm_triage(
+            self.make_report(1), self.operator, "Elevator", "HIGH", self.location, "Maintenance", 60
+        )
+        create_proposal(case, self.membership)
+        private = self.make_report(2)
+        private.is_private = True
+        private.save(update_fields=["is_private"])
+
+        with self.assertRaisesMessage(ValidationError, "Private requests"):
+            group_report(case, private, self.operator)
+
+        private.refresh_from_db()
+        self.assertEqual(private.status, IssueReport.Status.SUBMITTED)
+        self.assertFalse(CaseReport.objects.filter(case=case, report=private).exists())
 
     def test_confirmation_records_operator_difference_and_grouping_is_idempotent(self):
         first, second = self.make_report(1), self.make_report(2)

@@ -139,7 +139,17 @@ def group_report(case, report, operator):
         if existing.case_id == case.pk:
             return existing
         raise ValidationError("Report already belongs to another active case.")
+    if case.reports.filter(status=IssueReport.Status.IN_PROGRESS).exists():
+        status = IssueReport.Status.IN_PROGRESS
+    elif hasattr(case, "proposal"):
+        status = IssueReport.Status.PROPOSED
+    else:
+        status = IssueReport.Status.IN_REVIEW
+    if report.is_private and status == IssueReport.Status.PROPOSED:
+        raise ValidationError("Private requests cannot join a case with a community proposal.")
     link = CaseReport.objects.create(case=case, report=report, grouped_by=operator)
+    report.status = status
+    report.save(update_fields=["status"])
     record_audit(
         actor=operator,
         membership=membership,
