@@ -80,6 +80,7 @@ class IssueDetailScreen extends ConsumerWidget {
       ],
     ];
     final rateable = report.cases.where((caseItem) => caseItem.canRate);
+    final infoRequestMessage = report.openInfoRequest?['message']?.value;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -91,10 +92,10 @@ class IssueDetailScreen extends ConsumerWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         if (report.status == StatusEnum.NEEDS_INFO &&
-            report.openInfoRequest != null) ...[
+            infoRequestMessage is String) ...[
           const SizedBox(height: 16),
           _InfoRequestBanner(
-            message: report.openInfoRequest!['message']!.value as String,
+            message: infoRequestMessage,
             onReply: () => _showReplySheet(context, ref, report.id),
           ),
         ],

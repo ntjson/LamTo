@@ -11,7 +11,7 @@ import 'package:lamto_api/lamto_api.dart';
 ReportDetail _detail({
   required bool canRate,
   StatusEnum status = StatusEnum.SUBMITTED,
-  bool needsInfo = false,
+  MapBuilder<String, JsonObject?>? openInfoRequest,
 }) => ReportDetail(
   (b) => b
     ..id = 42
@@ -23,13 +23,7 @@ ReportDetail _detail({
     ..createdAt = DateTime.utc(2026, 7, 10)
     ..triageStatus = 'SUCCEEDED'
     ..category = 'Thang máy'
-    ..openInfoRequest = needsInfo
-        ? MapBuilder<String, JsonObject?>({
-            'id': JsonObject(7),
-            'message': JsonObject('Please describe the kitchen issue'),
-            'created_at': JsonObject('2026-07-11T00:00:00Z'),
-          })
-        : null
+    ..openInfoRequest = openInfoRequest
     ..photos = ListBuilder<ReportPhoto>()
     ..cases = ListBuilder<ReportCase>([
       ReportCase(
@@ -53,6 +47,13 @@ ReportDetail _detail({
       ),
     ]),
 );
+
+MapBuilder<String, JsonObject?> _infoRequest([JsonObject? message]) =>
+    MapBuilder<String, JsonObject?>({
+      'id': JsonObject(7),
+      'message': ?message,
+      'created_at': JsonObject('2026-07-11T00:00:00Z'),
+    });
 
 class _FakeRepo implements ReportsRepository {
   _FakeRepo(this.detail);
@@ -187,7 +188,13 @@ void main() {
     await _pump(
       tester,
       _FakeRepo(
-        _detail(canRate: false, status: StatusEnum.NEEDS_INFO, needsInfo: true),
+        _detail(
+          canRate: false,
+          status: StatusEnum.NEEDS_INFO,
+          openInfoRequest: _infoRequest(
+            JsonObject('Please describe the kitchen issue'),
+          ),
+        ),
       ),
     );
 
@@ -200,7 +207,13 @@ void main() {
     tester,
   ) async {
     final repo = _FakeRepo(
-      _detail(canRate: false, status: StatusEnum.NEEDS_INFO, needsInfo: true),
+      _detail(
+        canRate: false,
+        status: StatusEnum.NEEDS_INFO,
+        openInfoRequest: _infoRequest(
+          JsonObject('Please describe the kitchen issue'),
+        ),
+      ),
     );
     await _pump(tester, repo);
     await tester.tap(find.text('Gửi trả lời'));
@@ -221,15 +234,46 @@ void main() {
     await _pump(
       tester,
       _FakeRepo(
-        _detail(canRate: false, status: StatusEnum.NEEDS_INFO, needsInfo: true),
+        _detail(
+          canRate: false,
+          status: StatusEnum.NEEDS_INFO,
+          openInfoRequest: _infoRequest(
+            JsonObject('Please describe the kitchen issue'),
+          ),
+        ),
       ),
     );
     await tester.tap(find.text('Gửi trả lời'));
     await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pump();
 
     final submit = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Gửi trả lời').last,
     );
     expect(submit.onPressed, isNull);
+  });
+
+  testWidgets('ignores malformed open information request messages', (
+    tester,
+  ) async {
+    for (final request in [
+      _infoRequest(),
+      MapBuilder<String, JsonObject?>({'message': null}),
+      _infoRequest(JsonObject(7)),
+    ]) {
+      await _pump(
+        tester,
+        _FakeRepo(
+          _detail(
+            canRate: false,
+            status: StatusEnum.NEEDS_INFO,
+            openInfoRequest: request,
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('Ban quản lý cần thêm thông tin'), findsNothing);
+    }
   });
 }
