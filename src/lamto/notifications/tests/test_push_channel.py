@@ -71,5 +71,5 @@ class PushQueueGatingTests(TestCase):
             with self.captureOnCommitCallbacks(execute=True):
                 notify_work_rateable(record)
             assert NotificationDelivery.objects.filter(
-                recipient=seed.users["resident"], event_code=EVENT_WORK_COMPLETED,
+                recipient=seed.residents[0], event_code=EVENT_WORK_COMPLETED,
             ).exists()

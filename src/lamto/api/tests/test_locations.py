@@ -20,7 +20,7 @@ _TEMP = tempfile.mkdtemp(prefix="lamto-api-loc-")
 class LocationListTests(TestCase):
     def setUp(self):
         self.seed = seed_pilot_world(building_name="API Loc B", email_prefix="apiloc", create_sample_report=False)
-        self.resident = self.seed.users["resident"]
+        self.resident = self.seed.residents[0]
         # A child + an inactive sibling of the seed location.
         self.child = BuildingLocation.objects.create(
             building=self.seed.building, parent=self.seed.location, name="Cabin"

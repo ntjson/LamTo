@@ -36,7 +36,7 @@ def _accepted_work(seed):
 class WorkRatingTests(TestCase):
     def setUp(self):
         self.seed = seed_pilot_world(building_name="API Rate B", email_prefix="apirate", create_sample_report=False)
-        self.resident = self.seed.users["resident"]
+        self.resident = self.seed.residents[0]
         self.work = _accepted_work(self.seed)
 
     def _auth(self, user=None):

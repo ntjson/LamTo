@@ -28,19 +28,6 @@ from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import (
-    AUDIT_EXPORT,
-    FUND_RECORD,
-    FUND_VERIFY,
-    LEDGER_PUBLISH,
-    PAYMENT_RECORD,
-    PAYMENT_VERIFY,
-    PROPOSAL_CREATE,
-    REPORT_TRIAGE,
-    TECH_ADMIN,
-    WORK_ACCEPT,
-    WORK_ASSIGN,
-)
 from lamto.accounts.models import Building, ManagementMembership, ResidentOccupancy, Unit
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
@@ -96,22 +83,6 @@ PILOT_BUILDING_NAME = "Pilot Acceptance Building"
 PILOT_EMAIL_DOMAIN = "pilot.lamto.test"
 DEFAULT_AMOUNT_VND = 18_500_000
 DEFAULT_FUND_OPENING_VND = 100_000_000
-
-# Role keys used by seed_pilot and PilotDriver.login(...)
-ROLE_KEYS = (
-    "resident",
-    "operator",
-    "board_acceptor",
-    "maintenance",
-    "board_payment_recorder",
-    "board_payment_verifier",
-    "eligible_publisher",
-    "fund_recorder",
-    "fund_verifier",
-    "auditor",
-    "tech_admin",
-)
-
 
 def _temp_storage_settings(location: str) -> dict:
     return {
@@ -195,28 +166,14 @@ def photo(building, kind, uploader, tag: str):
     )
 
 
-def make_signer(
-    building,
-    role: str,
-    capabilities: list[str],
-    *,
-    email: str,
-    display_name: str,
-    password: str = PILOT_PASSWORD,
-    organization=None,
-    org_name: str | None = None,
-):
-    user = get_user_model().objects.create_user(
-        email=email, password=password, display_name=display_name
-    )
-    membership = ManagementMembership.objects.create(user=user, building=building)
+def make_signer(membership: ManagementMembership):
     account = Account.create()
     challenge = begin_wallet_registration(membership)
     proof = Account.sign_message(
         encode_typed_data(full_message=challenge), account.key
     ).signature.hex()
     register_wallet(membership, account.address, proof)
-    return membership, account
+    return account
 
 
 def new_event_id() -> str:
@@ -246,8 +203,9 @@ class PilotSeed:
     location: BuildingLocation
     password: str = PILOT_PASSWORD
     accounts: dict[int, Any] = field(default_factory=dict)
-    roles: dict[str, ManagementMembership | None] = field(default_factory=dict)
-    users: dict[str, Any] = field(default_factory=dict)
+    management_users: list[Any] = field(default_factory=list)
+    management_memberships: list[ManagementMembership] = field(default_factory=list)
+    residents: list[Any] = field(default_factory=list)
     report: IssueReport | None = None
     work_order: WorkOrder | None = None
     proposal: Proposal | None = None
@@ -258,9 +216,6 @@ class PilotSeed:
     def _tag(self, base: str) -> str:
         self._seq += 1
         return f"{base}-{self._seq}"
-
-    def membership(self, role_key: str) -> ManagementMembership | None:
-        return self.roles[role_key]
 
     def account_for(self, membership) -> Any:
         return self.accounts[membership.pk]
@@ -299,64 +254,17 @@ def seed_pilot_world(
         # Unique local-part avoids collisions when multiple seeds share one DB transaction.
         return f"{prefix}-{local}@{email_domain}"
 
-    operator, operator_account = make_signer(
-        building,
-        "management",
-        [REPORT_TRIAGE, WORK_ASSIGN, PROPOSAL_CREATE],
-        email=email("operator"),
-        display_name="Pilot Operator",
-        password=password,
-        org_name="Pilot Operator Co",
-    )
-    seed.accounts[operator.pk] = operator_account
-    seed.roles["operator"] = operator
-    seed.users["operator"] = operator.user
-
-    maintenance_user = get_user_model().objects.create_user(
-        email=email("maintenance"),
-        password=password,
-        display_name="Pilot Maintenance",
-    )
-    maintenance = ManagementMembership.objects.create(
-        user=maintenance_user, building=building
-    )
-    seed.users["maintenance"] = maintenance_user
-    seed.roles["maintenance"] = maintenance
-
-    board_roles = {
-        "board_acceptor": ([WORK_ACCEPT], "Board Acceptor"),
-        "board_payment_recorder": ([PAYMENT_RECORD, WORK_ACCEPT], "Payment Recorder"),
-        "board_payment_verifier": ([PAYMENT_VERIFY, LEDGER_PUBLISH], "Payment Verifier"),
-        "eligible_publisher": ([LEDGER_PUBLISH], "Eligible Publisher"),
-        "fund_recorder": ([FUND_RECORD], "Fund Recorder"),
-        "fund_verifier": ([FUND_VERIFY], "Fund Verifier"),
-    }
-    for key, (caps, label) in board_roles.items():
-        membership, account = make_signer(
-            building,
-            "management",
-            caps,
-            email=email(key.replace("_", "-")),
-            display_name=f"Pilot {label}",
+    for number in (1, 2):
+        user = get_user_model().objects.create_user(
+            email=email(f"management-{number}"),
             password=password,
+            display_name=f"Pilot Manager {number}",
         )
+        membership = ManagementMembership.objects.create(user=user, building=building)
+        account = make_signer(membership)
+        seed.management_users.append(user)
+        seed.management_memberships.append(membership)
         seed.accounts[membership.pk] = account
-        seed.roles[key] = membership
-        seed.users[key] = membership.user
-
-    auditor_user = get_user_model().objects.create_user(
-        email=email("auditor"), password=password, display_name="Pilot Auditor"
-    )
-    auditor = ManagementMembership.objects.create(user=auditor_user, building=building)
-    seed.roles["auditor"] = auditor
-    seed.users["auditor"] = auditor_user
-
-    tech_user = get_user_model().objects.create_user(
-        email=email("tech-admin"), password=password, display_name="Pilot Tech Admin"
-    )
-    tech = ManagementMembership.objects.create(user=tech_user, building=building)
-    seed.roles["tech_admin"] = tech
-    seed.users["tech_admin"] = tech_user
 
     resident = get_user_model().objects.create_user(
         email=email("resident"),
@@ -364,8 +272,7 @@ def seed_pilot_world(
         display_name="Pilot Resident",
     )
     ResidentOccupancy.objects.create(user=resident, unit=unit, active=True)
-    seed.users["resident"] = resident
-    seed.roles["resident"] = None  # no membership; occupancy only
+    seed.residents.append(resident)
 
     if create_opening_fund:
         seed_opening_fund(seed)
@@ -387,8 +294,7 @@ def seed_pilot_world(
 
 def seed_opening_fund(seed: PilotSeed, amount_vnd: int = DEFAULT_FUND_OPENING_VND):
     fund = get_or_create_fund(seed.building)
-    recorder = seed.roles["fund_recorder"]
-    verifier = seed.roles["fund_verifier"]
+    recorder, verifier = seed.management_memberships
     original, redacted = seed.document_pair(
         Document.Kind.CONTRACT, recorder.user, "fund-opening"
     )
@@ -512,7 +418,7 @@ class PilotDomainDriver:
     # --- role flows (domain entry points) ----------------------------------------
 
     def submit_report(self, text: str, location_label: str, photo_path: str | None = None):
-        resident = self.seed.users["resident"]
+        resident = self.seed.residents[0]
         # photo_path is accepted for API parity with browser; domain uses synthetic photo.
         photo_version = self.seed.photo(Document.Kind.REPORT_PHOTO, resident)
         report = submit_report(
@@ -523,7 +429,7 @@ class PilotDomainDriver:
         return report
 
     def confirm_triage_and_create_paid_work_order(self):
-        operator = self.seed.roles["operator"]
+        operator = self.seed.management_memberships[0]
         report = self.seed.report or self._ctx.get("report")
         if report is None:
             raise ValidationError("No report available for triage.")
@@ -539,7 +445,7 @@ class PilotDomainDriver:
         work = create_work_order(
             case,
             operator.user,
-            self.seed.users["maintenance"],
+            operator.user,
             requires_spending=True,
         )
         self.seed.work_order = work
@@ -548,7 +454,7 @@ class PilotDomainDriver:
         return work
 
     def submit_signed_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
-        operator = self.seed.roles["operator"]
+        operator = self.seed.management_memberships[0]
         work = self.seed.work_order or self._ctx["work_order"]
         quotation_original, _ = self.seed.document_pair(
             Document.Kind.QUOTATION, operator.user, "quotation"
@@ -583,7 +489,7 @@ class PilotDomainDriver:
     def start_assigned_work(self):
         work = self.seed.work_order or self._ctx["work_order"]
         work.refresh_from_db()
-        started = start_work_order(work, self.seed.users["maintenance"])
+        started = start_work_order(work, self.seed.management_users[0])
         self._ctx["work_order"] = started
         self.seed.work_order = started
         return SimpleNamespace(
@@ -596,8 +502,8 @@ class PilotDomainDriver:
         work = self.seed.work_order or self._ctx["work_order"]
         work.refresh_from_db()
         if work.status == WorkOrder.Status.ASSIGNED:
-            work = start_work_order(work, self.seed.users["maintenance"])
-        maintenance = self.seed.users["maintenance"]
+            work = start_work_order(work, self.seed.management_users[0])
+        maintenance = self.seed.management_users[0]
         before = self.seed.photo(Document.Kind.BEFORE_PHOTO, maintenance, "before")
         after = self.seed.photo(Document.Kind.AFTER_PHOTO, maintenance, "after")
         completed = complete_work_order(
@@ -611,7 +517,7 @@ class PilotDomainDriver:
         amount_vnd = amount_vnd or self._ctx.get("amount_vnd", DEFAULT_AMOUNT_VND)
         work = self.seed.work_order
         work.refresh_from_db()
-        accepter = self.seed.roles["board_payment_recorder"]
+        accepter = self.seed.management_memberships[0]
         inv_o, inv_r = self.seed.document_pair(
             Document.Kind.INVOICE, accepter.user, "invoice"
         )
@@ -645,7 +551,7 @@ class PilotDomainDriver:
         )
         self._ctx["acceptance"] = acceptance
 
-        recorder = self.seed.roles["board_payment_recorder"]
+        recorder = self.seed.management_memberships[0]
         proof_o, proof_r = self.seed.document_pair(
             Document.Kind.PAYMENT_PROOF, recorder.user, "payment-proof"
         )
@@ -685,7 +591,7 @@ class PilotDomainDriver:
 
     def verify_payment(self):
         payment = self._ctx["payment"]
-        verifier = self.seed.roles["board_payment_verifier"]
+        verifier = self.seed.management_memberships[1]
         event_id = new_event_id()
         typed = build_payment_verification_evidence_typed_data(
             payment, verifier, "VERIFIED", event_id, timestamp=payment.recorded_at
@@ -706,13 +612,13 @@ class PilotDomainDriver:
     def sign_publication_snapshot(self):
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
-        publisher = self.seed.roles["eligible_publisher"]
+        publisher = self.seed.management_memberships[1]
         return self._publish_with(publisher)
 
     def attempt_publication(self):
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
-        publisher = self.seed.roles["eligible_publisher"]
+        publisher = self.seed.management_memberships[1]
         try:
             self._publish_with(publisher)
             return SimpleNamespace(reason=None, blocked=False)

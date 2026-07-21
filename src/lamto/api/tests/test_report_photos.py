@@ -41,7 +41,7 @@ class ReportPhotoUploadTests(TestCase):
         self.seed = seed_pilot_world(
             building_name="API Photos B", email_prefix="apip", create_sample_report=False
         )
-        self.resident = self.seed.users["resident"]
+        self.resident = self.seed.residents[0]
         self.report, _ = submit_report_idempotent(
             self.resident, self.seed.unit, "Lift jerks", self.seed.location, [], uuid.uuid4()
         )
@@ -196,7 +196,7 @@ class ReportPhotoConcurrentAttachTests(TransactionTestCase):
         self.seed = seed_pilot_world(
             building_name="API Photos Conc", email_prefix="apipc", create_sample_report=False
         )
-        self.resident = self.seed.users["resident"]
+        self.resident = self.seed.residents[0]
         self.report, _ = submit_report_idempotent(
             self.resident, self.seed.unit, "Lift jerks", self.seed.location, [], uuid.uuid4()
         )

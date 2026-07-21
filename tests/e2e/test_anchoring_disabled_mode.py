@@ -93,7 +93,7 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
     # Resident visibility with the honest off-chain label.
     assert entry.pk in [row.pk for row in published_ledger_entries(seed.building.pk)]
     web = Client()
-    web.force_login(seed.users["resident"])
+    web.force_login(seed.residents[0])
     response = web.get(reverse("web:ledger-detail", kwargs={"pk": entry.pk}))
     body = response.content.decode()
     assert "anchoring is off for this deployment" in body
@@ -111,8 +111,7 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
 
     # --- Fund flow (maker-checker stays mandatory) ------------------------
     fund = get_or_create_fund(seed.building)
-    recorder = seed.roles["fund_recorder"]
-    verifier = seed.roles["fund_verifier"]
+    recorder, verifier = seed.management_memberships
     original, redacted = seed.document_pair(
         Document.Kind.CONTRACT, recorder.user, "offchain-inflow"
     )

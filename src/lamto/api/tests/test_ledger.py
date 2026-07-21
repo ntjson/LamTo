@@ -57,7 +57,7 @@ class LedgerApiTests(TestCase):
 
     def _auth(self):
         _instance, token = AuthToken.objects.create(
-            user=self.seed.users["resident"]
+            user=self.seed.residents[0]
         )
         return {"authorization": f"Token {token}"}
 

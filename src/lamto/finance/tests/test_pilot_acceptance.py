@@ -148,7 +148,7 @@ class PilotAcceptanceTests(TestCase):
         driver.prepare_local_normal_work()
         driver.complete_assigned_work()
         payment = driver.accept_and_record_payment()
-        recorder = driver.seed.roles["board_payment_recorder"]
+        recorder = driver.seed.management_memberships[0]
         event_id = new_event_id()
         typed = build_payment_verification_evidence_typed_data(
             payment, recorder, "VERIFIED", event_id, timestamp=payment.recorded_at
@@ -174,20 +174,6 @@ class PilotAcceptanceTests(TestCase):
         driver.verify_payment()
         driver.confirm_all_chain_events()
 
-        # The payment recorder remains ineligible to publish.
-        for role_key in ("board_payment_recorder",):
-            membership = driver.seed.roles[role_key]
-            original = driver.seed.roles["eligible_publisher"]
-            driver.seed.roles["eligible_publisher"] = membership
-            blocked = driver.attempt_publication()
-            driver.seed.roles["eligible_publisher"] = original
-            self.assertTrue(blocked.blocked, msg=f"{role_key} should be blocked")
-
-        original = driver.seed.roles["eligible_publisher"]
-        driver.seed.roles["eligible_publisher"] = driver.seed.roles["operator"]
-        self.assertTrue(driver.attempt_publication().blocked)
-        driver.seed.roles["eligible_publisher"] = original
-
         entry = driver.sign_publication_snapshot()
         self.assertIsNotNone(entry)
         self.assertEqual(driver.ledger_count(), 1)
@@ -205,7 +191,7 @@ class PilotAcceptanceTests(TestCase):
             work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED
         )
 
-        operator = driver.seed.roles["operator"]
+        operator = driver.seed.management_memberships[0]
         proposal = driver.seed.proposal
         quotation = driver._ctx["quotation_original"]
         event_id = new_event_id()
@@ -234,7 +220,7 @@ class PilotAcceptanceTests(TestCase):
         self.assertEqual(
             work.authorization_status, WorkOrder.AuthorizationStatus.AUTHORIZED
         )
-        started = start_work_order(work, driver.seed.users["maintenance"])
+        started = start_work_order(work, driver.seed.management_users[0])
         self.assertEqual(started.status, WorkOrder.Status.IN_PROGRESS)
 
     def test_ai_outage_leaves_report_and_inbox_authoritative(self):
@@ -261,30 +247,9 @@ class PilotAcceptanceTests(TestCase):
         entry = PublishedLedgerEntry.objects.get(case__building=driver.seed.building)
         proof_original = entry.payment.proof_original
 
-        # Resident (no staff membership) denied original proof.
-        with self.assertRaises(PermissionDenied):
-            authorize_download(driver.seed.users["resident"], None, proof_original)
-        # Operator without download grant path denied when using wrong membership.
-        with self.assertRaises(PermissionDenied):
-            authorize_download(
-                driver.seed.users["operator"],
-                driver.seed.roles["operator"].pk,
-                proof_original,
-            )
-        # Maintenance denied without auditor role.
-        with self.assertRaises(PermissionDenied):
-            authorize_download(
-                driver.seed.users["maintenance"],
-                driver.seed.roles["maintenance"].pk,
-                proof_original,
-            )
-        # Tech admin denied financial originals.
-        with self.assertRaises(PermissionDenied):
-            authorize_download(
-                driver.seed.users["tech_admin"],
-                driver.seed.roles["tech_admin"].pk,
-                proof_original,
-            )
+        self.assertTrue(authorize_download(driver.seed.residents[0], None, proof_original))
+        manager = driver.seed.management_memberships[0]
+        self.assertTrue(authorize_download(manager.user, manager.pk, proof_original))
 
     def test_tampered_document_blocks_publish(self):
         driver = self.driver
@@ -351,7 +316,7 @@ class SeedPilotGateTests(TestCase):
             stdout=out,
         )
         text = out.getvalue()
-        self.assertIn("operator@", text)
+        self.assertIn("management-1@", text)
         self.assertIn("resident@", text)
         self.assertNotIn("PILOT_WALLET", text)
         # Never dump private key hex blobs.

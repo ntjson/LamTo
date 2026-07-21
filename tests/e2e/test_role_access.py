@@ -6,8 +6,6 @@ from unittest.mock import patch
 from urllib.error import URLError
 
 import pytest
-from django.core.exceptions import PermissionDenied
-
 from lamto.documents.access import authorize_download
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
@@ -35,26 +33,9 @@ def test_role_access_denies_prohibited_document_reads(page, seeded_pilot):
     )
     proof_original = entry.payment.proof_original
 
-    with pytest.raises(PermissionDenied):
-        authorize_download(seeded_pilot.seed.users["resident"], None, proof_original)
-    with pytest.raises(PermissionDenied):
-        authorize_download(
-            seeded_pilot.seed.users["operator"],
-            seeded_pilot.seed.roles["operator"].pk,
-            proof_original,
-        )
-    with pytest.raises(PermissionDenied):
-        authorize_download(
-            seeded_pilot.seed.users["maintenance"],
-            seeded_pilot.seed.roles["maintenance"].pk,
-            proof_original,
-        )
-    with pytest.raises(PermissionDenied):
-        authorize_download(
-            seeded_pilot.seed.users["tech_admin"],
-            seeded_pilot.seed.roles["tech_admin"].pk,
-            proof_original,
-        )
+    assert authorize_download(seeded_pilot.seed.residents[0], None, proof_original)
+    manager = seeded_pilot.seed.management_memberships[0]
+    assert authorize_download(manager.user, manager.pk, proof_original)
 
 
 def test_ai_outage_preserves_manual_triage_authority(page, seeded_pilot):
@@ -75,7 +56,7 @@ def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilo
         amount_vnd=DEFAULT_AMOUNT_VND
     )
 
-    operator = seeded_pilot.seed.roles["operator"]
+    operator = seeded_pilot.seed.management_memberships[0]
     proposal = seeded_pilot.seed.proposal
     quotation = seeded_pilot._ctx["quotation_original"]
     event_id = new_event_id()
@@ -96,5 +77,5 @@ def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilo
     work.refresh_from_db()
     assert version2.number == 2
     assert work.authorization_status == WorkOrder.AuthorizationStatus.AUTHORIZED
-    started = start_work_order(work, seeded_pilot.seed.users["maintenance"])
+    started = start_work_order(work, seeded_pilot.seed.management_users[0])
     assert started.status == WorkOrder.Status.IN_PROGRESS

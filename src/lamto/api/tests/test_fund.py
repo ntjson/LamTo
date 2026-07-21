@@ -42,7 +42,7 @@ class FundSummaryTests(TestCase):
             email_prefix="apif",
             create_sample_report=False,
         )
-        cls.resident = cls.seed.users["resident"]
+        cls.resident = cls.seed.residents[0]
         cls.occupancy = ResidentOccupancy.objects.get(user=cls.resident, active=True)
         # A second building with no fund rows, for multi-occupancy cases.
         cls.other_building = Building.objects.create(name="API Fund Building Two")
@@ -137,7 +137,7 @@ class FundSeriesTests(TestCase):
             email_prefix="apis",
             create_sample_report=False,
         )
-        cls.resident = cls.seed.users["resident"]
+        cls.resident = cls.seed.residents[0]
 
     def _auth(self):
         _instance, token = AuthToken.objects.create(user=self.resident)

@@ -80,7 +80,7 @@ class EvidenceLevelLabelTests(TestCase):
             pk=self.entry.snapshot.outbox_event_id
         ).update(status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None)
         client = Client()
-        client.force_login(self.seed.users["resident"])
+        client.force_login(self.seed.residents[0])
 
         response = client.get(
             reverse("web:ledger-detail", kwargs={"pk": self.entry.pk})
@@ -91,7 +91,7 @@ class EvidenceLevelLabelTests(TestCase):
 
     def test_resident_detail_shows_anchored_for_confirmed(self):
         client = Client()
-        client.force_login(self.seed.users["resident"])
+        client.force_login(self.seed.residents[0])
 
         response = client.get(
             reverse("web:ledger-detail", kwargs={"pk": self.entry.pk})

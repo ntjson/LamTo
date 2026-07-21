@@ -3,7 +3,7 @@
 Usage:
   PILOT_ALLOW_FIXTURES=1 python manage.py seed_pilot --fixture
 
-Prints login identifiers (emails) and role keys. Never prints wallet private keys.
+Prints login identifiers (emails). Never prints wallet private keys.
 Optional --wallet-env writes keys only to an ignored path for local test tooling.
 """
 
@@ -73,15 +73,9 @@ class Command(BaseCommand):
             )
             self.stdout.write(
                 "Idempotent reuse: no new rows created. Documented logins use prefix pilot-:\n"
+                f"  pilot-management-1@{PILOT_EMAIL_DOMAIN}\n"
+                f"  pilot-management-2@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-resident@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-operator@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-board-acceptor@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-resident-rep@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-maintenance@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-board-payment-recorder@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-board-payment-verifier@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-eligible-publisher@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-auditor@{PILOT_EMAIL_DOMAIN}\n"
             )
             return
 
@@ -94,8 +88,10 @@ class Command(BaseCommand):
             self.stdout.write(f"Sample report id: {seed.report.pk} (labeled TEST in text)")
         self.stdout.write("")
         self.stdout.write("Login identifiers (password not printed in production runbooks):")
-        for key, user in sorted(seed.users.items(), key=lambda item: item[0]):
-            self.stdout.write(f"  {key:28} {user.email}")
+        for number, user in enumerate(seed.management_users, 1):
+            self.stdout.write(f"  management-{number:18} {user.email}")
+        for number, user in enumerate(seed.residents, 1):
+            self.stdout.write(f"  resident-{number:20} {user.email}")
         self.stdout.write("")
         self.stdout.write(
             "Wallet private keys are NOT printed. "
@@ -120,14 +116,12 @@ class Command(BaseCommand):
                 "# GENERATED pilot test wallets — NEVER commit; local test use only",
                 f"PILOT_PASSWORD={PILOT_PASSWORD}",
             ]
-            for key, membership in seed.roles.items():
-                if membership is None:
-                    continue
+            for number, membership in enumerate(seed.management_memberships, 1):
                 account = seed.accounts.get(membership.pk)
                 if account is None:
                     continue
-                lines.append(f"PILOT_WALLET_{key.upper()}={account.key.hex()}")
-                lines.append(f"PILOT_ADDRESS_{key.upper()}={account.address}")
+                lines.append(f"PILOT_WALLET_MANAGEMENT_{number}={account.key.hex()}")
+                lines.append(f"PILOT_ADDRESS_MANAGEMENT_{number}={account.address}")
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("\n".join(lines) + "\n", encoding="utf-8")
             try:

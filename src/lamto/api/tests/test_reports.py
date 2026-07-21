@@ -39,7 +39,7 @@ class ReportCreateTests(TestCase):
             email_prefix="apir",
             create_sample_report=False,
         )
-        self.resident = self.seed.users["resident"]
+        self.resident = self.seed.residents[0]
         self.occupancy = ResidentOccupancy.objects.get(user=self.resident, active=True)
 
     def _auth(self):

@@ -20,7 +20,7 @@ _TEMP = tempfile.mkdtemp(prefix="lamto-api-notif-")
 class NotificationFeedTests(TestCase):
     def setUp(self):
         self.seed = seed_pilot_world(building_name="API Notif B", email_prefix="apin", create_sample_report=False)
-        self.resident = self.seed.users["resident"]
+        self.resident = self.seed.residents[0]
         self.delivery = NotificationDelivery.objects.create(
             recipient=self.resident, building=self.seed.building,
             channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
