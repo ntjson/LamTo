@@ -113,35 +113,6 @@ class ProgressUpdateForm(forms.Form):
         self.fields["before_versions"].label_from_instance = _label
         self.fields["after_versions"].label_from_instance = _label
 
-class SignedDecisionForm(forms.Form):
-    """Common fields for wallet-signed domain actions."""
-
-    # Do not emit HTML5 required= on signature: wallet-signing.js fills it on
-    # submit via MetaMask. Server-side validation still requires the field.
-    use_required_attribute = False
-
-    # Hidden: pilots must not type event ids / signatures. Server + MetaMask own them.
-    event_id = forms.CharField(max_length=66, widget=forms.HiddenInput())
-    signature = forms.CharField(
-        max_length=132,
-        required=False,
-        widget=forms.HiddenInput(),
-    )
-    reason = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={"class": "input", "rows": 2}),
-    )
-
-    def clean_signature(self):
-        value = (self.cleaned_data.get("signature") or "").strip()
-        if not value:
-            raise forms.ValidationError(
-                "Signature is required. Keep your entries, connect the wallet "
-                "registered for this role, and submit again."
-            )
-        return value
-
-
 class RecordSettlementTransferForm(forms.Form):
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
     payee_name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": "input"}))
@@ -223,16 +194,6 @@ class StandaloneProposalForm(CreateProposalForm):
             self.fields[name].required = True
 
 
-class SignProposalForm(SignedDecisionForm):
-    """Signed submit of the frozen proposal version. Hidden fields carry the
-    prepared draft so the posted signature matches the exact payload."""
-
-    amount_vnd = forms.IntegerField(min_value=1, widget=forms.HiddenInput())
-    contractor_name = forms.CharField(max_length=255, widget=forms.HiddenInput())
-    quotation_original_id = forms.IntegerField(widget=forms.HiddenInput())
-    proposal_id = forms.IntegerField(widget=forms.HiddenInput())
-
-
 class RecordFundSourceForm(forms.Form):
     """Fund source draft; the evidence pair uploads on prepare."""
 
@@ -246,15 +207,3 @@ class RecordFundSourceForm(forms.Form):
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
     evidence_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
     evidence_redacted = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
-
-
-class SignFundSourceForm(SignedDecisionForm):
-    """Signed submit of a prepared fund source. Hidden fields pin the exact
-    signed payload (id, amount, evidence hashes, timestamp)."""
-
-    entry_type = forms.CharField(max_length=32, widget=forms.HiddenInput())
-    amount_vnd = forms.IntegerField(min_value=1, widget=forms.HiddenInput())
-    evidence_original_id = forms.IntegerField(widget=forms.HiddenInput())
-    evidence_redacted_id = forms.IntegerField(widget=forms.HiddenInput())
-    fund_entry_id = forms.IntegerField(widget=forms.HiddenInput())
-    entry_timestamp = forms.CharField(max_length=40, widget=forms.HiddenInput())

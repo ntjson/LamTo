@@ -8,7 +8,6 @@ check instead of silent cross-tenant data. Run in CI and nightly.
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import F
 
-from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import MaintenanceFundEntry, PublishedLedgerEntry
 from lamto.maintenance.models import (
     CaseReport,
@@ -46,12 +45,6 @@ def checks():
         (
             "published_entry_case",
             PublishedLedgerEntry.objects.exclude(case=F("proposal__case")),
-        ),
-        (
-            "outbox_signer_building",
-            BlockchainOutboxEvent.objects.exclude(
-                building=F("signer_wallet__membership__building")
-            ),
         ),
         (
             "report_photo_document",

@@ -10,7 +10,7 @@
   <div class="workflow-section">
     <h2>{% trans "Review and sign" %}</h2>
     <p class="hint">{% blocktrans with amount=sign_form.amount_vnd.value|intcomma name=sign_form.contractor_name.value %}Amount {{ amount }} VND · {{ name }}{% endblocktrans %}</p>
-    <p class="hint">{% trans "The quotation is uploaded and frozen. Sign with your wallet to publish the proposal for work." %}</p>
+    <p class="hint">{% trans "The quotation is uploaded and frozen when the proposal is published." %}</p>
     <form method="post" class="stack-form" data-signed-form data-review-form>
       {% csrf_token %}
       <input type="hidden" name="action" value="submit">

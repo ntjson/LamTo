@@ -3,14 +3,9 @@
 Usage:
   PILOT_ALLOW_FIXTURES=1 python manage.py seed_pilot --fixture
 
-Prints login identifiers (emails). Never prints wallet private keys.
-Optional --wallet-env writes keys only to an ignored path for local test tooling.
 """
 
 from __future__ import annotations
-
-import os
-from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -25,7 +20,7 @@ from lamto.testing.factories import (
 
 
 class Command(BaseCommand):
-    help = "Seed deterministic pilot users/orgs/wallets for non-production scenarios."
+    help = "Seed deterministic pilot users and records for non-production scenarios."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -37,14 +32,6 @@ class Command(BaseCommand):
             "--force",
             action="store_true",
             help="Create a new building even if a pilot building already exists.",
-        )
-        parser.add_argument(
-            "--wallet-env",
-            default="",
-            help=(
-                "Optional path to write test wallet private keys "
-                "(must be under .env* / ignored test paths; never stdout)."
-            ),
         )
         parser.add_argument(
             "--building-name",
@@ -92,40 +79,3 @@ class Command(BaseCommand):
             self.stdout.write(f"  management-{number:18} {user.email}")
         for number, user in enumerate(seed.residents, 1):
             self.stdout.write(f"  resident-{number:20} {user.email}")
-        self.stdout.write("")
-        self.stdout.write(
-            "Wallet private keys are NOT printed. "
-            "They exist only in process memory during this command."
-        )
-
-        wallet_env = options["wallet_env"]
-        if wallet_env:
-            path = Path(wallet_env).resolve()
-            name = path.name
-            if not (
-                name.startswith(".env")
-                or "test" in name.lower()
-                or "pilot" in name.lower()
-                or str(path).endswith(".local")
-            ):
-                raise CommandError(
-                    "--wallet-env must target an ignored test/local env file "
-                    "(name starts with .env or contains test/pilot)."
-                )
-            lines = [
-                "# GENERATED pilot test wallets — NEVER commit; local test use only",
-                f"PILOT_PASSWORD={PILOT_PASSWORD}",
-            ]
-            for number, membership in enumerate(seed.management_memberships, 1):
-                account = seed.accounts.get(membership.pk)
-                if account is None:
-                    continue
-                lines.append(f"PILOT_WALLET_MANAGEMENT_{number}={account.key.hex()}")
-                lines.append(f"PILOT_ADDRESS_MANAGEMENT_{number}={account.address}")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            try:
-                os.chmod(path, 0o600)
-            except OSError:
-                pass
-            self.stdout.write(self.style.WARNING(f"Wrote test wallet keys to {path}"))

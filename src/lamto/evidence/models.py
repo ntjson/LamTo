@@ -1,8 +1,5 @@
 from django.db import models
 
-from lamto.accounts.models import SignerWallet
-
-
 class EvidenceType(models.IntegerChoices):
     PROPOSAL_CREATED = 1, "Proposal created"
     RESERVED_2 = 2, "Reserved"
@@ -36,10 +33,7 @@ class BlockchainOutboxEvent(models.Model):
     payload_hash = models.CharField(max_length=64)
     previous_hash = models.CharField(max_length=66)
     signature = models.CharField(max_length=132)
-    signer_wallet = models.ForeignKey(
-        SignerWallet, on_delete=models.PROTECT, null=True, blank=True
-    )
-    signer_address = models.CharField(max_length=42, blank=True, default="")
+    signer_address = models.CharField(max_length=42)
     building = models.ForeignKey(
         "accounts.Building",
         on_delete=models.PROTECT,

@@ -27,7 +27,7 @@ from lamto.finance.selectors import (
 )
 from lamto.web.forms.staff import RecordFundSourceForm
 from lamto.web.staff import require_management_context, staff_context
-from lamto.web.staff_signing import upload_document_pair
+from lamto.web.staff_documents import upload_document_pair
 
 
 FUND_CHART_RANGES = (

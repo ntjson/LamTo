@@ -70,8 +70,6 @@ def finance_nav_items_for(membership) -> list[dict[str, str]]:
 
 
 def staff_context(request, membership, memberships, *, nav_active=None, **extra):
-    from lamto.web.views.staff_common import pop_sign_confirmation
-
     nav_items = nav_items_for(membership)
     for item in nav_items:
         item["is_active"] = bool(nav_active) and item.get("active_key") == nav_active
@@ -82,7 +80,6 @@ def staff_context(request, membership, memberships, *, nav_active=None, **extra)
         "nav_items": nav_items,
         "nav_active": nav_active,
         "finance_nav_items": finance_nav_items_for(membership),
-        "sign_confirmation": pop_sign_confirmation(request),
         **extra,
     }
 

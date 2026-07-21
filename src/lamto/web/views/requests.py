@@ -18,12 +18,10 @@ from lamto.finance.models import (
     Proposal,
     PublishedLedgerEntry,
 )
-from lamto.accounts.models import SignerWallet
 from lamto.finance.proposals import (
     ZERO_HASH,
     build_proposal_evidence_payload,
     create_proposal,
-    submit_proposal_version,
     spending_proposal_cases,
 )
 from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion
@@ -37,16 +35,13 @@ from lamto.web.forms.staff import (
     InfoRequestForm,
     CreateProposalForm,
     ProgressUpdateForm,
-    SignProposalForm,
 )
 from lamto.web.staff import require_management_context, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
-    set_sign_confirmation,
-    signed_action_failure,
 )
-from lamto.web.staff_signing import new_event_id, upload_document_pair
+from lamto.web.staff_documents import new_event_id, upload_document_pair
 
 
 @login_required

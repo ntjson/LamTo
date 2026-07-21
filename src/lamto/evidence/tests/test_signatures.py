@@ -25,8 +25,8 @@ def high_s_signature(signature):
     EVIDENCE_CONTRACT_ADDRESS="0x0000000000000000000000000000000000000001",
 )
 class EvidenceSignatureTests(SimpleTestCase):
-    def test_canonical_payload_and_eip712_signature_recover_same_wallet(self):
-        wallet = Account.create()
+    def test_canonical_payload_and_eip712_signature_recover_same_signer(self):
+        account = Account.create()
         payload = {"amount_vnd": 18_500_000, "proposal_version": 2}
         typed = build_evidence_typed_data(
             event_id="0x" + "11" * 32,
@@ -35,18 +35,18 @@ class EvidenceSignatureTests(SimpleTestCase):
             previous_hash_hex="0x" + "00" * 32,
         )
         signature = Account.sign_message(
-            encode_typed_data(full_message=typed), wallet.key
+            encode_typed_data(full_message=typed), account.key
         ).signature.hex()
 
-        self.assertEqual(recover_signer(typed, signature), wallet.address)
+        self.assertEqual(recover_signer(typed, signature), account.address)
 
     def test_recovery_rejects_high_s_and_malformed_signatures(self):
-        wallet = Account.create()
+        account = Account.create()
         typed = build_evidence_typed_data(
             "0x" + "12" * 32, 1, "0x" + "34" * 32, "0x" + "00" * 32
         )
         signature = Account.sign_message(
-            encode_typed_data(full_message=typed), wallet.key
+            encode_typed_data(full_message=typed), account.key
         ).signature
 
         # v=0/1 are accepted (MetaMask) after normalize → 27/28; use v=2 as invalid.

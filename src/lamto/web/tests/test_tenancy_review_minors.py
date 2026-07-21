@@ -22,7 +22,7 @@ class FailedOutboxBuildingKeyTests(TestCase):
 
         source = inspect.getsource(action_inbox._failed_outbox_items)
         assert "building_id=building_id" in source
-        assert "signer_wallet__membership__organization__building_id" not in source
+        assert "organization__building_id" not in source
 
         # Drive the real helper: empty building yields no items; filter key is
         # on the event, so queryset SQL must reference evidence building column.

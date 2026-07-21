@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from lamto.accounts.models import ManagementMembership, SignerWallet
+from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.maintenance.models import MaintenanceCase
@@ -60,7 +60,6 @@ class ProposalVersion(InsertOnlyModel):
     snapshot = models.JSONField()
     snapshot_hash = models.CharField(max_length=64)
     creator_membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
-    creator_wallet = models.ForeignKey(SignerWallet, null=True, blank=True, on_delete=models.PROTECT)
     creator_signature = models.CharField(max_length=132, blank=True)
     outbox_event = models.OneToOneField(
         BlockchainOutboxEvent, on_delete=models.PROTECT, related_name="proposal_version"

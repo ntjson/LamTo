@@ -256,7 +256,6 @@ def publish_proposal_version(
         snapshot=snapshot,
         snapshot_hash=payload_hash(snapshot),
         creator_membership=membership,
-        creator_wallet=None,
         creator_signature="",
         outbox_event=event,
     )

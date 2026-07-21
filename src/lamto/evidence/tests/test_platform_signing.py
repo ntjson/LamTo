@@ -52,7 +52,7 @@ class PlatformSigningTests(TestCase):
         )
 
         self.assertEqual(event.signer_address, platform_signer_address())
-        self.assertIsNone(event.signer_wallet_id)
+        self.assertEqual(event.signer_address, platform_signer_address())
         self.assertEqual(event.status, BlockchainOutboxEvent.Status.PENDING)
         again = queue_platform_event(
             event_id, EvidenceType.PROPOSAL_CREATED, payload, ZERO_HASH, building

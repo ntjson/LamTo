@@ -174,7 +174,7 @@ class FundRecordTests(TestCase):
         session.save()
         return membership
 
-    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    @patch("lamto.web.staff_documents.scan_with_clamav", lambda _f: True)
     def test_prepare_then_sign_records_inflow(self):
         seed = seed_pilot_world(building_name="Fund Rec B", email_prefix="fr")
         self._login(seed, "fund_recorder")

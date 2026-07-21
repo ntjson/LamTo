@@ -7,7 +7,7 @@ Do not run under the restricted web writer role.
 
 from django.core.management.base import BaseCommand, CommandError
 
-from lamto.web.staff_signing import cleanup_stale_prepared_ops
+from lamto.web.staff_documents import cleanup_stale_prepared_ops
 
 
 class Command(BaseCommand):

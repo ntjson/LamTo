@@ -7,11 +7,8 @@ from urllib.error import URLError
 
 import pytest
 from lamto.documents.access import authorize_download
-from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import EvidenceType
-from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import PublishedLedgerEntry
-from lamto.finance.proposals import build_proposal_evidence_payload, submit_proposal_version
+from lamto.finance.proposals import submit_proposal_version
 from lamto.maintenance.ai import process_triage_job
 from lamto.maintenance.models import IssueReport, TriageJob
 from lamto.testing.factories import DEFAULT_AMOUNT_VND, new_event_id
@@ -59,18 +56,8 @@ def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilo
     proposal = seeded_pilot.seed.proposal
     quotation = seeded_pilot._ctx["quotation_original"]
     event_id = new_event_id()
-    payload = build_proposal_evidence_payload(
-        proposal, 19_000_000, "Changed", [quotation]
-    )
-    typed = build_evidence_typed_data(
-        event_id,
-        EvidenceType.PROPOSAL_CREATED,
-        "0x" + payload_hash(payload),
-        "0x" + version1.outbox_event.payload_hash,
-    )
-    signature = seeded_pilot.seed.sign_typed(manager, typed)
     version2 = submit_proposal_version(
-        proposal, 19_000_000, "Changed", [quotation], signature, event_id
+        proposal, 19_000_000, "Changed", [quotation], "", event_id
     )
     case = seeded_pilot.seed.case
     case.refresh_from_db()

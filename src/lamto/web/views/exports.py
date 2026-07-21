@@ -210,14 +210,13 @@ def _outbox_rows(building_id):
         "evidence_level",
         "transaction_hash",
         "chain_confirmed_block",
-        "signer_wallet_address",
+        "signer_address",
         "created_at",
         "confirmed_at",
     ]
     rows = []
     for event in (
         BlockchainOutboxEvent.objects.filter(building_id=building_id)
-        .select_related("signer_wallet")
         .order_by("id")
         .iterator(chunk_size=200)
     ):
@@ -231,7 +230,7 @@ def _outbox_rows(building_id):
                 event.evidence_level,
                 event.transaction_hash,
                 event.chain_confirmed_block,
-                event.signer_wallet.address if event.signer_wallet_id else "",
+                event.signer_address,
                 event.created_at.isoformat() if event.created_at else "",
                 event.confirmed_at.isoformat() if event.confirmed_at else "",
             ]

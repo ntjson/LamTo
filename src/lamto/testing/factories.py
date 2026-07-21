@@ -1,9 +1,7 @@
 """Deterministic non-production pilot factories and domain driver.
 
 Factories create one building, management memberships, resident occupancy,
-stakeholder wallets, document pairs, and labeled test records.
-Wallet private keys are held only in-process for tests/seeds and never printed
-by management commands (optional write to an ignored env file).
+document pairs, and labeled test records.
 """
 
 from __future__ import annotations
@@ -25,16 +23,11 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import storages
 from django.test import override_settings
 from django.utils import timezone
-from eth_account import Account
-from eth_account.messages import encode_typed_data
 
 from lamto.accounts.models import Building, ManagementMembership, ResidentOccupancy, Unit
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
-from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType, is_settled
-from lamto.evidence.services import begin_wallet_registration, register_wallet
-from lamto.evidence.signatures import build_evidence_typed_data
+from lamto.evidence.models import BlockchainOutboxEvent, is_settled
 from lamto.finance.fund import (
     fund_balance,
     get_or_create_fund,
@@ -49,7 +42,6 @@ from lamto.finance.models import (
 )
 from lamto.finance.settlements import record_acknowledgement, record_transfer
 from lamto.finance.proposals import (
-    build_proposal_evidence_payload,
     create_proposal,
     submit_proposal_version,
 )
@@ -149,16 +141,6 @@ def photo(building, kind, uploader, tag: str):
     )
 
 
-def make_signer(membership: ManagementMembership):
-    account = Account.create()
-    challenge = begin_wallet_registration(membership)
-    proof = Account.sign_message(
-        encode_typed_data(full_message=challenge), account.key
-    ).signature.hex()
-    register_wallet(membership, account.address, proof)
-    return account
-
-
 def new_event_id() -> str:
     return "0x" + secrets.token_hex(32)
 
@@ -179,13 +161,12 @@ def confirm_events(*events) -> None:
 
 @dataclass
 class PilotSeed:
-    """Seeded pilot world: actors, building structure, and in-process wallets."""
+    """Seeded pilot world: actors, building structure, and sample records."""
 
     building: Building
     unit: Unit
     location: BuildingLocation
     password: str = PILOT_PASSWORD
-    accounts: dict[int, Any] = field(default_factory=dict)
     management_users: list[Any] = field(default_factory=list)
     management_memberships: list[ManagementMembership] = field(default_factory=list)
     residents: list[Any] = field(default_factory=list)
@@ -199,15 +180,6 @@ class PilotSeed:
     def _tag(self, base: str) -> str:
         self._seq += 1
         return f"{base}-{self._seq}"
-
-    def account_for(self, membership) -> Any:
-        return self.accounts[membership.pk]
-
-    def sign_typed(self, membership, typed_data) -> str:
-        return Account.sign_message(
-            encode_typed_data(full_message=typed_data),
-            self.accounts[membership.pk].key,
-        ).signature.hex()
 
     def document_pair(self, kind, uploader, tag: str | None = None):
         return document_pair(self.building, kind, uploader, tag or self._tag("doc"))
@@ -244,10 +216,8 @@ def seed_pilot_world(
             display_name=f"Pilot Manager {number}",
         )
         membership = ManagementMembership.objects.create(user=user, building=building)
-        account = make_signer(membership)
         seed.management_users.append(user)
         seed.management_memberships.append(membership)
-        seed.accounts[membership.pk] = account
 
     resident = get_user_model().objects.create_user(
         email=email("resident"),
@@ -394,22 +364,12 @@ class PilotDomainDriver:
         )
         proposal = create_proposal(work, manager)
         event_id = new_event_id()
-        payload = build_proposal_evidence_payload(
-            proposal, amount_vnd, "Pilot Contractor Co", [quotation_original]
-        )
-        typed = build_evidence_typed_data(
-            event_id,
-            EvidenceType.PROPOSAL_CREATED,
-            "0x" + payload_hash(payload),
-            "0x" + "00" * 32,
-        )
-        signature = self.seed.sign_typed(manager, typed)
         version = submit_proposal_version(
             proposal,
             amount_vnd,
             "Pilot Contractor Co",
             [quotation_original],
-            signature,
+            "",
             event_id,
         )
         self.seed.proposal = proposal

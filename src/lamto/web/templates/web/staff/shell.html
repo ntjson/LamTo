@@ -73,23 +73,17 @@
   {% endif %}
 
   <main id="main" class="site-main" role="main">
-    {% include "web/staff/_sign_confirmation.html" %}
     {% block content %}{% endblock %}
   </main>
 
   <script>
     window.lamtoI18n = {
       secureRandomUnavailable: "{% filter escapejs %}{% trans 'Secure random generator unavailable; cannot sign evidence.' %}{% endfilter %}",
-      walletRequired: "{% filter escapejs %}{% trans 'A compatible wallet is required to sign this decision.' %}{% endfilter %}",
       noAccountFrom: "{% filter escapejs %}{% trans 'No account from %(provider)s. Unlock it and connect this site.' %}{% endfilter %}",
-      walletNotConnected: "{% filter escapejs %}{% trans 'The wallet registered for this role is not connected. Open that account in %(provider)s, connect it to LamTo, then try again.' %}{% endfilter %}",
       decisionUpdated: "{% filter escapejs %}{% trans 'Decision updated. Your reason is preserved and ready to sign.' %}{% endfilter %}",
       actionNotReady: "{% filter escapejs %}{% trans 'This action is not ready. Review the unmet checks above.' %}{% endfilter %}",
       preparingEvidence: "{% filter escapejs %}{% trans 'Preparing secure evidence…' %}{% endfilter %}",
       actionNotReadyRefresh: "{% filter escapejs %}{% trans 'This action is not ready to sign. Keep your entries and refresh the page; if it persists, contact an administrator.' %}{% endfilter %}",
-      connectingWallet: "{% filter escapejs %}{% trans 'Connecting to the wallet registered for this role…' %}{% endfilter %}",
-      walletMismatch: "{% filter escapejs %}{% trans 'The connected wallet does not match the wallet registered for this role. Open the correct account, connect it to LamTo, then try again.' %}{% endfilter %}",
-      confirmInWallet: "{% filter escapejs %}{% trans 'Confirm this action in the wallet registered for your current role.' %}{% endfilter %}",
       savingSigned: "{% filter escapejs %}{% trans 'Saving your signed action…' %}{% endfilter %}",
       signingStopped: "{% filter escapejs %}{% trans 'Signing stopped. Your entries are still here.' %}{% endfilter %}",
       checkAndRetry: "{% filter escapejs %}{% trans 'Check the details above and try again.' %}{% endfilter %}",
@@ -103,13 +97,9 @@
       copyFailed: "{% filter escapejs %}{% trans 'Copy failed' %}{% endfilter %}",
       copyFailedHint: "{% filter escapejs %}{% trans 'Copy failed. Select the value and copy it manually.' %}{% endfilter %}",
       metaMask: "MetaMask",
-      braveWallet: "Brave Wallet",
-      injectedWallet: "{% filter escapejs %}{% trans 'injected wallet' %}{% endfilter %}",
-      walletMissingHint: "{% filter escapejs %}{% trans 'No compatible wallet detected. Install or unlock MetaMask (or another injected wallet), then reload this page.' %}{% endfilter %}"
+      brave: "Brave"
     };
   </script>
-  {# Cache-bust: service worker previously froze an old wallet-signing.js #}
-  <script src="{% static 'web/wallet-signing.js' %}?v=9"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

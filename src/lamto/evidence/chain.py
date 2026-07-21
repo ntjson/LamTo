@@ -145,7 +145,7 @@ class EvidenceRegistryClient:
         if not self.relayer_private_key:
             raise ChainClientError("BLOCKCHAIN_RELAYER_PRIVATE_KEY is not configured.")
         account = Account.from_key(self.relayer_private_key)
-        signer = to_checksum_address(event.signer_address or event.signer_wallet.address)
+        signer = to_checksum_address(event.signer_address)
         function = self.contract.functions.recordEvidence(
             event.event_id,
             _payload_hash_for_chain(event.payload_hash),

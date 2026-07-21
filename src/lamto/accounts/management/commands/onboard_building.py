@@ -1,5 +1,5 @@
 """Onboard a new building tenant: building, fund, locations, units, and
-optional Management users. Wallets and the fund opening balance stay in the
+optional Management users. The fund opening balance stays in the
 runbook — they need real humans and signed evidence.
 """
 
@@ -50,7 +50,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Building onboarded: {name} (id={building.pk})"))
         self.stdout.write(
-            "Next steps (runbook): set manager passwords + TOTP, register signer "
-            "wallets, add resident occupancies (set phone numbers for phone "
+            "Next steps (runbook): set manager passwords + TOTP, "
+            "add resident occupancies (set phone numbers for phone "
             "login), then record and verify the fund opening balance."
         )

@@ -1,9 +1,4 @@
-"""Shared helpers for staff two-phase wallet-signed forms (spec 4.3).
-
-Both create-proposal and fund-record sign a server-computed EIP-712 payload,
-so they upload evidence + allocate a record id first, then sign. This module
-holds the pieces both flows share; all domain mutations stay in finance.*.
-"""
+"""Shared helpers for staff document uploads and prepared-operation cleanup."""
 
 import logging
 import secrets

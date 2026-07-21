@@ -10,7 +10,7 @@ from lamto.finance.models import Proposal, Settlement
 from lamto.finance.settlements import record_acknowledgement, record_transfer
 from lamto.web.forms.staff import RecordSettlementAcknowledgementForm, RecordSettlementTransferForm
 from lamto.web.staff import require_management_context, staff_context
-from lamto.web.staff_signing import document_pair_options, new_event_id, selected_pair
+from lamto.web.staff_documents import document_pair_options, new_event_id, selected_pair
 
 
 def _context(request, membership, memberships, **extra):

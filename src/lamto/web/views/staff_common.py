@@ -19,31 +19,6 @@ from lamto.web.staff import require_management_context, staff_context, switch_bu
 logger = logging.getLogger(__name__)
 
 
-def signed_action_failure(request, error, *, action, next_step):
-    """Flash a task-focused recovery message; keep the raw error in server logs.
-
-    Covers what failed, that inputs are preserved, and the next safe action.
-    Backend exception text never reaches the flash for PermissionDenied.
-    """
-    logger.warning("%s failed: %s", action, error)
-    if isinstance(error, ValidationError):
-        detail = (
-            error.messages[0]
-            if getattr(error, "messages", None)
-            else "The server rejected the submitted values."
-        )
-    else:
-        # Typical PermissionDenied: MetaMask signed with a different account
-        # than the membership's registered wallet.
-        detail = "The connected wallet does not match the wallet registered for this role."
-        next_step = "Connect the registered wallet and sign again."
-    messages.error(
-        request,
-        f"{action} was not saved. {detail} "
-        f"Your entries are still on this page. {next_step}",
-    )
-
-
 def prepare_record_list(
     request, qs, *, search_fields=(), sorts=(), page_param="page", per_page=20
 ):
@@ -235,33 +210,6 @@ STAGE_STATE_LABELS = {
     # Snapshot signed; independent chain confirmation / finalize still pending.
     "pending": _("Awaiting confirmation"),
 }
-
-SESSION_SIGN_CONFIRMATION_KEY = "staff_sign_confirmation"
-
-
-def set_sign_confirmation(
-    request,
-    *,
-    action,
-    acting_as,
-    details,
-    consequence,
-    what_next,
-    status_note=None,
-):
-    """Store a post-sign confirmation panel (mirrors the pre-sign review summary)."""
-    request.session[SESSION_SIGN_CONFIRMATION_KEY] = {
-        "action": action,
-        "acting_as": acting_as,
-        "details": list(details or []),
-        "consequence": consequence,
-        "what_next": what_next,
-        "status_note": status_note or "",
-    }
-
-
-def pop_sign_confirmation(request):
-    return request.session.pop(SESSION_SIGN_CONFIRMATION_KEY, None)
 
 # Proposal statuses that clear the proposal stage.
 _PROPOSAL_AUTHORIZED = frozenset({"IN_PROGRESS", "COMPLETED"})

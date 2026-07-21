@@ -10,7 +10,6 @@ from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
-from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.maintenance.models import (
     BuildingLocation,
@@ -95,11 +94,6 @@ class ProposalVersionTests(TestCase):
             redacts=quotation,
         )
         account = Account.create()
-        challenge = begin_wallet_registration(membership)
-        proof = Account.sign_message(
-            encode_typed_data(full_message=challenge), account.key
-        ).signature.hex()
-        register_wallet(membership, account.address.lower(), proof)
         return membership, case, quotation, account
 
     def test_create_proposal_is_case_anchored_and_proposes_linked_reports(self):

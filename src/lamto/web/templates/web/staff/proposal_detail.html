@@ -41,7 +41,6 @@
           <div><dt>{% trans "Snapshot hash" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=version.snapshot_hash label=_("Snapshot hash") %}</dd></div>
           <div><dt>{% trans "Verification" %}</dt><dd>{{ version.verification_label|default:_("Not yet verified") }}</dd></div>
           <div><dt>{% trans "Mode" %}</dt><dd>{{ proposal.mode }}</dd></div>
-          {% if publish_expected_signer %}<div><dt>{% trans "Registered publisher wallet" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=publish_expected_signer label=_("Publisher wallet") %}</dd></div>{% endif %}
         </dl>
         <h3>{% trans "Signed snapshot" %}</h3>
         <pre id="snapshot-json">{{ version.snapshot }}</pre>

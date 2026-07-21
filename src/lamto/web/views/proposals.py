@@ -1,7 +1,5 @@
 """Management workspace: triage, cases, work orders, proposals."""
 
-import json
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -12,14 +10,10 @@ from django.views.decorators.http import require_GET, require_http_methods
 from lamto.accounts.security import require_recent_auth
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
-from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import EvidenceType
-from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import (
     Proposal,
     PublishedLedgerEntry,
 )
-from lamto.accounts.models import SignerWallet
 from lamto.finance.proposals import (
     ZERO_HASH,
     build_proposal_evidence_payload,
@@ -27,7 +21,6 @@ from lamto.finance.proposals import (
     create_standalone_proposal,
     decide_proposal,
     publish_proposal_version,
-    submit_proposal_version,
     spending_proposal_cases,
 )
 from lamto.maintenance.models import IssueReport, MaintenanceCase
@@ -35,17 +28,14 @@ from lamto.maintenance.cases import complete_proposal_work, publish_progress, st
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
     CreateProposalForm,
-    SignProposalForm,
     StandaloneProposalForm,
 )
 from lamto.web.staff import require_management_context, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
-    set_sign_confirmation,
-    signed_action_failure,
 )
-from lamto.web.staff_signing import new_event_id, upload_document_pair
+from lamto.web.staff_documents import new_event_id, upload_document_pair
 
 
 def _proposal_publishable(proposal) -> bool:
@@ -149,7 +139,7 @@ def proposal_detail(request, pk):
         building_id=membership.building_id,
     )
     publish_form = None
-    can_publish = _proposal_publishable(proposal)
+    can_publish = False
     version = proposal.current_version
     publish_typed_data = None
     publish_expected_signer = ""
@@ -182,167 +172,6 @@ def proposal_detail(request, pk):
             else:
                 messages.success(request, "Proposal updated.")
             return redirect("web:proposal-detail", pk=proposal.pk)
-        # Signed financial / accountability actions require recent re-auth.
-        if action == "publish":
-            require_recent_auth(request)
-        if action == "publish":
-            if not can_publish:
-                messages.error(
-                    request,
-                    "Publication is not ready to sign. Review the unmet checks on this "
-                    "page, or wait if a publication snapshot is already awaiting confirmation.",
-                )
-            else:
-                require_management_context(request)
-                if publish_form.is_valid():
-                    try:
-                        snapshot = publish_form.save(proposal, membership)
-                    except (ValidationError, PermissionDenied) as error:
-                        signed_action_failure(
-                            request,
-                            error,
-                            action="The publication",
-                            next_step="Check the publication details, then sign again.",
-                        )
-                    else:
-                        event_ref = getattr(
-                            getattr(snapshot, "outbox_event", None), "event_id", ""
-                        ) or publish_form.cleaned_data.get("event_id", "")
-                        short_ref = (
-                            f"{event_ref[:10]}…"
-                            if event_ref and len(event_ref) > 12
-                            else event_ref or f"snapshot #{snapshot.pk}"
-                        )
-                        amount = (
-                            proposal.current_version.amount_vnd
-                            if proposal.current_version_id
-                            else None
-                        )
-                        amount_display = (
-                            f"{amount:,} VND" if amount is not None else "—"
-                        )
-                        contractor = (
-                            proposal.current_version.contractor_name
-                            if proposal.current_version_id
-                            else "—"
-                        )
-                        set_sign_confirmation(
-                            request,
-                            action="Publish to resident ledger",
-                            acting_as=(
-                                f"{membership.building.name}"
-                            ),
-                            details=[
-                                {
-                                    "label": "Proposal",
-                                    "value": f"#{proposal.pk}",
-                                },
-                                {"label": "Amount", "value": amount_display},
-                                {"label": "Contractor", "value": contractor},
-                                {
-                                    "label": "Receipt anchor",
-                                    "value": short_ref,
-                                },
-                            ],
-                            consequence=(
-                                "An append-only resident-ledger snapshot is prepared. "
-                                "It is not yet a finalized public expense."
-                            ),
-                            what_next=(
-                                "Independent confirmation must finish before residents "
-                                "see this verified expense on the public ledger. "
-                                "Publication stays amber until that confirmation lands."
-                            ),
-                            status_note=(
-                                "Signed — awaiting independent confirmation"
-                            ),
-                        )
-                        messages.success(
-                            request,
-                            f"Publication signed for proposal #{proposal.pk}. "
-                            "Awaiting independent confirmation before residents see it.",
-                        )
-                        return redirect("web:proposal-detail", pk=proposal.pk)
-                else:
-                    detail = "; ".join(
-                        e for errs in publish_form.errors.values() for e in errs
-                    ) or "Form invalid."
-                    messages.error(
-                        request,
-                        f"Publication not saved: {detail} "
-                        "Your entries are still here. Connect the registered publisher wallet and try again.",
-                    )
-    if can_publish:
-        from django.utils import timezone as dj_tz
-
-        from lamto.evidence.services import utc_rfc3339
-        from lamto.finance.publication import (
-            allocate_publication_id,
-            build_publication_sign_package,
-        )
-
-        pub_event_id = new_event_id()
-        pub_id = allocate_publication_id()
-        pub_ts = dj_tz.now()
-        if publish_form is not None and publish_form.is_bound:
-            if publish_form.data.get("event_id"):
-                pub_event_id = publish_form.data.get("event_id").strip() or pub_event_id
-            try:
-                pub_id = int(publish_form.data.get("publication_id") or pub_id)
-            except (TypeError, ValueError):
-                pass
-            raw_ts = (publish_form.data.get("publication_timestamp") or "").strip()
-            if raw_ts:
-                from django.utils.dateparse import parse_datetime
-
-                parsed = parse_datetime(raw_ts)
-                if parsed is not None:
-                    if dj_tz.is_naive(parsed):
-                        parsed = dj_tz.make_aware(parsed, dj_tz.utc)
-                    pub_ts = parsed
-        try:
-            package = build_publication_sign_package(
-                proposal,
-                membership,
-                event_id=pub_event_id,
-                publication_id=pub_id,
-                timestamp=pub_ts,
-            )
-            publish_typed_data = json.dumps(package["typed_data"])
-            if package.get("forbidden_publisher"):
-                messages.warning(
-                    request,
-                    "This user is blocked from publishing (creator / "
-                    "payment recorder). Use pilot-eligible-publisher.",
-                )
-        except (ValidationError, PermissionDenied, ValueError) as error:
-            publish_typed_data = None
-            detail = (
-                error.messages[0]
-                if getattr(error, "messages", None)
-                else "The publication package could not be prepared."
-            )
-            messages.error(
-                request,
-                f"Publication is not ready to sign. {detail} "
-                "Resolve the issue above, then reload this page.",
-            )
-        publish_form = PreparePublicationForm(
-            initial={
-                "event_id": pub_event_id,
-                "publication_id": pub_id,
-                "publication_timestamp": utc_rfc3339(pub_ts),
-                "reason": (publish_form.data.get("reason") if publish_form and publish_form.is_bound else "")
-                or "Publish ledger pilot",
-            }
-        )
-        wallet = (
-            SignerWallet.objects.filter(membership=membership, active=True)
-            .order_by("pk")
-            .first()
-        )
-        if wallet is not None:
-            publish_expected_signer = wallet.address
 
     publication_pending = False
     publication_snapshot = None
@@ -373,12 +202,6 @@ def proposal_detail(request, pk):
 @login_required
 @require_http_methods(["GET", "POST"])
 def proposal_create(request, pk):
-    """Two-phase create-proposal from a spending case (spec 4.3.1).
-
-    action=prepare: upload quotation pair + create the DRAFT proposal, then
-    render the signed form with the exact typed data. action=submit: freeze
-    the immutable version via the domain service.
-    """
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
     case = get_object_or_404(
@@ -403,8 +226,6 @@ def proposal_create(request, pk):
     create_form = CreateProposalForm(request.POST or None, request.FILES or None)
     sign_form = None
     typed_data = None
-    action = request.POST.get("action") if request.method == "POST" else None
-
     if request.method == "POST" and create_form.is_valid():
         try:
             original, _redacted = upload_document_pair(
@@ -424,75 +245,9 @@ def proposal_create(request, pk):
             )
         except (ValidationError, PermissionDenied) as error:
             create_form.add_error(None, error)
-            action = None
         else:
             messages.success(request, "Proposal published.")
             return redirect("web:proposal-detail", pk=proposal.pk)
-
-    if action == "prepare" and create_form.is_valid():
-        try:
-            original, _redacted = upload_document_pair(
-                case.building,
-                Document.Kind.QUOTATION,
-                request.user,
-                create_form.cleaned_data["quotation_original"],
-                create_form.cleaned_data["quotation_redacted"],
-            )
-            proposal = existing or create_proposal(case, membership)
-            amount = create_form.cleaned_data["amount_vnd"]
-            contractor = create_form.cleaned_data["contractor_name"]
-            payload = build_proposal_evidence_payload(proposal, amount, contractor, [original])
-        except (ValidationError, PermissionDenied) as error:
-            if isinstance(error, ValidationError):
-                create_form.add_error(None, error)
-            else:
-                raise
-        else:
-            event_id = new_event_id()
-            typed_data = json.dumps(
-                build_evidence_typed_data(
-                    event_id, EvidenceType.PROPOSAL_CREATED, "0x" + payload_hash(payload), ZERO_HASH
-                )
-            )
-            sign_form = SignProposalForm(
-                initial={
-                    "event_id": event_id,
-                    "amount_vnd": amount,
-                    "contractor_name": contractor,
-                    "quotation_original_id": original.pk,
-                    "proposal_id": proposal.pk,
-                }
-            )
-    elif action == "submit":
-        sign_form = SignProposalForm(request.POST)
-        if sign_form.is_valid():
-            proposal = get_object_or_404(
-                Proposal,
-                pk=sign_form.cleaned_data["proposal_id"],
-                case__building_id=building_id,
-            )
-            original = get_object_or_404(
-                DocumentVersion,
-                pk=sign_form.cleaned_data["quotation_original_id"],
-                document__building_id=building_id,
-            )
-            try:
-                submit_proposal_version(
-                    proposal,
-                    sign_form.cleaned_data["amount_vnd"],
-                    sign_form.cleaned_data["contractor_name"],
-                    [original],
-                    sign_form.cleaned_data["signature"],
-                    sign_form.cleaned_data["event_id"],
-                )
-            except (ValidationError, PermissionDenied) as error:
-                if isinstance(error, ValidationError):
-                    sign_form.add_error(None, error)
-                else:
-                    raise
-            else:
-                messages.success(request, "Proposal submitted for Management review.")
-                return redirect("web:proposal-detail", pk=proposal.pk)
 
     return render(
         request,

@@ -45,7 +45,6 @@ class ProposalCreateTests(TestCase):
         driver.confirm_triage_case()
         self.work = self.seed.case
         self.operator = self.seed.management_memberships[0]
-        self.account = self.seed.accounts[self.operator.pk]
 
     def _login_operator(self):
         self.client.force_login(self.operator.user)
@@ -58,7 +57,7 @@ class ProposalCreateTests(TestCase):
         session["active_management_id"] = self.operator.pk
         session.save()
 
-    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    @patch("lamto.web.staff_documents.scan_with_clamav", lambda _f: True)
     def test_publish_submits_platform_signed_version(self):
         self._login_operator()
         url = reverse("web:proposal-create", kwargs={"pk": self.work.pk})
@@ -84,7 +83,7 @@ class ProposalCreateTests(TestCase):
         self.assertTrue(version.outbox_event.signer_address)
         self.work.refresh_from_db()
 
-    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    @patch("lamto.web.staff_documents.scan_with_clamav", lambda _f: True)
     def test_case_backed_proceed_decision_starts_case_work(self):
         self._login_operator()
         self.client.post(reverse("web:proposal-create", kwargs={"pk": self.work.pk}), {

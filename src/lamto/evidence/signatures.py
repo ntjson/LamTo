@@ -63,7 +63,7 @@ def normalize_signature(signature) -> str:
         raise ValueError("Signature must be bytes or hexadecimal.")
     if len(raw) != 65:
         raise ValueError("Signature must be exactly 65 bytes.")
-    # MetaMask / some wallets return recovery id as 0 or 1; EIP-155 style uses 27/28.
+    # Some signers return recovery id as 0 or 1; EIP-155 style uses 27/28.
     if raw[64] in (0, 1):
         raw[64] = raw[64] + 27
     r = int.from_bytes(raw[:32], "big")
