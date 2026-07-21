@@ -346,11 +346,6 @@ class StandaloneProposalForm(CreateProposalForm):
             self.fields[name].required = True
 
 
-class ProposalDecisionForm(forms.Form):
-    proceed = forms.BooleanField(required=False)
-    note = forms.CharField(required=False, widget=forms.Textarea(attrs={"class": "input"}))
-
-
 class SignProposalForm(SignedDecisionForm):
     """Signed submit of the frozen proposal version. Hidden fields carry the
     prepared draft so the posted signature matches the exact payload."""

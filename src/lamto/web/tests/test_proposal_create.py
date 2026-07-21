@@ -19,6 +19,7 @@ from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import Proposal, ProposalVersion
 from lamto.finance.proposals import ZERO_HASH, build_proposal_evidence_payload
 from lamto.documents.models import Document, DocumentVersion
+from lamto.maintenance.models import IssueReport
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-propcreate-")
@@ -82,6 +83,29 @@ class ProposalCreateTests(TestCase):
         self.assertEqual(version.amount_vnd, 5_000_000)
         self.assertTrue(version.outbox_event.signer_address)
         self.work.refresh_from_db()
+
+    @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
+    def test_case_backed_proceed_decision_starts_case_work(self):
+        self._login_operator()
+        self.client.post(reverse("web:proposal-create", kwargs={"pk": self.work.pk}), {
+            "action": "prepare", "amount_vnd": 5_000_000, "contractor_name": "Acme Co",
+            "fund_code": "GENERAL", "purpose": "Lift jerks",
+            "proposed_action": "Replace bearings", "expected_schedule": "August 2026",
+            "quotation_original": _pdf("q.pdf", b"orig"),
+            "quotation_redacted": _pdf("qr.pdf", b"redacted differs"),
+        })
+        proposal = Proposal.objects.get(case=self.work)
+
+        response = self.client.post(
+            reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
+            {"action": "decide", "proceed": "on", "note": "Proceed"},
+        )
+
+        self.assertRedirects(response, reverse("web:proposal-detail", kwargs={"pk": proposal.pk}))
+        proposal.refresh_from_db()
+        self.work.decision.report.refresh_from_db()
+        self.assertEqual(proposal.status, Proposal.Status.IN_PROGRESS)
+        self.assertEqual(self.work.decision.report.status, IssueReport.Status.IN_PROGRESS)
 
     def test_second_manager_can_open_proposal_create(self):
         manager = self.seed.management_memberships[1]

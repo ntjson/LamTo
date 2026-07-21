@@ -5,6 +5,7 @@ import json
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
@@ -32,7 +33,7 @@ from lamto.finance.proposals import (
     spending_proposal_cases,
 )
 from lamto.maintenance.models import IssueReport, MaintenanceCase
-from lamto.maintenance.cases import complete_proposal_work, publish_progress
+from lamto.maintenance.cases import complete_proposal_work, publish_progress, start_case_work
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
     CreateProposalForm,
@@ -172,10 +173,13 @@ def proposal_detail(request, pk):
             require_recent_auth(request)
             try:
                 if action == "decide":
-                    decide_proposal(
-                        proposal, request.user, request.POST.get("proceed") in {"1", "true", "on"},
-                        request.POST.get("note", ""),
-                    )
+                    proceed = request.POST.get("proceed") in {"1", "true", "on"}
+                    with transaction.atomic():
+                        decide_proposal(
+                            proposal, request.user, proceed, request.POST.get("note", ""),
+                        )
+                        if proceed and proposal.case_id:
+                            start_case_work(proposal.case, request.user)
                 elif action == "progress":
                     publish_progress(
                         proposal=proposal, manager=request.user, cause=request.POST.get("cause", ""),

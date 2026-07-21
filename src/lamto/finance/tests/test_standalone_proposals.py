@@ -9,8 +9,12 @@ from lamto.accounts.models import Building, ManagementMembership, ResidentOccupa
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.signatures import platform_signer_address
 from lamto.finance.models import Proposal
-from lamto.finance.proposals import create_standalone_proposal, decide_proposal, publish_proposal_version
-from lamto.maintenance.models import CompletionRating, WorkUpdate
+from lamto.finance.proposals import (
+    create_proposal, create_standalone_proposal, decide_proposal, publish_proposal_version,
+)
+from lamto.maintenance.models import (
+    BuildingLocation, CaseReport, IssueReport, MaintenanceCase, TriageDecision, WorkUpdate,
+)
 from lamto.maintenance.ratings import rate_completed_proposal
 
 
@@ -39,6 +43,23 @@ class StandaloneProposalTests(TestCase):
             redacts=original,
         )
         return original
+
+    def case(self):
+        location = BuildingLocation.objects.create(building=self.building, name="Lobby")
+        report = IssueReport.objects.create(
+            reporter=self.resident, unit=self.unit, text="Leak", selected_location=location,
+            location_path_snapshot="B1 / Lobby",
+        )
+        decision = TriageDecision.objects.create(
+            report=report, operator=self.manager, category="Roof", urgency="HIGH",
+            location=location, department="Maintenance", deadline_minutes=60,
+        )
+        case = MaintenanceCase.objects.create(
+            decision=decision, building=self.building, category="Roof", urgency="HIGH",
+            location=location, department="Maintenance", deadline_at=timezone.now(),
+        )
+        CaseReport.objects.create(case=case, report=report, grouped_by=self.manager)
+        return case
 
     def publish(self, proposal, **overrides):
         values = dict(
@@ -80,12 +101,26 @@ class StandaloneProposalTests(TestCase):
         self.assertEqual(other.status, Proposal.Status.NOT_PROCEEDING)
         self.assertIsNotNone(other.closed_at)
 
+    def test_case_backed_proposal_publish_is_platform_anchored(self):
+        case = self.case()
+        proposal = create_proposal(case, self.membership)
+
+        version = self.publish(proposal)
+
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.case, case)
+        self.assertEqual(proposal.building, self.building)
+        self.assertEqual(proposal.status, Proposal.Status.PUBLISHED)
+        self.assertEqual(version.snapshot["case_id"], case.pk)
+        self.assertEqual(version.outbox_event.signer_address, platform_signer_address())
+
     def test_work_update_target_xor_is_database_enforced(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
             WorkUpdate.objects.create(cause="x", result="y")
         proposal = create_standalone_proposal(self.building, self.membership)
+        case = self.case()
         with self.assertRaises(IntegrityError), transaction.atomic():
-            WorkUpdate.objects.create(case_id=999999, proposal=proposal, cause="x", result="y")
+            WorkUpdate.objects.create(case=case, proposal=proposal, cause="x", result="y")
 
     def test_completed_proposal_rating_requires_occupancy_and_is_once(self):
         proposal = create_standalone_proposal(self.building, self.membership)
