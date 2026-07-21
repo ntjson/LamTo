@@ -1,3 +1,4 @@
+import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -65,18 +66,6 @@ class IssueDetailScreen extends ConsumerWidget {
           l10n.timelineCase(caseItem.category),
           null,
         ),
-        for (final update in caseItem.updates)
-          (
-            Icons.build_outlined,
-            l10n.timelineWork(update.result, _date(caseItem.deadlineAt)),
-            null,
-          ),
-        if (caseItem.completedAt != null)
-          (
-            Icons.check_circle_outline,
-            '${l10n.timelineCompleted} · ${_date(caseItem.completedAt!)}',
-            StatusTone.success,
-          ),
       ],
     ];
     final rateable = report.cases.where((caseItem) => caseItem.canRate);
@@ -142,6 +131,30 @@ class IssueDetailScreen extends ConsumerWidget {
             ),
             title: Text(label),
           ),
+        const SizedBox(height: 16),
+        Text(
+          l10n.progressTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        if (report.cases.every((caseItem) => caseItem.updates.isEmpty))
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              l10n.progressEmpty,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        for (final caseItem in report.cases) ...[
+          for (final update in caseItem.updates)
+            _ProgressTile(
+              createdAt: update.createdAt,
+              cause: update.cause,
+              result: update.result,
+              photos: update.photos,
+            ),
+          if (caseItem.completedAt != null)
+            _CompletedMarker(at: caseItem.completedAt!),
+        ],
         for (final caseItem in rateable)
           if (report.status != StatusEnum.DECLINED)
             Padding(
@@ -189,6 +202,75 @@ class IssueDetailScreen extends ConsumerWidget {
     if (replied == true && context.mounted) {
       ref.invalidate(reportDetailProvider(reportId));
     }
+  }
+}
+
+class _ProgressTile extends StatelessWidget {
+  const _ProgressTile({
+    required this.createdAt,
+    required this.cause,
+    required this.result,
+    required this.photos,
+  });
+
+  final DateTime createdAt;
+  final String cause;
+  final String result;
+  final BuiltList<ReportWorkUpdatePhoto> photos;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: const Icon(Icons.build_outlined),
+    title: Text(cause),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(result),
+        Text(_date(createdAt)),
+        if (photos.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 96,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final photo in photos)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: AuthenticatedImage(
+                        photo.downloadUrl,
+                        width: 96,
+                        height: 96,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _CompletedMarker extends StatelessWidget {
+  const _CompletedMarker({required this.at});
+
+  final DateTime at;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = statusToneColors(context, StatusTone.success);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(Icons.check_circle_outline, color: colors.fg),
+      title: Text(
+        '${AppLocalizations.of(context)!.progressCompleted} · ${_date(at)}',
+      ),
+    );
   }
 }
 

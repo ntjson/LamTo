@@ -261,6 +261,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get timelineCompleted => 'Công việc đã hoàn thành';
 
   @override
+  String get progressTitle => 'Tiến độ xử lý';
+
+  @override
+  String get progressEmpty => 'Chưa có cập nhật tiến độ.';
+
+  @override
+  String get progressCompleted => 'Đã hoàn thành công việc';
+
+  @override
   String get declinedTitle => 'Ban quản lý quyết định không tiếp nhận';
 
   @override

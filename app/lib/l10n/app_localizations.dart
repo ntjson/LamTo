@@ -560,6 +560,24 @@ abstract class AppLocalizations {
   /// **'Work completed'**
   String get timelineCompleted;
 
+  /// No description provided for @progressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Work progress'**
+  String get progressTitle;
+
+  /// No description provided for @progressEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No progress updates yet.'**
+  String get progressEmpty;
+
+  /// No description provided for @progressCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Work completed'**
+  String get progressCompleted;
+
   /// No description provided for @declinedTitle.
   ///
   /// In en, this message translates to:

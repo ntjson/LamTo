@@ -261,6 +261,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get timelineCompleted => 'Work completed';
 
   @override
+  String get progressTitle => 'Work progress';
+
+  @override
+  String get progressEmpty => 'No progress updates yet.';
+
+  @override
+  String get progressCompleted => 'Work completed';
+
+  @override
   String get declinedTitle => 'Management decided not to proceed';
 
   @override

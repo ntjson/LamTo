@@ -1,8 +1,13 @@
+import 'dart:typed_data';
+
 import 'package:built_collection/built_collection.dart';
 import 'package:built_value/json_object.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lamto/core/authenticated_image.dart';
+import 'package:lamto/core/providers.dart';
 import 'package:lamto/features/reports/issue_detail_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
@@ -13,6 +18,8 @@ ReportDetail _detail({
   StatusEnum status = StatusEnum.SUBMITTED,
   String? declinedReason,
   MapBuilder<String, JsonObject?>? openInfoRequest,
+  List<ReportWorkUpdate>? updates,
+  bool completed = true,
 }) => ReportDetail(
   (b) => b
     ..id = 42
@@ -35,19 +42,37 @@ ReportDetail _detail({
           ..urgency = 'HIGH'
           ..deadlineAt = DateTime.utc(2026, 7, 12)
           ..active = true
-          ..completedAt = DateTime.utc(2026, 7, 11)
-          ..updates = ListBuilder<ReportWorkUpdate>([
-            ReportWorkUpdate(
-              (u) => u
-                ..id = 9
-                ..cause = 'Cáp mòn'
-                ..result = 'Đã cố định cáp'
-                ..createdAt = DateTime.utc(2026, 7, 11),
-            ),
-          ])
+          ..completedAt = completed ? DateTime.utc(2026, 7, 11) : null
+          ..updates = ListBuilder<ReportWorkUpdate>(updates ?? [_update(9)])
           ..canRate = canRate,
       ),
     ]),
+);
+
+ReportWorkUpdate _update(
+  int id, {
+  String? cause,
+  String? result,
+  bool withPhoto = false,
+}) => ReportWorkUpdate(
+  (u) => u
+    ..id = id
+    ..cause = cause ?? 'Cáp mòn $id'
+    ..result = result ?? 'Đã cố định cáp $id'
+    ..createdAt = DateTime.utc(2026, 7, 10 + id)
+    ..photos = ListBuilder<ReportWorkUpdatePhoto>(
+      withPhoto
+          ? [
+              ReportWorkUpdatePhoto(
+                (p) => p
+                  ..id = id
+                  ..filename = 'update-$id.jpg'
+                  ..kind = KindEnum.AFTER
+                  ..downloadUrl = '/work-updates/$id/photo',
+              ),
+            ]
+          : [],
+    ),
 );
 
 MapBuilder<String, JsonObject?> _infoRequest([JsonObject? message]) =>
@@ -112,10 +137,27 @@ class _FakeRepo implements ReportsRepository {
   }) => throw UnimplementedError();
 }
 
+class _MissingImageAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString('', 404);
+}
+
 Future<void> _pump(WidgetTester tester, _FakeRepo repo) async {
+  final dio = Dio(BaseOptions(baseUrl: 'http://test'))
+    ..httpClientAdapter = _MissingImageAdapter();
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [reportsRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        reportsRepositoryProvider.overrideWithValue(repo),
+        dioProvider.overrideWith((ref) => dio),
+      ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -128,15 +170,48 @@ Future<void> _pump(WidgetTester tester, _FakeRepo repo) async {
 }
 
 void main() {
-  testWidgets('renders the plain-language timeline in order', (tester) async {
-    await _pump(tester, _FakeRepo(_detail(canRate: false)));
-    // Submitted/completed lines include a local date suffix.
-    expect(find.textContaining('Đã gửi phản ánh'), findsOneWidget);
-    expect(find.text('Ban quản lý đã xem xét'), findsOneWidget);
-    expect(find.textContaining('Đã ghép vào yêu cầu xử lý'), findsOneWidget);
-    expect(find.textContaining('Đã cố định cáp'), findsOneWidget);
-    expect(find.textContaining('Công việc đã hoàn thành'), findsOneWidget);
-    expect(find.text('Đánh giá công việc'), findsNothing);
+  testWidgets('renders progress updates in order with causes and photos', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeRepo(
+        _detail(
+          canRate: false,
+          updates: [_update(1, withPhoto: true), _update(2, withPhoto: true)],
+        ),
+      ),
+    );
+
+    expect(find.text('Tiến độ xử lý'), findsOneWidget);
+    expect(find.text('Cáp mòn 1'), findsOneWidget);
+    expect(find.text('Đã cố định cáp 1'), findsOneWidget);
+    expect(find.text('Cáp mòn 2'), findsOneWidget);
+    expect(find.text('Đã cố định cáp 2'), findsOneWidget);
+    expect(find.byType(AuthenticatedImage), findsNWidgets(2));
+    expect(
+      tester.getTopLeft(find.text('Cáp mòn 1')).dy,
+      lessThan(tester.getTopLeft(find.text('Cáp mòn 2')).dy),
+    );
+  });
+
+  testWidgets('shows completion before the rating action', (tester) async {
+    await _pump(tester, _FakeRepo(_detail(canRate: true)));
+
+    expect(find.textContaining('Đã hoàn thành công việc'), findsOneWidget);
+    expect(find.text('Đánh giá công việc'), findsOneWidget);
+  });
+
+  testWidgets('shows a quiet line when there are no progress updates', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeRepo(_detail(canRate: false, updates: [], completed: false)),
+    );
+
+    expect(find.text('Chưa có cập nhật tiến độ.'), findsOneWidget);
+    expect(find.byType(Card), findsNothing);
   });
 
   testWidgets('shows a declined reason and hides rating', (tester) async {
