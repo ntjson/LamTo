@@ -217,7 +217,7 @@ def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
     items = []
     latest_mismatch = (
         VerificationObservation.objects.filter(
-            published_entry__case__building_id=building_id,
+            published_entry__proposal__building_id=building_id,
             result=VerificationObservation.Result.MISMATCH,
         )
         .order_by("-observed_at")[:30]

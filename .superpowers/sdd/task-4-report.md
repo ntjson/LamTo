@@ -49,3 +49,12 @@ Both are forward-only. Applied successfully against the shared Compose database.
 - `VerificationObservation` remains because it records current integrity checks over proposal/settlement anchors and documents; only snapshot-specific models were deleted.
 - Wallet infrastructure remains for Task 5, while all Task 4 publication/fund typed-data production paths are removed.
 - No destructive database operation was used.
+
+## Reviewer follow-up
+
+- Standalone proposals are now reachable through ledger list/detail, story rendering, redacted downloads, integrity observations, reconciliation, and action-inbox scoping by using the proposal's building instead of requiring a case.
+- Resident ledger visibility and downloads require both anchors independently: the proposal current-version event and the settlement event must each be settled or chain-confirmed.
+- Restored the active outbox and chain-opacity suites, retaining wallet authorization, idempotence/conflict, database-boundary, procedure-security, sensitive-payload, concurrency, canonicalization, and hash-opacity coverage while narrowing valid evidence payloads to proposal and settlement.
+- Added an end-to-end standalone proposal lifecycle test and independent pending/failed/mismatch visibility checks for both anchors.
+- Reviewer verification: focused suites `59 passed`; evidence/finance/API/web modules `268 passed, 1 skipped`; full Django suite `439 passed, 1 skipped`; `manage.py check`, migration drift check, legacy-symbol sweep, and `git diff --check` are clean.
+- Flutter was not rerun for this follow-up because it changes server-side visibility/scoping only and does not change the regenerated OpenAPI or Dart client contract.

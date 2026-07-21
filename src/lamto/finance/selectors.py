@@ -19,7 +19,8 @@ def published_ledger_entries(building_id):
     """Resident-visible published ledger entries for one building, newest first."""
     return (
         PublishedLedgerEntry.objects.filter(
-            case__building_id=building_id,
+            proposal__building_id=building_id,
+            proposal__current_version__outbox_event__status__in=SETTLED_STATUSES,
             settlement__outbox_event__status__in=SETTLED_STATUSES,
         )
         .select_related(
@@ -167,9 +168,13 @@ def _ledger_story_fields(entry, payload):
     case category.
     """
     case = entry.case
-    work = case.updates.order_by("-created_at", "-pk").first()
+    work = (
+        case.updates.order_by("-created_at", "-pk").first()
+        if case
+        else entry.proposal.updates.order_by("-created_at", "-pk").first()
+    )
     report = None
-    decision = getattr(case, "decision", None)
+    decision = getattr(case, "decision", None) if case else None
     if decision is not None:
         report = getattr(decision, "report", None)
 
@@ -177,8 +182,9 @@ def _ledger_story_fields(entry, payload):
     cause = (getattr(work, "cause", None) or "").strip()
     report_text = (getattr(report, "text", None) or "").strip() if report else ""
     category = (getattr(case, "category", None) or "").strip()
-    what_was_fixed = result or report_text or category
-    why = cause or category
+    purpose = (getattr(entry.proposal.current_version, "purpose", None) or "").strip()
+    what_was_fixed = result or report_text or category or purpose
+    why = cause or category or purpose
 
     return {
         "what_was_fixed": what_was_fixed,
@@ -270,12 +276,12 @@ def pending_reconciliation_proposals(building_id):
         PublishedLedgerEntry,
     )
     published_proposal_ids = PublishedLedgerEntry.objects.filter(
-        case__building_id=building_id, proposal__isnull=False
+        proposal__building_id=building_id, proposal__isnull=False
     ).values("proposal_id")
 
     qs = (
         Proposal.objects.filter(
-            case__building_id=building_id,
+            building_id=building_id,
             current_version__isnull=False,
             settlement__settled_at__isnull=False,
             settlement__outbox_event__status__in=SETTLED_STATUSES,

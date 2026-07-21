@@ -265,10 +265,10 @@ def _require_caller_transaction():
 
 
 def _validate_payload(event_type, payload):
-    if event_type not in (EvidenceType.PROPOSAL_CREATED, EvidenceType.SETTLEMENT):
-        raise ValidationError("Only proposal versions and settlements may be anchored.")
     if not isinstance(event_type, int) or isinstance(event_type, bool):
         raise ValueError("Evidence event type must be an integer from 1 through 11.")
+    if event_type not in (EvidenceType.PROPOSAL_CREATED, EvidenceType.SETTLEMENT):
+        raise ValidationError("Only proposal versions and settlements may be anchored.")
     schema = EVIDENCE_PAYLOAD_SCHEMAS.get(event_type)
     if schema is None:
         raise ValueError("Evidence event type must be an integer from 1 through 11.")

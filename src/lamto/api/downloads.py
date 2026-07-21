@@ -92,7 +92,8 @@ def resident_can_download(user, version) -> bool:
         return False
     return (
         PublishedLedgerEntry.objects.filter(
-            case__building_id__in=building_ids,
+            proposal__building_id__in=building_ids,
+            proposal__current_version__outbox_event__status__in=SETTLED_STATUSES,
             settlement__outbox_event__status__in=SETTLED_STATUSES,
         )
         .filter(

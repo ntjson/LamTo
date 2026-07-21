@@ -1,6 +1,7 @@
 """GET /ledger and /ledger/{id} — published entries with proof (spec 3.3)."""
 
 import json
+import secrets
 import tempfile
 
 from django.test import TestCase, override_settings
@@ -9,6 +10,10 @@ from knox.models import AuthToken
 
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.finance.models import PublishedLedgerEntry
+from lamto.finance.proposals import create_standalone_proposal, decide_proposal, publish_proposal_version
+from lamto.finance.settlements import record_acknowledgement, record_transfer
+from lamto.maintenance.cases import complete_proposal_work
+from lamto.documents.models import Document
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-api-ledger-")
@@ -142,6 +147,8 @@ class LedgerApiTests(TestCase):
         assert proof["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
         assert proof["anchoring_backend"] == "besu"
         assert proof["payload_hash"] == self.entry.settlement.outbox_event.payload_hash
+        assert proof["proposal_version"]["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
+        assert proof["settlement"]["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
         assert proof["events"], "outbox events must be listed in the proof"
         for event in proof["events"]:
             assert event["event_id"].startswith("0x")
@@ -155,18 +162,60 @@ class LedgerApiTests(TestCase):
         assert response.status_code == 404
         assert problem(response)["code"] == "not_found"
 
-    def test_unsettled_entry_is_invisible(self):
-        BlockchainOutboxEvent.objects.filter(
-            pk=self.entry.settlement.outbox_event_id
-        ).update(status=BlockchainOutboxEvent.Status.PENDING)
+    def test_both_anchors_must_be_settled(self):
+        event_ids = (
+            self.entry.proposal.current_version.outbox_event_id,
+            self.entry.settlement.outbox_event_id,
+        )
+        for event_id in event_ids:
+            for status in (
+                BlockchainOutboxEvent.Status.PENDING,
+                BlockchainOutboxEvent.Status.FAILED,
+                BlockchainOutboxEvent.Status.MISMATCH,
+            ):
+                with self.subTest(event_id=event_id, status=status):
+                    BlockchainOutboxEvent.objects.filter(pk=event_id).update(status=status)
+                    auth = self._auth()
+                    assert self.client.get(reverse("api:ledger-list"), headers=auth).json()["results"] == []
+                    assert self.client.get(reverse("api:ledger-detail", args=[self.entry.pk]), headers=auth).status_code == 404
+                    BlockchainOutboxEvent.objects.filter(pk=event_id).update(status=BlockchainOutboxEvent.Status.CONFIRMED)
+
+    def test_standalone_entry_list_detail_story_and_download(self):
+        manager = self.seed.management_memberships[0]
+        proposal = create_standalone_proposal(self.seed.building, manager)
+        quotation, _ = self.seed.document_pair(Document.Kind.QUOTATION, manager.user, "standalone-q")
+        publish_proposal_version(
+            proposal, manager, amount_vnd=2_000_000, contractor_name="Standalone Co",
+            fund_code="GENERAL", purpose="Lobby repaint", proposed_action="Repaint lobby",
+            expected_schedule="August", quotation_versions=[quotation],
+            event_id="0x" + secrets.token_hex(32),
+        )
+        decide_proposal(proposal, manager.user, True)
+        complete_proposal_work(proposal, manager.user, "Peeling paint", "Lobby repainted")
+        transfer_original, transfer_redacted = self.seed.document_pair(Document.Kind.PAYMENT_PROOF, manager.user, "standalone-transfer")
+        settlement = record_transfer(
+            proposal, manager, amount_vnd=2_000_000, payee_name="Standalone Co",
+            bank_reference="STANDALONE-1", transfer_original=transfer_original,
+            transfer_redacted=transfer_redacted,
+        )
+        acknowledger = self.seed.management_memberships[1]
+        ack_original, ack_redacted = self.seed.document_pair(Document.Kind.PAYMENT_PROOF, acknowledger.user, "standalone-ack")
+        settlement = record_acknowledgement(
+            settlement, acknowledger, ack_original=ack_original, ack_redacted=ack_redacted,
+            event_id="0x" + secrets.token_hex(32),
+        )
+        proposal.refresh_from_db()
+        for event in (proposal.current_version.outbox_event, settlement.outbox_event):
+            BlockchainOutboxEvent.objects.filter(pk=event.pk).update(status=BlockchainOutboxEvent.Status.CONFIRMED)
+        entry = settlement.ledger_entry
         auth = self._auth()
-        assert (
-            self.client.get(reverse("api:ledger-list"), headers=auth).json()["results"]
-            == []
-        )
-        assert (
-            self.client.get(
-                reverse("api:ledger-detail", args=[self.entry.pk]), headers=auth
-            ).status_code
-            == 404
-        )
+        rows = self.client.get(reverse("api:ledger-list"), headers=auth).json()["results"]
+        assert entry.pk in {row["id"] for row in rows}
+        detail = self.client.get(reverse("api:ledger-detail", args=[entry.pk]), headers=auth)
+        assert detail.status_code == 200
+        body = detail.json()
+        assert body["what_was_fixed"] == "Lobby repainted"
+        assert body["why"] == "Peeling paint"
+        assert body["proof"]["proposal_version"]["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
+        assert body["proof"]["settlement"]["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
+        assert self.client.get(body["redacted_documents"][0]["download_url"], headers=auth).status_code == 200

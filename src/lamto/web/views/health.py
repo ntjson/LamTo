@@ -51,7 +51,7 @@ def collect_health_snapshot(building_id: int) -> dict:
     )
     latest_backup = BackupMarker.objects.order_by("-signed_at").first()
     mismatches = VerificationObservation.objects.filter(
-        published_entry__case__building_id=building_id,
+        published_entry__proposal__building_id=building_id,
         result=VerificationObservation.Result.MISMATCH
     ).count()
 

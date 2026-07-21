@@ -250,7 +250,7 @@ def _observation_rows(building_id):
     rows = []
     for obs in (
         VerificationObservation.objects.filter(
-            published_entry__case__building_id=building_id
+            published_entry__proposal__building_id=building_id
         )
         .order_by("id")
         .iterator(chunk_size=200)
