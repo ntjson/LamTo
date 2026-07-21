@@ -28,7 +28,7 @@ class BlockchainOutboxEvent(models.Model):
         MISMATCH = "MISMATCH", "Mismatch"
 
     event_id = models.CharField(max_length=66, unique=True)
-    event_type = models.PositiveSmallIntegerField(choices=EvidenceType.choices)
+    event_type = models.PositiveSmallIntegerField(choices=EvidenceType)
     payload = models.JSONField()
     payload_hash = models.CharField(max_length=64)
     previous_hash = models.CharField(max_length=66)

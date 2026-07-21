@@ -22,6 +22,7 @@ Use this list before promoting a pilot environment. Every item is required unles
 ## Secrets
 
 - [ ] Secret-manager injection for `SECRET_KEY`, DB password, storage keys
+- [ ] Secret-manager injection for `PLATFORM_SIGNER_PRIVATE_KEY`
 - [ ] Secret-manager injection for blockchain relayer private key
 - [ ] Secret-manager injection for contract-owner private key
 - [ ] No secrets in git, images, or CI logs
@@ -30,8 +31,8 @@ Use this list before promoting a pilot environment. Every item is required unles
 ## Blockchain / RPC
 
 - [ ] Blockchain RPC reachable only on localhost or a private network
-- [ ] Relayer and owner keys never exposed to browsers or stakeholders
-- [ ] **Stakeholder wallet keys are explicitly outside every server, backup, and support workflow**
+- [ ] Platform signer, relayer, and owner keys never exposed to browsers or stakeholders
+- [ ] Run `uv run python manage.py authorize_platform_signer` with the contract owner key before starting workers
 
 ## Identity and privileged access
 

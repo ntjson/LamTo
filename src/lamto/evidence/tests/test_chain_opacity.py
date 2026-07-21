@@ -20,7 +20,7 @@ class ChainOpacityTests(SimpleTestCase):
     def test_every_event_type_has_a_schema(self):
         self.assertEqual(
             set(EVIDENCE_PAYLOAD_SCHEMAS),
-            set(EvidenceType.values)
+            {event_type.value for event_type in EvidenceType}
             - {
                 EvidenceType.RESERVED_2.value,
                 EvidenceType.RESERVED_3.value,

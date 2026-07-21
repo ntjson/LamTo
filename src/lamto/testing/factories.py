@@ -43,12 +43,19 @@ from lamto.finance.models import (
 from lamto.finance.settlements import record_acknowledgement, record_transfer
 from lamto.finance.proposals import (
     create_proposal,
-    submit_proposal_version,
+    create_standalone_proposal,
+    decide_proposal as decide_published_proposal,
+    publish_proposal_version,
 )
 from lamto.finance.publication import publish_settlement_entry
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
-from lamto.maintenance.cases import complete_case_work, publish_progress, start_case_work
-from lamto.maintenance.ratings import rate_completed_case
+from lamto.maintenance.cases import (
+    complete_case_work,
+    complete_proposal_work,
+    publish_progress,
+    start_case_work,
+)
+from lamto.maintenance.ratings import rate_completed_case, rate_completed_proposal
 from lamto.maintenance.reporting import submit_report
 from lamto.maintenance.triage import confirm_triage
 
@@ -302,7 +309,7 @@ class PilotDomainDriver:
         return fund_balance(self.seed.building.pk, verified_only=True)
 
     def ledger_count(self) -> int:
-        return PublishedLedgerEntry.objects.filter(case__building=self.seed.building).count()
+        return PublishedLedgerEntry.objects.filter(proposal__building=self.seed.building).count()
 
     def audit_contains(self, target_id, fragments: list[str]) -> bool:
         events = AuditEvent.objects.filter(target_id=str(target_id))
@@ -356,7 +363,7 @@ class PilotDomainDriver:
         self._ctx["case"] = case
         return case
 
-    def submit_signed_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
+    def publish_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
         manager = self.seed.management_memberships[0]
         work = self.seed.case or self._ctx["case"]
         quotation_original, _ = self.seed.document_pair(
@@ -364,13 +371,12 @@ class PilotDomainDriver:
         )
         proposal = create_proposal(work, manager)
         event_id = new_event_id()
-        version = submit_proposal_version(
-            proposal,
-            amount_vnd,
-            "Pilot Contractor Co",
-            [quotation_original],
-            "",
-            event_id,
+        version = publish_proposal_version(
+            proposal, manager, amount_vnd=amount_vnd,
+            contractor_name="Pilot Contractor Co", fund_code="GENERAL",
+            purpose=work.category, proposed_action="Repair the affected equipment",
+            expected_schedule="Within 14 days", quotation_versions=[quotation_original],
+            event_id=event_id,
         )
         self.seed.proposal = proposal
         self._ctx["proposal"] = proposal
@@ -378,6 +384,58 @@ class PilotDomainDriver:
         self._ctx["quotation_original"] = quotation_original
         self._ctx["amount_vnd"] = amount_vnd
         return version
+
+    submit_signed_proposal = publish_proposal
+
+    def publish_standalone_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
+        manager = self.seed.management_memberships[0]
+        quotation_original, _ = self.seed.document_pair(
+            Document.Kind.QUOTATION, manager.user, "standalone-quotation"
+        )
+        proposal = create_standalone_proposal(self.seed.building, manager)
+        version = publish_proposal_version(
+            proposal, manager, amount_vnd=amount_vnd,
+            contractor_name="Pilot Contractor Co", fund_code="GENERAL",
+            purpose="Preventive maintenance", proposed_action="Service the equipment",
+            expected_schedule="Within 14 days", quotation_versions=[quotation_original],
+            event_id=new_event_id(),
+        )
+        self.seed.proposal = proposal
+        self._ctx.update(proposal=proposal, proposal_version=version, amount_vnd=amount_vnd)
+        return version
+
+    def decide_proposal(self, proceed: bool = True):
+        proposal = self.seed.proposal or self._ctx["proposal"]
+        decided = decide_published_proposal(
+            proposal, self.seed.management_users[1], proceed, "Approved for delivery"
+        )
+        self.seed.proposal = decided
+        self._ctx["proposal"] = decided
+        return decided
+
+    def publish_proposal_progress(self):
+        update = publish_progress(
+            proposal=self.seed.proposal, manager=self.seed.management_users[0],
+            cause="Scheduled maintenance", result="Work underway",
+        )
+        self._ctx["work_update"] = update
+        return update
+
+    def complete_proposal_work(self):
+        proposal = complete_proposal_work(
+            self.seed.proposal, self.seed.management_users[0],
+            "Scheduled maintenance", "Work completed",
+        )
+        self.seed.proposal = proposal
+        self._ctx["proposal"] = proposal
+        return proposal
+
+    def rate_completed_proposal(self, satisfied: bool = True, comment: str = ""):
+        rating = rate_completed_proposal(
+            self.seed.residents[0], self.seed.proposal, satisfied, comment
+        )
+        self._ctx["rating"] = rating
+        return rating
 
     def start_assigned_work(self):
         work = self.seed.case or self._ctx["case"]
@@ -500,12 +558,13 @@ class PilotDomainDriver:
             "Elevator shakes heavily", "Building B / Lift 2", None
         )
         self.confirm_triage_case()
-        self.submit_signed_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
+        self.publish_proposal(amount_vnd=DEFAULT_AMOUNT_VND)
+        self.decide_proposal(proceed=True)
         return self.seed.case
 
     def open_latest_ledger_entry(self):
         entry = (
-            PublishedLedgerEntry.objects.filter(case__building=self.seed.building)
+            PublishedLedgerEntry.objects.filter(proposal__building=self.seed.building)
             .order_by("-pk")
             .first()
         )
@@ -533,7 +592,7 @@ class PilotDomainDriver:
 
     def verify_latest_ledger_entry(self):
         entry = (
-            PublishedLedgerEntry.objects.filter(case__building=self.seed.building)
+            PublishedLedgerEntry.objects.filter(proposal__building=self.seed.building)
             .order_by("-pk")
             .first()
         )
