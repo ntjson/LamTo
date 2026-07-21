@@ -187,14 +187,13 @@ def notify_integrity_mismatch(entry, observation):
 
 
 def notify_quarantined_upload(upload, building_id=None):
-    recipients = [upload.uploader]
-    if building_id is not None:
-        recipients += _management_users(building_id)
+    building_id = building_id or upload.building_id
+    recipients = [upload.uploader] + _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_QUARANTINED_UPLOAD}:upload:{upload.pk}",
         subject="Upload quarantined",
         body=f"File {upload.filename} was quarantined: {upload.reason}",
         event_code=EVENT_QUARANTINED_UPLOAD,
-        building=building_id if building_id is not None else upload.building_id,
+        building=building_id,
     )
