@@ -61,7 +61,7 @@ class ProposalCreateTests(TestCase):
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
     def test_prepare_then_sign_submits_version(self):
         self._login_operator()
-        url = reverse("web:proposal-create", kwargs={"pk": self.work.pk})
+        url = reverse("web:proposal-create", kwargs={"pk": self.work.case_id})
 
         prepare = self.client.post(
             url,
@@ -75,7 +75,7 @@ class ProposalCreateTests(TestCase):
         )
         self.assertEqual(prepare.status_code, 200)
         self.assertContains(prepare, "data-signed-form")
-        proposal = Proposal.objects.get(work_order=self.work)
+        proposal = Proposal.objects.get(case=self.work.case)
         self.assertIsNone(proposal.current_version_id)
         original = DocumentVersion.objects.get(
             document__building=self.seed.building,
@@ -120,5 +120,5 @@ class ProposalCreateTests(TestCase):
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
         session.save()
-        resp = self.client.get(reverse("web:proposal-create", kwargs={"pk": self.work.pk}))
+        resp = self.client.get(reverse("web:proposal-create", kwargs={"pk": self.work.case_id}))
         self.assertEqual(resp.status_code, 200)

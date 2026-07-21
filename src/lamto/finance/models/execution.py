@@ -3,14 +3,14 @@ from django.db import models
 from lamto.accounts.models import ManagementMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
-from lamto.maintenance.models import WorkOrder
+from lamto.maintenance.models import MaintenanceCase
 
 from .proposals import InsertOnlyModel
 
 
 class AcceptanceRecord(InsertOnlyModel):
-    work_order = models.OneToOneField(
-        WorkOrder, on_delete=models.PROTECT, related_name="acceptance"
+    case = models.OneToOneField(
+        MaintenanceCase, on_delete=models.PROTECT, related_name="acceptance"
     )
     actual_cost_vnd = models.BigIntegerField()
     invoice_original = models.ForeignKey(

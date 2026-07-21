@@ -59,7 +59,7 @@ def _locked_acceptance(acceptance):
     locked = (
         AcceptanceRecord.objects.select_for_update()
         .select_related(
-            "work_order__case",
+            "case",
             "outbox_event",
             "membership__user",
         )
@@ -75,7 +75,7 @@ def _locked_payment(payment):
     locked = (
         PaymentEvidence.objects.select_for_update()
         .select_related(
-            "acceptance__work_order__case",
+            "acceptance__case",
             "recorder__user",
             "outbox_event",
         )
@@ -155,9 +155,10 @@ def build_payment_evidence_payload(
     proof_original, proof_redacted = _require_proof_pair(
         proof_original,
         proof_redacted,
-        acceptance.work_order.case.building_id,
+        acceptance.case.building_id,
     )
     return {
+        "case_id": acceptance.case_id,
         "payment_id": payment_id,
         "amount_vnd": amount_vnd,
         "bank_reference_digest": payload_hash({"bank_reference": bank_reference}),
@@ -240,8 +241,8 @@ def record_payment(
     payment_id,
 ) -> PaymentEvidence:
     acceptance = _locked_acceptance(acceptance)
-    work_order = acceptance.work_order
-    actor = require_management(membership.user, work_order.case.building_id)
+    case = acceptance.case
+    actor = require_management(membership.user, case.building_id)
     if PaymentEvidence.objects.filter(acceptance=acceptance).exists():
         raise ValidationError("Payment evidence already exists for this acceptance.")
     if type(amount_vnd) is not int or amount_vnd <= 0:
@@ -259,7 +260,7 @@ def record_payment(
     proof_original, proof_redacted = _require_proof_pair(
         proof_original,
         proof_redacted,
-        work_order.case.building_id,
+        case.building_id,
         lock=True,
     )
     if type(payment_id) is not int or payment_id <= 0:
@@ -338,7 +339,7 @@ def verify_payment(
     with transaction.atomic():
         payment = _locked_payment(payment)
         actor = require_management(
-            membership.user, payment.acceptance.work_order.case.building_id
+            membership.user, payment.acceptance.case.building_id
         )
         if actor.user_id == payment.recorder.user_id:
             denied = True

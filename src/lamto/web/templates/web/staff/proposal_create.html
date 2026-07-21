@@ -3,8 +3,8 @@
 {% block title %}{% trans "Create proposal" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
-  <h1>{% blocktrans with id=work_order.pk %}Create proposal · Work order #{{ id }}{% endblocktrans %}</h1>
-  <p class="hint">{% blocktrans with category=work_order.case.category %}Case category (locked on this proposal): {{ category }}{% endblocktrans %}</p>
+  <h1>{% blocktrans with id=case.pk %}Create proposal · Case #{{ id }}{% endblocktrans %}</h1>
+  <p class="hint">{% blocktrans with category=case.category %}Case category (locked on this proposal): {{ category }}{% endblocktrans %}</p>
 
   {% if sign_form %}
   <div class="workflow-section">

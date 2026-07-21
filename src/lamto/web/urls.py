@@ -23,11 +23,11 @@ urlpatterns = [
     # Proposals
     path("s/proposals/", proposals.proposal_list, name="proposal-list"),
     path("s/proposals/<int:pk>/", proposals.proposal_detail, name="proposal-detail"),
-    path("s/work/<int:pk>/propose/", proposals.proposal_create, name="proposal-create"),
+    path("s/cases/<int:pk>/propose/", proposals.proposal_create, name="proposal-create"),
     # Work (dies in stage 2)
     path("s/work/", work.work_order_list, name="work-order-list"),
     path("s/work/<int:pk>/", work.work_order_detail, name="work-order-detail"),
-    path("s/work/<int:pk>/accept/", payments.accept_work, name="work-accept"),
+    path("s/cases/<int:pk>/accept/", payments.accept_work, name="work-accept"),
     # Payments
     path("s/payments/", payments.payment_list, name="payment-list"),
     path("s/payments/record/", payments.payment_record, name="payment-record"),

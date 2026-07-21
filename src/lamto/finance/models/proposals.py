@@ -4,7 +4,7 @@ from django.db import models
 from lamto.accounts.models import ManagementMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
-from lamto.maintenance.models import WorkOrder
+from lamto.maintenance.models import MaintenanceCase
 
 
 class InsertOnlyModel(models.Model):
@@ -27,7 +27,7 @@ class Proposal(models.Model):
         NORMAL_AUTHORIZED = "NORMAL_AUTHORIZED", "Normal authorized"
         REJECTED = "REJECTED", "Rejected"
 
-    work_order = models.OneToOneField(WorkOrder, on_delete=models.PROTECT, related_name="proposal")
+    case = models.OneToOneField(MaintenanceCase, on_delete=models.PROTECT, related_name="proposal")
     creator_membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
     current_version = models.ForeignKey(

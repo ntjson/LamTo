@@ -173,6 +173,17 @@ class MaintenanceCase(models.Model):
     reports = models.ManyToManyField(IssueReport, through="CaseReport", related_name="maintenance_cases")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def verification_label(self):
+        try:
+            proposal = self.proposal
+        except ObjectDoesNotExist:
+            return None
+        version = getattr(proposal, "current_version", None) if proposal else None
+        if version is None:
+            return None
+        return version.verification_label
+
 
 class CaseReport(models.Model):
     case = models.ForeignKey(MaintenanceCase, on_delete=models.PROTECT, related_name="case_reports")
@@ -242,17 +253,6 @@ class WorkOrder(models.Model):
     @authorization_state.setter
     def authorization_state(self, value):
         self.authorization_status = value
-
-    @property
-    def verification_label(self):
-        try:
-            proposal = self.proposal
-        except ObjectDoesNotExist:
-            return None
-        version = getattr(proposal, "current_version", None) if proposal else None
-        if version is None:
-            return None
-        return version.verification_label
 
     class Meta:
         constraints = [

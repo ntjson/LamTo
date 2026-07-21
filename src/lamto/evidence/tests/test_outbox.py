@@ -39,20 +39,20 @@ TIMESTAMP = "2026-07-13T02:00:00.000000Z"
 VALID_PAYLOADS = {
     EvidenceType.PROPOSAL_CREATED: {
         "proposal_id": 1, "proposal_version": 1, "record_id": 2,
-        "work_order_id": 3, "case_id": 4, "report_id": 5,
+        "case_id": 4, "report_id": 5,
         "amount_vnd": 18_500_000, "proposal_snapshot_hash": HASH,
-        "work_snapshot_hash": HASH, "case_snapshot_hash": HASH,
+        "case_snapshot_hash": HASH,
         "report_snapshot_hash": HASH, "quotation_original_hash": HASH,
         "quotation_redacted_hash": HASH,
     },
     EvidenceType.WORK_ACCEPTANCE: {
-        "work_order_id": 1, "actual_cost_vnd": 1_000_000,
+        "case_id": 1, "actual_cost_vnd": 1_000_000,
         "acceptance_timestamp": TIMESTAMP, "invoice_original_hash": HASH,
         "invoice_redacted_hash": HASH, "acceptance_report_original_hash": HASH,
         "acceptance_report_redacted_hash": HASH, "photo_hashes": [HASH],
     },
     EvidenceType.PAYMENT_RECORDED: {
-        "payment_id": 1, "amount_vnd": 1_000_000,
+        "case_id": 1, "payment_id": 1, "amount_vnd": 1_000_000,
         "bank_reference_digest": HASH, "external_status": "SETTLED",
         "external_timestamp": TIMESTAMP, "payment_proof_original_hash": HASH,
         "payment_proof_redacted_hash": HASH,

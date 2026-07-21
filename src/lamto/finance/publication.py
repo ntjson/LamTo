@@ -50,7 +50,7 @@ def _locked_proposal(proposal):
         raise ValidationError("Proposal does not exist.")
     return (
         Proposal.objects.select_related(
-            "work_order__case__decision",
+            "case__decision",
             "current_version__outbox_event",
             "creator_membership__user",
         ).get(pk=locked_id)
@@ -130,9 +130,8 @@ def _require_settled(event, label):
 
 
 def _load_execution_chain(proposal):
-    work_order = proposal.work_order
     try:
-        acceptance = work_order.acceptance
+        acceptance = proposal.case.acceptance
     except AcceptanceRecord.DoesNotExist as exc:
         raise ValidationError("Accepted work is required before publication.") from exc
     try:
@@ -168,13 +167,11 @@ def _resident_payload(
     verification,
     document_hashes,
 ):
-    work_order = proposal.work_order
-    case = work_order.case
+    case = proposal.case
     report_id = case.decision.report_id
     payload = {
         "report_id": report_id,
         "case_id": case.pk,
-        "work_order_id": work_order.pk,
         "proposal_id": proposal.pk,
         "proposal_version": version.number,
         "proposed_amount_vnd": version.amount_vnd,
@@ -309,13 +306,13 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
     """
     proposal = (
         Proposal.objects.select_related(
-            "work_order__case__decision",
+            "case__decision",
             "current_version__outbox_event",
             "creator_membership__user",
         ).get(pk=proposal.pk)
     )
-    work_order = proposal.work_order
-    actor = require_management(publisher.user, work_order.case.building_id)
+    case = proposal.case
+    actor = require_management(publisher.user, case.building_id)
     if PublicationSnapshot.objects.filter(proposal=proposal).exists():
         raise ValidationError("Publication snapshot already exists for this proposal.")
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
@@ -396,8 +393,8 @@ def prepare_publication(
     snapshot = None
     with transaction.atomic():
         proposal = _locked_proposal(proposal)
-        work_order = proposal.work_order
-        actor = require_management(publisher.user, work_order.case.building_id)
+        case = proposal.case
+        actor = require_management(publisher.user, case.building_id)
         if PublicationSnapshot.objects.filter(proposal=proposal).exists():
             raise ValidationError("Publication snapshot already exists for this proposal.")
         if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
@@ -548,7 +545,7 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
     snapshot = (
         PublicationSnapshot.objects.select_related(
             "outbox_event",
-            "proposal__work_order__case",
+            "proposal__case",
             "proposal__current_version",
             "publisher",
         ).get(pk=locked_id)
@@ -568,12 +565,15 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
     if verification.decision != PaymentVerification.Decision.VERIFIED:
         raise ValidationError("Payment must remain VERIFIED at finalization.")
     version = proposal.current_version
-    work_order = proposal.work_order
+    case = proposal.case
+    work_order = case.work_orders.order_by("-created_at", "-pk").first()
+    if work_order is None:
+        raise ValidationError("Case has no work order.")
     if work_order.status != WorkOrder.Status.ACCEPTED:
         # Acceptance is required; status should already be ACCEPTED.
         pass
 
-    fund = get_or_create_fund(work_order.case.building_id)
+    fund = get_or_create_fund(case.building_id)
     published_at = timezone.now()
     create_publication_outflow(
         fund=fund,
@@ -587,7 +587,7 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
         defaults={
             "snapshot": snapshot,
             "work_order": work_order,
-            "case": work_order.case,
+            "case": case,
             "payment": payment,
             "actual_cost_vnd": acceptance.actual_cost_vnd,
             "contractor_name": version.contractor_name,

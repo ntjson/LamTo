@@ -216,7 +216,7 @@ class PublicationTests(TestCase):
         quotation_original, _quotation_redacted = self.document_pair(
             building, Document.Kind.QUOTATION, operator.user, "quotation"
         )
-        proposal = create_proposal(work_order, operator)
+        proposal = create_proposal(work_order.case, operator)
         event_id = "0x" + secrets.token_hex(32)
         payload = build_proposal_evidence_payload(
             proposal, 18_500_000, "Company X", [quotation_original]
@@ -256,7 +256,7 @@ class PublicationTests(TestCase):
         )
         accept_event = "0x" + secrets.token_hex(32)
         accept_typed = build_acceptance_evidence_typed_data(
-            work_order,
+            work_order.case,
             board_actor,
             18_500_000,
             invoice_original,
@@ -270,7 +270,7 @@ class PublicationTests(TestCase):
             encode_typed_data(full_message=accept_typed), board_account.key
         ).signature.hex()
         acceptance = accept_work(
-            work_order,
+            work_order.case,
             board_actor,
             18_500_000,
             invoice_original,
@@ -543,7 +543,7 @@ class PublicationTests(TestCase):
 
         proposal.refresh_from_db()
         version = proposal.current_version
-        acceptance = proposal.work_order.acceptance
+        acceptance = proposal.case.acceptance
         payment = acceptance.payment
         verification = payment.verification
         checks = _collect_document_checks(proposal, version, acceptance, payment, verification)
@@ -713,7 +713,7 @@ class PublicationTests(TestCase):
             _building,
         ) = self.make_ready_proposal_and_publisher()
         # Tamper stored bytes for payment proof.
-        payment = proposal.work_order.acceptance.payment
+        payment = proposal.case.acceptance.payment
         storage = storages["private"]
         with storage.open(payment.proof_original.storage_key, "wb") as handle:
             handle.write(b"tampered-payment-proof-bytes")

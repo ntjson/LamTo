@@ -9,7 +9,8 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
 from lamto.evidence.services import queue_signed_event
 from lamto.evidence.signatures import normalize_signature
-from lamto.maintenance.models import WorkOrder
+from lamto.maintenance.cases import TERMINAL_STATUSES
+from lamto.maintenance.models import CaseReport, IssueReport, MaintenanceCase, WorkOrder
 
 from .models import Proposal, ProposalDocument, ProposalVersion
 
@@ -17,7 +18,7 @@ from .models import Proposal, ProposalDocument, ProposalVersion
 ZERO_HASH = "0x" + "00" * 32
 
 
-def _quotation_pairs(work_order, quotation_versions, *, lock=False):
+def _quotation_pairs(case, quotation_versions, *, lock=False):
     supplied = list(quotation_versions or [])
     ids = [getattr(version, "pk", None) for version in supplied]
     if not ids or any(value is None for value in ids) or len(set(ids)) != len(ids):
@@ -34,7 +35,7 @@ def _quotation_pairs(work_order, quotation_versions, *, lock=False):
         original = versions[version_id]
         if (
             original.document.kind != original.document.Kind.QUOTATION
-            or original.document.building_id != work_order.case.building_id
+            or original.document.building_id != case.building_id
             or original.variant != DocumentVersion.Variant.ORIGINAL
             or original.scan_status != DocumentVersion.ScanStatus.CLEAN
             or original.redacts_id is not None
@@ -52,7 +53,7 @@ def _quotation_pairs(work_order, quotation_versions, *, lock=False):
         if (
             redacted is None
             or redacted.document.kind != redacted.document.Kind.QUOTATION
-            or redacted.document.building_id != work_order.case.building_id
+            or redacted.document.building_id != case.building_id
             or redacted.sha256 == original.sha256
         ):
             raise ValidationError("Each quotation original requires a distinct clean redacted copy.")
@@ -61,8 +62,7 @@ def _quotation_pairs(work_order, quotation_versions, *, lock=False):
 
 
 def _submission_snapshot(proposal, amount_vnd, contractor_name, pairs, number):
-    work_order = proposal.work_order
-    case = work_order.case
+    case = proposal.case
     report = case.decision.report
     quotation_snapshot = [
         {
@@ -76,7 +76,6 @@ def _submission_snapshot(proposal, amount_vnd, contractor_name, pairs, number):
     snapshot = {
         "proposal_id": proposal.pk,
         "proposal_version": number,
-        "work_order_id": work_order.pk,
         "case_id": case.pk,
         "report_id": report.pk,
         "amount_vnd": amount_vnd,
@@ -89,15 +88,10 @@ def _submission_snapshot(proposal, amount_vnd, contractor_name, pairs, number):
         "proposal_id": proposal.pk,
         "proposal_version": number,
         "record_id": proposal.pk,
-        "work_order_id": work_order.pk,
         "case_id": case.pk,
         "report_id": report.pk,
         "amount_vnd": amount_vnd,
         "proposal_snapshot_hash": payload_hash(snapshot),
-        "work_snapshot_hash": payload_hash({
-            "work_order_id": work_order.pk,
-            "requires_spending": work_order.requires_spending,
-        }),
         "case_snapshot_hash": payload_hash({
             "case_id": case.pk,
             "category": case.category,
@@ -117,7 +111,7 @@ def build_proposal_evidence_payload(proposal, amount_vnd, contractor_name, quota
         raise ValidationError("Proposal amount must be a positive integer.")
     if not isinstance(contractor_name, str) or not contractor_name.strip():
         raise ValidationError("Contractor name is required.")
-    pairs = _quotation_pairs(proposal.work_order, quotation_versions)
+    pairs = _quotation_pairs(proposal.case, quotation_versions)
     number = (ProposalVersion.objects.filter(proposal=proposal).aggregate(Max("number"))["number__max"] or 0) + 1
     _, evidence_payload = _submission_snapshot(
         proposal, amount_vnd, contractor_name.strip(), pairs, number
@@ -126,25 +120,28 @@ def build_proposal_evidence_payload(proposal, amount_vnd, contractor_name, quota
 
 
 @transaction.atomic
-def create_proposal(work_order, creator_membership) -> Proposal:
-    locked_work_order = (
-        WorkOrder.objects.select_for_update()
-        .select_related("case")
-        .filter(pk=getattr(work_order, "pk", None))
+def create_proposal(case, creator_membership) -> Proposal:
+    locked_case = (
+        MaintenanceCase.objects.select_for_update()
+        .filter(pk=getattr(case, "pk", None))
         .first()
     )
-    if locked_work_order is None or not locked_work_order.case.active:
-        raise ValidationError("An active work order is required.")
-    membership = require_management(
-        creator_membership.user, locked_work_order.case.building_id
-    )
+    if locked_case is None or not locked_case.active:
+        raise ValidationError("An active case is required.")
+    membership = require_management(creator_membership.user, locked_case.building_id)
+    links = CaseReport.objects.filter(case=locked_case).select_related("report")
+    if any(link.report.is_private for link in links):
+        raise ValidationError("Private requests cannot become community proposals.")
     try:
         proposal = Proposal.objects.create(
-            work_order=locked_work_order,
+            case=locked_case,
             creator_membership=membership,
         )
     except IntegrityError as exc:
-        raise ValidationError("A proposal already exists for this work order.") from exc
+        raise ValidationError("A proposal already exists for this case.") from exc
+    IssueReport.objects.filter(case_reports__case=locked_case).exclude(
+        status__in=TERMINAL_STATUSES
+    ).update(status=IssueReport.Status.PROPOSED)
     record_audit(
         membership.user,
         membership,
@@ -152,7 +149,7 @@ def create_proposal(work_order, creator_membership) -> Proposal:
         "Proposal",
         str(proposal.pk),
         "accepted",
-        {"work_order_id": locked_work_order.pk},
+        {"case_id": locked_case.pk},
     )
     return proposal
 
@@ -163,15 +160,15 @@ def submit_proposal_version(
 ) -> ProposalVersion:
     locked_proposal = (
         Proposal.objects.select_for_update()
-        .select_related("creator_membership__user", "work_order__case__decision__report")
+        .select_related("creator_membership__user", "case__decision__report")
         .get(pk=getattr(proposal, "pk", None))
     )
-    work_order = WorkOrder.objects.select_for_update().select_related("case__decision__report").get(
-        pk=locked_proposal.work_order_id
+    case = MaintenanceCase.objects.select_for_update().select_related("decision__report").get(
+        pk=locked_proposal.case_id
     )
     membership = require_management(
         locked_proposal.creator_membership.user,
-        work_order.case.building_id,
+        case.building_id,
     )
     if type(amount_vnd) is not int or amount_vnd <= 0:
         raise ValidationError("Proposal amount must be a positive integer.")
@@ -180,7 +177,7 @@ def submit_proposal_version(
     if locked_proposal.status == Proposal.Status.REJECTED:
         raise ValidationError("Rejected proposals cannot receive another version.")
 
-    pairs = _quotation_pairs(work_order, quotation_versions, lock=True)
+    pairs = _quotation_pairs(case, quotation_versions, lock=True)
     previous = locked_proposal.versions.order_by("-number").first()
     number = (previous.number if previous else 0) + 1
     snapshot, evidence_payload = _submission_snapshot(
@@ -201,7 +198,7 @@ def submit_proposal_version(
         number=number,
         amount_vnd=amount_vnd,
         contractor_name=contractor_name.strip(),
-        purpose=work_order.case.category,
+        purpose=case.category,
         snapshot=snapshot,
         snapshot_hash=payload_hash(snapshot),
         creator_membership=membership,
@@ -219,9 +216,9 @@ def submit_proposal_version(
     locked_proposal.current_version = version
     locked_proposal.status = Proposal.Status.NORMAL_AUTHORIZED
     locked_proposal.save(update_fields=["current_version", "status"])
-    if work_order.requires_spending:
-        work_order.authorization_status = WorkOrder.AuthorizationStatus.AUTHORIZED
-        work_order.save(update_fields=["authorization_status"])
+    case.work_orders.filter(requires_spending=True).update(
+        authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED
+    )
     record_audit(
         membership.user,
         membership,

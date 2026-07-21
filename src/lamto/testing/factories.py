@@ -453,7 +453,7 @@ class PilotDomainDriver:
         quotation_original, _ = self.seed.document_pair(
             Document.Kind.QUOTATION, manager.user, "quotation"
         )
-        proposal = create_proposal(work, manager)
+        proposal = create_proposal(work.case, manager)
         event_id = new_event_id()
         payload = build_proposal_evidence_payload(
             proposal, amount_vnd, "Pilot Contractor Co", [quotation_original]
@@ -487,7 +487,7 @@ class PilotDomainDriver:
         self._ctx["work_order"] = started
         self.seed.work_order = started
         return SimpleNamespace(
-            verification_label=started.verification_label,
+            verification_label=started.case.verification_label,
             status=started.status,
             work_order=started,
         )
@@ -520,7 +520,7 @@ class PilotDomainDriver:
         )
         event_id = new_event_id()
         typed = build_acceptance_evidence_typed_data(
-            work,
+            work.case,
             accepter,
             amount_vnd,
             inv_o,
@@ -532,7 +532,7 @@ class PilotDomainDriver:
         )
         signature = self.seed.sign_typed(accepter, typed)
         acceptance = accept_work(
-            work,
+            work.case,
             accepter,
             amount_vnd,
             inv_o,
@@ -635,7 +635,7 @@ class PilotDomainDriver:
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
         version = proposal.current_version
-        acceptance = proposal.work_order.acceptance
+        acceptance = proposal.case.acceptance
         payment = acceptance.payment
         verification = payment.verification
         checks = _collect_document_checks(

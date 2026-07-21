@@ -61,7 +61,7 @@ class FundSelectorTests(TestCase):
 
         seed = seed_pilot_world(building_name="Fund Sel Unsettled", email_prefix="fsu")
         _full_publish(seed)
-        v_event = seed.proposal.work_order.acceptance.payment.verification.outbox_event
+        v_event = seed.proposal.case.acceptance.payment.verification.outbox_event
         # QUEUED is not a status in this codebase; PENDING is non-settled.
         BlockchainOutboxEvent.objects.filter(pk=v_event.pk).update(
             status=BlockchainOutboxEvent.Status.PENDING

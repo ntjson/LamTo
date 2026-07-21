@@ -173,8 +173,8 @@ class CrossBuildingAccessTests(TestCase):
         report = IssueReport.objects.get(unit__building=b_building)
         case = MaintenanceCase.objects.get(building=b_building)
         work = WorkOrder.objects.get(case=case)
-        proposal = Proposal.objects.get(work_order=work)
-        acceptance = AcceptanceRecord.objects.get(work_order=work)
+        proposal = Proposal.objects.get(case=case)
+        acceptance = AcceptanceRecord.objects.get(case=case)
         payment = PaymentEvidence.objects.get(acceptance=acceptance)
         ledger = PublishedLedgerEntry.objects.get(case=case)
 
@@ -464,7 +464,7 @@ class CrossBuildingAccessTests(TestCase):
         auth_a = {"authorization": f"Token {token_a}"}
         # A redacted ledger document from B's published expenditure.
         entry_b = PublishedLedgerEntry.objects.get(case__building=self.seed_b.building)
-        redacted = entry_b.work_order.acceptance.invoice_redacted
+        redacted = entry_b.case.acceptance.invoice_redacted
         # A token bound to B's resident is not redeemable by A's resident.
         forged = issue_download_token(resident_b.pk, redacted.pk)
         assert (

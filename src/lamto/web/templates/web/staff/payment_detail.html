@@ -30,7 +30,7 @@
   <h1>{% if payment %}{% blocktrans with id=payment.pk %}Payment #{{ id }}{% endblocktrans %}{% else %}{% blocktrans with id=acceptance.pk %}Acceptance #{{ id }}{% endblocktrans %}{% endif %}</h1>
   <div class="record-layout">
     <div class="record-summary">
-      <p class="lede">{% blocktrans with wid=acceptance.work_order_id cat=acceptance.work_order.case.category %}Work order #{{ wid }} · {{ cat }}{% endblocktrans %}</p>
+      <p class="lede">{% blocktrans with cid=acceptance.case_id cat=acceptance.case.category %}Case #{{ cid }} · {{ cat }}{% endblocktrans %}</p>
       <dl class="detail-list detail-list-wide">
         <div><dt>{% trans "Actual work cost" %}</dt><dd>{{ acceptance.actual_cost_vnd|intcomma }} VND</dd></div>
         {% if payment %}

@@ -212,21 +212,21 @@ def _assigned_work_items(user_id: int, building_id: int) -> list[ActionItem]:
 
 def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
     items = []
-    qs = WorkOrder.objects.filter(
-        case__building_id=building_id,
-        requires_spending=True,
-        authorization_status=WorkOrder.AuthorizationStatus.PENDING,
+    qs = MaintenanceCase.objects.filter(
+        building_id=building_id,
+        work_orders__requires_spending=True,
+        work_orders__authorization_status=WorkOrder.AuthorizationStatus.PENDING,
         proposal__isnull=True,
-    ).order_by("created_at")[:30]
-    for wo in qs:
+    ).distinct().order_by("created_at")[:30]
+    for case in qs:
         items.append(
             ActionItem(
                 kind="proposal_create",
                 title="Create proposal",
-                summary=f"Work order #{wo.pk} needs a spending proposal",
-                target_type="WorkOrder",
-                target_id=wo.pk,
-                url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
+                summary=f"Case #{case.pk} needs a spending proposal",
+                target_type="MaintenanceCase",
+                target_id=case.pk,
+                url=reverse("web:proposal-create", kwargs={"pk": case.pk}),
                 priority=25,
             )
         )
@@ -235,21 +235,22 @@ def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
 
 def _work_acceptance_items(building_id: int) -> list[ActionItem]:
     items = []
-    qs = WorkOrder.objects.filter(
-        case__building_id=building_id,
-        status=WorkOrder.Status.AWAITING_ACCEPTANCE,
-    ).order_by("completed_at")[:40]
-    for wo in qs:
+    qs = MaintenanceCase.objects.filter(
+        building_id=building_id,
+        work_orders__status=WorkOrder.Status.AWAITING_ACCEPTANCE,
+        acceptance__isnull=True,
+    ).distinct().order_by("deadline_at")[:40]
+    for case in qs:
         items.append(
             ActionItem(
                 kind="work_acceptance",
                 title="Work acceptance",
-                summary=f"Work order #{wo.pk} awaiting acceptance",
-                target_type="WorkOrder",
-                target_id=wo.pk,
-                url=reverse("web:work-accept", kwargs={"pk": wo.pk}),
+                summary=f"Case #{case.pk} awaiting acceptance",
+                target_type="MaintenanceCase",
+                target_id=case.pk,
+                url=reverse("web:work-accept", kwargs={"pk": case.pk}),
                 priority=18,
-                deadline_at=wo.deadline_at,
+                deadline_at=case.deadline_at,
             )
         )
     return items
@@ -259,10 +260,10 @@ def _payment_record_items(building_id: int) -> list[ActionItem]:
     items = []
     qs = (
         AcceptanceRecord.objects.filter(
-            work_order__case__building_id=building_id,
+            case__building_id=building_id,
             payment__isnull=True,
         )
-        .select_related("work_order")
+        .select_related("case")
         .order_by("accepted_at")[:40]
     )
     for acceptance in qs:
@@ -270,7 +271,7 @@ def _payment_record_items(building_id: int) -> list[ActionItem]:
             ActionItem(
                 kind="payment_record",
                 title="Record payment",
-                summary=f"Work order #{acceptance.work_order_id}",
+                summary=f"Case #{acceptance.case_id}",
                 target_type="AcceptanceRecord",
                 target_id=acceptance.pk,
                 url=reverse("web:payment-record-detail", kwargs={"pk": acceptance.pk}),
@@ -285,7 +286,7 @@ def _payment_verify_items(building_id: int) -> list[ActionItem]:
     items = []
     qs = (
         PaymentEvidence.objects.filter(
-            acceptance__work_order__case__building_id=building_id,
+            acceptance__case__building_id=building_id,
             verification__isnull=True,
         )
         .select_related("acceptance")
@@ -313,17 +314,17 @@ def _pending_publication_items(building_id: int) -> list[ActionItem]:
     verified = (
         PaymentVerification.objects.filter(
             decision=PaymentVerification.Decision.VERIFIED,
-            payment__acceptance__work_order__case__building_id=building_id,
+            payment__acceptance__case__building_id=building_id,
         )
         .exclude(
-            payment__acceptance__work_order__proposal__published_ledger_entry__isnull=False
+            payment__acceptance__case__proposal__published_ledger_entry__isnull=False
         )
-        .select_related("payment__acceptance__work_order__proposal")
+        .select_related("payment__acceptance__case__proposal")
         .order_by("verified_at")[:40]
     )
     for verification in verified:
         proposal = getattr(
-            verification.payment.acceptance.work_order, "proposal", None
+            verification.payment.acceptance.case, "proposal", None
         )
         if proposal is None:
             continue
@@ -343,7 +344,7 @@ def _pending_publication_items(building_id: int) -> list[ActionItem]:
         )
     # Snapshots waiting finalize (settled outbox)
     snaps = PublicationSnapshot.objects.filter(
-        proposal__work_order__case__building_id=building_id,
+        proposal__case__building_id=building_id,
         outbox_event__status__in=SETTLED_STATUSES,
     ).exclude(
         pk__in=PublishedLedgerEntry.objects.values("snapshot_id")

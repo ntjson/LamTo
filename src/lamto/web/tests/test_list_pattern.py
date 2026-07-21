@@ -186,22 +186,27 @@ class ListPatternTests(TestCase):
         )
         work = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
         draft = Proposal.objects.create(
-            work_order=work,
+            case=case,
             creator_membership=membership,
             status=Proposal.Status.DRAFT,
         )
-        # Second work order + proposal in review
-        work2 = WorkOrder.objects.create(
-            case=case,
-            assignee=user,
-            priority="HIGH",
-            deadline_at=timezone.now(),
-            requires_spending=True,
-            authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
-            status=WorkOrder.Status.ASSIGNED,
+        report2 = IssueReport.objects.create(
+            reporter=case.decision.report.reporter,
+            unit=case.decision.report.unit,
+            text="y",
+            selected_location=case.location,
+            location_path_snapshot="y",
+        )
+        decision2 = TriageDecision.objects.create(
+            report=report2, operator=user, category="c", urgency="HIGH",
+            location=case.location, department="Ops", deadline_minutes=60,
+        )
+        case2 = MaintenanceCase.objects.create(
+            decision=decision2, building=building, category="c", urgency="HIGH",
+            location=case.location, department="Ops", deadline_at=timezone.now(),
         )
         in_review = Proposal.objects.create(
-            work_order=work2,
+            case=case2,
             creator_membership=membership,
             status=Proposal.Status.IN_REVIEW,
         )
@@ -260,7 +265,7 @@ class ListPatternTests(TestCase):
             d.complete_assigned_work()
             d.accept_and_record_payment()
             d.confirm_all_chain_events()
-            payment = seed.proposal.work_order.acceptance.payment
+            payment = seed.proposal.case.acceptance.payment
             self.assertEqual(
                 payment.external_status, PaymentEvidence.ExternalStatus.COMPLETED
             )

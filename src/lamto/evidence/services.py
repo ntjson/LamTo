@@ -40,20 +40,20 @@ HASH_PAYLOAD_SHAPES = frozenset({"hash", "hashes", "bytes32"})
 EVIDENCE_PAYLOAD_SCHEMAS = {
     EvidenceType.PROPOSAL_CREATED: ({
         "proposal_id": "id", "proposal_version": "positive_int", "record_id": "id",
-        "work_order_id": "id", "case_id": "id", "report_id": "id",
+        "case_id": "id", "report_id": "id",
         "amount_vnd": "money", "proposal_snapshot_hash": "hash",
-        "work_snapshot_hash": "hash", "case_snapshot_hash": "hash",
+        "case_snapshot_hash": "hash",
         "report_snapshot_hash": "hash", "quotation_original_hash": "hash",
         "quotation_redacted_hash": "hash",
     }, {"estimated_amount_vnd": "money", "photo_hash": "hash", "photo_hashes": "hashes"}),
     EvidenceType.WORK_ACCEPTANCE: ({
-        "work_order_id": "id", "actual_cost_vnd": "money",
+        "case_id": "id", "actual_cost_vnd": "money",
         "acceptance_timestamp": "timestamp", "invoice_original_hash": "hash",
         "invoice_redacted_hash": "hash", "acceptance_report_original_hash": "hash",
         "acceptance_report_redacted_hash": "hash", "photo_hashes": "hashes",
     }, {}),
     EvidenceType.PAYMENT_RECORDED: ({
-        "payment_id": "id", "amount_vnd": "money", "bank_reference_digest": "hash",
+        "case_id": "id", "payment_id": "id", "amount_vnd": "money", "bank_reference_digest": "hash",
         "external_status": frozenset({"PENDING", "SETTLED", "FAILED", "REVERSED"}),
         "external_timestamp": "timestamp", "payment_proof_original_hash": "hash",
         "payment_proof_redacted_hash": "hash",

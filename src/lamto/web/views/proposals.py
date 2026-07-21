@@ -27,11 +27,10 @@ from lamto.finance.proposals import (
     create_proposal,
     submit_proposal_version,
 )
-from lamto.maintenance.models import IssueReport, MaintenanceCase, WorkOrder
+from lamto.maintenance.models import IssueReport, MaintenanceCase
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
     CreateProposalForm,
-    CreateWorkOrderForm,
     PreparePublicationForm,
     SignProposalForm,
 )
@@ -51,8 +50,7 @@ def _proposal_publishable(proposal) -> bool:
         return False
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
         return False
-    work_order = proposal.work_order
-    acceptance = getattr(work_order, "acceptance", None)
+    acceptance = getattr(proposal.case, "acceptance", None)
     if acceptance is None:
         return False
     payment = getattr(acceptance, "payment", None)
@@ -79,17 +77,17 @@ def proposal_list(request):
     active_group = status if status in status_groups else next(
         (group for group, values in status_groups.items() if status in values), ""
     )
-    proposals_qs = Proposal.objects.filter(work_order__case__building_id=building_id)
+    proposals_qs = Proposal.objects.filter(case__building_id=building_id)
     if status in status_groups:
         proposals_qs = proposals_qs.filter(status__in=status_groups[status])
     elif valid_status:
         proposals_qs = proposals_qs.filter(status=status)
     list_meta = prepare_record_list(
         request,
-        proposals_qs.select_related("current_version", "work_order__case"),
+        proposals_qs.select_related("current_version", "case"),
         search_fields=(
             "current_version__contractor_name",
-            "work_order__case__category",
+            "case__category",
         ),
         sorts=(("", "Newest first", ("-created_at",)),),
     )
@@ -102,7 +100,7 @@ def proposal_list(request):
     proposal_items = [
         {
             "url": f"/s/proposals/{p.pk}/",
-            "title": f"Proposal #{p.pk} · {p.work_order.case.category}"
+            "title": f"Proposal #{p.pk} · {p.case.category}"
             + (
                 f" · {p.current_version.contractor_name}"
                 if p.current_version
@@ -152,10 +150,10 @@ def proposal_detail(request, pk):
     membership, memberships = require_management_context(request)
     proposal = get_object_or_404(
         Proposal.objects.select_related(
-            "current_version", "work_order__case", "creator_membership"
+            "current_version", "case", "creator_membership"
         ),
         pk=pk,
-        work_order__case__building_id=membership.building_id,
+        case__building_id=membership.building_id,
     )
     publish_form = PreparePublicationForm(request.POST or None)
     can_publish = _proposal_publishable(proposal)
@@ -364,7 +362,7 @@ def proposal_detail(request, pk):
 @login_required
 @require_http_methods(["GET", "POST"])
 def proposal_create(request, pk):
-    """Two-phase create-proposal from a spending work order (spec 4.3.1).
+    """Two-phase create-proposal from a spending case (spec 4.3.1).
 
     action=prepare: upload quotation pair + create the DRAFT proposal, then
     render the signed form with the exact typed data. action=submit: freeze
@@ -372,24 +370,24 @@ def proposal_create(request, pk):
     """
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
-    work_order = get_object_or_404(
-        WorkOrder.objects.select_related("case"),
+    case = get_object_or_404(
+        MaintenanceCase.objects.prefetch_related("work_orders"),
         pk=pk,
-        case__building_id=building_id,
+        building_id=building_id,
     )
     if request.method == "POST":
         require_recent_auth(request)
-    if not work_order.requires_spending:
-        messages.error(request, "This work order does not require spending.")
-        return redirect("web:work-order-detail", pk=work_order.pk)
+    if not case.work_orders.filter(requires_spending=True).exists():
+        messages.error(request, "This case does not require spending.")
+        return redirect("web:case-detail", pk=case.pk)
 
     existing = (
-        Proposal.objects.filter(work_order=work_order)
+        Proposal.objects.filter(case=case)
         .select_related("current_version")
         .first()
     )
     if existing is not None and existing.current_version_id is not None:
-        messages.info(request, "A proposal has already been submitted for this work order.")
+        messages.info(request, "A proposal has already been submitted for this case.")
         return redirect("web:proposal-detail", pk=existing.pk)
 
     create_form = CreateProposalForm(request.POST or None, request.FILES or None)
@@ -400,13 +398,13 @@ def proposal_create(request, pk):
     if action == "prepare" and create_form.is_valid():
         try:
             original, _redacted = upload_document_pair(
-                work_order.case.building,
+                case.building,
                 Document.Kind.QUOTATION,
                 request.user,
                 create_form.cleaned_data["quotation_original"],
                 create_form.cleaned_data["quotation_redacted"],
             )
-            proposal = existing or create_proposal(work_order, membership)
+            proposal = existing or create_proposal(case, membership)
             amount = create_form.cleaned_data["amount_vnd"]
             contractor = create_form.cleaned_data["contractor_name"]
             payload = build_proposal_evidence_payload(proposal, amount, contractor, [original])
@@ -437,7 +435,7 @@ def proposal_create(request, pk):
             proposal = get_object_or_404(
                 Proposal,
                 pk=sign_form.cleaned_data["proposal_id"],
-                work_order__case__building_id=building_id,
+                case__building_id=building_id,
             )
             original = get_object_or_404(
                 DocumentVersion,
@@ -471,7 +469,7 @@ def proposal_create(request, pk):
             memberships,
             nav_active="finance",
             finance_active="proposals",
-            work_order=work_order,
+            case=case,
             create_form=create_form,
             sign_form=sign_form,
             typed_data=typed_data,

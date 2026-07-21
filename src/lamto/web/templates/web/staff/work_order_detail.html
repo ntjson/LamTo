@@ -42,7 +42,7 @@
       {% endif %}
 
       {% if work_order.requires_spending %}
-      <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.pk %}">{% trans "Create spending proposal" %}</a></p>
+      <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.case_id %}">{% trans "Create spending proposal" %}</a></p>
       {% endif %}
     </div>
 

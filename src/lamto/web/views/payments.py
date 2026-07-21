@@ -35,7 +35,7 @@ def payment_record(request):
     acceptance = get_object_or_404(
         AcceptanceRecord,
         pk=acceptance_id,
-        work_order__case__building_id=building_id,
+        case__building_id=building_id,
     )
     if hasattr(acceptance, "payment") and acceptance.payment is not None:
         raise PermissionDenied("Payment already recorded.")
@@ -98,15 +98,15 @@ def payment_list(request):
     record_list = prepare_record_list(
             request,
             AcceptanceRecord.objects.filter(
-                work_order__case__building_id=building_id,
+                case__building_id=building_id,
                 payment__isnull=True,
-            ).select_related("work_order__case"),
-            search_fields=("work_order__case__category",),
+            ).select_related("case"),
+            search_fields=("case__category",),
             sorts=(("", "Newest first", ("-accepted_at",)),),
             page_param="rpage",
         )
     verify_qs = PaymentEvidence.objects.filter(
-        acceptance__work_order__case__building_id=building_id,
+        acceptance__case__building_id=building_id,
         verification__isnull=True,
     )
     if status in status_groups:
@@ -115,17 +115,17 @@ def payment_list(request):
         verify_qs = verify_qs.filter(external_status=status)
     verify_list = prepare_record_list(
             request,
-            verify_qs.select_related("acceptance__work_order__case"),
+            verify_qs.select_related("acceptance__case"),
             search_fields=(
                 "bank_reference",
-                "acceptance__work_order__case__category",
+                "acceptance__case__category",
             ),
             sorts=(("", "Newest first", ("-recorded_at",)),),
         )
     record_items = [
         {
             "url": f"/s/payments/record/{a.pk}/",
-            "title": f"Acceptance #{a.pk} · {a.work_order.case.category}",
+            "title": f"Acceptance #{a.pk} · {a.case.category}",
             "amount_vnd": a.actual_cost_vnd,
             "status": None,
             "deadline": None,
@@ -137,7 +137,7 @@ def payment_list(request):
     verify_items = [
         {
             "url": f"/s/payments/verify/{p.pk}/",
-            "title": f"Payment #{p.pk} · {p.acceptance.work_order.case.category}",
+            "title": f"Payment #{p.pk} · {p.acceptance.case.category}",
             "amount_vnd": p.amount_vnd,
             "status": p.get_external_status_display(),
             "deadline": None,
@@ -192,9 +192,9 @@ def payment_record_detail(request, pk):
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
     acceptance = get_object_or_404(
-        AcceptanceRecord.objects.select_related("work_order", "payment", "outbox_event"),
+        AcceptanceRecord.objects.select_related("case", "payment", "outbox_event"),
         pk=pk,
-        work_order__case__building_id=building_id,
+        case__building_id=building_id,
     )
     payment = getattr(acceptance, "payment", None)
     if payment is not None:
@@ -360,7 +360,7 @@ def payment_verify_detail(request, pk):
 
     payment = get_object_or_404(
         PaymentEvidence.objects.select_related(
-            "acceptance__work_order",
+            "acceptance__case",
             "recorder",
             "verification",
             "outbox_event",
@@ -369,7 +369,7 @@ def payment_verify_detail(request, pk):
             "proof_redacted",
         ),
         pk=pk,
-        acceptance__work_order__case__building_id=building_id,
+        acceptance__case__building_id=building_id,
     )
     acceptance = payment.acceptance
     already = hasattr(payment, "verification") and payment.verification is not None
@@ -498,16 +498,17 @@ def accept_work(request, pk):
 
     from lamto.accounts.models import SignerWallet
     from lamto.finance.acceptance import build_acceptance_evidence_typed_data
-    from lamto.maintenance.models import WorkOrder
+    from lamto.maintenance.models import MaintenanceCase
     from lamto.web.staff_signing import new_event_id
 
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
-    work_order = get_object_or_404(
-        WorkOrder,
+    case = get_object_or_404(
+        MaintenanceCase,
         pk=pk,
-        case__building_id=building_id,
+        building_id=building_id,
     )
+    work_order = case.work_orders.order_by("-created_at", "-pk").first()
     # Rebuild scoped options on every GET/POST before constructing the form.
     invoice_options = document_pair_options(building_id, Document.Kind.INVOICE)
     acceptance_options = document_pair_options(
@@ -547,7 +548,7 @@ def accept_work(request, pk):
                 "acceptance_redacted": pair_acc[1],
             }
             try:
-                form.save(work_order, membership, docs)
+                form.save(case, membership, docs)
             except (ValidationError, PermissionDenied) as error:
                 signed_action_failure(
                     request,
@@ -561,7 +562,7 @@ def accept_work(request, pk):
                     "Work accepted. A payment recorder signs the matching "
                     "bank transfer next.",
                 )
-                return redirect("web:work-order-detail", pk=work_order.pk)
+                return redirect("web:case-detail", pk=case.pk)
 
     # Mint event id + typed data for MetaMask. Prefer POST values; else first
     # scoped pair so the form is fillable without a separate upload UI.
@@ -609,7 +610,7 @@ def accept_work(request, pk):
         try:
             typed_data = json.dumps(
                 build_acceptance_evidence_typed_data(
-                    work_order,
+                    case,
                     membership,
                     cost,
                     inv_o,
@@ -635,11 +636,12 @@ def accept_work(request, pk):
             membership,
             memberships,
             nav_active="work",
+            case=case,
             work_order=work_order,
             accept_form=form,
             list_mode=False,
             typed_data=typed_data,
             expected_signer=expected_signer,
-            accountability_stages=accountability_chain_for(work_order),
+            accountability_stages=accountability_chain_for(case),
         ),
     )

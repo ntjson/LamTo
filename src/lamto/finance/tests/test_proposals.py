@@ -13,6 +13,7 @@ from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.maintenance.models import (
     BuildingLocation,
+    CaseReport,
     IssueReport,
     MaintenanceCase,
     TriageDecision,
@@ -66,6 +67,7 @@ class ProposalVersionTests(TestCase):
             department="Maintenance",
             deadline_at="2026-07-20T12:00:00Z",
         )
+        CaseReport.objects.create(case=case, report=report, grouped_by=operator)
         work_order = WorkOrder.objects.create(
             case=case,
             assignee=operator,
@@ -108,6 +110,26 @@ class ProposalVersionTests(TestCase):
         register_wallet(membership, account.address.lower(), proof)
         return membership, work_order, quotation, account
 
+    def test_create_proposal_is_case_anchored_and_proposes_linked_reports(self):
+        operator, work_order, _quotation, _account = self.make_signed_proposal_inputs()
+
+        proposal = create_proposal(work_order.case, operator)
+
+        self.assertEqual(proposal.case, work_order.case)
+        work_order.case.decision.report.refresh_from_db()
+        self.assertEqual(work_order.case.decision.report.status, IssueReport.Status.PROPOSED)
+
+    def test_create_proposal_rejects_case_with_private_report(self):
+        operator, work_order, _quotation, _account = self.make_signed_proposal_inputs()
+        report = work_order.case.decision.report
+        report.is_private = True
+        report.save(update_fields=["is_private"])
+
+        with self.assertRaisesMessage(
+            ValidationError, "Private requests cannot become community proposals."
+        ):
+            create_proposal(work_order.case, operator)
+
     def signed_submission(
         self,
         proposal,
@@ -136,7 +158,7 @@ class ProposalVersionTests(TestCase):
 
     def test_submitted_version_is_signed_immutable_and_tied_to_work_order(self):
         operator, work_order, quotation, account = self.make_signed_proposal_inputs()
-        proposal = create_proposal(work_order, operator)
+        proposal = create_proposal(work_order.case, operator)
         signature, event_id = self.signed_submission(proposal, account, quotation)
         version = submit_proposal_version(
             proposal=proposal,
@@ -157,7 +179,7 @@ class ProposalVersionTests(TestCase):
 
     def test_revision_is_a_new_version_and_resets_normal_authorization(self):
         operator, work_order, quotation, account = self.make_signed_proposal_inputs()
-        proposal = create_proposal(work_order, operator)
+        proposal = create_proposal(work_order.case, operator)
         first_signature, first_event_id = self.signed_submission(proposal, account, quotation)
         first = submit_proposal_version(
             proposal, 18_500_000, "Company X", [quotation], first_signature, first_event_id
@@ -193,7 +215,7 @@ class ProposalVersionTests(TestCase):
 
     def test_submission_requires_positive_amount_and_safe_quotation_pair(self):
         operator, work_order, quotation, account = self.make_signed_proposal_inputs()
-        proposal = create_proposal(work_order, operator)
+        proposal = create_proposal(work_order.case, operator)
         signature, event_id = self.signed_submission(proposal, account, quotation)
 
         with self.assertRaises(ValidationError):
@@ -221,7 +243,7 @@ class ProposalVersionTests(TestCase):
 
     def test_submission_rejects_bad_signature_before_creating_version(self):
         operator, work_order, quotation, account = self.make_signed_proposal_inputs()
-        proposal = create_proposal(work_order, operator)
+        proposal = create_proposal(work_order.case, operator)
         other_account = Account.create()
         payload = build_proposal_evidence_payload(
             proposal, 18_500_000, "Company X", [quotation]
@@ -243,7 +265,7 @@ class ProposalVersionTests(TestCase):
 
     def test_database_trigger_rejects_proposal_version_update_and_delete(self):
         operator, work_order, quotation, account = self.make_signed_proposal_inputs()
-        proposal = create_proposal(work_order, operator)
+        proposal = create_proposal(work_order.case, operator)
         signature, event_id = self.signed_submission(proposal, account, quotation)
         version = submit_proposal_version(
             proposal, 18_500_000, "Company X", [quotation], signature, event_id

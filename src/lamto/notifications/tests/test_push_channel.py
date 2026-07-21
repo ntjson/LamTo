@@ -66,7 +66,7 @@ class PushQueueGatingTests(TestCase):
             d.confirm_all_chain_events()
             work = WorkOrder.objects.get(case__building=seed.building)
             from lamto.finance.models import AcceptanceRecord
-            record = AcceptanceRecord.objects.get(work_order=work)
+            record = AcceptanceRecord.objects.get(case=work.case)
             # notify_users queues via transaction.on_commit; fire it in-test.
             with self.captureOnCommitCallbacks(execute=True):
                 notify_work_rateable(record)

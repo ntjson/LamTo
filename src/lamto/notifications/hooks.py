@@ -101,13 +101,14 @@ def notify_deadline_risk(work_order):
 
 
 def notify_work_accepted(record):
-    building_id = record.work_order.case.building_id
-    recipients = [record.work_order.assignee] + _management_users(building_id)
+    work_order = record.case.work_orders.order_by("-created_at", "-pk").first()
+    building_id = record.case.building_id
+    recipients = ([work_order.assignee] if work_order else []) + _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_WORK_ACCEPTED}:acceptance:{record.pk}",
         subject="Work accepted",
-        body=f"Work order #{record.work_order_id} accepted at {record.actual_cost_vnd} VND.",
+        body=f"Case #{record.case_id} accepted at {record.actual_cost_vnd} VND.",
         event_code=EVENT_WORK_ACCEPTED,
         building=building_id,
     )
@@ -117,24 +118,24 @@ def notify_work_rateable(record):
     """Prompt the reporting residents to rate completed work (spec 7.4)."""
     from lamto.maintenance.models import CaseReport
 
-    work_order = record.work_order
-    building_id = work_order.case.building_id
+    case = record.case
+    building_id = case.building_id
     residents = [
         link.report.reporter
-        for link in CaseReport.objects.filter(case=work_order.case).select_related("report__reporter")
+        for link in CaseReport.objects.filter(case=case).select_related("report__reporter")
     ]
     notify_users(
         residents,
-        event_key=f"{EVENT_WORK_COMPLETED}:work:{work_order.pk}",
+        event_key=f"{EVENT_WORK_COMPLETED}:case:{case.pk}",
         subject="Work completed",
-        body=f"Work order #{work_order.pk} is complete — please rate it.",
+        body=f"Case #{case.pk} is complete — please rate it.",
         event_code=EVENT_WORK_COMPLETED,
         building=building_id,
     )
 
 
 def notify_payment_recorded(payment):
-    building_id = payment.acceptance.work_order.case.building_id
+    building_id = payment.acceptance.case.building_id
     recipients = _management_users(building_id) + [
         payment.recorder.user
     ]
@@ -150,7 +151,7 @@ def notify_payment_recorded(payment):
 
 def notify_payment_verified(verification):
     payment = verification.payment
-    building_id = payment.acceptance.work_order.case.building_id
+    building_id = payment.acceptance.case.building_id
     if verification.decision == "VERIFIED":
         code = EVENT_PAYMENT_VERIFIED
         subject = "Payment verified"

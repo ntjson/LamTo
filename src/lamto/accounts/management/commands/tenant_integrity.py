@@ -47,12 +47,12 @@ def checks():
         (
             "fund_entry_proposal",
             MaintenanceFundEntry.objects.filter(proposal__isnull=False).exclude(
-                fund__building=F("proposal__work_order__case__building")
+                fund__building=F("proposal__case__building")
             ),
         ),
         (
             "published_entry_case",
-            PublishedLedgerEntry.objects.exclude(case=F("proposal__work_order__case")),
+            PublishedLedgerEntry.objects.exclude(case=F("proposal__case")),
         ),
         (
             "outbox_signer_building",

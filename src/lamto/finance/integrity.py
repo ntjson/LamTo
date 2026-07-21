@@ -135,7 +135,7 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
             .select_related(
                 "snapshot__outbox_event",
                 "proposal__current_version",
-                "proposal__work_order",
+                "proposal__case",
                 "snapshot__publisher__user",
             )
             .filter(pk=entry_id)

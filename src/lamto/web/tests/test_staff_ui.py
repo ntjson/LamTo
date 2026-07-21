@@ -389,9 +389,8 @@ class AccountabilityChainTests(SimpleTestCase):
             acceptance=acceptance,
         )
         payment.acceptance = acceptance
-        acceptance.work_order = wo
         self.assertEqual(
-            self._states(payment=payment, publication_pending=False),
+            self._states(work_order=wo, payment=payment, publication_pending=False),
             ["complete", "complete", "complete", "complete", "complete", "complete", "current"],
         )
 
@@ -409,8 +408,8 @@ class AccountabilityChainTests(SimpleTestCase):
             acceptance=acceptance,
         )
         payment.acceptance = acceptance
-        acceptance.work_order = wo
         chain = staff_common.accountability_chain_for(
+            work_order=wo,
             payment=payment,
             proposal=proposal,
             published=False,

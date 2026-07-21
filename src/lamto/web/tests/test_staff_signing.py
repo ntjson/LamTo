@@ -259,7 +259,7 @@ class UploadDocumentPairTests(TestCase):
             user=self.user, building=self.building
         )
         proposal = Proposal.objects.create(
-            work_order=work,
+            case=case,
             creator_membership=membership,
             status=Proposal.Status.DRAFT,
         )

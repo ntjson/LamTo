@@ -383,17 +383,19 @@ def resolve_accountability_stage(
         payment = _related_or_none(acceptance, "payment")
     if acceptance is None and payment is not None:
         acceptance = getattr(payment, "acceptance", None)
-    if work_order is None and acceptance is not None:
-        work_order = getattr(acceptance, "work_order", None)
-    if work_order is None and proposal is not None:
-        work_order = getattr(proposal, "work_order", None)
-    if work_order is None and payment is not None:
+    if case is None and acceptance is not None:
+        case = getattr(acceptance, "case", None)
+    if case is None and proposal is not None:
+        case = getattr(proposal, "case", None)
+    if case is None and payment is not None:
         acc = getattr(payment, "acceptance", None)
-        work_order = getattr(acc, "work_order", None) if acc is not None else None
-    if proposal is None and work_order is not None:
-        proposal = _related_or_none(work_order, "proposal")
-    if acceptance is None and work_order is not None:
-        acceptance = _related_or_none(work_order, "acceptance")
+        case = getattr(acc, "case", None) if acc is not None else None
+    if case is None and work_order is not None:
+        case = getattr(work_order, "case", None)
+    if proposal is None and case is not None:
+        proposal = _related_or_none(case, "proposal")
+    if acceptance is None and case is not None:
+        acceptance = _related_or_none(case, "acceptance")
     if payment is None and acceptance is not None:
         payment = _related_or_none(acceptance, "payment")
 
@@ -472,7 +474,7 @@ def resolve_accountability_stage(
     if proposal is not None:
         return resolve_accountability_stage(
             proposal=proposal,
-            work_order=getattr(proposal, "work_order", None),
+            case=getattr(proposal, "case", None),
             published=published,
             publication_pending=publication_pending,
         )

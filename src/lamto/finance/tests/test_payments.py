@@ -105,7 +105,7 @@ class PaymentMakerCheckerTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         acceptance = accept_work(
-            work,
+            work.case,
             board,
             18_500_000,
             invoice_original,
@@ -197,7 +197,7 @@ class PaymentMakerCheckerTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         acceptance = accept_work(
-            work,
+            work.case,
             board_recorder,
             18_500_000,
             invoice_original,
@@ -251,7 +251,7 @@ class PaymentMakerCheckerTests(TestCase):
     def test_independent_verifier_can_verify_and_rejection_is_immutable(self):
         inputs = self.make_completed_work_inputs()
         acceptance, board_recorder, proof_original, proof_redacted = self.accept_default(inputs)
-        verifier = self.make_second_board(acceptance.work_order.case.building)
+        verifier = self.make_second_board(acceptance.case.building)
         payment_signature, payment_event, completed_at, payment_id = self.sign_payment(
             acceptance,
             board_recorder,
@@ -420,7 +420,7 @@ class PaymentMakerCheckerTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             PaymentEvidence.objects.filter(pk=payment.pk).delete()
 
-        verifier = self.make_second_board(acceptance.work_order.case.building, "board-v2")
+        verifier = self.make_second_board(acceptance.case.building, "board-v2")
         verification_signature, verification_event, timestamp = self.sign_payment_verification(
             payment, verifier
         )

@@ -48,9 +48,9 @@ def published_ledger_entry_for_proof(building_id, pk):
         .filter(pk=pk)
         .select_related(
             "case__decision__report",
-            "work_order__acceptance",
-            "work_order__acceptance__invoice_redacted",
-            "work_order__acceptance__acceptance_redacted",
+            "case__acceptance",
+            "case__acceptance__invoice_redacted",
+            "case__acceptance__acceptance_redacted",
             "payment__proof_redacted",
             "payment__outbox_event",
             "payment__verification__outbox_event",
@@ -201,7 +201,7 @@ def ledger_entry_proof(entry):
     version = entry.proposal.current_version
     verification = getattr(entry.payment, "verification", None)
     redacted_docs = []
-    acceptance = getattr(entry.work_order, "acceptance", None)
+    acceptance = getattr(entry.case, "acceptance", None)
     if acceptance is not None:
         for label, version_obj in (
             ("Invoice (redacted)", acceptance.invoice_redacted),
@@ -297,25 +297,25 @@ def pending_reconciliation_proposals(building_id):
         case__building_id=building_id, proposal__isnull=False
     ).values("proposal_id")
     snapshotted_ids = PublicationSnapshot.objects.filter(
-        proposal__work_order__case__building_id=building_id
+        proposal__case__building_id=building_id
     ).values("proposal_id")
 
     qs = (
         Proposal.objects.filter(
-            work_order__case__building_id=building_id,
+            case__building_id=building_id,
             current_version__isnull=False,
-            work_order__acceptance__payment__verification__decision=PaymentVerification.Decision.VERIFIED,
-            work_order__acceptance__payment__external_status=PaymentEvidence.ExternalStatus.COMPLETED,
+            case__acceptance__payment__verification__decision=PaymentVerification.Decision.VERIFIED,
+            case__acceptance__payment__external_status=PaymentEvidence.ExternalStatus.COMPLETED,
             current_version__outbox_event__status__in=SETTLED_STATUSES,
-            work_order__acceptance__outbox_event__status__in=SETTLED_STATUSES,
-            work_order__acceptance__payment__outbox_event__status__in=SETTLED_STATUSES,
-            work_order__acceptance__payment__verification__outbox_event__status__in=SETTLED_STATUSES,
+            case__acceptance__outbox_event__status__in=SETTLED_STATUSES,
+            case__acceptance__payment__outbox_event__status__in=SETTLED_STATUSES,
+            case__acceptance__payment__verification__outbox_event__status__in=SETTLED_STATUSES,
         )
         .exclude(pk__in=published_proposal_ids)
         .exclude(pk__in=snapshotted_ids)
         .select_related(
             "current_version",
-            "work_order",
+            "case",
         )
         .order_by("-created_at")
     )

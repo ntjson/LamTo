@@ -123,7 +123,6 @@ class LedgerApiTests(TestCase):
         assert set(body["payload"]) == {
             "report_id",
             "case_id",
-            "work_order_id",
             "proposal_id",
             "proposal_version",
             "proposed_amount_vnd",

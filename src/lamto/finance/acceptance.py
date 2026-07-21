@@ -9,22 +9,28 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
-from lamto.maintenance.models import WorkOrder, WorkUpdate, WorkUpdateEvidence
+from lamto.maintenance.models import MaintenanceCase, WorkOrder, WorkUpdate, WorkUpdateEvidence
 
 from .models import AcceptanceRecord, Proposal
 
 
 
-def _locked_work_order(work_order):
+def _locked_case(case):
     locked = (
-        WorkOrder.objects.select_for_update()
-        .select_related("case")
-        .filter(pk=getattr(work_order, "pk", None))
+        MaintenanceCase.objects.select_for_update()
+        .filter(pk=getattr(case, "pk", None))
         .first()
     )
     if locked is None:
-        raise ValidationError("Work order does not exist.")
+        raise ValidationError("Case does not exist.")
     return locked
+
+
+def _case_work_order(case):
+    work_order = case.work_orders.order_by("-created_at", "-pk").first()
+    if work_order is None:
+        raise ValidationError("Case has no work order.")
+    return work_order
 
 
 def _require_document_pair(original, redacted, kind, building_id, *, lock=False):
@@ -91,9 +97,9 @@ def _completion_photo_hashes(work_order, *, lock=False):
     return before + after
 
 
-def _acceptance_previous_hash(work_order):
+def _acceptance_previous_hash(case):
     try:
-        proposal = work_order.proposal
+        proposal = case.proposal
     except Proposal.DoesNotExist as exc:
         raise ValidationError("A proposal is required before work acceptance.") from exc
     version = proposal.current_version
@@ -103,7 +109,7 @@ def _acceptance_previous_hash(work_order):
 
 
 def build_acceptance_evidence_payload(
-    work_order,
+    case,
     actual_cost_vnd,
     invoice_original,
     invoice_redacted,
@@ -113,7 +119,7 @@ def build_acceptance_evidence_payload(
 ):
     if type(actual_cost_vnd) is not int or actual_cost_vnd <= 0:
         raise ValidationError("Actual cost must be a positive integer VND amount.")
-    building_id = work_order.case.building_id
+    building_id = case.building_id
     invoice_original, invoice_redacted = _require_document_pair(
         invoice_original,
         invoice_redacted,
@@ -126,10 +132,11 @@ def build_acceptance_evidence_payload(
         Document.Kind.ACCEPTANCE_REPORT,
         building_id,
     )
+    work_order = _case_work_order(case)
     photo_hashes = _completion_photo_hashes(work_order)
     acceptance_timestamp = timestamp or work_order.completed_at or timezone.now()
     return {
-        "work_order_id": work_order.pk,
+        "case_id": case.pk,
         "actual_cost_vnd": actual_cost_vnd,
         "acceptance_timestamp": utc_rfc3339(acceptance_timestamp),
         "invoice_original_hash": invoice_original.sha256,
@@ -141,7 +148,7 @@ def build_acceptance_evidence_payload(
 
 
 def build_acceptance_evidence_typed_data(
-    work_order,
+    case,
     membership,
     actual_cost_vnd,
     invoice_original,
@@ -152,7 +159,7 @@ def build_acceptance_evidence_typed_data(
     timestamp=None,
 ):
     payload = build_acceptance_evidence_payload(
-        work_order,
+        case,
         actual_cost_vnd,
         invoice_original,
         invoice_redacted,
@@ -164,13 +171,13 @@ def build_acceptance_evidence_typed_data(
         event_id,
         EvidenceType.WORK_ACCEPTANCE,
         "0x" + payload_hash(payload),
-        _acceptance_previous_hash(work_order),
+        _acceptance_previous_hash(case),
     )
 
 
 @transaction.atomic
 def accept_work(
-    work_order,
+    case,
     membership,
     actual_cost_vnd,
     invoice_original,
@@ -181,16 +188,17 @@ def accept_work(
     event_id,
     timestamp=None,
 ) -> AcceptanceRecord:
-    work_order = _locked_work_order(work_order)
-    actor = require_management(membership.user, work_order.case.building_id)
+    case = _locked_case(case)
+    work_order = _case_work_order(case)
+    actor = require_management(membership.user, case.building_id)
     if work_order.status != WorkOrder.Status.AWAITING_ACCEPTANCE:
         raise ValidationError("Work order is not awaiting acceptance.")
-    if AcceptanceRecord.objects.filter(work_order=work_order).exists():
-        raise ValidationError("Work order has already been accepted.")
+    if AcceptanceRecord.objects.filter(case=case).exists():
+        raise ValidationError("Case has already been accepted.")
     if type(actual_cost_vnd) is not int or actual_cost_vnd <= 0:
         raise ValidationError("Actual cost must be a positive integer VND amount.")
 
-    building_id = work_order.case.building_id
+    building_id = case.building_id
     invoice_original, invoice_redacted = _require_document_pair(
         invoice_original,
         invoice_redacted,
@@ -206,10 +214,10 @@ def accept_work(
         lock=True,
     )
     photo_hashes = _completion_photo_hashes(work_order, lock=True)
-    previous_hash = _acceptance_previous_hash(work_order)
+    previous_hash = _acceptance_previous_hash(case)
     acceptance_timestamp = timestamp or work_order.completed_at or timezone.now()
     payload = {
-        "work_order_id": work_order.pk,
+        "case_id": case.pk,
         "actual_cost_vnd": actual_cost_vnd,
         "acceptance_timestamp": utc_rfc3339(acceptance_timestamp),
         "invoice_original_hash": invoice_original.sha256,
@@ -228,7 +236,7 @@ def accept_work(
     )
     accepted_at = timezone.now()
     record = AcceptanceRecord.objects.create(
-        work_order=work_order,
+        case=case,
         actual_cost_vnd=actual_cost_vnd,
         invoice_original=invoice_original,
         invoice_redacted=invoice_redacted,
@@ -250,7 +258,7 @@ def accept_work(
         str(record.pk),
         "accepted",
         {
-            "work_order_id": work_order.pk,
+            "case_id": case.pk,
             "actual_cost_vnd": actual_cost_vnd,
             "event_id": event.event_id,
         },

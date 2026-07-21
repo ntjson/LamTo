@@ -161,7 +161,7 @@ class WorkAcceptanceTests(TestCase):
         quotation_original, _ = self.document_pair(
             building, Document.Kind.QUOTATION, operator_user, 1, "quotation"
         )
-        proposal = create_proposal(work_order, operator)
+        proposal = create_proposal(work_order.case, operator)
         event_id = "0x" + secrets.token_hex(32)
         from lamto.finance.proposals import build_proposal_evidence_payload
         from lamto.evidence.signatures import build_evidence_typed_data
@@ -224,7 +224,7 @@ class WorkAcceptanceTests(TestCase):
             event_id = "0x" + secrets.token_hex(32)
         timestamp = timestamp or work.completed_at
         typed_data = build_acceptance_evidence_typed_data(
-            work,
+            work.case,
             membership,
             actual_cost_vnd,
             invoice_original,
@@ -260,7 +260,7 @@ class WorkAcceptanceTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         record = accept_work(
-            work,
+            work.case,
             board,
             18_500_000,
             invoice_original,
@@ -290,7 +290,7 @@ class WorkAcceptanceTests(TestCase):
         )
         self.assertEqual(
             record.outbox_event.previous_hash,
-            "0x" + work.proposal.current_version.outbox_event.payload_hash,
+            "0x" + work.case.proposal.current_version.outbox_event.payload_hash,
         )
 
     def test_accept_work_rejects_wrong_status_and_non_positive_cost(self):
@@ -314,7 +314,7 @@ class WorkAcceptanceTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             accept_work(
-                work,
+                work.case,
                 board,
                 18_500_000,
                 invoice_original,
@@ -329,7 +329,7 @@ class WorkAcceptanceTests(TestCase):
         work.save(update_fields=["status"])
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work,
+                work.case,
                 18_500_000.0,
                 invoice_original,
                 invoice_redacted,
@@ -339,7 +339,7 @@ class WorkAcceptanceTests(TestCase):
             )
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work,
+                work.case,
                 0,
                 invoice_original,
                 invoice_redacted,
@@ -363,7 +363,7 @@ class WorkAcceptanceTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work,
+                work.case,
                 18_500_000,
                 bad_original,
                 bad_redacted,
@@ -376,7 +376,7 @@ class WorkAcceptanceTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             build_acceptance_evidence_payload(
-                work,
+                work.case,
                 18_500_000,
                 wrong_kind_original,
                 wrong_kind_redacted,
@@ -403,7 +403,7 @@ class WorkAcceptanceTests(TestCase):
             acceptance_redacted=acceptance_redacted,
         )
         record = accept_work(
-            work,
+            work.case,
             board,
             18_500_000,
             invoice_original,

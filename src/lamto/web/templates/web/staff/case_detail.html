@@ -29,6 +29,11 @@
     <div><dt>{% trans "Location" %}</dt><dd>{{ report.location_path_snapshot }}</dd></div>
     <div><dt>{% trans "Status" %}</dt><dd>{{ report.get_status_display }}</dd></div>
   </dl>
+  {% if case.proposal %}
+  <p><a class="button button-secondary" href="{% url 'web:proposal-detail' case.proposal.pk %}">{% trans "View spending proposal" %}</a></p>
+  {% elif work_orders %}
+  <p><a class="button button-secondary" href="{% url 'web:proposal-create' case.pk %}">{% trans "Create spending proposal" %}</a></p>
+  {% endif %}
   {% endif %}
   {% if case %}
   <dl class="detail-list">
