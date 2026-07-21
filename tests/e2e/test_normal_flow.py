@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lamto.evidence.models import is_settled
+from lamto.evidence.models import BlockchainOutboxEvent, is_settled
 from lamto.testing.factories import DEFAULT_AMOUNT_VND
 
 pytestmark = pytest.mark.django_db
@@ -20,6 +20,9 @@ def test_direct_outcome_c_happy_path(seeded_pilot):
     rating = seeded_pilot.rate_completed_case(satisfied=True)
 
     assert rating.satisfied is True
+    assert not BlockchainOutboxEvent.objects.filter(
+        building=seeded_pilot.seed.building
+    ).exists()
 
 
 def test_realistic_normal_flow(page, seeded_pilot):
