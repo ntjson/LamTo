@@ -24,6 +24,8 @@ from .signatures import (
     BYTES32_RE,
     build_evidence_typed_data,
     normalize_signature,
+    platform_sign_evidence,
+    platform_signer_address,
     recover_signer,
 )
 
@@ -420,3 +422,63 @@ def queue_signed_event(
         {"event_type": int(event_type), "payload_hash": digest, "signer": wallet.address},
     )
     return event
+
+
+@transaction.atomic
+def queue_platform_event(
+    event_id, event_type, payload, previous_hash, building
+) -> BlockchainOutboxEvent:
+    event_id = lowercase_identifier(event_id)
+    previous_hash = lowercase_identifier(previous_hash)
+    _validate_payload(event_type, payload)
+    if not BYTES32_RE.fullmatch(event_id) or not BYTES32_RE.fullmatch(previous_hash):
+        raise ValidationError("Event ID and previous hash must be 0x-prefixed bytes32 values.")
+    normalized_payload = json.loads(canonical_bytes(payload))
+    digest = payload_hash(normalized_payload)
+    signature = platform_sign_evidence(
+        event_id, event_type, "0x" + digest, previous_hash
+    )
+    signer_address = platform_signer_address()
+    canonical_payload = canonical_bytes(normalized_payload).decode("utf-8")
+    existing = BlockchainOutboxEvent.objects.filter(event_id=event_id).first()
+    identity = {
+        "event_type": event_type,
+        "payload": normalized_payload,
+        "payload_hash": digest,
+        "previous_hash": previous_hash,
+        "signature": signature,
+        "signer_address": signer_address,
+        "signer_wallet_id": None,
+    }
+    if existing:
+        if all(getattr(existing, field) == value for field, value in identity.items()):
+            return existing
+        raise EvidenceConflict("Event ID already exists with different signed identity.")
+    try:
+        authorization = _signed_write_authorization(
+            "platform-evidence-queue",
+            event_id,
+            int(event_type),
+            digest,
+            previous_hash,
+            signature,
+            signer_address,
+            building.pk,
+            canonical_payload,
+        )
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT lamto_security.evidence_insert_platform_outbox_event(
+                        %s, %s::smallint, %s::jsonb, %s, %s, %s, %s, %s, %s, %s
+                    )""",
+                    [event_id, event_type, canonical_payload, digest, previous_hash,
+                     signature, signer_address, building.pk, canonical_payload, authorization],
+                )
+                event_pk = cursor.fetchone()[0]
+        return BlockchainOutboxEvent.objects.get(pk=event_pk)
+    except IntegrityError:
+        existing = BlockchainOutboxEvent.objects.get(event_id=event_id)
+        if all(getattr(existing, field) == value for field, value in identity.items()):
+            return existing
+        raise EvidenceConflict("Event ID already exists with different signed identity.")

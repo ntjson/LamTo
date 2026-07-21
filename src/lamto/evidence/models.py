@@ -41,7 +41,10 @@ class BlockchainOutboxEvent(models.Model):
     payload_hash = models.CharField(max_length=64)
     previous_hash = models.CharField(max_length=66)
     signature = models.CharField(max_length=132)
-    signer_wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
+    signer_wallet = models.ForeignKey(
+        SignerWallet, on_delete=models.PROTECT, null=True, blank=True
+    )
+    signer_address = models.CharField(max_length=42, blank=True, default="")
     building = models.ForeignKey(
         "accounts.Building",
         on_delete=models.PROTECT,

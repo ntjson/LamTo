@@ -73,13 +73,14 @@ def _normalize_payload_hash(value: str) -> str:
 
 
 def _record_matches_event(record: ChainRecord, event: BlockchainOutboxEvent) -> bool:
+    signer = event.signer_address or event.signer_wallet.address
     return (
         _normalize_payload_hash(record.payload_hash)
         == _normalize_payload_hash(event.payload_hash)
         and record.previous_hash.lower() == event.previous_hash.lower()
         and int(record.event_type) == int(event.event_type)
         and to_checksum_address(record.signer)
-        == to_checksum_address(event.signer_wallet.address)
+        == to_checksum_address(signer)
     )
 
 
@@ -88,7 +89,7 @@ def _claim_outbox_event(event_pk: int) -> BlockchainOutboxEvent | None:
     now = timezone.now()
     with transaction.atomic():
         event = (
-            BlockchainOutboxEvent.objects.select_for_update(skip_locked=True)
+            BlockchainOutboxEvent.objects.select_for_update(skip_locked=True, of=("self",))
             .select_related("signer_wallet__membership__user")
             .filter(pk=event_pk)
             .filter(
@@ -173,23 +174,24 @@ def _mark_mismatch(event: BlockchainOutboxEvent, record: ChainRecord) -> Blockch
     event.save(
         update_fields=["status", "lease_expires_at", "last_error", "updated_at"]
     )
-    membership = event.signer_wallet.membership
-    record_audit(
-        membership.user,
-        membership,
-        "evidence.chain_mismatch",
-        "BlockchainOutboxEvent",
-        event.event_id,
-        "FAILURE",
-        {
-            "event_type": int(event.event_type),
-            "payload_hash": event.payload_hash,
-            "chain_payload_hash": record.payload_hash,
-            "chain_previous_hash": record.previous_hash,
-            "chain_event_type": int(record.event_type),
-            "chain_signer": record.signer,
-        },
-    )
+    if event.signer_wallet_id:
+        membership = event.signer_wallet.membership
+        record_audit(
+            membership.user,
+            membership,
+            "evidence.chain_mismatch",
+            "BlockchainOutboxEvent",
+            event.event_id,
+            "FAILURE",
+            {
+                "event_type": int(event.event_type),
+                "payload_hash": event.payload_hash,
+                "chain_payload_hash": record.payload_hash,
+                "chain_previous_hash": record.previous_hash,
+                "chain_event_type": int(record.event_type),
+                "chain_signer": record.signer,
+            },
+        )
     return event
 
 
@@ -294,7 +296,7 @@ def claim_next_due_outbox_event() -> BlockchainOutboxEvent | None:
     now = timezone.now()
     with transaction.atomic():
         event = (
-            BlockchainOutboxEvent.objects.select_for_update(skip_locked=True)
+            BlockchainOutboxEvent.objects.select_for_update(skip_locked=True, of=("self",))
             .select_related("signer_wallet__membership__user")
             .filter(
                 Q(status=BlockchainOutboxEvent.Status.PENDING)
@@ -360,7 +362,7 @@ def _process_claimed_event(
     if record is not None:
         with transaction.atomic():
             event = (
-                BlockchainOutboxEvent.objects.select_for_update()
+                BlockchainOutboxEvent.objects.select_for_update(of=("self",))
                 .select_related("signer_wallet__membership__user")
                 .get(pk=claimed.pk)
             )

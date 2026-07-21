@@ -1,6 +1,7 @@
 import re
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
@@ -76,3 +77,24 @@ def recover_signer(typed_data, signature) -> str:
     return Account.recover_message(
         encode_typed_data(full_message=typed_data), signature=normalize_signature(signature)
     )
+
+
+def _platform_account():
+    key = getattr(settings, "PLATFORM_SIGNER_PRIVATE_KEY", "")
+    if not key:
+        raise ImproperlyConfigured("PLATFORM_SIGNER_PRIVATE_KEY is not configured.")
+    return Account.from_key(key)
+
+
+def platform_signer_address() -> str:
+    return _platform_account().address
+
+
+def platform_sign_evidence(event_id, event_type, payload_hash_hex, previous_hash_hex) -> str:
+    if isinstance(payload_hash_hex, str) and not payload_hash_hex.startswith("0x"):
+        payload_hash_hex = "0x" + payload_hash_hex
+    typed_data = build_evidence_typed_data(
+        event_id, event_type, payload_hash_hex, previous_hash_hex
+    )
+    signed = Account.sign_typed_data(_platform_account().key, full_message=typed_data)
+    return normalize_signature(signed.signature.hex())
