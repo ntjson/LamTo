@@ -1583,11 +1583,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProofEvent'
+        proposal_version: {}
+        settlement: {}
       required:
       - anchoring_backend
       - events
       - evidence_level
       - payload_hash
+      - proposal_version
+      - settlement
     ProofEvent:
       type: object
       properties:

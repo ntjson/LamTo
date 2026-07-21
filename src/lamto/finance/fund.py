@@ -7,10 +7,6 @@ from lamto.accounts.models import Building
 from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
-from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import EvidenceType, SETTLED_STATUSES
-from lamto.evidence.services import queue_signed_event, utc_rfc3339
-from lamto.evidence.signatures import build_evidence_typed_data
 
 from .models import (
     FundEntryVerification,
@@ -18,11 +14,6 @@ from .models import (
     MaintenanceFundEntry,
     PublishedLedgerEntry,
 )
-
-EVIDENCE_ENTRY_TYPE = {
-    MaintenanceFundEntry.EntryType.OPENING_BALANCE: "OPENING",
-    MaintenanceFundEntry.EntryType.INFLOW: "INFLOW",
-}
 
 SOURCE_ENTRY_TYPES = frozenset(
     {
@@ -109,115 +100,6 @@ def _source_key(entry_type, fund_id, original_hash):
     return f"{entry_type}:{fund_id}:{original_hash}"
 
 
-def _prior_verified_source_hash(fund):
-    prior = (
-        MaintenanceFundEntry.objects.filter(
-            fund=fund,
-            entry_type__in=SOURCE_ENTRY_TYPES,
-            verification__isnull=False,
-            verification__outbox_event__status__in=SETTLED_STATUSES,
-            outbox_event__status__in=SETTLED_STATUSES,
-        )
-        .select_related("verification__outbox_event")
-        .order_by("-recorded_at", "-pk")
-        .first()
-    )
-    if prior is None:
-        return "0x" + "00" * 32
-    return "0x" + prior.verification.outbox_event.payload_hash
-
-
-def build_fund_source_evidence_payload(
-    fund_entry_id,
-    entry_type,
-    amount_vnd,
-    evidence_original,
-    evidence_redacted,
-    maker_membership,
-    checker_membership=None,
-    timestamp=None,
-):
-    if type(fund_entry_id) is not int or fund_entry_id <= 0:
-        raise ValidationError("Fund entry id must be a positive integer.")
-    _validate_source_amount(entry_type, amount_vnd)
-    if entry_type not in EVIDENCE_ENTRY_TYPE:
-        raise ValidationError("Fund entry type is invalid for evidence.")
-    if evidence_original is None or evidence_redacted is None:
-        raise ValidationError("Fund source evidence documents are required.")
-    entry_timestamp = timestamp or timezone.now()
-    if not isinstance(entry_timestamp, type(timezone.now())) or entry_timestamp.tzinfo is None:
-        raise ValidationError("Fund entry timestamp must be timezone-aware.")
-    payload = {
-        "fund_entry_id": fund_entry_id,
-        "entry_type": EVIDENCE_ENTRY_TYPE[entry_type],
-        "amount_vnd": amount_vnd,
-        "source_document_original_hash": evidence_original.sha256,
-        "source_document_redacted_hash": evidence_redacted.sha256,
-        "maker_membership_id": maker_membership.pk,
-        "entry_timestamp": utc_rfc3339(entry_timestamp),
-    }
-    if checker_membership is not None:
-        payload["checker_membership_id"] = checker_membership.pk
-    return payload
-
-
-def build_fund_source_evidence_typed_data(
-    fund,
-    membership,
-    fund_entry_id,
-    entry_type,
-    amount_vnd,
-    evidence_original,
-    evidence_redacted,
-    event_id,
-    timestamp=None,
-    previous_hash=None,
-):
-    payload = build_fund_source_evidence_payload(
-        fund_entry_id,
-        entry_type,
-        amount_vnd,
-        evidence_original,
-        evidence_redacted,
-        membership,
-        timestamp=timestamp,
-    )
-    if previous_hash is None:
-        previous_hash = _prior_verified_source_hash(fund)
-    return build_evidence_typed_data(
-        event_id,
-        EvidenceType.FUND_ENTRY,
-        "0x" + payload_hash(payload),
-        previous_hash,
-    )
-
-
-def build_fund_verification_evidence_payload(entry, verifier, timestamp=None):
-    verified_at = timestamp or timezone.now()
-    return build_fund_source_evidence_payload(
-        entry.pk,
-        entry.entry_type,
-        entry.amount_vnd,
-        entry.evidence_original,
-        entry.evidence_redacted,
-        entry.recorder,
-        checker_membership=verifier,
-        timestamp=verified_at,
-    )
-
-
-def build_fund_verification_evidence_typed_data(entry, membership, event_id, timestamp=None):
-    payload = build_fund_verification_evidence_payload(
-        entry, membership, timestamp=timestamp
-    )
-    return build_evidence_typed_data(
-        event_id,
-        EvidenceType.FUND_ENTRY,
-        "0x" + payload_hash(payload),
-        "0x" + entry.outbox_event.payload_hash,
-    )
-
-
 def _locked_fund(fund):
     locked = (
         MaintenanceFund.objects.select_for_update()
@@ -243,7 +125,6 @@ def _locked_entry(entry):
         MaintenanceFundEntry.objects.select_related(
             "fund__building",
             "recorder__user",
-            "outbox_event",
             "evidence_original",
             "evidence_redacted",
         ).get(pk=locked_id)
@@ -258,8 +139,6 @@ def record_fund_source(
     evidence_original,
     evidence_redacted,
     recorder,
-    signature,
-    event_id,
     fund_entry_id=None,
     timestamp=None,
     source_key=None,
@@ -285,24 +164,6 @@ def record_fund_source(
     key = source_key or _source_key(entry_type, fund.pk, evidence_original.sha256)
     if MaintenanceFundEntry.objects.filter(source_key=key).exists():
         raise ValidationError("Fund source key already exists.")
-    previous_hash = _prior_verified_source_hash(fund)
-    payload = build_fund_source_evidence_payload(
-        fund_entry_id,
-        entry_type,
-        amount_vnd,
-        evidence_original,
-        evidence_redacted,
-        actor,
-        timestamp=entry_timestamp,
-    )
-    event = queue_signed_event(
-        event_id,
-        EvidenceType.FUND_ENTRY,
-        payload,
-        previous_hash,
-        actor,
-        signature,
-    )
     entry = MaintenanceFundEntry(
         pk=fund_entry_id,
         fund=fund,
@@ -313,9 +174,6 @@ def record_fund_source(
         evidence_original_hash=evidence_original.sha256,
         evidence_redacted_hash=evidence_redacted.sha256,
         recorder=actor,
-        wallet=event.signer_wallet,
-        signature=event.signature,
-        outbox_event=event,
         source_key=key,
         recorded_at=timezone.now(),
     )
@@ -330,7 +188,6 @@ def record_fund_source(
         {
             "entry_type": entry_type,
             "amount_vnd": amount_vnd,
-            "event_id": event.event_id,
         },
     )
     return entry
@@ -339,8 +196,6 @@ def record_fund_source(
 def verify_fund_source(
     entry,
     verifier,
-    signature,
-    event_id,
     timestamp=None,
 ) -> FundEntryVerification:
     denied = False
@@ -360,26 +215,9 @@ def verify_fund_source(
         else:
             if FundEntryVerification.objects.filter(entry=entry).exists():
                 raise ValidationError("Fund source has already been verified.")
-            if entry.outbox_event is None:
-                raise ValidationError("Fund source maker event is required.")
-            verification_timestamp = timestamp or entry.recorded_at or timezone.now()
-            payload = build_fund_verification_evidence_payload(
-                entry, actor, timestamp=verification_timestamp
-            )
-            event = queue_signed_event(
-                event_id,
-                EvidenceType.FUND_ENTRY,
-                payload,
-                "0x" + entry.outbox_event.payload_hash,
-                actor,
-                signature,
-            )
             verification = FundEntryVerification.objects.create(
                 entry=entry,
                 membership=actor,
-                wallet=event.signer_wallet,
-                signature=event.signature,
-                outbox_event=event,
                 verified_at=timezone.now(),
             )
             record_audit(
@@ -391,7 +229,6 @@ def verify_fund_source(
                 "accepted",
                 {
                     "entry_id": entry.pk,
-                    "event_id": event.event_id,
                 },
             )
             return verification
@@ -411,16 +248,12 @@ def verify_fund_source(
 def _source_verified_q():
     return Q(
         entry_type__in=SOURCE_ENTRY_TYPES,
-        outbox_event__status__in=SETTLED_STATUSES,
-        verification__outbox_event__status__in=SETTLED_STATUSES,
+        verification__isnull=False,
     )
 
 
 def _finalized_posting_q():
     return Q(
-        entry_type__in=FINALIZED_ENTRY_TYPES,
-        publication__ledger_entry__isnull=False,
-    ) | Q(
         entry_type__in=FINALIZED_ENTRY_TYPES,
         proposal__published_ledger_entry__isnull=False,
     )
@@ -447,40 +280,15 @@ def fund_balance(building_id, verified_only=True) -> int:
     return int(total or 0)
 
 
-def create_publication_outflow(
-    *,
-    fund,
-    proposal,
-    publication,
-    amount_vnd,
-    recorded_at=None,
-) -> MaintenanceFundEntry:
-    """Insert-only outflow for a finalized publication. Caller must be in a transaction."""
-    if type(amount_vnd) is not int or amount_vnd <= 0:
-        raise ValidationError("Outflow magnitude must be a positive integer VND amount.")
-    negative = -amount_vnd
-    source_key = f"OUTFLOW:proposal:{proposal.pk}"
-    existing = MaintenanceFundEntry.objects.filter(source_key=source_key).first()
-    if existing is not None:
-        return existing
-    entry = MaintenanceFundEntry.objects.create(
-        fund=fund,
-        entry_type=MaintenanceFundEntry.EntryType.OUTFLOW,
-        amount_vnd=negative,
-        proposal=proposal,
-        publication=publication,
-        source_key=source_key,
-        recorded_at=recorded_at or timezone.now(),
+def create_settlement_outflow(settlement) -> MaintenanceFundEntry:
+    entry, _ = MaintenanceFundEntry.objects.get_or_create(
+        source_key=f"OUTFLOW:proposal:{settlement.proposal_id}",
+        defaults={
+            "fund": get_or_create_fund(settlement.proposal.building),
+            "entry_type": MaintenanceFundEntry.EntryType.OUTFLOW,
+            "amount_vnd": -settlement.amount_vnd,
+            "proposal": settlement.proposal,
+            "recorded_at": settlement.settled_at,
+        },
     )
     return entry
-
-
-def create_settlement_outflow(settlement) -> MaintenanceFundEntry:
-    """Record the settlement's off-chain fund outflow (Task 4 reshapes the ledger)."""
-    return create_publication_outflow(
-        fund=get_or_create_fund(settlement.proposal.building),
-        proposal=settlement.proposal,
-        publication=None,
-        amount_vnd=settlement.amount_vnd,
-        recorded_at=settlement.settled_at,
-    )

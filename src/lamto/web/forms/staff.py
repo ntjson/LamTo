@@ -203,33 +203,6 @@ class NotificationPreferenceForm(forms.Form):
             )
 
 
-class PreparePublicationForm(SignedDecisionForm):
-    """Management ledger publication (signed)."""
-
-    publication_id = forms.IntegerField(min_value=1, widget=forms.HiddenInput())
-    # Must match EIP-712 publication_timestamp baked into typed data.
-    publication_timestamp = forms.CharField(widget=forms.HiddenInput())
-
-    def save(self, proposal, membership):
-        from django.utils import timezone
-        from django.utils.dateparse import parse_datetime
-
-        from lamto.finance.publication import prepare_publication
-
-        raw = (self.cleaned_data.get("publication_timestamp") or "").strip()
-        ts = parse_datetime(raw) if raw else None
-        if ts is not None and timezone.is_naive(ts):
-            ts = timezone.make_aware(ts, timezone.utc)
-        return prepare_publication(
-            proposal,
-            membership,
-            self.cleaned_data["signature"],
-            self.cleaned_data["event_id"],
-            publication_id=self.cleaned_data.get("publication_id") or None,
-            timestamp=ts,
-        )
-
-
 class CreateProposalForm(forms.Form):
     """Management-entered proposal draft; the quotation pair uploads on prepare."""
 

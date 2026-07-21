@@ -77,7 +77,7 @@ class EvidenceLevelLabelTests(TestCase):
 
     def test_outbox_export_carries_evidence_level_verbatim(self):
         BlockchainOutboxEvent.objects.filter(
-            pk=self.entry.snapshot.outbox_event_id
+            pk=self.entry.settlement.outbox_event_id
         ).update(status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None)
 
         header, rows = _outbox_rows(self.seed.building.pk)
@@ -87,7 +87,7 @@ class EvidenceLevelLabelTests(TestCase):
             row[header.index("event_id")]: row[header.index("evidence_level")]
             for row in rows
         }
-        snapshot_event = self.entry.snapshot.outbox_event
+        snapshot_event = self.entry.settlement.outbox_event
         self.assertEqual(level_by_event[snapshot_event.event_id], "LOCAL_SIGNED")
         self.assertIn("CHAIN_CONFIRMED", set(level_by_event.values()))
 

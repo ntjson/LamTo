@@ -5,8 +5,6 @@ from lamto.finance.models import (
     MaintenanceFundEntry,
     FundEntryVerification,
     Settlement,
-    PublicationGateFailure,
-    PublicationSnapshot,
     Proposal,
     ProposalVersion,
 )
@@ -21,8 +19,6 @@ class FinanceMembershipModelTests(SimpleTestCase):
             (Settlement, "ack_recorded_by"),
             (MaintenanceFundEntry, "recorder"),
             (FundEntryVerification, "membership"),
-            (PublicationSnapshot, "publisher"),
-            (PublicationGateFailure, "actor"),
         ):
             self.assertIs(
                 model._meta.get_field(field).related_model,

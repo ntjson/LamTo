@@ -2,9 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from lamto.accounts.models import Building, ManagementMembership, SignerWallet
+from lamto.accounts.models import Building, ManagementMembership
 from lamto.documents.models import DocumentVersion
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.maintenance.models import MaintenanceCase
 
 from .execution import Settlement
@@ -54,26 +53,8 @@ class MaintenanceFundEntry(InsertOnlyModel):
         on_delete=models.PROTECT,
         related_name="recorded_fund_entries",
     )
-    wallet = models.ForeignKey(
-        SignerWallet, null=True, blank=True, on_delete=models.PROTECT
-    )
-    signature = models.CharField(max_length=132, blank=True)
-    outbox_event = models.OneToOneField(
-        BlockchainOutboxEvent,
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="fund_entry",
-    )
     proposal = models.ForeignKey(
         Proposal,
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="fund_entries",
-    )
-    publication = models.ForeignKey(
-        "PublicationSnapshot",
         null=True,
         blank=True,
         on_delete=models.PROTECT,
@@ -121,13 +102,6 @@ class FundEntryVerification(InsertOnlyModel):
         on_delete=models.PROTECT,
         related_name="fund_verifications",
     )
-    wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
-    signature = models.CharField(max_length=132)
-    outbox_event = models.OneToOneField(
-        BlockchainOutboxEvent,
-        on_delete=models.PROTECT,
-        related_name="fund_entry_verification",
-    )
     verified_at = models.DateTimeField()
 
     @property
@@ -161,99 +135,13 @@ class VerificationObservation(InsertOnlyModel):
         return self.observed_at
 
 
-class PublicationSnapshot(InsertOnlyModel):
-    proposal = models.OneToOneField(
-        Proposal, on_delete=models.PROTECT, related_name="publication_snapshot"
-    )
-    resident_payload = models.JSONField()
-    resident_payload_hash = models.CharField(max_length=64)
-    publisher = models.ForeignKey(
-        ManagementMembership,
-        on_delete=models.PROTECT,
-        related_name="publication_snapshots",
-    )
-    wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
-    signature = models.CharField(max_length=132)
-    outbox_event = models.OneToOneField(
-        BlockchainOutboxEvent,
-        on_delete=models.PROTECT,
-        related_name="publication_snapshot",
-    )
-    prepared_at = models.DateTimeField()
-
-    @property
-    def created_at(self):
-        return self.prepared_at
-
-    @property
-    def status(self):
-        return self.outbox_event.status
-
-    @property
-    def anchoring_backend(self) -> str:
-        """Backend in force at settlement, derived from the terminal outbox status.
-
-        LOCAL and CONFIRMED are terminal, and confirmed_at survives the only
-        post-settlement transition (CONFIRMED -> MISMATCH), so this is exact.
-        Empty string while unsettled.
-        """
-        status = self.outbox_event.status
-        if status == BlockchainOutboxEvent.Status.LOCAL:
-            return "disabled"
-        if (
-            status == BlockchainOutboxEvent.Status.CONFIRMED
-            or self.outbox_event.confirmed_at is not None
-        ):
-            return "besu"
-        return ""
-
-    @property
-    def settled_evidence_level(self) -> str:
-        """Evidence level at settlement (spec 5.2); empty string while unsettled."""
-        status = self.outbox_event.status
-        if status == BlockchainOutboxEvent.Status.LOCAL:
-            return EvidenceLevel.LOCAL_SIGNED
-        if (
-            status == BlockchainOutboxEvent.Status.CONFIRMED
-            or self.outbox_event.confirmed_at is not None
-        ):
-            return EvidenceLevel.CHAIN_CONFIRMED
-        return ""
-
-
-class PublicationGateFailure(InsertOnlyModel):
-    class Severity(models.TextChoices):
-        BLOCKING = "BLOCKING", "Blocking"
-        WARNING = "WARNING", "Warning"
-
-    proposal = models.ForeignKey(
-        Proposal, on_delete=models.PROTECT, related_name="publication_gate_failures"
-    )
-    gate_code = models.CharField(max_length=64)
-    expected_hash = models.CharField(max_length=64, blank=True)
-    actual_hash = models.CharField(max_length=64, blank=True)
-    severity = models.CharField(
-        max_length=16, choices=Severity.choices, default=Severity.BLOCKING
-    )
-    actor = models.ForeignKey(
-        ManagementMembership,
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
 class PublishedLedgerEntry(InsertOnlyModel):
-    snapshot = models.OneToOneField(
-        PublicationSnapshot, on_delete=models.PROTECT, related_name="ledger_entry"
-    )
-    case = models.ForeignKey(MaintenanceCase, on_delete=models.PROTECT)
+    resident_payload = models.JSONField(default=dict)
+    case = models.ForeignKey(MaintenanceCase, null=True, blank=True, on_delete=models.PROTECT)
     proposal = models.OneToOneField(
         Proposal, on_delete=models.PROTECT, related_name="published_ledger_entry"
     )
-    payment = models.ForeignKey(Settlement, on_delete=models.PROTECT)
+    settlement = models.OneToOneField(Settlement, on_delete=models.PROTECT, related_name="ledger_entry")
     actual_cost_vnd = models.BigIntegerField()
     contractor_name = models.CharField(max_length=255)
     published_at = models.DateTimeField()

@@ -462,7 +462,7 @@ class CrossBuildingAccessTests(TestCase):
         auth_a = {"authorization": f"Token {token_a}"}
         # A redacted ledger document from B's published expenditure.
         entry_b = PublishedLedgerEntry.objects.get(case__building=self.seed_b.building)
-        redacted = entry_b.payment.transfer_redacted
+        redacted = entry_b.settlement.transfer_redacted
         # A token bound to B's resident is not redeemable by A's resident.
         forged = issue_download_token(resident_b.pk, redacted.pk)
         assert (

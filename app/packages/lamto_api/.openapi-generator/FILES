@@ -38,6 +38,9 @@ doc/PlatformEnum.md
 doc/Problem.md
 doc/Proof.md
 doc/ProofEvent.md
+doc/Proposal.md
+doc/ProposalRatingResult.md
+doc/ProposalsApi.md
 doc/RedactedDocument.md
 doc/ReportCase.md
 doc/ReportCreateRequest.md
@@ -60,6 +63,7 @@ lib/src/api/ledger_api.dart
 lib/src/api/locations_api.dart
 lib/src/api/me_api.dart
 lib/src/api/notifications_api.dart
+lib/src/api/proposals_api.dart
 lib/src/api/reports_api.dart
 lib/src/api_util.dart
 lib/src/auth/api_key_auth.dart
@@ -96,6 +100,8 @@ lib/src/model/platform_enum.dart
 lib/src/model/problem.dart
 lib/src/model/proof.dart
 lib/src/model/proof_event.dart
+lib/src/model/proposal.dart
+lib/src/model/proposal_rating_result.dart
 lib/src/model/redacted_document.dart
 lib/src/model/report_case.dart
 lib/src/model/report_create_request.dart
@@ -144,6 +150,9 @@ test/platform_enum_test.dart
 test/problem_test.dart
 test/proof_event_test.dart
 test/proof_test.dart
+test/proposal_rating_result_test.dart
+test/proposal_test.dart
+test/proposals_api_test.dart
 test/redacted_document_test.dart
 test/report_case_test.dart
 test/report_create_request_test.dart

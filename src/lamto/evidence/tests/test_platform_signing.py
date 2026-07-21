@@ -2,6 +2,7 @@ import hashlib
 import secrets
 
 from django.test import TestCase, override_settings
+from django.core.exceptions import ValidationError
 
 from lamto.accounts.models import Building
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
@@ -57,3 +58,9 @@ class PlatformSigningTests(TestCase):
             event_id, EvidenceType.PROPOSAL_CREATED, payload, ZERO_HASH, building
         )
         self.assertEqual(again.pk, event.pk)
+
+    def test_only_proposals_and_settlements_are_queueable(self):
+        building = Building.objects.create(name="B2")
+        for event_type in (6, 7, 8, 9, 11):
+            with self.assertRaises(ValidationError):
+                queue_platform_event("0x" + secrets.token_hex(32), event_type, {}, ZERO_HASH, building)

@@ -52,8 +52,7 @@ class FundSelectorTests(TestCase):
         seed = seed_pilot_world(building_name="Fund Sel B", email_prefix="fs")
         _full_publish(seed)  # verified payment, settled chain, no publication yet
         pending = list(pending_reconciliation_proposals(seed.building.pk))
-        self.assertEqual(len(pending), 1)
-        self.assertEqual(pending[0], seed.proposal)
+        self.assertEqual(pending, [])
 
     def test_pending_reconciliation_excludes_unsettled_verification(self):
         """Eligibility matches domain gates: settled prerequisites required, not only VERIFIED."""
@@ -110,7 +109,6 @@ class FundHomeTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Maintenance fund")
         self.assertContains(resp, "Verified entries")
-        self.assertContains(resp, "Publish settled expenses")
         # The seeded opening balance is a verified entry.
         self.assertContains(resp, "Opening balance")
 
@@ -178,64 +176,20 @@ class FundRecordTests(TestCase):
 
     @patch("lamto.web.staff_signing.scan_with_clamav", lambda _f: True)
     def test_prepare_then_sign_records_inflow(self):
-        from datetime import datetime
-
-        from lamto.finance.fund import build_fund_source_evidence_typed_data, get_or_create_fund
-
         seed = seed_pilot_world(building_name="Fund Rec B", email_prefix="fr")
-        recorder = self._login(seed, "fund_recorder")
-        account = seed.accounts[recorder.pk]
+        self._login(seed, "fund_recorder")
         url = reverse("web:fund-record")
-
-        prepare = self.client.post(
+        response = self.client.post(
             url,
             {
-                "action": "prepare",
                 "entry_type": MaintenanceFundEntry.EntryType.INFLOW,
                 "amount_vnd": 2_000_000,
                 "evidence_original": _pdf("e.pdf", b"orig"),
                 "evidence_redacted": _pdf("er.pdf", b"redacted differs"),
             },
         )
-        self.assertEqual(prepare.status_code, 200)
-        self.assertContains(prepare, "data-signed-form")
-        sign = prepare.context["sign_form"].initial
-
-        fund = get_or_create_fund(seed.building)
-        original = DocumentVersion.objects.get(pk=sign["evidence_original_id"])
-        redacted = DocumentVersion.objects.get(pk=sign["evidence_redacted_id"])
-        ts = datetime.fromisoformat(sign["entry_timestamp"])
-        typed = build_fund_source_evidence_typed_data(
-            fund,
-            recorder,
-            sign["fund_entry_id"],
-            MaintenanceFundEntry.EntryType.INFLOW,
-            2_000_000,
-            original,
-            redacted,
-            sign["event_id"],
-            timestamp=ts,
-        )
-        signature = Account.sign_message(
-            encode_typed_data(full_message=typed), account.key
-        ).signature.hex()
-
-        submit = self.client.post(
-            url,
-            {
-                "action": "submit",
-                "entry_type": MaintenanceFundEntry.EntryType.INFLOW,
-                "amount_vnd": 2_000_000,
-                "evidence_original_id": original.pk,
-                "evidence_redacted_id": redacted.pk,
-                "fund_entry_id": sign["fund_entry_id"],
-                "entry_timestamp": sign["entry_timestamp"],
-                "event_id": sign["event_id"],
-                "signature": signature,
-            },
-        )
-        self.assertRedirects(submit, reverse("web:fund-home"))
-        entry = MaintenanceFundEntry.objects.get(pk=sign["fund_entry_id"])
+        self.assertRedirects(response, reverse("web:fund-home"))
+        entry = MaintenanceFundEntry.objects.filter(fund__building=seed.building).latest("pk")
         self.assertEqual(entry.entry_type, MaintenanceFundEntry.EntryType.INFLOW)
         self.assertEqual(entry.amount_vnd, 2_000_000)
         self.assertFalse(hasattr(entry, "verification"))
@@ -270,10 +224,7 @@ class FundVerifyTests(TestCase):
 
     def _unverified_entry(self, seed):
         """Record an inflow via the recorder domain path (unverified)."""
-        from datetime import datetime
         from lamto.finance.fund import (
-            allocate_fund_entry_id,
-            build_fund_source_evidence_typed_data,
             get_or_create_fund,
             record_fund_source,
         )
@@ -282,60 +233,28 @@ class FundVerifyTests(TestCase):
         fund = get_or_create_fund(seed.building)
         recorder = seed.management_memberships[0]
         original, redacted = seed.document_pair(Document.Kind.CONTRACT, recorder.user, "inflow")
-        entry_id = allocate_fund_entry_id()
-        ts = timezone.now()
-        event_id = "0x" + "22" * 32
-        typed = build_fund_source_evidence_typed_data(
-            fund, recorder, entry_id, MaintenanceFundEntry.EntryType.INFLOW,
-            1_000_000, original, redacted, event_id, timestamp=ts,
-        )
-        sig = seed.sign_typed(recorder, typed)
         return record_fund_source(
             fund, MaintenanceFundEntry.EntryType.INFLOW, 1_000_000, original, redacted,
-            recorder, sig, event_id, fund_entry_id=entry_id, timestamp=ts,
+            recorder,
         )
 
     def test_verifier_signs_and_verifies(self):
-        from lamto.finance.fund import build_fund_verification_evidence_typed_data
-
         seed = seed_pilot_world(building_name="Fund Ver B", email_prefix="fv")
         entry = self._unverified_entry(seed)
         verifier = self._login(seed, "fund_verifier")
-        account = seed.accounts[verifier.pk]
         url = reverse("web:fund-verify", kwargs={"pk": entry.pk})
-
-        page = self.client.get(url)
-        self.assertEqual(page.status_code, 200)
-        event_id = page.context["verify_form"].initial["event_id"]
-        typed = build_fund_verification_evidence_typed_data(
-            entry, verifier, event_id, timestamp=entry.recorded_at
-        )
-        signature = Account.sign_message(
-            encode_typed_data(full_message=typed), account.key
-        ).signature.hex()
-        resp = self.client.post(url, {"event_id": event_id, "signature": signature})
+        resp = self.client.post(url)
         self.assertRedirects(resp, reverse("web:fund-home"))
         entry.refresh_from_db()
         self.assertTrue(hasattr(entry, "verification"))
 
     def test_recorder_cannot_verify_own_source(self):
-        from lamto.finance.fund import build_fund_verification_evidence_typed_data
-
         seed = seed_pilot_world(building_name="Fund Ver Deny", email_prefix="fvd")
         entry = self._unverified_entry(seed)
         recorder = seed.management_memberships[0]
         self._login(seed, "fund_recorder")
-        account = seed.accounts[recorder.pk]
         url = reverse("web:fund-verify", kwargs={"pk": entry.pk})
-        page = self.client.get(url)
-        event_id = page.context["verify_form"].initial["event_id"]
-        typed = build_fund_verification_evidence_typed_data(
-            entry, recorder, event_id, timestamp=entry.recorded_at
-        )
-        signature = Account.sign_message(
-            encode_typed_data(full_message=typed), account.key
-        ).signature.hex()
-        resp = self.client.post(url, {"event_id": event_id, "signature": signature})
+        resp = self.client.post(url)
         self.assertEqual(resp.status_code, 403)
 
 

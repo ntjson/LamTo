@@ -4,7 +4,7 @@ from firebase_admin import exceptions, messaging
 from lamto.notifications.models import NotificationDelivery
 from lamto.notifications.push import build_push_payload, classify_push_error
 from lamto.notifications.services import (
-    EVENT_PAYMENT_RECORDED,
+    EVENT_SETTLEMENT_RECORDED,
     EVENT_PUBLICATION,
 )
 
@@ -29,7 +29,7 @@ class PushPayloadTests(TestCase):
         assert "delivery_id" in data
 
     def test_unknown_entity_falls_back_to_feed(self):
-        d = self._delivery(f"{EVENT_PAYMENT_RECORDED}:payment:7", EVENT_PAYMENT_RECORDED, "x")
+        d = self._delivery(f"{EVENT_SETTLEMENT_RECORDED}:settlement:7", EVENT_SETTLEMENT_RECORDED, "x")
         _title, _body, data = build_push_payload(d)
         assert data["type"] == "notifications"  # payment is not an allowlisted resident deep link
 

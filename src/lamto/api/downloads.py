@@ -93,11 +93,11 @@ def resident_can_download(user, version) -> bool:
     return (
         PublishedLedgerEntry.objects.filter(
             case__building_id__in=building_ids,
-            snapshot__outbox_event__status__in=SETTLED_STATUSES,
+            settlement__outbox_event__status__in=SETTLED_STATUSES,
         )
         .filter(
-            Q(payment__transfer_redacted=version)
-            | Q(payment__ack_redacted=version)
+            Q(settlement__transfer_redacted=version)
+            | Q(settlement__ack_redacted=version)
         )
         .exists()
     )

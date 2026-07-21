@@ -28,7 +28,6 @@ def _related_outbox_events(entry):
     events = [
         version.outbox_event if version is not None else None,
         settlement.outbox_event,
-        entry.snapshot.outbox_event,
     ]
     return [event for event in events if event is not None]
 
@@ -131,10 +130,9 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
         entry = (
             PublishedLedgerEntry.objects.using(using)
             .select_related(
-                "snapshot__outbox_event",
                 "proposal__current_version",
                 "proposal__case",
-                "snapshot__publisher__user",
+                "settlement__ack_recorded_by__user",
             )
             .filter(pk=entry_id)
             .first()
@@ -213,7 +211,7 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
         )
 
         if result == VerificationObservation.Result.MISMATCH:
-            publisher = entry.snapshot.publisher
+            publisher = entry.settlement.ack_recorded_by
             record_audit(
                 publisher.user,
                 publisher,

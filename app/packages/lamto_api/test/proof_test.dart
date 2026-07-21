@@ -27,5 +27,15 @@ void main() {
       // TODO
     });
 
+    // JsonObject proposalVersion
+    test('to test the property `proposalVersion`', () async {
+      // TODO
+    });
+
+    // JsonObject settlement
+    test('to test the property `settlement`', () async {
+      // TODO
+    });
+
   });
 }

@@ -32,7 +32,6 @@ from .signatures import (
 
 HASH_RE = re.compile(r"(?:0x)?[0-9a-f]{64}\Z")
 UTC_RFC3339_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\Z")
-PAYMENT_DECISION = frozenset({"APPROVE", "REJECT"})
 # Closed vocabulary of payload value shapes (spec 2.2 opacity). Free-text shapes
 # must not be added — chain hashes remain non-invertible only if payloads stay opaque.
 OPAQUE_PAYLOAD_SHAPES = frozenset({
@@ -48,28 +47,6 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
     }, {"building_id": "id", "case_id": "id", "report_id": "id", "case_snapshot_hash": "hash",
         "report_snapshot_hash": "hash", "estimated_amount_vnd": "money",
         "photo_hash": "hash", "photo_hashes": "hashes"}),
-    EvidenceType.PAYMENT_RECORDED: ({
-        "case_id": "id", "payment_id": "id", "amount_vnd": "money", "bank_reference_digest": "hash",
-        "external_status": frozenset({"PENDING", "SETTLED", "FAILED", "REVERSED"}),
-        "external_timestamp": "timestamp", "payment_proof_original_hash": "hash",
-        "payment_proof_redacted_hash": "hash",
-    }, {}),
-    EvidenceType.PAYMENT_VERIFIED: ({
-        "payment_hash": "hash", "decision": PAYMENT_DECISION,
-        "verification_result": frozenset({"MATCH", "MISMATCH"}),
-        "verification_timestamp": "timestamp",
-    }, {}),
-    EvidenceType.PUBLICATION_SNAPSHOT: ({
-        "publication_id": "id", "prerequisite_event_hashes": "hashes",
-        "resident_payload_hash": "hash", "document_hashes": "hashes",
-        "publication_timestamp": "timestamp",
-    }, {}),
-    EvidenceType.FUND_ENTRY: ({
-        "fund_entry_id": "id", "entry_type": frozenset({"OPENING", "INFLOW"}),
-        "amount_vnd": "money", "source_document_original_hash": "hash",
-        "source_document_redacted_hash": "hash", "maker_membership_id": "id",
-        "entry_timestamp": "timestamp",
-    }, {"checker_membership_id": "id"}),
     EvidenceType.SETTLEMENT: ({
         "schema": frozenset({"settlement.v1"}), "settlement_id": "id",
         "proposal_id": "id", "proposal_version": "positive_int", "amount_vnd": "money",
@@ -288,6 +265,8 @@ def _require_caller_transaction():
 
 
 def _validate_payload(event_type, payload):
+    if event_type not in (EvidenceType.PROPOSAL_CREATED, EvidenceType.SETTLEMENT):
+        raise ValidationError("Only proposal versions and settlements may be anchored.")
     if not isinstance(event_type, int) or isinstance(event_type, bool):
         raise ValueError("Evidence event type must be an integer from 1 through 11.")
     schema = EVIDENCE_PAYLOAD_SCHEMAS.get(event_type)

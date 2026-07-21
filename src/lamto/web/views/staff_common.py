@@ -349,11 +349,9 @@ def resolve_accountability_stage(
     Returns ``(None, False, False)`` when every stage is complete. Pass ``published`` / ``publication_pending``
     to skip DB lookups (tests and pre-resolved views).
 
-    ``publication_pending`` is True when a PublicationSnapshot exists but the
-    PublishedLedgerEntry has not been finalized yet — the chain must not show
-    Publication as complete before independent confirmation.
+    Publication happens atomically with settlement.
     """
-    from lamto.finance.models import PublicationSnapshot, PublishedLedgerEntry
+    from lamto.finance.models import PublishedLedgerEntry
     from lamto.finance.models.execution import Settlement
     from lamto.finance.models.proposals import Proposal
     from lamto.maintenance.models import MaintenanceCase
@@ -386,9 +384,7 @@ def resolve_accountability_stage(
         if published:
             return None, False, False
         if settlement is not None and settlement.settled_at is not None:
-            if publication_pending is None:
-                publication_pending = PublicationSnapshot.objects.filter(proposal__case=case).exists()
-            return "publication", False, bool(publication_pending)
+            return "publication", False, False
         proposal_status = getattr(proposal, "status", None) if proposal else None
         if proposal_status in _PROPOSAL_AUTHORIZED:
             return "settlement", False, False

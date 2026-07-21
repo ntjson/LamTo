@@ -7,7 +7,7 @@ from django.utils import timezone
 from lamto.accounts.models import Building, ResidentOccupancy, Unit
 from lamto.notifications.devices import register_device
 from lamto.notifications.models import Device, NotificationDelivery, NotificationPreference
-from lamto.notifications.services import EVENT_PUBLICATION, EVENT_PAYMENT_RECORDED, queue_notification
+from lamto.notifications.services import EVENT_PUBLICATION, EVENT_SETTLEMENT_RECORDED, queue_notification
 
 
 @override_settings(PUSH_ENABLED=True)
@@ -32,7 +32,7 @@ class PushQueueGatingTests(TestCase):
 
     def test_non_resident_event_gets_no_push(self):
         register_device(self.resident, str(uuid.uuid4()), "tok", Device.Platform.ANDROID)
-        queue_notification(self.resident, f"{EVENT_PAYMENT_RECORDED}:payment:1", "s", "b", event_code=EVENT_PAYMENT_RECORDED, building=self.building)
+        queue_notification(self.resident, f"{EVENT_SETTLEMENT_RECORDED}:settlement:1", "s", "b", event_code=EVENT_SETTLEMENT_RECORDED, building=self.building)
         assert self._push_rows().count() == 0
 
     def test_push_preference_off_suppresses(self):

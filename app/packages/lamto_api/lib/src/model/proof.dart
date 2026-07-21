@@ -5,6 +5,7 @@
 // ignore_for_file: unused_element
 import 'package:built_collection/built_collection.dart';
 import 'package:lamto_api/src/model/proof_event.dart';
+import 'package:built_value/json_object.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -13,10 +14,12 @@ part 'proof.g.dart';
 /// Proof
 ///
 /// Properties:
-/// * [evidenceLevel] 
-/// * [anchoringBackend] 
-/// * [payloadHash] 
-/// * [events] 
+/// * [evidenceLevel]
+/// * [anchoringBackend]
+/// * [payloadHash]
+/// * [events]
+/// * [proposalVersion]
+/// * [settlement]
 @BuiltValue()
 abstract class Proof implements Built<Proof, ProofBuilder> {
   @BuiltValueField(wireName: r'evidence_level')
@@ -30,6 +33,12 @@ abstract class Proof implements Built<Proof, ProofBuilder> {
 
   @BuiltValueField(wireName: r'events')
   BuiltList<ProofEvent> get events;
+
+  @BuiltValueField(wireName: r'proposal_version')
+  JsonObject? get proposalVersion;
+
+  @BuiltValueField(wireName: r'settlement')
+  JsonObject? get settlement;
 
   Proof._();
 
@@ -73,6 +82,16 @@ class _$ProofSerializer implements PrimitiveSerializer<Proof> {
     yield serializers.serialize(
       object.events,
       specifiedType: const FullType(BuiltList, [FullType(ProofEvent)]),
+    );
+    yield r'proposal_version';
+    yield object.proposalVersion == null ? null : serializers.serialize(
+      object.proposalVersion,
+      specifiedType: const FullType.nullable(JsonObject),
+    );
+    yield r'settlement';
+    yield object.settlement == null ? null : serializers.serialize(
+      object.settlement,
+      specifiedType: const FullType.nullable(JsonObject),
     );
   }
 
@@ -125,6 +144,22 @@ class _$ProofSerializer implements PrimitiveSerializer<Proof> {
           ) as BuiltList<ProofEvent>;
           result.events.replace(valueDes);
           break;
+        case r'proposal_version':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(JsonObject),
+          ) as JsonObject?;
+          if (valueDes == null) continue;
+          result.proposalVersion = valueDes;
+          break;
+        case r'settlement':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(JsonObject),
+          ) as JsonObject?;
+          if (valueDes == null) continue;
+          result.settlement = valueDes;
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -153,4 +188,3 @@ class _$ProofSerializer implements PrimitiveSerializer<Proof> {
     return result.build();
   }
 }
-

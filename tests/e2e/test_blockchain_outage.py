@@ -1,4 +1,4 @@
-"""Chain paused: work may start pending anchor; publication blocked until confirm."""
+"""Chain paused: the off-chain ledger still publishes once settlement is recorded."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import pytest
 pytestmark = pytest.mark.django_db
 
 
-def test_normal_work_can_start_pending_anchor_but_cannot_publish(page, seeded_pilot):
+def test_normal_work_can_start_pending_anchor_and_publish_offchain(page, seeded_pilot):
     seeded_pilot.pause_chain()
     seeded_pilot.prepare_local_normal_work(page)
     work = seeded_pilot.start_assigned_work()
@@ -19,13 +19,11 @@ def test_normal_work_can_start_pending_anchor_but_cannot_publish(page, seeded_pi
     before_ids = seeded_pilot.latest_outbox_event_ids()
     blocked = seeded_pilot.attempt_publication()
 
-    assert blocked.reason == "Required blockchain evidence is still pending"
-    assert seeded_pilot.ledger_count() == 0
+    assert not blocked.blocked
+    assert seeded_pilot.ledger_count() == 1
 
     seeded_pilot.resume_chain()
     seeded_pilot.confirm_all_chain_events()
     assert seeded_pilot.latest_outbox_event_ids() == before_ids
-    seeded_pilot.sign_publication_snapshot()
-    assert seeded_pilot.ledger_count() == 1
     seeded_pilot.confirm_all_chain_events()
     assert seeded_pilot.ledger_count() == 1

@@ -19,6 +19,7 @@ export 'package:lamto_api/src/api/ledger_api.dart';
 export 'package:lamto_api/src/api/locations_api.dart';
 export 'package:lamto_api/src/api/me_api.dart';
 export 'package:lamto_api/src/api/notifications_api.dart';
+export 'package:lamto_api/src/api/proposals_api.dart';
 export 'package:lamto_api/src/api/reports_api.dart';
 
 export 'package:lamto_api/src/model/case_rating_request.dart';
@@ -48,6 +49,8 @@ export 'package:lamto_api/src/model/platform_enum.dart';
 export 'package:lamto_api/src/model/problem.dart';
 export 'package:lamto_api/src/model/proof.dart';
 export 'package:lamto_api/src/model/proof_event.dart';
+export 'package:lamto_api/src/model/proposal.dart';
+export 'package:lamto_api/src/model/proposal_rating_result.dart';
 export 'package:lamto_api/src/model/redacted_document.dart';
 export 'package:lamto_api/src/model/report_case.dart';
 export 'package:lamto_api/src/model/report_create_request.dart';
@@ -58,4 +61,3 @@ export 'package:lamto_api/src/model/report_work_update.dart';
 export 'package:lamto_api/src/model/status_enum.dart';
 export 'package:lamto_api/src/model/token_response.dart';
 export 'package:lamto_api/src/model/verification.dart';
-

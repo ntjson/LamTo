@@ -16,7 +16,6 @@ from lamto.evidence.models import EvidenceType
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import (
     Proposal,
-    PublicationSnapshot,
     PublishedLedgerEntry,
 )
 from lamto.accounts.models import SignerWallet
@@ -38,7 +37,6 @@ from lamto.web.forms.staff import (
     InfoRequestForm,
     CreateProposalForm,
     ProgressUpdateForm,
-    PreparePublicationForm,
     SignProposalForm,
 )
 from lamto.web.staff import require_management_context, staff_context

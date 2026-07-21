@@ -20,16 +20,14 @@ def published_ledger_entries(building_id):
     return (
         PublishedLedgerEntry.objects.filter(
             case__building_id=building_id,
-            snapshot__outbox_event__status__in=SETTLED_STATUSES,
+            settlement__outbox_event__status__in=SETTLED_STATUSES,
         )
         .select_related(
-            "snapshot",
-            "snapshot__outbox_event",
             "case",
             "proposal",
             "proposal__current_version",
-            "payment",
-            "payment__outbox_event",
+            "settlement",
+            "settlement__outbox_event",
         )
         .order_by("-published_at", "-pk")
     )
@@ -46,9 +44,9 @@ def published_ledger_entry_for_proof(building_id, pk):
         .filter(pk=pk)
         .select_related(
             "case__decision__report",
-            "payment__transfer_redacted",
-            "payment__ack_redacted",
-            "payment__outbox_event",
+            "settlement__transfer_redacted",
+            "settlement__ack_redacted",
+            "settlement__outbox_event",
             "proposal__current_version",
         )
         .first()
@@ -192,12 +190,12 @@ def ledger_entry_proof(entry):
     """Detail assembly for one published entry, shared by the resident web
     template and the API (spec 3.1: one query path, one set of gates).
     """
-    payload = entry.snapshot.resident_payload or {}
+    payload = entry.resident_payload or {}
     version = entry.proposal.current_version
     redacted_docs = []
     for label, version_obj in (
-        ("Transfer evidence (redacted)", entry.payment.transfer_redacted),
-        ("Payee acknowledgement (redacted)", entry.payment.ack_redacted),
+        ("Transfer evidence (redacted)", entry.settlement.transfer_redacted),
+        ("Payee acknowledgement (redacted)", entry.settlement.ack_redacted),
     ):
         if version_obj is not None:
             redacted_docs.append(
@@ -208,14 +206,14 @@ def ledger_entry_proof(entry):
                     "version_id": version_obj.pk,
                 }
             )
-    events = [
-        event
-        for event in (
-            entry.snapshot.outbox_event,
-            entry.payment.outbox_event,
-        )
-        if event is not None
-    ]
+    proposal_event = version.outbox_event if version else None
+    settlement_event = entry.settlement.outbox_event
+    events = [event for event in (proposal_event, settlement_event) if event]
+    anchor = lambda event: {
+        "event_id": event.event_id,
+        "payload_hash": event.payload_hash,
+        "evidence_level": evidence_level(event.status),
+    }
     story = _ledger_story_fields(entry, payload)
     return {
         "payload": payload,
@@ -230,7 +228,9 @@ def ledger_entry_proof(entry):
         "transaction_ids": [
             event.transaction_hash for event in events if event.transaction_hash
         ],
-        "evidence_level": evidence_level(entry.snapshot.outbox_event.status),
+        "evidence_level": evidence_level(settlement_event.status),
+        "proposal_version": anchor(proposal_event),
+        "settlement": anchor(settlement_event),
         "what_was_fixed": story["what_was_fixed"],
         "why": story["why"],
     }
@@ -250,7 +250,7 @@ def pending_fund_verification_entries(building_id):
             entry_type__in=SOURCE_ENTRY_TYPES,
             verification__isnull=True,
         )
-        .select_related("recorder", "outbox_event")
+        .select_related("recorder")
         .order_by("-recorded_at", "-pk")
     )
 
@@ -258,23 +258,19 @@ def pending_fund_verification_entries(building_id):
 def pending_reconciliation_proposals(building_id):
     """Staff reconciliation aid: publication-eligible but not yet published.
 
-    Mirrors settled publication eligibility used by prepare_publication:
+    Mirrors settlement-ledger eligibility:
     - settlement is finalized
     - proposal has current_version
-    - no PublishedLedgerEntry and no PublicationSnapshot yet
+    - no PublishedLedgerEntry yet
     - prerequisite outbox events settled
     """
     from lamto.evidence.models import SETTLED_STATUSES
     from lamto.finance.models import (
         Proposal,
-        PublicationSnapshot,
         PublishedLedgerEntry,
     )
     published_proposal_ids = PublishedLedgerEntry.objects.filter(
         case__building_id=building_id, proposal__isnull=False
-    ).values("proposal_id")
-    snapshotted_ids = PublicationSnapshot.objects.filter(
-        proposal__case__building_id=building_id
     ).values("proposal_id")
 
     qs = (
@@ -286,7 +282,6 @@ def pending_reconciliation_proposals(building_id):
             current_version__outbox_event__status__in=SETTLED_STATUSES,
         )
         .exclude(pk__in=published_proposal_ids)
-        .exclude(pk__in=snapshotted_ids)
         .select_related(
             "current_version",
             "case",

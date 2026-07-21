@@ -41,6 +41,8 @@ import 'package:lamto_api/src/model/platform_enum.dart';
 import 'package:lamto_api/src/model/problem.dart';
 import 'package:lamto_api/src/model/proof.dart';
 import 'package:lamto_api/src/model/proof_event.dart';
+import 'package:lamto_api/src/model/proposal.dart';
+import 'package:lamto_api/src/model/proposal_rating_result.dart';
 import 'package:lamto_api/src/model/redacted_document.dart';
 import 'package:lamto_api/src/model/report_case.dart';
 import 'package:lamto_api/src/model/report_create_request.dart';
@@ -82,6 +84,8 @@ part 'serializers.g.dart';
   Problem,
   Proof,
   ProofEvent,
+  Proposal,
+  ProposalRatingResult,
   RedactedDocument,
   ReportCase,
   ReportCreateRequest,
@@ -94,6 +98,10 @@ part 'serializers.g.dart';
   Verification,
 ])
 Serializers serializers = (_$serializers.toBuilder()
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(Proposal)]),
+        () => ListBuilder<Proposal>(),
+      )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Location)]),
         () => ListBuilder<Location>(),

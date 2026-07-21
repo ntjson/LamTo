@@ -3,8 +3,6 @@ from .ledger import (
     FundEntryVerification,
     MaintenanceFund,
     MaintenanceFundEntry,
-    PublicationGateFailure,
-    PublicationSnapshot,
     PublishedLedgerEntry,
     VerificationObservation,
 )
@@ -18,8 +16,6 @@ __all__ = [
     "Proposal",
     "ProposalDocument",
     "ProposalVersion",
-    "PublicationGateFailure",
-    "PublicationSnapshot",
     "PublishedLedgerEntry",
     "VerificationObservation",
 ]

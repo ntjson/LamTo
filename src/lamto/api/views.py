@@ -1,10 +1,12 @@
 """Resident API views (spec 3). Resident-only; staff stay on the /s/ web surface."""
 
 from django.contrib.auth import authenticate
+from django.conf import settings
 from django.core import signing
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponse
+from django.db import transaction
 from django.urls import reverse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -299,8 +301,6 @@ class MeNotificationPreferencesView(APIView):
                     )
                 defaults["push_enabled"] = bool(item["push_enabled"])
             updates.append((code, defaults))
-        from django.db import transaction
-
         with transaction.atomic():
             for code, defaults in updates:
                 NotificationPreference.objects.update_or_create(
@@ -394,8 +394,8 @@ class LedgerDetailView(APIView):
             ],
             "proof": {
                 "evidence_level": detail["evidence_level"],
-                "anchoring_backend": entry.snapshot.anchoring_backend,
-                "payload_hash": entry.snapshot.resident_payload_hash,
+                "anchoring_backend": settings.EVIDENCE_ANCHORING_BACKEND,
+                "payload_hash": detail["settlement"]["payload_hash"],
                 "events": [
                     {
                         "event_id": event.event_id,
@@ -406,6 +406,8 @@ class LedgerDetailView(APIView):
                     }
                     for event in detail["events"]
                 ],
+                "proposal_version": detail["proposal_version"],
+                "settlement": detail["settlement"],
             },
         }
         return Response(LedgerEntryDetailSerializer(data).data)

@@ -8,16 +8,10 @@ client. Nothing may present LOCAL_SIGNED as chain confirmation.
 from __future__ import annotations
 
 import pytest
-from django.utils import timezone
-
-from lamto.config.worker import process_publication_finalization_batch
 from lamto.documents.models import Document
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.evidence.worker import process_due_outbox_events
 from lamto.finance.fund import (
-    allocate_fund_entry_id,
-    build_fund_source_evidence_typed_data,
-    build_fund_verification_evidence_typed_data,
     fund_balance,
     get_or_create_fund,
     record_fund_source,
@@ -30,7 +24,7 @@ from lamto.finance.models import (
     VerificationObservation,
 )
 from lamto.finance.selectors import published_ledger_entries
-from lamto.testing.factories import PilotDomainDriver, new_event_id, seed_pilot_world
+from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 pytestmark = pytest.mark.django_db
 
@@ -65,19 +59,10 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
     driver.record_settlement_ack()
     _settle_locally()
 
-    snapshot = driver.sign_publication_snapshot()  # prerequisites are LOCAL-settled
-    _settle_locally()
-    batch = process_publication_finalization_batch()
-    assert batch.ok, batch.detail
-
     entry = PublishedLedgerEntry.objects.get(case__building=seed.building)
-    assert entry.snapshot_id == snapshot.pk
-    snapshot.outbox_event.refresh_from_db()
-    assert snapshot.outbox_event.status == Status.LOCAL
-    assert snapshot.outbox_event.transaction_hash == ""
-    assert snapshot.outbox_event.confirmed_at is None
-    assert snapshot.anchoring_backend == "disabled"
-    assert snapshot.settled_evidence_level == EvidenceLevel.LOCAL_SIGNED
+    entry.settlement.outbox_event.refresh_from_db()
+    assert entry.settlement.outbox_event.status == Status.LOCAL
+    assert entry.settlement.outbox_event.evidence_level == EvidenceLevel.LOCAL_SIGNED
 
     # Nothing queued in disabled mode ever became CONFIRMED, nothing is pending.
     flow_events = BlockchainOutboxEvent.objects.filter(building=seed.building)
@@ -107,20 +92,6 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
     original, redacted = seed.document_pair(
         Document.Kind.CONTRACT, recorder.user, "offchain-inflow"
     )
-    entry_id = allocate_fund_entry_id()
-    event_id = new_event_id()
-    ts = timezone.now()
-    typed = build_fund_source_evidence_typed_data(
-        fund,
-        recorder,
-        entry_id,
-        MaintenanceFundEntry.EntryType.INFLOW,
-        5_000_000,
-        original,
-        redacted,
-        event_id,
-        timestamp=ts,
-    )
     inflow = record_fund_source(
         fund,
         MaintenanceFundEntry.EntryType.INFLOW,
@@ -128,25 +99,8 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
         original,
         redacted,
         recorder,
-        seed.sign_typed(recorder, typed),
-        event_id,
-        fund_entry_id=entry_id,
-        timestamp=ts,
     )
-    verify_event = new_event_id()
-    verify_typed = build_fund_verification_evidence_typed_data(
-        inflow, verifier, verify_event, timestamp=inflow.recorded_at
-    )
-    verify_fund_source(
-        inflow,
-        verifier,
-        seed.sign_typed(verifier, verify_typed),
-        verify_event,
-        timestamp=inflow.recorded_at,
-    )
-    # Unsettled source does not count yet; LOCAL settlement makes it count.
-    assert fund_balance(seed.building.pk, verified_only=True) == balance_after_publication
-    _settle_locally()
+    verify_fund_source(inflow, verifier)
     assert (
         fund_balance(seed.building.pk, verified_only=True)
         == balance_after_publication + 5_000_000

@@ -36,9 +36,6 @@ from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType, is_settle
 from lamto.evidence.services import begin_wallet_registration, register_wallet
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.fund import (
-    allocate_fund_entry_id,
-    build_fund_source_evidence_typed_data,
-    build_fund_verification_evidence_typed_data,
     fund_balance,
     get_or_create_fund,
     record_fund_source,
@@ -48,7 +45,6 @@ from lamto.finance.integrity import verify_published_entry
 from lamto.finance.models import (
     MaintenanceFundEntry,
     Proposal,
-    PublicationSnapshot,
     PublishedLedgerEntry,
 )
 from lamto.finance.settlements import record_acknowledgement, record_transfer
@@ -57,14 +53,7 @@ from lamto.finance.proposals import (
     create_proposal,
     submit_proposal_version,
 )
-from lamto.finance.publication import (
-    allocate_publication_id,
-    build_publication_evidence_typed_data,
-    finalize_publication,
-    prepare_publication,
-    _collect_document_checks,
-    _resident_payload,
-)
+from lamto.finance.publication import publish_settlement_entry
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
 from lamto.maintenance.cases import complete_case_work, publish_progress, start_case_work
 from lamto.maintenance.ratings import rate_completed_case
@@ -292,21 +281,6 @@ def seed_opening_fund(seed: PilotSeed, amount_vnd: int = DEFAULT_FUND_OPENING_VN
     original, redacted = seed.document_pair(
         Document.Kind.CONTRACT, recorder.user, "fund-opening"
     )
-    entry_id = allocate_fund_entry_id()
-    event_id = new_event_id()
-    ts = timezone.now()
-    typed = build_fund_source_evidence_typed_data(
-        fund,
-        recorder,
-        entry_id,
-        MaintenanceFundEntry.EntryType.OPENING_BALANCE,
-        amount_vnd,
-        original,
-        redacted,
-        event_id,
-        timestamp=ts,
-    )
-    signature = seed.sign_typed(recorder, typed)
     entry = record_fund_source(
         fund,
         MaintenanceFundEntry.EntryType.OPENING_BALANCE,
@@ -314,20 +288,8 @@ def seed_opening_fund(seed: PilotSeed, amount_vnd: int = DEFAULT_FUND_OPENING_VN
         original,
         redacted,
         recorder,
-        signature,
-        event_id,
-        fund_entry_id=entry_id,
-        timestamp=ts,
     )
-    verify_event = new_event_id()
-    verify_typed = build_fund_verification_evidence_typed_data(
-        entry, verifier, verify_event, timestamp=entry.recorded_at
-    )
-    verify_sig = seed.sign_typed(verifier, verify_typed)
-    verify_fund_source(
-        entry, verifier, verify_sig, verify_event, timestamp=entry.recorded_at
-    )
-    confirm_events(entry.outbox_event, entry.verification.outbox_event)
+    verify_fund_source(entry, verifier)
     return entry
 
 
@@ -359,16 +321,6 @@ class PilotDomainDriver:
         )
         for event in pending:
             confirm_event(event)
-        # Finalize any prepared publications whose outbox is now confirmed.
-        for snapshot in PublicationSnapshot.objects.select_related("outbox_event").all():
-            if (
-                snapshot.outbox_event.status == BlockchainOutboxEvent.Status.CONFIRMED
-                and not PublishedLedgerEntry.objects.filter(snapshot=snapshot).exists()
-            ):
-                try:
-                    finalize_publication(snapshot.pk)
-                except ValidationError:
-                    pass
         return [e.event_id for e in pending]
 
     def latest_outbox_event_ids(self) -> list[str]:
@@ -576,48 +528,10 @@ class PilotDomainDriver:
     def _publish_with(self, publisher):
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
-        version = proposal.current_version
         settlement = proposal.settlement
-        checks = _collect_document_checks(proposal, version, settlement)
-        document_hashes = sorted({doc.sha256 for doc, _, _ in checks})
-        resident_payload = _resident_payload(
-            proposal, version, settlement, document_hashes
-        )
-        prerequisite_event_hashes = [
-            version.outbox_event.payload_hash,
-            settlement.outbox_event.payload_hash,
-        ]
-        publication_id = allocate_publication_id()
-        pub_event = new_event_id()
-        pub_ts = timezone.now()
-        previous_hash = "0x" + settlement.outbox_event.payload_hash
-        typed = build_publication_evidence_typed_data(
-            proposal,
-            publisher,
-            publication_id,
-            prerequisite_event_hashes,
-            resident_payload,
-            document_hashes,
-            pub_event,
-            timestamp=pub_ts,
-            previous_hash=previous_hash,
-        )
-        signature = self.seed.sign_typed(publisher, typed)
-        snapshot = prepare_publication(
-            proposal,
-            publisher,
-            signature,
-            pub_event,
-            publication_id=publication_id,
-            timestamp=pub_ts,
-        )
-        self._ctx["publication_snapshot"] = snapshot
-        if not self.seed.chain_paused:
-            confirm_event(snapshot.outbox_event)
-            entry = finalize_publication(snapshot.pk)
-            self._ctx["ledger_entry"] = entry
-            return entry
-        return snapshot
+        entry = publish_settlement_entry(settlement)
+        self._ctx["ledger_entry"] = entry
+        return entry
 
     def prepare_local_normal_work(self, page=None):
         """Bring a normal paid case through proposal submission."""
@@ -645,8 +559,8 @@ class PilotDomainDriver:
             display = status
         # After the normal flow integrity verification may run; otherwise expose cost.
         redacted_ok = bool(
-            entry.snapshot.resident_payload.get("document_hashes")
-            or entry.payment.transfer_redacted_id
+            entry.resident_payload.get("document_hashes")
+            or entry.settlement.transfer_redacted_id
         )
         return SimpleNamespace(
             actual_cost_vnd=entry.actual_cost_vnd,

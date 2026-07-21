@@ -67,37 +67,6 @@ def process_blockchain_outbox_batch(*, limit: int = 50) -> ProcessorResult:
         return ProcessorResult(name=name, ok=False, detail=str(exc))
 
 
-def process_publication_finalization_batch(*, limit: int = 50) -> ProcessorResult:
-    name = "publication_finalize"
-    try:
-        from lamto.evidence.models import SETTLED_STATUSES
-        from lamto.finance.models import (
-            PublicationSnapshot,
-            PublishedLedgerEntry,
-        )
-        from lamto.finance.publication import finalize_publication
-
-        count = 0
-        pending = (
-            PublicationSnapshot.objects.filter(
-                outbox_event__status__in=SETTLED_STATUSES,
-            )
-            .exclude(pk__in=PublishedLedgerEntry.objects.values("snapshot_id"))
-            .order_by("pk")[:limit]
-        )
-        for snapshot in pending:
-            try:
-                finalize_publication(snapshot.pk)
-                count += 1
-            except Exception:
-                logger.exception("finalize_publication failed for %s", snapshot.pk)
-
-        return ProcessorResult(name=name, ok=True, count=count, detail=f"finalized={count}")
-    except Exception as exc:
-        logger.exception("worker processor %s failed", name)
-        return ProcessorResult(name=name, ok=False, detail=str(exc))
-
-
 def process_integrity_batch(*, limit: int = 20) -> ProcessorResult:
     name = "integrity"
     try:
@@ -198,7 +167,6 @@ def process_stale_devices_batch(*, days: int = 180) -> ProcessorResult:
 PROCESSORS = (
     process_triage_batch,
     process_blockchain_outbox_batch,
-    process_publication_finalization_batch,
     process_integrity_batch,
     process_deadline_risk_batch,
     process_notifications_batch,

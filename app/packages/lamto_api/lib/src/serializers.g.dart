@@ -34,6 +34,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Problem.serializer)
       ..add(Proof.serializer)
       ..add(ProofEvent.serializer)
+      ..add(Proposal.serializer)
+      ..add(ProposalRatingResult.serializer)
       ..add(RedactedDocument.serializer)
       ..add(ReportCase.serializer)
       ..add(ReportCreateRequest.serializer)
@@ -84,6 +86,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(RedactedDocument)]),
           () => ListBuilder<RedactedDocument>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
       ..addBuilderFactory(
           const FullType(BuiltMap, const [
             const FullType(String),

@@ -4,6 +4,7 @@ from django.test import TestCase, override_settings
 
 from lamto.finance.integrity import verify_published_entry
 from lamto.finance.publication import _collect_document_checks, _load_execution_chain
+from lamto.finance.selectors import ledger_entry_proof
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 
@@ -41,6 +42,16 @@ class SettlementBoundaryTests(TestCase):
         checked = set(observation.checked_chain_event_ids)
         self.assertIn(driver.seed.proposal.current_version.outbox_event.event_id, checked)
         self.assertIn(settlement.outbox_event.event_id, checked)
+
+    def test_settlement_publishes_story_and_both_anchor_proofs(self):
+        driver, settlement = self.flow()
+        entry = settlement.ledger_entry
+        proof = ledger_entry_proof(entry)
+        self.assertEqual(entry.resident_payload["actual_cost_vnd"], settlement.amount_vnd)
+        for key, event in (("proposal_version", entry.proposal.current_version.outbox_event), ("settlement", settlement.outbox_event)):
+            self.assertEqual(proof[key]["event_id"], event.event_id)
+            self.assertEqual(proof[key]["payload_hash"], event.payload_hash)
+            self.assertTrue(proof[key]["evidence_level"])
 
     def test_pilot_settlement_flow_publishes_one_balanced_entry(self):
         driver, _settlement = self.flow()

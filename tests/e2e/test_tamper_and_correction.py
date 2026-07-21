@@ -1,4 +1,4 @@
-"""Tamper mismatch freezes publication."""
+"""Tampering is detected by ledger integrity verification."""
 
 from __future__ import annotations
 
@@ -19,6 +19,5 @@ def test_tampered_document_blocks_publish(page, seeded_pilot):
     with storage.open(settlement.transfer_original.storage_key, "wb") as handle:
         handle.write(b"tampered-for-e2e")
 
-    blocked = seeded_pilot.attempt_publication()
-    assert blocked.blocked
-    assert "mismatch" in blocked.reason.lower()
+    observation = seeded_pilot.verify_latest_ledger_entry().observation
+    assert observation.result == observation.Result.MISMATCH

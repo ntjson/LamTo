@@ -30,7 +30,7 @@ def test_role_access_denies_prohibited_document_reads(page, seeded_pilot):
     entry = PublishedLedgerEntry.objects.get(
         case__building=seeded_pilot.seed.building
     )
-    proof_original = entry.payment.transfer_original
+    proof_original = entry.settlement.transfer_original
 
     assert authorize_download(seeded_pilot.seed.residents[0], None, proof_original)
     manager = seeded_pilot.seed.management_memberships[0]

@@ -121,13 +121,13 @@ class MeViewTests(TestCase):
         assert resp.status_code == 400
 
     def test_patch_notification_preferences_rejects_push_on_non_resident_event(self):
-        from lamto.notifications.services import EVENT_PAYMENT_RECORDED
+        from lamto.notifications.services import EVENT_SETTLEMENT_RECORDED
 
         resp = self.client.patch(
             reverse("api:me-notification-preferences"),
             data={
                 "preferences": [
-                    {"event_code": EVENT_PAYMENT_RECORDED, "push_enabled": False}
+                    {"event_code": EVENT_SETTLEMENT_RECORDED, "push_enabled": False}
                 ]
             },
             content_type="application/json",

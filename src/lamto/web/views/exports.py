@@ -137,9 +137,6 @@ def _fund_entry_rows(building_id):
         "evidence_original_hash",
         "evidence_redacted_hash",
         "recorder_membership_id",
-        "wallet_address",
-        "outbox_event_id",
-        "transaction_hash",
         "source_key",
         "recorded_at",
     ]
@@ -147,7 +144,7 @@ def _fund_entry_rows(building_id):
     rows = []
     for entry in (
         MaintenanceFundEntry.objects.filter(fund__building_id=building_id)
-        .select_related("wallet", "outbox_event", "recorder")
+        .select_related("recorder")
         .order_by("id")
         .iterator(chunk_size=200)
     ):
@@ -159,9 +156,6 @@ def _fund_entry_rows(building_id):
                 entry.evidence_original_hash,
                 entry.evidence_redacted_hash,
                 entry.recorder_id,
-                entry.wallet.address if entry.wallet_id else "",
-                entry.outbox_event.event_id if entry.outbox_event_id else "",
-                entry.outbox_event.transaction_hash if entry.outbox_event_id else "",
                 entry.source_key,
                 entry.recorded_at.isoformat() if entry.recorded_at else "",
             ]

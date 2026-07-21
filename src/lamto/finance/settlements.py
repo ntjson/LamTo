@@ -70,6 +70,8 @@ def record_acknowledgement(settlement, membership, *, ack_original, ack_redacted
     settlement.save(update_fields=["ack_original", "ack_redacted", "ack_recorded_by", "ack_recorded_at", "outbox_event", "settled_at"])
     from .fund import create_settlement_outflow
     create_settlement_outflow(settlement)
+    from .publication import publish_settlement_entry
+    publish_settlement_entry(settlement)
     record_audit(actor.user, actor, "settlement.settled", "Settlement", str(settlement.pk), "accepted", {"event_id": event.event_id})
     from lamto.notifications.hooks import notify_settled
     transaction.on_commit(lambda: notify_settled(settlement))

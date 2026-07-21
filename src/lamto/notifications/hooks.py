@@ -6,7 +6,7 @@ from lamto.notifications.services import (
     EVENT_CASE_STATUS,
     EVENT_DEADLINE_RISK,
     EVENT_INTEGRITY_MISMATCH,
-    EVENT_PAYMENT_VERIFIED,
+    EVENT_SETTLEMENT_RECORDED,
     EVENT_PUBLICATION,
     EVENT_QUARANTINED_UPLOAD,
     EVENT_REPORT_RECEIPT,
@@ -116,7 +116,7 @@ def notify_settled(settlement):
         event_key=f"settlement:settled:{settlement.pk}",
         subject="Settlement recorded",
         body=f"Proposal #{proposal.pk} settled for {settlement.amount_vnd} VND.",
-        event_code=EVENT_PAYMENT_VERIFIED,
+        event_code=EVENT_SETTLEMENT_RECORDED,
         building=proposal.building_id,
     )
 

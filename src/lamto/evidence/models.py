@@ -9,12 +9,7 @@ class EvidenceType(models.IntegerChoices):
     RESERVED_3 = 3, "Reserved"
     RESERVED_4 = 4, "Reserved"
     RESERVED_5 = 5, "Reserved"
-    WORK_ACCEPTANCE = 6, "Reserved"
-    PAYMENT_RECORDED = 7, "Payment recorded"
-    PAYMENT_VERIFIED = 8, "Payment verified"
-    PUBLICATION_SNAPSHOT = 9, "Publication snapshot"
     SETTLEMENT = 10, "Settlement"
-    FUND_ENTRY = 11, "Fund entry"
 
 
 class EvidenceLevel(models.TextChoices):

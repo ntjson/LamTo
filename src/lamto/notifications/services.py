@@ -24,8 +24,7 @@ EVENT_WORK_ASSIGNED = "work.assigned"
 EVENT_DEADLINE_RISK = "work.deadline_risk"
 EVENT_WORK_ACCEPTED = "work.accepted"
 EVENT_WORK_COMPLETED = "work.completed"
-EVENT_PAYMENT_RECORDED = "payment.recorded"
-EVENT_PAYMENT_VERIFIED = "payment.verified"
+EVENT_SETTLEMENT_RECORDED = "settlement.recorded"
 EVENT_PAYMENT_REJECTED = "payment.rejected"
 EVENT_PUBLICATION = "ledger.publication"
 EVENT_INTEGRITY_MISMATCH = "integrity.mismatch"
@@ -41,8 +40,7 @@ REQUIRED_IN_APP_EVENT_CODES = frozenset(
         EVENT_WORK_ASSIGNED,
         EVENT_DEADLINE_RISK,
         EVENT_WORK_ACCEPTED,
-        EVENT_PAYMENT_RECORDED,
-        EVENT_PAYMENT_VERIFIED,
+        EVENT_SETTLEMENT_RECORDED,
         EVENT_PAYMENT_REJECTED,
         EVENT_PUBLICATION,
         EVENT_INTEGRITY_MISMATCH,
@@ -57,7 +55,7 @@ PREFERENCE_EVENT_CHOICES = (
     (EVENT_WORK_COMPLETED, "Work completed (rate prompt)"),
     (EVENT_WORK_ASSIGNED, "Work assignment"),
     (EVENT_DEADLINE_RISK, "Deadline risk"),
-    (EVENT_PAYMENT_RECORDED, "Payment actions"),
+    (EVENT_SETTLEMENT_RECORDED, "Settlement actions"),
     (EVENT_PUBLICATION, "Ledger publication"),
     (EVENT_INTEGRITY_MISMATCH, "Integrity mismatch"),
 )

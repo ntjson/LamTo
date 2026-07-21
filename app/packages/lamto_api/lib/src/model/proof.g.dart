@@ -15,6 +15,10 @@ class _$Proof extends Proof {
   final String payloadHash;
   @override
   final BuiltList<ProofEvent> events;
+  @override
+  final JsonObject? proposalVersion;
+  @override
+  final JsonObject? settlement;
 
   factory _$Proof([void Function(ProofBuilder)? updates]) =>
       (ProofBuilder()..update(updates))._build();
@@ -23,7 +27,9 @@ class _$Proof extends Proof {
       {required this.evidenceLevel,
       required this.anchoringBackend,
       required this.payloadHash,
-      required this.events})
+      required this.events,
+      this.proposalVersion,
+      this.settlement})
       : super._();
   @override
   Proof rebuild(void Function(ProofBuilder) updates) =>
@@ -39,7 +45,9 @@ class _$Proof extends Proof {
         evidenceLevel == other.evidenceLevel &&
         anchoringBackend == other.anchoringBackend &&
         payloadHash == other.payloadHash &&
-        events == other.events;
+        events == other.events &&
+        proposalVersion == other.proposalVersion &&
+        settlement == other.settlement;
   }
 
   @override
@@ -49,6 +57,8 @@ class _$Proof extends Proof {
     _$hash = $jc(_$hash, anchoringBackend.hashCode);
     _$hash = $jc(_$hash, payloadHash.hashCode);
     _$hash = $jc(_$hash, events.hashCode);
+    _$hash = $jc(_$hash, proposalVersion.hashCode);
+    _$hash = $jc(_$hash, settlement.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -59,7 +69,9 @@ class _$Proof extends Proof {
           ..add('evidenceLevel', evidenceLevel)
           ..add('anchoringBackend', anchoringBackend)
           ..add('payloadHash', payloadHash)
-          ..add('events', events))
+          ..add('events', events)
+          ..add('proposalVersion', proposalVersion)
+          ..add('settlement', settlement))
         .toString();
   }
 }
@@ -86,6 +98,15 @@ class ProofBuilder implements Builder<Proof, ProofBuilder> {
       _$this._events ??= ListBuilder<ProofEvent>();
   set events(ListBuilder<ProofEvent>? events) => _$this._events = events;
 
+  JsonObject? _proposalVersion;
+  JsonObject? get proposalVersion => _$this._proposalVersion;
+  set proposalVersion(JsonObject? proposalVersion) =>
+      _$this._proposalVersion = proposalVersion;
+
+  JsonObject? _settlement;
+  JsonObject? get settlement => _$this._settlement;
+  set settlement(JsonObject? settlement) => _$this._settlement = settlement;
+
   ProofBuilder() {
     Proof._defaults(this);
   }
@@ -97,6 +118,8 @@ class ProofBuilder implements Builder<Proof, ProofBuilder> {
       _anchoringBackend = $v.anchoringBackend;
       _payloadHash = $v.payloadHash;
       _events = $v.events.toBuilder();
+      _proposalVersion = $v.proposalVersion;
+      _settlement = $v.settlement;
       _$v = null;
     }
     return this;
@@ -127,6 +150,8 @@ class ProofBuilder implements Builder<Proof, ProofBuilder> {
             payloadHash: BuiltValueNullFieldError.checkNotNull(
                 payloadHash, r'Proof', 'payloadHash'),
             events: events.build(),
+            proposalVersion: proposalVersion,
+            settlement: settlement,
           );
     } catch (_) {
       late String _$failedField;

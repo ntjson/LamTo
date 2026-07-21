@@ -141,7 +141,7 @@ class LedgerApiTests(TestCase):
         proof = body["proof"]
         assert proof["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
         assert proof["anchoring_backend"] == "besu"
-        assert proof["payload_hash"] == self.entry.snapshot.resident_payload_hash
+        assert proof["payload_hash"] == self.entry.settlement.outbox_event.payload_hash
         assert proof["events"], "outbox events must be listed in the proof"
         for event in proof["events"]:
             assert event["event_id"].startswith("0x")
@@ -157,7 +157,7 @@ class LedgerApiTests(TestCase):
 
     def test_unsettled_entry_is_invisible(self):
         BlockchainOutboxEvent.objects.filter(
-            pk=self.entry.snapshot.outbox_event_id
+            pk=self.entry.settlement.outbox_event_id
         ).update(status=BlockchainOutboxEvent.Status.PENDING)
         auth = self._auth()
         assert (

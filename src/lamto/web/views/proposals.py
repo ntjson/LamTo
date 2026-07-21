@@ -17,7 +17,6 @@ from lamto.evidence.models import EvidenceType
 from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import (
     Proposal,
-    PublicationSnapshot,
     PublishedLedgerEntry,
 )
 from lamto.accounts.models import SignerWallet
@@ -36,7 +35,6 @@ from lamto.maintenance.cases import complete_proposal_work, publish_progress, st
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
     CreateProposalForm,
-    PreparePublicationForm,
     SignProposalForm,
     StandaloneProposalForm,
 )
@@ -52,8 +50,6 @@ from lamto.web.staff_signing import new_event_id, upload_document_pair
 
 def _proposal_publishable(proposal) -> bool:
     """True when verified payment chain is ready and nothing is published yet."""
-    if PublicationSnapshot.objects.filter(proposal=proposal).exists():
-        return False
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
         return False
     settlement = getattr(proposal, "settlement", None)
@@ -152,7 +148,7 @@ def proposal_detail(request, pk):
         pk=pk,
         building_id=membership.building_id,
     )
-    publish_form = PreparePublicationForm(request.POST or None)
+    publish_form = None
     can_publish = _proposal_publishable(proposal)
     version = proposal.current_version
     publish_typed_data = None
@@ -350,14 +346,6 @@ def proposal_detail(request, pk):
 
     publication_pending = False
     publication_snapshot = None
-    try:
-        publication_snapshot = proposal.publication_snapshot
-    except PublicationSnapshot.DoesNotExist:
-        publication_snapshot = None
-    if publication_snapshot is not None and not PublishedLedgerEntry.objects.filter(
-        proposal=proposal
-    ).exists():
-        publication_pending = True
 
     return render(
         request,

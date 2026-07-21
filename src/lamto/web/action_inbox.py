@@ -19,7 +19,6 @@ from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
     Settlement,
     Proposal,
-    PublicationSnapshot,
     PublishedLedgerEntry,
     VerificationObservation,
 )
@@ -78,7 +77,6 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
     items.extend(_proposal_decision_items(building_id))
     items.extend(_settlement_transfer_items(building_id))
     items.extend(_settlement_ack_items(building_id))
-    items.extend(_pending_publication_items(building_id))
     items.extend(_integrity_mismatch_items(building_id))
     items.extend(_failed_outbox_items(building_id))
     items.extend(_quarantined_upload_items(building_id, membership))
@@ -213,30 +211,6 @@ def _settlement_transfer_items(building_id: int) -> list[ActionItem]:
 
 def _settlement_ack_items(building_id: int) -> list[ActionItem]:
     return [ActionItem(kind="settlement_ack", title="Record acknowledgement", summary=f"Settlement #{s.pk}", target_type="Settlement", target_id=s.pk, url=reverse("web:settlement-detail", kwargs={"pk": s.pk}), priority=14, amount_vnd=s.amount_vnd) for s in Settlement.objects.filter(proposal__building_id=building_id, settled_at__isnull=True)[:40]]
-
-
-def _pending_publication_items(building_id: int) -> list[ActionItem]:
-    items = []
-    # Snapshots waiting finalize (settled outbox)
-    snaps = PublicationSnapshot.objects.filter(
-        proposal__case__building_id=building_id,
-        outbox_event__status__in=SETTLED_STATUSES,
-    ).exclude(
-        pk__in=PublishedLedgerEntry.objects.values("snapshot_id")
-    ).order_by("pk")[:20]
-    for snap in snaps:
-        items.append(
-            ActionItem(
-                kind="pending_publication",
-                title="Pending publication",
-                summary=f"Snapshot #{snap.pk} settled — finalize pending",
-                target_type="PublicationSnapshot",
-                target_id=snap.pk,
-                url=reverse("web:proposal-detail", kwargs={"pk": snap.proposal_id}),
-                priority=17,
-            )
-        )
-    return items
 
 
 def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:

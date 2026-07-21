@@ -121,7 +121,7 @@ class LedgerEntryListSerializer(serializers.Serializer):
     def get_evidence_level(self, entry) -> str:
         from lamto.evidence.models import evidence_level
 
-        return evidence_level(entry.snapshot.outbox_event.status)
+        return evidence_level(entry.settlement.outbox_event.status)
 
 
 class VerificationSerializer(serializers.Serializer):
@@ -150,6 +150,8 @@ class ProofSerializer(serializers.Serializer):
     anchoring_backend = serializers.CharField(allow_blank=True)
     payload_hash = serializers.CharField()
     events = ProofEventSerializer(many=True)
+    proposal_version = serializers.JSONField()
+    settlement = serializers.JSONField()
 
 
 class LedgerEntryDetailSerializer(serializers.Serializer):

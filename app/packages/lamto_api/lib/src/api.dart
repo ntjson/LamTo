@@ -18,6 +18,7 @@ import 'package:lamto_api/src/api/ledger_api.dart';
 import 'package:lamto_api/src/api/locations_api.dart';
 import 'package:lamto_api/src/api/me_api.dart';
 import 'package:lamto_api/src/api/notifications_api.dart';
+import 'package:lamto_api/src/api/proposals_api.dart';
 import 'package:lamto_api/src/api/reports_api.dart';
 
 class LamtoApi {
@@ -126,6 +127,12 @@ class LamtoApi {
   /// by doing that all interceptors will not be executed
   NotificationsApi getNotificationsApi() {
     return NotificationsApi(dio, serializers);
+  }
+
+  /// Get ProposalsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  ProposalsApi getProposalsApi() {
+    return ProposalsApi(dio, serializers);
   }
 
   /// Get ReportsApi instance, base route and serializer can be overridden by a given but be careful,
