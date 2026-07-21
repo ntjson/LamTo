@@ -5,8 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 from lamto.accounts.models import (
     Building,
-    Organization,
-    OrganizationMembership,
+    ManagementMembership,
     ResidentOccupancy,
     Unit,
 )
@@ -45,16 +44,7 @@ class CompletionRatingTests(TestCase):
             password="secret",
             display_name="Operator",
         )
-        organization = Organization.objects.create(
-            building=building,
-            name=f"Operator {tag}",
-            kind=Organization.Kind.OPERATOR,
-        )
-        OrganizationMembership.objects.create(
-            user=operator,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
+        ManagementMembership.objects.create(user=operator, building=building)
         reporter = resident if own_report else get_user_model().objects.create_user(
             email=f"other-{tag}@example.test",
             password="secret",

@@ -5,9 +5,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, close_old_connections, connection, transaction
 from django.test import TestCase, TransactionTestCase
 
-from lamto.accounts.capabilities import REPORT_TRIAGE
-from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.audit.models import AuditEvent
 from lamto.maintenance.models import (
     BuildingLocation,
@@ -28,15 +26,7 @@ class CaseFixture:
         self.operator = get_user_model().objects.create_user(
             email=f"operator-{self.fixture_id}@example.test", password="secret", display_name="Operator"
         )
-        organization = Organization.objects.create(
-            building=self.building, name="Operator", kind=Organization.Kind.OPERATOR
-        )
-        membership = OrganizationMembership.objects.create(
-            user=self.operator,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        grant_capability(membership, REPORT_TRIAGE)
+        ManagementMembership.objects.create(user=self.operator, building=self.building)
 
     def make_report(self, number, building=None, location=None):
         building = building or self.building
@@ -113,14 +103,7 @@ class CaseTests(CaseFixture, TestCase):
         other_operator = get_user_model().objects.create_user(
             email="other-operator@example.test", password="secret", display_name="Other Operator"
         )
-        membership = OrganizationMembership.objects.create(
-            user=other_operator,
-            organization=Organization.objects.create(
-                building=other_building, name="Other Operator", kind=Organization.Kind.OPERATOR
-            ),
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        grant_capability(membership, REPORT_TRIAGE)
+        ManagementMembership.objects.create(user=other_operator, building=other_building)
 
         with self.assertRaises(PermissionDenied):
             confirm_triage(report, other_operator, "Elevator", "HIGH", self.location, "Maintenance", 60)

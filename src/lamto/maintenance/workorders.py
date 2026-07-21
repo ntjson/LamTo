@@ -2,45 +2,11 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from lamto.accounts.capabilities import WORK_ASSIGN
-from lamto.accounts.models import OrganizationMembership
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
 
 from .models import MaintenanceCase, WorkOrder, WorkUpdate, WorkUpdateEvidence
-
-
-def _operator_membership(operator, building_id):
-    membership = (
-        OrganizationMembership.objects.select_related("organization")
-        .filter(
-            user=operator,
-            active=True,
-            organization__building_id=building_id,
-            capabilitygrant__code=WORK_ASSIGN,
-        )
-        .first()
-    )
-    if membership is None:
-        raise PermissionDenied(WORK_ASSIGN)
-    return require_capability(operator, membership.pk, WORK_ASSIGN)
-
-
-def _maintenance_membership(user, building_id):
-    membership = (
-        OrganizationMembership.objects.select_related("organization")
-        .filter(
-            user=user,
-            active=True,
-            role=OrganizationMembership.Role.MAINTENANCE,
-            organization__building_id=building_id,
-        )
-        .first()
-    )
-    if membership is None:
-        raise PermissionDenied("Active maintenance assignment is required.")
-    return membership
 
 
 def _evidence_versions(versions, kind, building_id, uploader):
@@ -70,8 +36,8 @@ def create_work_order(case, operator, assignee, requires_spending):
     case = MaintenanceCase.objects.select_for_update().filter(pk=getattr(case, "pk", None), active=True).first()
     if case is None:
         raise ValidationError("An active case is required.")
-    membership = _operator_membership(operator, case.building_id)
-    _maintenance_membership(assignee, case.building_id)
+    membership = require_management(operator, case.building_id)
+    require_management(assignee, case.building_id)
     if type(requires_spending) is not bool:
         raise ValidationError("requires_spending must be a boolean.")
     work_order = WorkOrder.objects.create(
@@ -114,7 +80,7 @@ def start_work_order(work_order, maintenance_user):
     )
     if work_order is None or work_order.assignee_id != getattr(maintenance_user, "pk", None):
         raise PermissionDenied("Only the assigned maintenance user may start this work order.")
-    membership = _maintenance_membership(maintenance_user, work_order.case.building_id)
+    membership = require_management(maintenance_user, work_order.case.building_id)
     if work_order.authorization_status == WorkOrder.AuthorizationStatus.PENDING:
         raise PermissionDenied("Work spending authorization is pending.")
     if work_order.authorization_status not in {
@@ -146,7 +112,7 @@ def complete_work_order(work_order, maintenance_user, cause, result, before_vers
     )
     if work_order is None or work_order.assignee_id != getattr(maintenance_user, "pk", None):
         raise PermissionDenied("Only the assigned maintenance user may complete this work order.")
-    membership = _maintenance_membership(maintenance_user, work_order.case.building_id)
+    membership = require_management(maintenance_user, work_order.case.building_id)
     if work_order.status != WorkOrder.Status.IN_PROGRESS:
         raise ValidationError("Work order is not in progress.")
     if not isinstance(cause, str) or not (cause := cause.strip()):

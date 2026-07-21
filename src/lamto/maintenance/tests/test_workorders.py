@@ -3,9 +3,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 
-from lamto.accounts.capabilities import REPORT_TRIAGE, WORK_ASSIGN
-from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.maintenance.models import (
     BuildingLocation,
@@ -26,24 +24,11 @@ class WorkOrderTests(TestCase):
         self.operator = get_user_model().objects.create_user(
             email="operator@example.test", password="secret", display_name="Operator"
         )
-        organization = Organization.objects.create(
-            building=self.building, name="Operator", kind=Organization.Kind.OPERATOR
-        )
-        membership = OrganizationMembership.objects.create(
-            user=self.operator,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        grant_capability(membership, REPORT_TRIAGE)
-        grant_capability(membership, WORK_ASSIGN)
+        ManagementMembership.objects.create(user=self.operator, building=self.building)
         self.assignee = get_user_model().objects.create_user(
             email="maintenance@example.test", password="secret", display_name="Maintenance"
         )
-        OrganizationMembership.objects.create(
-            user=self.assignee,
-            organization=organization,
-            role=OrganizationMembership.Role.MAINTENANCE,
-        )
+        ManagementMembership.objects.create(user=self.assignee, building=self.building)
         report = IssueReport.objects.create(
             reporter=get_user_model().objects.create_user(
                 email="resident@example.test", password="secret", display_name="Resident"
@@ -131,22 +116,11 @@ class WorkOrderTests(TestCase):
         other_operator = get_user_model().objects.create_user(
             email="other-operator@example.test", password="secret", display_name="Other Operator"
         )
-        other_membership = OrganizationMembership.objects.create(
-            user=other_operator,
-            organization=Organization.objects.create(
-                building=other_building, name="Other Operator", kind=Organization.Kind.OPERATOR
-            ),
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        grant_capability(other_membership, WORK_ASSIGN)
+        ManagementMembership.objects.create(user=other_operator, building=other_building)
         other_assignee = get_user_model().objects.create_user(
             email="other-maintenance@example.test", password="secret", display_name="Other Maintenance"
         )
-        OrganizationMembership.objects.create(
-            user=other_assignee,
-            organization=other_membership.organization,
-            role=OrganizationMembership.Role.MAINTENANCE,
-        )
+        ManagementMembership.objects.create(user=other_assignee, building=other_building)
 
         for operator in (unaffiliated, other_operator):
             with self.subTest(operator=operator.email), self.assertRaises(PermissionDenied):

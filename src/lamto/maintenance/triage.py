@@ -1,12 +1,10 @@
 from datetime import timedelta
 
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from lamto.accounts.capabilities import REPORT_TRIAGE
-from lamto.accounts.models import OrganizationMembership
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 
 from .ai import URGENCIES
@@ -18,22 +16,6 @@ from .models import (
     TriageDecision,
     TriageSuggestion,
 )
-
-
-def _operator_membership(operator, building_id):
-    membership = (
-        OrganizationMembership.objects.select_related("organization")
-        .filter(
-            user=operator,
-            active=True,
-            organization__building_id=building_id,
-            capabilitygrant__code=REPORT_TRIAGE,
-        )
-        .first()
-    )
-    if membership is None:
-        raise PermissionDenied(REPORT_TRIAGE)
-    return require_capability(operator, membership.pk, REPORT_TRIAGE)
 
 
 def _active_location(location, building_id):
@@ -71,7 +53,7 @@ def confirm_triage(report, operator, category, urgency, location, department, de
     )
     if report is None:
         raise ValidationError("Report is required.")
-    membership = _operator_membership(operator, report.unit.building_id)
+    membership = require_management(operator, report.unit.building_id)
     location = _active_location(location, report.unit.building_id)
     category, urgency, department, deadline_minutes = _decision_values(
         category, urgency, department, deadline_minutes
@@ -144,7 +126,7 @@ def group_report(case, report, operator):
     )
     if case is None or report is None or not case.active:
         raise ValidationError("An active case and report are required.")
-    membership = _operator_membership(operator, case.building_id)
+    membership = require_management(operator, case.building_id)
     if report.unit.building_id != case.building_id:
         raise ValidationError("Report must belong to the case building.")
     existing = (

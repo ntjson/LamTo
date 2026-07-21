@@ -1,18 +1,17 @@
 import tempfile
 import uuid
 
+from django.contrib.auth import get_user_model
 from django.core.files.storage import storages
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
 from lamto.accounts.models import Building, ResidentOccupancy, Unit
-from lamto.documents.models import Document, DocumentVersion
 from lamto.maintenance.models import BuildingLocation, IssueReport
 from lamto.maintenance.reporting import (
     ReportClientRefConflict,
     submit_report_idempotent,
 )
-from lamto.testing.factories import seed_pilot_world
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-idem-")
 
@@ -26,10 +25,13 @@ _TEMP = tempfile.mkdtemp(prefix="lamto-idem-")
 )
 class IdempotentSubmitTests(TestCase):
     def setUp(self):
-        self.seed = seed_pilot_world(building_name="Idem B", email_prefix="idem", create_sample_report=False)
-        self.resident = self.seed.users["resident"]
-        self.unit = self.seed.unit
-        self.location = self.seed.location
+        building = Building.objects.create(name="Idem B")
+        self.resident = get_user_model().objects.create_user(
+            email="idem-resident@example.test", password="secret", display_name="Resident"
+        )
+        self.unit = Unit.objects.create(building=building, label="A-1")
+        ResidentOccupancy.objects.create(user=self.resident, unit=self.unit)
+        self.location = BuildingLocation.objects.create(building=building, name="Lift")
 
     def test_first_submit_creates_then_retry_returns_same(self):
         ref = uuid.uuid4()
