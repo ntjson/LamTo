@@ -1,6 +1,6 @@
 from django.db import models
 
-from lamto.accounts.models import OrganizationMembership, SignerWallet
+from lamto.accounts.models import ManagementMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.maintenance.models import WorkOrder
@@ -33,7 +33,7 @@ class AcceptanceRecord(InsertOnlyModel):
         on_delete=models.PROTECT,
         related_name="+",
     )
-    membership = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
+    membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
     wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
     signature = models.CharField(max_length=132)
     outbox_event = models.OneToOneField(
@@ -80,7 +80,7 @@ class PaymentEvidence(InsertOnlyModel):
         related_name="+",
     )
     recorder = models.ForeignKey(
-        OrganizationMembership,
+        ManagementMembership,
         on_delete=models.PROTECT,
         related_name="recorded_payments",
     )
@@ -119,7 +119,7 @@ class PaymentVerification(InsertOnlyModel):
         PaymentEvidence, on_delete=models.PROTECT, related_name="verification"
     )
     membership = models.ForeignKey(
-        OrganizationMembership,
+        ManagementMembership,
         on_delete=models.PROTECT,
         related_name="payment_verifications",
     )

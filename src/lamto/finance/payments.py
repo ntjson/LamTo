@@ -2,9 +2,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection, transaction
 from django.utils import timezone
 
-from lamto.accounts.capabilities import PAYMENT_RECORD, PAYMENT_VERIFY
-from lamto.accounts.models import Organization
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -87,11 +85,6 @@ def _locked_payment(payment):
     if locked is None:
         raise ValidationError("Payment evidence does not exist.")
     return locked
-
-
-def _require_same_building(membership, work_order, message):
-    if membership.organization.building_id != work_order.case.building_id:
-        raise PermissionDenied(message)
 
 
 def _require_proof_pair(original, redacted, building_id, *, lock=False):
@@ -247,11 +240,8 @@ def record_payment(
     payment_id,
 ) -> PaymentEvidence:
     acceptance = _locked_acceptance(acceptance)
-    actor = require_capability(membership.user, membership.pk, PAYMENT_RECORD)
-    if actor.organization.kind != Organization.Kind.BOARD:
-        raise PermissionDenied("Only a Board membership may record payment evidence.")
     work_order = acceptance.work_order
-    _require_same_building(actor, work_order, "Board must belong to the work-order building.")
+    actor = require_management(membership.user, work_order.case.building_id)
     if PaymentEvidence.objects.filter(acceptance=acceptance).exists():
         raise ValidationError("Payment evidence already exists for this acceptance.")
     if type(amount_vnd) is not int or amount_vnd <= 0:
@@ -347,13 +337,8 @@ def verify_payment(
     denied_actor = membership
     with transaction.atomic():
         payment = _locked_payment(payment)
-        actor = require_capability(membership.user, membership.pk, PAYMENT_VERIFY)
-        if actor.organization.kind != Organization.Kind.BOARD:
-            raise PermissionDenied("Only a Board membership may verify payment evidence.")
-        _require_same_building(
-            actor,
-            payment.acceptance.work_order,
-            "Board must belong to the work-order building.",
+        actor = require_management(
+            membership.user, payment.acceptance.work_order.case.building_id
         )
         if actor.user_id == payment.recorder.user_id:
             denied = True

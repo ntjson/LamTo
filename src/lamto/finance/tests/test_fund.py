@@ -13,8 +13,7 @@ from eth_account import Account
 from eth_account.messages import encode_typed_data
 
 from lamto.accounts.capabilities import FUND_RECORD, FUND_VERIFY
-from lamto.accounts.models import Building, Organization, OrganizationMembership
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
@@ -57,15 +56,7 @@ class FundSourceTests(TestCase):
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
         )
-        organization = Organization.objects.create(
-            building=building,
-            name=suffix,
-            kind=OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role],
-        )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
-        grant_capability(membership, capability)
+        membership = ManagementMembership.objects.create(user=user, building=building)
         account = Account.create()
         challenge = begin_wallet_registration(membership)
         proof = Account.sign_message(
@@ -119,13 +110,11 @@ class FundSourceTests(TestCase):
     def setUp(self):
         self.building = Building.objects.create(name=self._unique("Fund Building"))
         self.recorder, self.recorder_account = self.make_signer(
-            self.building, OrganizationMembership.Role.BOARD, FUND_RECORD, "fund-recorder"
+            self.building, None, FUND_RECORD, "fund-recorder"
         )
-        grant_capability(self.recorder, FUND_VERIFY)
         self.verifier, self.verifier_account = self.make_signer(
-            self.building, OrganizationMembership.Role.BOARD, FUND_VERIFY, "fund-verifier"
+            self.building, None, FUND_VERIFY, "fund-verifier"
         )
-        grant_capability(self.verifier, FUND_RECORD)
         self.accounts = {
             self.recorder.pk: self.recorder_account,
             self.verifier.pk: self.verifier_account,

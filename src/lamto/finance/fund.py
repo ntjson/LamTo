@@ -3,9 +3,8 @@ from django.db import connection, models, transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
 
-from lamto.accounts.capabilities import FUND_RECORD, FUND_VERIFY
-from lamto.accounts.models import Building, Organization
-from lamto.accounts.services import require_capability
+from lamto.accounts.models import Building
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -266,11 +265,7 @@ def record_fund_source(
     source_key=None,
 ) -> MaintenanceFundEntry:
     fund = _locked_fund(fund)
-    actor = require_capability(recorder.user, recorder.pk, FUND_RECORD)
-    if actor.organization.kind != Organization.Kind.BOARD:
-        raise PermissionDenied("Only a Board membership may record fund sources.")
-    if actor.organization.building_id != fund.building_id:
-        raise PermissionDenied("Board must belong to the fund building.")
+    actor = require_management(recorder.user, fund.building_id)
     _validate_source_amount(entry_type, amount_vnd)
     evidence_original, evidence_redacted = _require_evidence_pair(
         evidence_original,
@@ -353,11 +348,7 @@ def verify_fund_source(
     denied_actor = verifier
     with transaction.atomic():
         entry = _locked_entry(entry)
-        actor = require_capability(verifier.user, verifier.pk, FUND_VERIFY)
-        if actor.organization.kind != Organization.Kind.BOARD:
-            raise PermissionDenied("Only a Board membership may verify fund sources.")
-        if actor.organization.building_id != entry.fund.building_id:
-            raise PermissionDenied("Board must belong to the fund building.")
+        actor = require_management(verifier.user, entry.fund.building_id)
         if entry.entry_type not in SOURCE_ENTRY_TYPES:
             raise ValidationError("Only opening balance and inflow sources may be verified.")
         if entry.recorder is None:

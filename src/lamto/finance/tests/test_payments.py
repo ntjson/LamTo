@@ -10,8 +10,6 @@ from eth_account import Account
 from eth_account.messages import encode_typed_data
 
 from lamto.accounts.capabilities import PAYMENT_RECORD, PAYMENT_VERIFY, WORK_ACCEPT
-from lamto.accounts.models import OrganizationMembership
-from lamto.accounts.services import grant_capability
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document
 from lamto.evidence.canonical import payload_hash
@@ -60,8 +58,6 @@ class PaymentMakerCheckerTests(TestCase):
             acceptance_original,
             acceptance_redacted,
         ) = _AcceptanceFixtures.make_completed_work_inputs(self)
-        grant_capability(board, PAYMENT_RECORD)
-        grant_capability(board, PAYMENT_VERIFY)
         proof_original, proof_redacted = self.document_pair(
             work.case.building,
             Document.Kind.PAYMENT_PROOF,
@@ -85,10 +81,8 @@ class PaymentMakerCheckerTests(TestCase):
 
     def make_second_board(self, building, suffix="board-verifier"):
         membership, account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PAYMENT_VERIFY, suffix
+            building, None, PAYMENT_VERIFY, suffix
         )
-        grant_capability(membership, PAYMENT_RECORD)
-        grant_capability(membership, WORK_ACCEPT)
         self.accounts[membership.pk] = account
         return membership
 

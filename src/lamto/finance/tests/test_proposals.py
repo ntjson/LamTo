@@ -5,9 +5,7 @@ from django.test import TestCase
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from lamto.accounts.capabilities import PROPOSAL_CREATE
-from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
@@ -38,15 +36,7 @@ class ProposalVersionTests(TestCase):
         operator = get_user_model().objects.create_user(
             email="operator@example.test", password="secret", display_name="Operator"
         )
-        organization = Organization.objects.create(
-            building=building, name="Operator", kind=Organization.Kind.OPERATOR
-        )
-        membership = OrganizationMembership.objects.create(
-            user=operator,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        grant_capability(membership, PROPOSAL_CREATE)
+        membership = ManagementMembership.objects.create(user=operator, building=building)
         report = IssueReport.objects.create(
             reporter=get_user_model().objects.create_user(
                 email="resident@example.test", password="secret", display_name="Resident"

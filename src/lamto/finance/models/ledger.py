@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from lamto.accounts.models import Building, OrganizationMembership, SignerWallet
+from lamto.accounts.models import Building, ManagementMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
 from lamto.maintenance.models import MaintenanceCase, WorkOrder
@@ -48,7 +48,7 @@ class MaintenanceFundEntry(InsertOnlyModel):
     evidence_original_hash = models.CharField(max_length=64, blank=True)
     evidence_redacted_hash = models.CharField(max_length=64, blank=True)
     recorder = models.ForeignKey(
-        OrganizationMembership,
+        ManagementMembership,
         null=True,
         blank=True,
         on_delete=models.PROTECT,
@@ -117,7 +117,7 @@ class FundEntryVerification(InsertOnlyModel):
         MaintenanceFundEntry, on_delete=models.PROTECT, related_name="verification"
     )
     membership = models.ForeignKey(
-        OrganizationMembership,
+        ManagementMembership,
         on_delete=models.PROTECT,
         related_name="fund_verifications",
     )
@@ -168,7 +168,7 @@ class PublicationSnapshot(InsertOnlyModel):
     resident_payload = models.JSONField()
     resident_payload_hash = models.CharField(max_length=64)
     publisher = models.ForeignKey(
-        OrganizationMembership,
+        ManagementMembership,
         on_delete=models.PROTECT,
         related_name="publication_snapshots",
     )
@@ -236,7 +236,7 @@ class PublicationGateFailure(InsertOnlyModel):
         max_length=16, choices=Severity.choices, default=Severity.BLOCKING
     )
     actor = models.ForeignKey(
-        OrganizationMembership,
+        ManagementMembership,
         null=True,
         blank=True,
         on_delete=models.PROTECT,

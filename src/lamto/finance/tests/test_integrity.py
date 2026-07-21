@@ -23,8 +23,7 @@ from lamto.accounts.capabilities import (
     WORK_ACCEPT,
     WORK_ASSIGN,
 )
-from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
@@ -96,15 +95,7 @@ class IntegrityTests(TestCase):
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
         )
-        organization = Organization.objects.create(
-            building=building,
-            name=suffix,
-            kind=OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role],
-        )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
-        grant_capability(membership, capability)
+        membership = ManagementMembership.objects.create(user=user, building=building)
         account = Account.create()
         challenge = begin_wallet_registration(membership)
         proof = Account.sign_message(
@@ -189,17 +180,12 @@ class IntegrityTests(TestCase):
         location = BuildingLocation.objects.create(building=building, name="Lobby")
         unit = Unit.objects.create(building=building, label="A-1")
         operator, operator_account = self.make_signer(
-            building, OrganizationMembership.Role.OPERATOR, PROPOSAL_CREATE, "operator"
+            building, None, PROPOSAL_CREATE, "operator"
         )
-        grant_capability(operator, WORK_ASSIGN)
         maintenance_user = get_user_model().objects.create_user(
             email=f"maint-{tag}@example.test", password="secret", display_name="Maint"
         )
-        OrganizationMembership.objects.create(
-            user=maintenance_user,
-            organization=operator.organization,
-            role=OrganizationMembership.Role.MAINTENANCE,
-        )
+        ManagementMembership.objects.create(user=maintenance_user, building=building)
         report = IssueReport.objects.create(
             reporter=get_user_model().objects.create_user(
                 email=f"res-{tag}@example.test", password="secret", display_name="Res"
@@ -256,9 +242,8 @@ class IntegrityTests(TestCase):
         )
 
         board_actor, board_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, WORK_ACCEPT, "board-actor"
+            building, None, WORK_ACCEPT, "board-actor"
         )
-        grant_capability(board_actor, PAYMENT_RECORD)
 
         work_order.refresh_from_db()
         start_work_order(work_order, maintenance_user)
@@ -304,13 +289,13 @@ class IntegrityTests(TestCase):
         )
 
         payment_recorder, payment_recorder_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PAYMENT_RECORD, "pay-recorder"
+            building, None, PAYMENT_RECORD, "pay-recorder"
         )
         payment_verifier, payment_verifier_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PAYMENT_VERIFY, "pay-verifier"
+            building, None, PAYMENT_VERIFY, "pay-verifier"
         )
         publisher, publisher_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, LEDGER_PUBLISH, "publisher"
+            building, None, LEDGER_PUBLISH, "publisher"
         )
 
         proof_original, proof_redacted = self.document_pair(
@@ -374,10 +359,10 @@ class IntegrityTests(TestCase):
 
         fund = get_or_create_fund(building)
         fund_recorder, fund_recorder_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, FUND_RECORD, "fund-rec"
+            building, None, FUND_RECORD, "fund-rec"
         )
         fund_verifier, fund_verifier_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, FUND_VERIFY, "fund-ver"
+            building, None, FUND_VERIFY, "fund-ver"
         )
         fund_original, fund_redacted = self.document_pair(
             building, Document.Kind.CONTRACT, fund_recorder.user, "fund-open"

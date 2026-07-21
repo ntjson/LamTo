@@ -4,9 +4,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection, transaction
 from django.utils import timezone
 
-from lamto.accounts.capabilities import LEDGER_PUBLISH
-from lamto.accounts.models import Organization
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.access import _read_stored_version
 from lamto.evidence.canonical import payload_hash
@@ -317,12 +315,8 @@ def build_publication_sign_package(proposal, publisher, *, event_id, publication
             "creator_membership__user",
         ).get(pk=proposal.pk)
     )
-    actor = require_capability(publisher.user, publisher.pk, LEDGER_PUBLISH)
-    if actor.organization.kind != Organization.Kind.BOARD:
-        raise PermissionDenied("Only a Board membership may publish the ledger.")
     work_order = proposal.work_order
-    if actor.organization.building_id != work_order.case.building_id:
-        raise PermissionDenied("Board must belong to the work-order building.")
+    actor = require_management(publisher.user, work_order.case.building_id)
     if PublicationSnapshot.objects.filter(proposal=proposal).exists():
         raise ValidationError("Publication snapshot already exists for this proposal.")
     if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():
@@ -403,12 +397,8 @@ def prepare_publication(
     snapshot = None
     with transaction.atomic():
         proposal = _locked_proposal(proposal)
-        actor = require_capability(publisher.user, publisher.pk, LEDGER_PUBLISH)
-        if actor.organization.kind != Organization.Kind.BOARD:
-            raise PermissionDenied("Only a Board membership may publish the ledger.")
         work_order = proposal.work_order
-        if actor.organization.building_id != work_order.case.building_id:
-            raise PermissionDenied("Board must belong to the work-order building.")
+        actor = require_management(publisher.user, work_order.case.building_id)
         if PublicationSnapshot.objects.filter(proposal=proposal).exists():
             raise ValidationError("Publication snapshot already exists for this proposal.")
         if PublishedLedgerEntry.objects.filter(proposal=proposal).exists():

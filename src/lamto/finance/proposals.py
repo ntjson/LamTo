@@ -1,9 +1,8 @@
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max
 
-from lamto.accounts.capabilities import PROPOSAL_CREATE
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -136,11 +135,9 @@ def create_proposal(work_order, creator_membership) -> Proposal:
     )
     if locked_work_order is None or not locked_work_order.case.active:
         raise ValidationError("An active work order is required.")
-    membership = require_capability(
-        creator_membership.user, creator_membership.pk, PROPOSAL_CREATE
+    membership = require_management(
+        creator_membership.user, locked_work_order.case.building_id
     )
-    if membership.organization.building_id != locked_work_order.case.building_id:
-        raise PermissionDenied("Proposal creator must belong to the work-order building.")
     try:
         proposal = Proposal.objects.create(
             work_order=locked_work_order,
@@ -172,13 +169,10 @@ def submit_proposal_version(
     work_order = WorkOrder.objects.select_for_update().select_related("case__decision__report").get(
         pk=locked_proposal.work_order_id
     )
-    membership = require_capability(
+    membership = require_management(
         locked_proposal.creator_membership.user,
-        locked_proposal.creator_membership_id,
-        PROPOSAL_CREATE,
+        work_order.case.building_id,
     )
-    if membership.organization.building_id != work_order.case.building_id:
-        raise PermissionDenied("Proposal creator must belong to the work-order building.")
     if type(amount_vnd) is not int or amount_vnd <= 0:
         raise ValidationError("Proposal amount must be a positive integer.")
     if not isinstance(contractor_name, str) or not contractor_name.strip():

@@ -1,10 +1,8 @@
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from lamto.accounts.capabilities import WORK_ACCEPT
-from lamto.accounts.models import Organization
-from lamto.accounts.services import require_capability
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -27,11 +25,6 @@ def _locked_work_order(work_order):
     if locked is None:
         raise ValidationError("Work order does not exist.")
     return locked
-
-
-def _require_same_building(membership, work_order, message):
-    if membership.organization.building_id != work_order.case.building_id:
-        raise PermissionDenied(message)
 
 
 def _require_document_pair(original, redacted, kind, building_id, *, lock=False):
@@ -189,10 +182,7 @@ def accept_work(
     timestamp=None,
 ) -> AcceptanceRecord:
     work_order = _locked_work_order(work_order)
-    actor = require_capability(membership.user, membership.pk, WORK_ACCEPT)
-    if actor.organization.kind != Organization.Kind.BOARD:
-        raise PermissionDenied("Only a Board membership may accept completed work.")
-    _require_same_building(actor, work_order, "Board must belong to the work-order building.")
+    actor = require_management(membership.user, work_order.case.building_id)
     if work_order.status != WorkOrder.Status.AWAITING_ACCEPTANCE:
         raise ValidationError("Work order is not awaiting acceptance.")
     if AcceptanceRecord.objects.filter(work_order=work_order).exists():

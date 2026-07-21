@@ -22,8 +22,7 @@ from lamto.accounts.capabilities import (
     WORK_ACCEPT,
     WORK_ASSIGN,
 )
-from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -96,15 +95,7 @@ class PublicationTests(TestCase):
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
         )
-        organization = Organization.objects.create(
-            building=building,
-            name=suffix,
-            kind=OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role],
-        )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
-        grant_capability(membership, capability)
+        membership = ManagementMembership.objects.create(user=user, building=building)
         account = Account.create()
         challenge = begin_wallet_registration(membership)
         proof = Account.sign_message(
@@ -189,17 +180,12 @@ class PublicationTests(TestCase):
         location = BuildingLocation.objects.create(building=building, name="Lobby")
         unit = Unit.objects.create(building=building, label="A-1")
         operator, operator_account = self.make_signer(
-            building, OrganizationMembership.Role.OPERATOR, PROPOSAL_CREATE, "operator"
+            building, None, PROPOSAL_CREATE, "operator"
         )
-        grant_capability(operator, WORK_ASSIGN)
         maintenance_user = get_user_model().objects.create_user(
             email=f"maint-{tag}@example.test", password="secret", display_name="Maint"
         )
-        OrganizationMembership.objects.create(
-            user=maintenance_user,
-            organization=operator.organization,
-            role=OrganizationMembership.Role.MAINTENANCE,
-        )
+        ManagementMembership.objects.create(user=maintenance_user, building=building)
         report = IssueReport.objects.create(
             reporter=get_user_model().objects.create_user(
                 email=f"res-{tag}@example.test", password="secret", display_name="Res"
@@ -256,9 +242,8 @@ class PublicationTests(TestCase):
         )
 
         board_actor, board_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, WORK_ACCEPT, "board-actor"
+            building, None, WORK_ACCEPT, "board-actor"
         )
-        grant_capability(board_actor, PAYMENT_RECORD)
         self.accounts = {
             operator.pk: operator_account,
             board_actor.pk: board_account,
@@ -308,18 +293,17 @@ class PublicationTests(TestCase):
         )
 
         payment_recorder, payment_recorder_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PAYMENT_RECORD, "pay-recorder"
+            building, None, PAYMENT_RECORD, "pay-recorder"
         )
         # Same user as board_acceptor is allowed for payment record, but use distinct for dual-control clarity.
         # Actually we can use board_acceptor as recorder. For publisher exclusion we need distinct publisher.
         payment_verifier, payment_verifier_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, PAYMENT_VERIFY, "pay-verifier"
+            building, None, PAYMENT_VERIFY, "pay-verifier"
         )
         publisher, publisher_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, LEDGER_PUBLISH, "publisher"
+            building, None, LEDGER_PUBLISH, "publisher"
         )
         # Publisher may equal payment verifier - grant both on publisher as alternative path tested separately.
-        grant_capability(payment_verifier, LEDGER_PUBLISH)
         self.accounts[payment_recorder.pk] = payment_recorder_account
         self.accounts[payment_verifier.pk] = payment_verifier_account
         self.accounts[publisher.pk] = publisher_account
@@ -396,10 +380,10 @@ class PublicationTests(TestCase):
         # Seed fund so balance can absorb outflow.
         fund = get_or_create_fund(building)
         fund_recorder, fund_recorder_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, FUND_RECORD, "fund-rec"
+            building, None, FUND_RECORD, "fund-rec"
         )
         fund_verifier, fund_verifier_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, FUND_VERIFY, "fund-ver"
+            building, None, FUND_VERIFY, "fund-ver"
         )
         self.accounts[fund_recorder.pk] = fund_recorder_account
         self.accounts[fund_verifier.pk] = fund_verifier_account
@@ -561,7 +545,6 @@ class PublicationTests(TestCase):
         ) = self.make_ready_proposal_and_publisher()
 
         # Payment recorder cannot publish.
-        grant_capability(payment_recorder, LEDGER_PUBLISH)
         # Need a signature from payment_recorder wallet — rebuild typed data for them.
         from lamto.finance.publication import (
             _collect_document_checks,

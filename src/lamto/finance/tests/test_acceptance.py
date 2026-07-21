@@ -13,8 +13,7 @@ from lamto.accounts.capabilities import (
     WORK_ACCEPT,
     WORK_ASSIGN,
 )
-from lamto.accounts.models import Building, Organization, OrganizationMembership, Unit
-from lamto.accounts.services import grant_capability
+from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
@@ -51,15 +50,7 @@ class WorkAcceptanceTests(TestCase):
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
         )
-        organization = Organization.objects.create(
-            building=building,
-            name=suffix,
-            kind=OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role],
-        )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
-        grant_capability(membership, capability)
+        membership = ManagementMembership.objects.create(user=user, building=building)
         account = Account.create()
         challenge = begin_wallet_registration(membership)
         proof = Account.sign_message(
@@ -121,16 +112,9 @@ class WorkAcceptanceTests(TestCase):
         operator_user = get_user_model().objects.create_user(
             email=f"operator-{tag}@example.test", password="secret", display_name="Operator"
         )
-        operator_org = Organization.objects.create(
-            building=building, name=f"Operator {tag}", kind=Organization.Kind.OPERATOR
+        operator = ManagementMembership.objects.create(
+            user=operator_user, building=building
         )
-        operator = OrganizationMembership.objects.create(
-            user=operator_user,
-            organization=operator_org,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        grant_capability(operator, PROPOSAL_CREATE)
-        grant_capability(operator, WORK_ASSIGN)
         account = Account.create()
         challenge = begin_wallet_registration(operator)
         proof = Account.sign_message(
@@ -141,11 +125,7 @@ class WorkAcceptanceTests(TestCase):
         maintenance = get_user_model().objects.create_user(
             email=f"maintenance-{tag}@example.test", password="secret", display_name="Maintenance"
         )
-        OrganizationMembership.objects.create(
-            user=maintenance,
-            organization=operator_org,
-            role=OrganizationMembership.Role.MAINTENANCE,
-        )
+        ManagementMembership.objects.create(user=maintenance, building=building)
         report = IssueReport.objects.create(
             reporter=get_user_model().objects.create_user(
                 email=f"resident-{tag}@example.test", password="secret", display_name="Resident"
@@ -205,7 +185,7 @@ class WorkAcceptanceTests(TestCase):
         )
 
         board, board_account = self.make_signer(
-            building, OrganizationMembership.Role.BOARD, WORK_ACCEPT, "board-accept"
+            building, None, WORK_ACCEPT, "board-accept"
         )
         self.accounts = {board.pk: board_account}
 
