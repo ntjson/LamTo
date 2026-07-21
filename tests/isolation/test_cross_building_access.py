@@ -102,6 +102,7 @@ API_AUTHENTICATED_GLOBAL = {
 API_TENANT_LIST = {
     "api:ledger-list": "GET",
     "api:fund-summary": "GET",
+    "api:fund-series": "GET",
     "api:locations": "GET",
     "api:notifications": "GET",
 }

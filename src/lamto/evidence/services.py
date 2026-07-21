@@ -35,7 +35,7 @@ SIGNING_ROLES = {
 }
 HASH_RE = re.compile(r"(?:0x)?[0-9a-f]{64}\Z")
 UTC_RFC3339_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\Z")
-PAYMENT_DECISION = frozenset({"MATCH", "REJECT"})
+PAYMENT_DECISION = frozenset({"APPROVE", "REJECT"})
 # Closed vocabulary of payload value shapes (spec 2.2 opacity). Free-text shapes
 # must not be added — chain hashes remain non-invertible only if payloads stay opaque.
 OPAQUE_PAYLOAD_SHAPES = frozenset({

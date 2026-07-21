@@ -1,4 +1,5 @@
 import secrets
+from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -21,6 +22,7 @@ from lamto.finance.models import PaymentEvidence, PaymentVerification
 from lamto.finance.payments import (
     allocate_payment_id,
     build_payment_evidence_typed_data,
+    build_payment_verification_evidence_payload,
     build_payment_verification_evidence_typed_data,
     normalize_bank_reference,
     record_payment,
@@ -35,6 +37,19 @@ class PaymentMakerCheckerTests(TestCase):
     document_pair = _AcceptanceFixtures.document_pair
     photo = _AcceptanceFixtures.photo
     sign_acceptance = _AcceptanceFixtures.sign_acceptance
+
+    def test_verified_signature_payload_preserves_approve_decision(self):
+        payment = SimpleNamespace(
+            outbox_event=SimpleNamespace(payload_hash="a" * 64),
+            recorded_at=timezone.now(),
+        )
+        payload = build_payment_verification_evidence_payload(payment, "VERIFIED")
+        typed = build_payment_verification_evidence_typed_data(
+            payment, None, "VERIFIED", "0x" + "11" * 32
+        )
+
+        self.assertEqual(payload["decision"], "APPROVE")
+        self.assertEqual(typed["message"]["payloadHash"], "0x" + payload_hash(payload))
 
     def make_completed_work_inputs(self):
         (

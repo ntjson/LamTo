@@ -22,7 +22,7 @@ EVIDENCE_EXTERNAL_STATUS = {
 }
 
 EVIDENCE_VERIFICATION = {
-    PaymentVerification.Decision.VERIFIED: ("MATCH", "MATCH"),
+    PaymentVerification.Decision.VERIFIED: ("APPROVE", "MATCH"),
     PaymentVerification.Decision.REJECTED: ("REJECT", "MISMATCH"),
 }
 

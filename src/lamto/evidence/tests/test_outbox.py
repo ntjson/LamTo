@@ -59,7 +59,7 @@ VALID_PAYLOADS = {
         "payment_proof_redacted_hash": HASH,
     },
     EvidenceType.PAYMENT_VERIFIED: {
-        "payment_hash": HASH, "decision": "MATCH",
+        "payment_hash": HASH, "decision": "APPROVE",
         "verification_result": "MATCH", "verification_timestamp": TIMESTAMP,
     },
     EvidenceType.PUBLICATION_SNAPSHOT: {
