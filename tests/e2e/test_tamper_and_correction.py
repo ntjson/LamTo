@@ -14,9 +14,9 @@ def test_tampered_document_blocks_publish(page, seeded_pilot):
     seeded_pilot.record_settlement_ack()
     seeded_pilot.confirm_all_chain_events()
 
-    payment = seeded_pilot._ctx["payment"]
+    settlement = seeded_pilot._ctx["settlement"]
     storage = storages["private"]
-    with storage.open(payment.proof_original.storage_key, "wb") as handle:
+    with storage.open(settlement.transfer_original.storage_key, "wb") as handle:
         handle.write(b"tampered-for-e2e")
 
     blocked = seeded_pilot.attempt_publication()
