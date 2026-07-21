@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.utils import timezone
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
@@ -118,6 +119,16 @@ class ProposalVersionTests(TestCase):
 
         with self.assertRaisesMessage(
             ValidationError, "Private requests cannot become community proposals."
+        ):
+            create_proposal(case, operator)
+
+    def test_create_proposal_rejects_active_completed_case(self):
+        operator, case, _quotation, _account = self.make_signed_proposal_inputs()
+        case.completed_at = timezone.now()
+        case.save(update_fields=["completed_at"])
+
+        with self.assertRaisesMessage(
+            ValidationError, "An active uncompleted case is required."
         ):
             create_proposal(case, operator)
 

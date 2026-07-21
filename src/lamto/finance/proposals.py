@@ -136,8 +136,12 @@ def create_proposal(case, creator_membership) -> Proposal:
         .filter(pk=getattr(case, "pk", None))
         .first()
     )
-    if locked_case is None or not locked_case.active:
-        raise ValidationError("An active case is required.")
+    if (
+        locked_case is None
+        or not locked_case.active
+        or locked_case.completed_at is not None
+    ):
+        raise ValidationError("An active uncompleted case is required.")
     membership = require_management(creator_membership.user, locked_case.building_id)
     links = CaseReport.objects.filter(case=locked_case).select_related("report")
     if any(link.report.is_private for link in links):
