@@ -3,8 +3,10 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:lamto_api/src/model/proposal_version.dart';
 import 'package:built_collection/built_collection.dart';
-import 'package:built_value/json_object.dart';
+import 'package:lamto_api/src/model/proposal_progress.dart';
+import 'package:lamto_api/src/model/proposal_settlement.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -19,7 +21,16 @@ part 'proposal.g.dart';
 /// * [status] 
 /// * [completedAt] 
 /// * [closedAt] 
-/// * [currentVersion] 
+/// * [purpose] 
+/// * [proposedAction] 
+/// * [amountVnd] 
+/// * [fundCode] 
+/// * [contractorName] 
+/// * [expectedSchedule] 
+/// * [versions] 
+/// * [progress] 
+/// * [settlement] 
+/// * [canRate] 
 @BuiltValue()
 abstract class Proposal implements Built<Proposal, ProposalBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -40,8 +51,35 @@ abstract class Proposal implements Built<Proposal, ProposalBuilder> {
   @BuiltValueField(wireName: r'closed_at')
   DateTime? get closedAt;
 
-  @BuiltValueField(wireName: r'current_version')
-  BuiltMap<String, JsonObject?>? get currentVersion;
+  @BuiltValueField(wireName: r'purpose')
+  String get purpose;
+
+  @BuiltValueField(wireName: r'proposed_action')
+  String get proposedAction;
+
+  @BuiltValueField(wireName: r'amount_vnd')
+  int get amountVnd;
+
+  @BuiltValueField(wireName: r'fund_code')
+  String get fundCode;
+
+  @BuiltValueField(wireName: r'contractor_name')
+  String get contractorName;
+
+  @BuiltValueField(wireName: r'expected_schedule')
+  String get expectedSchedule;
+
+  @BuiltValueField(wireName: r'versions')
+  BuiltList<ProposalVersion> get versions;
+
+  @BuiltValueField(wireName: r'progress')
+  BuiltList<ProposalProgress> get progress;
+
+  @BuiltValueField(wireName: r'settlement')
+  ProposalSettlement? get settlement;
+
+  @BuiltValueField(wireName: r'can_rate')
+  bool get canRate;
 
   Proposal._();
 
@@ -96,10 +134,55 @@ class _$ProposalSerializer implements PrimitiveSerializer<Proposal> {
       object.closedAt,
       specifiedType: const FullType.nullable(DateTime),
     );
-    yield r'current_version';
-    yield object.currentVersion == null ? null : serializers.serialize(
-      object.currentVersion,
-      specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+    yield r'purpose';
+    yield serializers.serialize(
+      object.purpose,
+      specifiedType: const FullType(String),
+    );
+    yield r'proposed_action';
+    yield serializers.serialize(
+      object.proposedAction,
+      specifiedType: const FullType(String),
+    );
+    yield r'amount_vnd';
+    yield serializers.serialize(
+      object.amountVnd,
+      specifiedType: const FullType(int),
+    );
+    yield r'fund_code';
+    yield serializers.serialize(
+      object.fundCode,
+      specifiedType: const FullType(String),
+    );
+    yield r'contractor_name';
+    yield serializers.serialize(
+      object.contractorName,
+      specifiedType: const FullType(String),
+    );
+    yield r'expected_schedule';
+    yield serializers.serialize(
+      object.expectedSchedule,
+      specifiedType: const FullType(String),
+    );
+    yield r'versions';
+    yield serializers.serialize(
+      object.versions,
+      specifiedType: const FullType(BuiltList, [FullType(ProposalVersion)]),
+    );
+    yield r'progress';
+    yield serializers.serialize(
+      object.progress,
+      specifiedType: const FullType(BuiltList, [FullType(ProposalProgress)]),
+    );
+    yield r'settlement';
+    yield object.settlement == null ? null : serializers.serialize(
+      object.settlement,
+      specifiedType: const FullType.nullable(ProposalSettlement),
+    );
+    yield r'can_rate';
+    yield serializers.serialize(
+      object.canRate,
+      specifiedType: const FullType(bool),
     );
   }
 
@@ -169,13 +252,76 @@ class _$ProposalSerializer implements PrimitiveSerializer<Proposal> {
           if (valueDes == null) continue;
           result.closedAt = valueDes;
           break;
-        case r'current_version':
+        case r'purpose':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
-          ) as BuiltMap<String, JsonObject?>?;
+            specifiedType: const FullType(String),
+          ) as String;
+          result.purpose = valueDes;
+          break;
+        case r'proposed_action':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.proposedAction = valueDes;
+          break;
+        case r'amount_vnd':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.amountVnd = valueDes;
+          break;
+        case r'fund_code':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.fundCode = valueDes;
+          break;
+        case r'contractor_name':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.contractorName = valueDes;
+          break;
+        case r'expected_schedule':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.expectedSchedule = valueDes;
+          break;
+        case r'versions':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(ProposalVersion)]),
+          ) as BuiltList<ProposalVersion>;
+          result.versions.replace(valueDes);
+          break;
+        case r'progress':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(ProposalProgress)]),
+          ) as BuiltList<ProposalProgress>;
+          result.progress.replace(valueDes);
+          break;
+        case r'settlement':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(ProposalSettlement),
+          ) as ProposalSettlement?;
           if (valueDes == null) continue;
-          result.currentVersion.replace(valueDes);
+          result.settlement.replace(valueDes);
+          break;
+        case r'can_rate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.canRate = valueDes;
           break;
         default:
           unhandled.add(key);

@@ -8,9 +8,9 @@ import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-import 'package:built_collection/built_collection.dart';
 import 'package:lamto_api/src/api_util.dart';
 import 'package:lamto_api/src/model/case_rating_request.dart';
+import 'package:lamto_api/src/model/paginated_proposal_list.dart';
 import 'package:lamto_api/src/model/problem.dart';
 import 'package:lamto_api/src/model/proposal.dart';
 import 'package:lamto_api/src/model/proposal_rating_result.dart';
@@ -113,6 +113,7 @@ class ProposalsApi {
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
+  /// * [cursor] - The pagination cursor value.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -120,10 +121,11 @@ class ProposalsApi {
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [BuiltList<Proposal>] as data
+  /// Returns a [Future] containing a [Response] with a [PaginatedProposalList] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BuiltList<Proposal>>> proposalList({ 
+  Future<Response<PaginatedProposalList>> proposalList({ 
     int? xLamToOccupancy,
+    String? cursor,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -152,22 +154,27 @@ class ProposalsApi {
       validateStatus: validateStatus,
     );
 
+    final _queryParameters = <String, dynamic>{
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+    };
+
     final _response = await _dio.request<Object>(
       _path,
       options: _options,
+      queryParameters: _queryParameters,
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
     );
 
-    BuiltList<Proposal>? _responseData;
+    PaginatedProposalList? _responseData;
 
     try {
       final rawResponse = _response.data;
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
-        specifiedType: const FullType(BuiltList, [FullType(Proposal)]),
-      ) as BuiltList<Proposal>;
+        specifiedType: const FullType(PaginatedProposalList),
+      ) as PaginatedProposalList;
 
     } catch (error, stackTrace) {
       throw DioException(
@@ -179,7 +186,7 @@ class ProposalsApi {
       );
     }
 
-    return Response<BuiltList<Proposal>>(
+    return Response<PaginatedProposalList>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

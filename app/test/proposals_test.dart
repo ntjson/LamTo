@@ -1,5 +1,4 @@
 import 'package:built_collection/built_collection.dart';
-import 'package:built_value/json_object.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,49 +8,82 @@ import 'package:lamto/features/proposals/proposals_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-Proposal _proposal({bool canRate = true}) => Proposal(
+Proposal _proposal({
+  bool canRate = true,
+  bool includeSettlement = true,
+  bool settled = true,
+}) => Proposal(
   (b) => b
     ..id = 7
     ..buildingId = 1
     ..status = 'COMPLETED'
     ..completedAt = DateTime.utc(2026, 7, 20)
-    ..currentVersion = MapBuilder<String, JsonObject?>({
-      'number': JsonObject(2),
-      'purpose': JsonObject('Repair the lobby lift'),
-      'proposed_action': JsonObject('Replace the control board'),
-      'amount_vnd': JsonObject(12500000),
-      'fund_code': JsonObject('GENERAL'),
-      'contractor_name': JsonObject('Acme Lift'),
-      'expected_schedule': JsonObject('Within 14 days'),
-      'can_rate': JsonObject(canRate),
-      'versions': JsonObject([
-        {
-          'number': 1,
-          'published_at': '2026-07-01T00:00:00Z',
-          'evidence_level': 'CHAIN_CONFIRMED',
-        },
-        {
-          'number': 2,
-          'published_at': '2026-07-10T00:00:00Z',
-          'evidence_level': 'LOCAL_SIGNED',
-        },
-      ]),
-      'updates': JsonObject([
-        {'result': 'Control board installed', 'created_at': '2026-07-18'},
-      ]),
-      'settlement': JsonObject({'settled': true}),
-    }),
+    ..purpose = 'Repair the lobby lift'
+    ..proposedAction = 'Replace the control board'
+    ..amountVnd = 12500000
+    ..fundCode = 'GENERAL'
+    ..contractorName = 'Acme Lift'
+    ..expectedSchedule = 'Within 14 days'
+    ..canRate = canRate
+    ..versions = ListBuilder<ProposalVersion>([
+      ProposalVersion(
+        (v) => v
+          ..number = 1
+          ..publishedAt = DateTime.utc(2026, 7, 1)
+          ..evidenceLevel = 'CHAIN_CONFIRMED'
+          ..supportingDocuments = ListBuilder<ProposalSupportingDocument>([
+            ProposalSupportingDocument(
+              (d) => d
+                ..id = 11
+                ..filename = 'quotation-redacted.pdf'
+                ..sha256 = List.filled(64, 'a').join()
+                ..downloadUrl = '/api/v1/documents/token',
+            ),
+          ]),
+      ),
+      ProposalVersion(
+        (v) => v
+          ..number = 2
+          ..publishedAt = DateTime.utc(2026, 7, 10)
+          ..evidenceLevel = 'LOCAL_SIGNED'
+          ..supportingDocuments = ListBuilder(),
+      ),
+    ])
+    ..progress = ListBuilder<ProposalProgress>([
+      ProposalProgress(
+        (u) => u
+          ..id = 1
+          ..cause = 'Scheduled maintenance'
+          ..result = 'Control board installed'
+          ..createdAt = DateTime.utc(2026, 7, 18),
+      ),
+    ])
+    ..settlement = includeSettlement
+        ? ProposalSettlement(
+            (s) => s
+              ..amountVnd = 12500000
+              ..payeeName = 'Acme Lift'
+              ..transferRecordedAt = DateTime.utc(2026, 7, 19)
+              ..settledAt = settled ? DateTime.utc(2026, 7, 20) : null,
+          ).toBuilder()
+        : null,
 );
 
 class _FakeProposalsRepository implements ProposalsRepository {
+  _FakeProposalsRepository({Proposal? proposal})
+    : proposal = proposal ?? _proposal();
+
+  final Proposal proposal;
   bool? satisfied;
 
   @override
   Future<PaginatedProposalList> listProposals({String? cursor}) async =>
-      PaginatedProposalList(results: BuiltList([_proposal()]));
+      PaginatedProposalList(
+        (b) => b..results = ListBuilder<Proposal>([proposal]),
+      );
 
   @override
-  Future<ProposalDetail> fetchProposal(int id) async => _proposal();
+  Future<Proposal> fetchProposal(int id) async => proposal;
 
   @override
   Future<ProposalRatingResult> rateProposal({
@@ -130,6 +162,10 @@ void main() {
       find.text('Control board installed', skipOffstage: false),
       findsOneWidget,
     );
+    expect(
+      find.text('quotation-redacted.pdf', skipOffstage: false),
+      findsOneWidget,
+    );
     expect(find.text('Paid and acknowledged by the payee'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -143,5 +179,37 @@ void main() {
     await tester.tap(find.text('Send rating'));
     await tester.pumpAndSettle();
     expect(repository.satisfied, isFalse);
+  });
+
+  testWidgets('absent settlement is not presented as unsettled', (
+    tester,
+  ) async {
+    final repository = _FakeProposalsRepository(
+      proposal: _proposal(includeSettlement: false),
+    );
+    await tester.pumpWidget(
+      _host(const ProposalDetailScreen(proposalId: 7), repository),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Payment settlement', skipOffstage: false), findsNothing);
+    expect(
+      find.text('Payment not yet settled', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
+  testWidgets('completed proposal already rated has no rating action', (
+    tester,
+  ) async {
+    final repository = _FakeProposalsRepository(
+      proposal: _proposal(canRate: false),
+    );
+    await tester.pumpWidget(
+      _host(const ProposalDetailScreen(proposalId: 7), repository),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rate the result', skipOffstage: false), findsNothing);
   });
 }

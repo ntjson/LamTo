@@ -13,9 +13,6 @@ import '../reports/reports_repository.dart' show cursorFromNext;
 import 'proposal_detail_screen.dart';
 import 'proposals_repository.dart';
 
-Object? proposalField(Proposal proposal, String key) =>
-    proposal.currentVersion?[key]?.value;
-
 String proposalStatusLabel(String status, AppLocalizations l10n) =>
     switch (status) {
       'PUBLISHED' => l10n.proposalStatusPublished,
@@ -135,17 +132,17 @@ class _ProposalTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final amount = proposalField(proposal, 'amount_vnd');
     return ListTile(
       minTileHeight: 72,
       title: Text(
-        proposalField(proposal, 'purpose')?.toString() ?? '',
+        proposal.purpose,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
-      subtitle: amount is num
-          ? Text(formatVnd(amount.toInt()), style: listAmountStyle(context))
-          : null,
+      subtitle: Text(
+        formatVnd(proposal.amountVnd),
+        style: listAmountStyle(context),
+      ),
       trailing: StatusChip(
         tone: proposalStatusTone(proposal.status),
         label: proposalStatusLabel(proposal.status, l10n),

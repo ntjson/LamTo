@@ -7,12 +7,45 @@ the owning user. Bodies are moved verbatim from lamto.web.views.resident.
 
 from datetime import date, timedelta
 
-from django.db.models import Sum
+from django.db.models import Exists, OuterRef, Prefetch, Sum
 from django.utils import timezone
 
 from lamto.evidence.models import SETTLED_STATUSES, evidence_level
 from lamto.finance.fund import _finalized_posting_q, _source_verified_q
-from lamto.finance.models import MaintenanceFundEntry, PublishedLedgerEntry
+from lamto.finance.models import (
+    MaintenanceFundEntry,
+    Proposal,
+    ProposalVersion,
+    PublishedLedgerEntry,
+)
+from lamto.maintenance.models import CompletionRating, WorkUpdate
+
+
+def resident_proposals(building_id, user):
+    """Published proposal records with the complete resident detail graph."""
+    versions = ProposalVersion.objects.select_related("outbox_event").prefetch_related(
+        "quotations__redacted_versions"
+    ).order_by("number", "pk")
+    updates = WorkUpdate.objects.order_by("created_at", "pk")
+    return (
+        Proposal.objects.filter(building_id=building_id)
+        .exclude(status=Proposal.Status.DRAFT)
+        .select_related("current_version", "case", "settlement")
+        .prefetch_related(
+            Prefetch("versions", queryset=versions),
+            Prefetch("updates", queryset=updates),
+            Prefetch("case__updates", queryset=updates),
+        )
+        .annotate(
+            has_current_user_rating=Exists(
+                CompletionRating.objects.filter(
+                    resident=user,
+                    proposal_id=OuterRef("pk"),
+                )
+            )
+        )
+        .order_by("-created_at", "-pk")
+    )
 
 
 def published_ledger_entries(building_id):

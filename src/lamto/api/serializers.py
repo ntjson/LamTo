@@ -1,6 +1,7 @@
 """Resident API serializers (spec 3). Later tasks append to this module."""
 
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from lamto.maintenance.models import IssueReport, WorkUpdateEvidence
 
@@ -293,6 +294,35 @@ class CaseRatingResultSerializer(serializers.Serializer):
     satisfied = serializers.BooleanField()
 
 
+class ProposalSupportingDocumentSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    filename = serializers.CharField()
+    sha256 = serializers.CharField()
+    download_url = serializers.CharField()
+
+
+class ProposalVersionSerializer(serializers.Serializer):
+    number = serializers.IntegerField()
+    published_at = serializers.DateTimeField()
+    evidence_level = serializers.CharField()
+    supporting_documents = ProposalSupportingDocumentSerializer(many=True)
+
+
+class ProposalProgressSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    cause = serializers.CharField()
+    result = serializers.CharField()
+    created_at = serializers.DateTimeField()
+
+
+class ProposalSettlementSerializer(serializers.Serializer):
+    amount_vnd = serializers.IntegerField()
+    payee_name = serializers.CharField()
+    transfer_recorded_at = serializers.DateTimeField()
+    acknowledged_at = serializers.DateTimeField(allow_null=True)
+    settled_at = serializers.DateTimeField(allow_null=True)
+
+
 class ProposalSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     case_id = serializers.IntegerField(allow_null=True)
@@ -300,16 +330,80 @@ class ProposalSerializer(serializers.Serializer):
     status = serializers.CharField()
     completed_at = serializers.DateTimeField(allow_null=True)
     closed_at = serializers.DateTimeField(allow_null=True)
-    current_version = serializers.SerializerMethodField()
+    purpose = serializers.CharField(source="current_version.purpose")
+    proposed_action = serializers.CharField(source="current_version.proposed_action")
+    amount_vnd = serializers.IntegerField(source="current_version.amount_vnd")
+    fund_code = serializers.CharField(source="current_version.fund_code")
+    contractor_name = serializers.CharField(source="current_version.contractor_name")
+    expected_schedule = serializers.CharField(source="current_version.expected_schedule")
+    versions = serializers.SerializerMethodField()
+    progress = serializers.SerializerMethodField()
+    settlement = serializers.SerializerMethodField()
+    can_rate = serializers.SerializerMethodField()
 
-    def get_current_version(self, proposal) -> dict | None:
-        version = proposal.current_version
-        if version is None:
+    @extend_schema_field(ProposalVersionSerializer(many=True))
+    def get_versions(self, proposal) -> list[dict]:
+        from django.urls import reverse
+
+        from lamto.api.downloads import issue_download_token
+        from lamto.evidence.models import evidence_level
+
+        request = self.context["request"]
+        rows = []
+        for version in proposal.versions.all():
+            documents = []
+            for original in version.quotations.all():
+                for redacted in original.redacted_versions.all():
+                    documents.append(
+                        {
+                            "id": redacted.pk,
+                            "filename": redacted.filename,
+                            "sha256": redacted.sha256,
+                            "download_url": reverse(
+                                "api:document-download",
+                                args=[issue_download_token(request.user.pk, redacted.pk)],
+                            ),
+                        }
+                    )
+            rows.append(
+                {
+                    "number": version.number,
+                    "published_at": version.created_at,
+                    "evidence_level": evidence_level(version.outbox_event.status),
+                    "supporting_documents": documents,
+                }
+            )
+        return ProposalVersionSerializer(rows, many=True).data
+
+    @extend_schema_field(ProposalProgressSerializer(many=True))
+    def get_progress(self, proposal) -> list[dict]:
+        updates = proposal.case.updates.all() if proposal.case_id else proposal.updates.all()
+        return ProposalProgressSerializer(updates, many=True).data
+
+    @extend_schema_field(ProposalSettlementSerializer(allow_null=True))
+    def get_settlement(self, proposal) -> dict | None:
+        from django.core.exceptions import ObjectDoesNotExist
+
+        try:
+            settlement = proposal.settlement
+        except ObjectDoesNotExist:
             return None
-        return {field: getattr(version, field) for field in (
-            "number", "purpose", "proposed_action", "amount_vnd", "fund_code",
-            "contractor_name", "expected_schedule",
-        )}
+        return ProposalSettlementSerializer(
+            {
+                "amount_vnd": settlement.amount_vnd,
+                "payee_name": settlement.payee_name,
+                "transfer_recorded_at": settlement.transfer_recorded_at,
+                "acknowledged_at": settlement.ack_recorded_at,
+                "settled_at": settlement.settled_at,
+            }
+        ).data
+
+    def get_can_rate(self, proposal) -> bool:
+        return (
+            proposal.case_id is None
+            and proposal.status == "COMPLETED"
+            and not proposal.has_current_user_rating
+        )
 
 
 class ProposalRatingResultSerializer(serializers.Serializer):

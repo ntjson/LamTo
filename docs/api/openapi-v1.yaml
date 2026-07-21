@@ -719,6 +719,12 @@ paths:
         description: Active occupancy id for the authenticated resident. Required
           when the caller has multiple active occupancies; omitted when exactly one
           is auto-selected. Invalid or foreign ids yield 404.
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
       tags:
       - proposals
       security:
@@ -728,9 +734,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Proposal'
+                $ref: '#/components/schemas/PaginatedProposalList'
           description: ''
         '401':
           content:
@@ -1509,6 +1513,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NotificationFeed'
+    PaginatedProposalList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Proposal'
     PaginatedReportSummaryList:
       type: object
       required:
@@ -1639,19 +1662,70 @@ components:
           type: string
           format: date-time
           nullable: true
-        current_version:
-          type: object
-          additionalProperties: {}
+        purpose:
+          type: string
+        proposed_action:
+          type: string
+        amount_vnd:
+          type: integer
+        fund_code:
+          type: string
+        contractor_name:
+          type: string
+        expected_schedule:
+          type: string
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProposalVersion'
+          readOnly: true
+        progress:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProposalProgress'
+          readOnly: true
+        settlement:
+          allOf:
+          - $ref: '#/components/schemas/ProposalSettlement'
           nullable: true
           readOnly: true
+        can_rate:
+          type: boolean
+          readOnly: true
       required:
+      - amount_vnd
       - building_id
+      - can_rate
       - case_id
       - closed_at
       - completed_at
-      - current_version
+      - contractor_name
+      - expected_schedule
+      - fund_code
       - id
+      - progress
+      - proposed_action
+      - purpose
+      - settlement
       - status
+      - versions
+    ProposalProgress:
+      type: object
+      properties:
+        id:
+          type: integer
+        cause:
+          type: string
+        result:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - cause
+      - created_at
+      - id
+      - result
     ProposalRatingResult:
       type: object
       properties:
@@ -1665,6 +1739,65 @@ components:
       - id
       - proposal_id
       - satisfied
+    ProposalSettlement:
+      type: object
+      properties:
+        amount_vnd:
+          type: integer
+        payee_name:
+          type: string
+        transfer_recorded_at:
+          type: string
+          format: date-time
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+        settled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - acknowledged_at
+      - amount_vnd
+      - payee_name
+      - settled_at
+      - transfer_recorded_at
+    ProposalSupportingDocument:
+      type: object
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        sha256:
+          type: string
+        download_url:
+          type: string
+      required:
+      - download_url
+      - filename
+      - id
+      - sha256
+    ProposalVersion:
+      type: object
+      properties:
+        number:
+          type: integer
+        published_at:
+          type: string
+          format: date-time
+        evidence_level:
+          type: string
+        supporting_documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProposalSupportingDocument'
+      required:
+      - evidence_level
+      - number
+      - published_at
+      - supporting_documents
     RedactedDocument:
       type: object
       properties:

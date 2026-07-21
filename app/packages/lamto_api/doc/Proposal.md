@@ -14,7 +14,16 @@ Name | Type | Description | Notes
 **status** | **String** |  | 
 **completedAt** | [**DateTime**](DateTime.md) |  | 
 **closedAt** | [**DateTime**](DateTime.md) |  | 
-**currentVersion** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) |  | 
+**purpose** | **String** |  | 
+**proposedAction** | **String** |  | 
+**amountVnd** | **int** |  | 
+**fundCode** | **String** |  | 
+**contractorName** | **String** |  | 
+**expectedSchedule** | **String** |  | 
+**versions** | [**BuiltList&lt;ProposalVersion&gt;**](ProposalVersion.md) |  | 
+**progress** | [**BuiltList&lt;ProposalProgress&gt;**](ProposalProgress.md) |  | 
+**settlement** | [**ProposalSettlement**](ProposalSettlement.md) |  | 
+**canRate** | **bool** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

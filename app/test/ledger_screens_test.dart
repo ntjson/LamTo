@@ -142,17 +142,23 @@ class _FakeRepo implements TransparencyRepository {
 class _EmptyProposalsRepository implements ProposalsRepository {
   @override
   Future<PaginatedProposalList> listProposals({String? cursor}) async =>
-      PaginatedProposalList(results: BuiltList());
+      PaginatedProposalList((b) => b..results = ListBuilder());
 
   @override
-  Future<ProposalDetail> fetchProposal(int id) async => Proposal(
+  Future<Proposal> fetchProposal(int id) async => Proposal(
     (b) => b
       ..id = id
       ..buildingId = 1
       ..status = 'PUBLISHED'
-      ..currentVersion = MapBuilder<String, JsonObject?>({
-        'purpose': JsonObject('Lift repair proposal'),
-      }),
+      ..purpose = 'Lift repair proposal'
+      ..proposedAction = 'Repair lift'
+      ..amountVnd = 1000000
+      ..fundCode = 'GENERAL'
+      ..contractorName = 'Lift Co'
+      ..expectedSchedule = 'August'
+      ..versions = ListBuilder()
+      ..progress = ListBuilder()
+      ..canRate = false,
   );
 
   @override

@@ -45,12 +45,7 @@ class ProposalDetailScreen extends ConsumerWidget {
     AppLocalizations l10n,
     Proposal proposal,
   ) {
-    final amount = proposalField(proposal, 'amount_vnd');
-    final versions = _maps(proposalField(proposal, 'versions'));
-    final updates = _maps(proposalField(proposal, 'updates'));
-    final settlement = proposalField(proposal, 'settlement');
-    final settled = settlement is Map && settlement['settled'] == true;
-    final canRate = proposalField(proposal, 'can_rate') == true;
+    final settlement = proposal.settlement;
     final titleStyle = Theme.of(context).textTheme.titleMedium;
 
     return ListView(
@@ -60,49 +55,50 @@ class ProposalDetailScreen extends ConsumerWidget {
           alignment: Alignment.centerLeft,
           child: Chip(label: Text(proposalStatusLabel(proposal.status, l10n))),
         ),
-        _Field(l10n.proposalProblem, proposalField(proposal, 'purpose')),
-        _Field(l10n.proposalAction, proposalField(proposal, 'proposed_action')),
-        _Field(
-          l10n.proposalCost,
-          amount is num ? formatVnd(amount.toInt()) : amount,
-          amount: true,
-        ),
-        _Field(l10n.proposalFund, proposalField(proposal, 'fund_code')),
-        _Field(
-          l10n.proposalContractor,
-          proposalField(proposal, 'contractor_name'),
-        ),
-        _Field(
-          l10n.proposalSchedule,
-          proposalField(proposal, 'expected_schedule'),
-        ),
+        _Field(l10n.proposalProblem, proposal.purpose),
+        _Field(l10n.proposalAction, proposal.proposedAction),
+        _Field(l10n.proposalCost, formatVnd(proposal.amountVnd), amount: true),
+        _Field(l10n.proposalFund, proposal.fundCode),
+        _Field(l10n.proposalContractor, proposal.contractorName),
+        _Field(l10n.proposalSchedule, proposal.expectedSchedule),
         const Divider(height: 32),
         Text(l10n.proposalVersions, style: titleStyle),
-        for (final version in versions)
+        for (final version in proposal.versions) ...[
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(l10n.proposalVersion(version['number'].toString())),
-            subtitle: Text(_date(version['published_at'])),
-            trailing: EvidenceBadge(
-              level: version['evidence_level']?.toString() ?? 'PENDING',
-            ),
+            title: Text(l10n.proposalVersion('${version.number}')),
+            subtitle: Text(_date(version.publishedAt)),
+            trailing: EvidenceBadge(level: version.evidenceLevel),
           ),
-        if (updates.isNotEmpty) ...[
+          for (final document in version.supportingDocuments)
+            ListTile(
+              contentPadding: const EdgeInsets.only(left: 16),
+              leading: const Icon(Icons.description_outlined),
+              title: Text(document.filename),
+            ),
+        ],
+        if (proposal.progress.isNotEmpty) ...[
           const Divider(height: 32),
           Text(l10n.progressTitle, style: titleStyle),
-          for (final update in updates)
+          for (final update in proposal.progress)
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.build_outlined),
-              title: Text(update['result']?.toString() ?? ''),
-              subtitle: Text(_date(update['created_at'])),
+              title: Text(update.result),
+              subtitle: Text('${update.cause} · ${_date(update.createdAt)}'),
             ),
         ],
-        const Divider(height: 32),
-        Text(l10n.proposalSettlement, style: titleStyle),
-        const SizedBox(height: 8),
-        Text(settled ? l10n.proposalSettled : l10n.proposalUnsettled),
-        if (proposal.status == 'COMPLETED' && canRate) ...[
+        if (settlement != null) ...[
+          const Divider(height: 32),
+          Text(l10n.proposalSettlement, style: titleStyle),
+          const SizedBox(height: 8),
+          Text(
+            settlement.settledAt == null
+                ? l10n.proposalUnsettled
+                : l10n.proposalSettled,
+          ),
+        ],
+        if (proposal.status == 'COMPLETED' && proposal.canRate) ...[
           const SizedBox(height: 24),
           FilledButton.icon(
             icon: const Icon(Icons.star_outline),
@@ -133,16 +129,8 @@ class ProposalDetailScreen extends ConsumerWidget {
   }
 }
 
-List<Map<dynamic, dynamic>> _maps(Object? value) => value is List
-    ? value.whereType<Map>().map((item) => item.cast()).toList()
-    : const [];
-
-String _date(Object? value) {
-  final parsed = DateTime.tryParse(value?.toString() ?? '');
-  return parsed == null
-      ? value?.toString() ?? ''
-      : DateFormat('dd/MM/yyyy').format(parsed.toLocal());
-}
+String _date(DateTime value) =>
+    DateFormat('dd/MM/yyyy').format(value.toLocal());
 
 class _Field extends StatelessWidget {
   const _Field(this.label, this.value, {this.amount = false});
