@@ -143,7 +143,7 @@ class ManagementMembership(models.Model):
 
 
 class SignerWallet(models.Model):
-    membership = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
+    membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
     address = models.CharField(max_length=42)
     active = models.BooleanField(default=True)
     registered_at = models.DateTimeField(auto_now_add=True)
@@ -165,7 +165,7 @@ class SignerWallet(models.Model):
 
 
 class WalletRegistrationChallenge(models.Model):
-    membership = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
+    membership = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
     nonce = models.CharField(max_length=64, unique=True)
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True, blank=True)
@@ -192,7 +192,7 @@ class SignerAuthorizationRequest(models.Model):
         FAILED = "FAILED", "Failed"
 
     wallet = models.ForeignKey(SignerWallet, on_delete=models.PROTECT)
-    requested_by = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
+    requested_by = models.ForeignKey(ManagementMembership, on_delete=models.PROTECT)
     action = models.CharField(max_length=16, choices=Action.choices)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     transaction_hash = models.CharField(max_length=66, blank=True)

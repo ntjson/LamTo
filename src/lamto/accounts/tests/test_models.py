@@ -1,9 +1,30 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
-from lamto.accounts.models import Building, Organization, OrganizationMembership
+from lamto.accounts.models import (
+    Building,
+    ManagementMembership,
+    Organization,
+    OrganizationMembership,
+    SignerAuthorizationRequest,
+    SignerWallet,
+    WalletRegistrationChallenge,
+)
+
+
+class WalletMembershipModelTests(SimpleTestCase):
+    def test_wallet_models_use_management_memberships(self):
+        self.assertIs(SignerWallet._meta.get_field("membership").related_model, ManagementMembership)
+        self.assertIs(
+            WalletRegistrationChallenge._meta.get_field("membership").related_model,
+            ManagementMembership,
+        )
+        self.assertIs(
+            SignerAuthorizationRequest._meta.get_field("requested_by").related_model,
+            ManagementMembership,
+        )
 
 
 class AccountModelTests(TestCase):

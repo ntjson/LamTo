@@ -13,7 +13,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from io import StringIO
 
-from lamto.accounts.models import Building, Organization, OrganizationMembership
+from lamto.accounts.models import Building, ManagementMembership
 from lamto.documents.models import Document, DocumentVersion
 from lamto.web.forms.staff import (
     AcceptWorkForm,
@@ -58,15 +58,10 @@ def _age_all_versions(hours=48):
 class UploadDocumentPairTests(TestCase):
     def setUp(self):
         self.building = Building.objects.create(name="Signing Building")
-        org = Organization.objects.create(
-            building=self.building, name="Ops", kind=Organization.Kind.OPERATOR
-        )
         self.user = get_user_model().objects.create_user(
             email="op@example.test", password="secret", display_name="Op"
         )
-        OrganizationMembership.objects.create(
-            user=self.user, organization=org, role=OrganizationMembership.Role.OPERATOR
-        )
+        ManagementMembership.objects.create(user=self.user, building=self.building)
 
     def test_new_event_id_is_random_bytes32(self):
         a, b = new_event_id(), new_event_id()
@@ -82,14 +77,7 @@ class UploadDocumentPairTests(TestCase):
             _pdf("invoice-resident.pdf", b"redacted"),
         )
         other = Building.objects.create(name="Other building")
-        other_org = Organization.objects.create(
-            building=other, name="Other Ops", kind=Organization.Kind.OPERATOR
-        )
-        OrganizationMembership.objects.create(
-            user=self.user,
-            organization=other_org,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
+        ManagementMembership.objects.create(user=self.user, building=other)
         upload_document_pair(
             other,
             Document.Kind.INVOICE,
@@ -264,7 +252,7 @@ class UploadDocumentPairTests(TestCase):
             authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
             status=WorkOrder.Status.ASSIGNED,
         )
-        membership = OrganizationMembership.objects.get(user=self.user)
+        membership = ManagementMembership.objects.get(user=self.user)
         proposal = Proposal.objects.create(
             work_order=work,
             creator_membership=membership,
@@ -315,15 +303,10 @@ class UploadDocumentPairTests(TestCase):
 class StaffEvidenceFormTests(TestCase):
     def setUp(self):
         self.building = Building.objects.create(name="Evidence Building")
-        org = Organization.objects.create(
-            building=self.building, name="Maint", kind=Organization.Kind.OPERATOR
-        )
         self.user = get_user_model().objects.create_user(
             email="maint-ev@example.test", password="secret", display_name="Maint"
         )
-        OrganizationMembership.objects.create(
-            user=self.user, organization=org, role=OrganizationMembership.Role.MAINTENANCE
-        )
+        ManagementMembership.objects.create(user=self.user, building=self.building)
         self.other = Building.objects.create(name="Foreign Building")
         self.before = self._photo(self.building, Document.Kind.BEFORE_PHOTO, "before-local.jpg")
         self.after = self._photo(self.building, Document.Kind.AFTER_PHOTO, "after-local.jpg")
