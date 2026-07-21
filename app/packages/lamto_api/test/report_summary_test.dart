@@ -22,6 +22,11 @@ void main() {
       // TODO
     });
 
+    // bool isPrivate
+    test('to test the property `isPrivate`', () async {
+      // TODO
+    });
+
     // String locationPathSnapshot
     test('to test the property `locationPathSnapshot`', () async {
       // TODO

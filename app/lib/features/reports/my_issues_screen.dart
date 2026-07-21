@@ -154,18 +154,14 @@ class MyIssuesScreen extends ConsumerWidget {
   }
 }
 
-class _ReportTile extends ConsumerWidget {
+class _ReportTile extends StatelessWidget {
   const _ReportTile({required this.report});
 
   final ReportSummary report;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isPrivate = ref
-        .watch(reportDetailProvider(report.id))
-        .value
-        ?.isPrivate;
     return ListTile(
       minTileHeight: 64,
       title: Text(report.text, maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -178,7 +174,7 @@ class _ReportTile extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (isPrivate == true) Chip(label: Text(l10n.privateBadge)),
+          if (report.isPrivate) Chip(label: Text(l10n.privateBadge)),
         ],
       ),
       trailing: StatusChip(

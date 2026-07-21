@@ -15,6 +15,7 @@ part 'report_summary.g.dart';
 /// * [id] 
 /// * [text] 
 /// * [status] 
+/// * [isPrivate] 
 /// * [locationPathSnapshot] 
 /// * [createdAt] 
 @BuiltValue()
@@ -28,6 +29,9 @@ abstract class ReportSummary implements Built<ReportSummary, ReportSummaryBuilde
   @BuiltValueField(wireName: r'status')
   StatusEnum get status;
   // enum statusEnum {  SUBMITTED,  IN_REVIEW,  NEEDS_INFO,  DECLINED,  IN_PROGRESS,  PROPOSED,  COMPLETED,  CLOSED,  };
+
+  @BuiltValueField(wireName: r'is_private')
+  bool get isPrivate;
 
   @BuiltValueField(wireName: r'location_path_snapshot')
   String get locationPathSnapshot;
@@ -72,6 +76,11 @@ class _$ReportSummarySerializer implements PrimitiveSerializer<ReportSummary> {
     yield serializers.serialize(
       object.status,
       specifiedType: const FullType(StatusEnum),
+    );
+    yield r'is_private';
+    yield serializers.serialize(
+      object.isPrivate,
+      specifiedType: const FullType(bool),
     );
     yield r'location_path_snapshot';
     yield serializers.serialize(
@@ -126,6 +135,13 @@ class _$ReportSummarySerializer implements PrimitiveSerializer<ReportSummary> {
             specifiedType: const FullType(StatusEnum),
           ) as StatusEnum;
           result.status = valueDes;
+          break;
+        case r'is_private':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.isPrivate = valueDes;
           break;
         case r'location_path_snapshot':
           final valueDes = serializers.deserialize(

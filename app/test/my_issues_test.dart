@@ -13,26 +13,15 @@ ReportSummary _report(
   int id,
   String text, {
   StatusEnum status = StatusEnum.SUBMITTED,
+  bool isPrivate = false,
 }) => ReportSummary(
   (b) => b
     ..id = id
     ..text = text
     ..status = status
-    ..locationPathSnapshot = 'B / Hall'
-    ..createdAt = DateTime.utc(2026, 7, 17),
-);
-
-ReportDetail _detail(int id, {bool isPrivate = false}) => ReportDetail(
-  (b) => b
-    ..id = id
-    ..text = 'Private issue'
-    ..status = StatusEnum.SUBMITTED
     ..isPrivate = isPrivate
     ..locationPathSnapshot = 'B / Hall'
-    ..unitLabel = 'B-1204'
-    ..createdAt = DateTime.utc(2026, 7, 17)
-    ..photos = ListBuilder<ReportPhoto>()
-    ..cases = ListBuilder<ReportCase>(),
+    ..createdAt = DateTime.utc(2026, 7, 17),
 );
 
 PaginatedReportSummaryList _page(List<ReportSummary> items, {String? next}) =>
@@ -43,10 +32,10 @@ PaginatedReportSummaryList _page(List<ReportSummary> items, {String? next}) =>
     );
 
 class _FakeRepo implements ReportsRepository {
-  _FakeRepo(this.pages, {this.details = const {}});
+  _FakeRepo(this.pages);
   final Map<String?, PaginatedReportSummaryList> pages;
-  final Map<int, ReportDetail> details;
   final cursors = <String?>[];
+  int detailFetches = 0;
 
   @override
   Future<PaginatedReportSummaryList> listReports({String? cursor}) async {
@@ -64,7 +53,11 @@ class _FakeRepo implements ReportsRepository {
   @override
   Future<List<Location>> fetchLocations() => throw UnimplementedError();
   @override
-  Future<ReportDetail> fetchReport(int id) async => details[id]!;
+  Future<ReportDetail> fetchReport(int id) async {
+    detailFetches++;
+    throw UnimplementedError();
+  }
+
   @override
   Future<CaseRatingResult> rateCase({
     required int caseId,
@@ -112,12 +105,9 @@ void main() {
   });
 
   testWidgets('shows a private badge on a private report row', (tester) async {
-    final repo = _FakeRepo(
-      {
-        null: _page([_report(1, 'Private issue')]),
-      },
-      details: {1: _detail(1, isPrivate: true)},
-    );
+    final repo = _FakeRepo({
+      null: _page([_report(1, 'Private issue', isPrivate: true)]),
+    });
     await tester.pumpWidget(
       ProviderScope(
         overrides: [reportsRepositoryProvider.overrideWithValue(repo)],
@@ -132,6 +122,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Riêng tư'), findsOneWidget);
+    expect(repo.detailFetches, 0);
   });
 
   testWidgets('lists reports with status chip and loads the next page', (

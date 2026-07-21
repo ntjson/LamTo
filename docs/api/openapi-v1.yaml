@@ -1827,6 +1827,8 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/StatusEnum'
+        is_private:
+          type: boolean
         location_path_snapshot:
           type: string
         created_at:
@@ -1835,6 +1837,7 @@ components:
       required:
       - created_at
       - id
+      - is_private
       - location_path_snapshot
       - status
       - text

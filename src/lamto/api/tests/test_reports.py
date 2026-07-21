@@ -133,7 +133,7 @@ class ReportCreateTests(TestCase):
     def test_list_returns_only_own_reports(self):
         self.client.post(
             reverse("api:reports"),
-            data=self._body(),
+            data=self._body(is_private=True),
             content_type="application/json",
             headers=self._auth(),
         )
@@ -142,6 +142,7 @@ class ReportCreateTests(TestCase):
         results = resp.json()["results"]
         assert len(results) == 1
         assert results[0]["text"] == "Lift jerks"
+        assert results[0]["is_private"] is True
 
     def test_detail_timeline_and_foreign_report_404(self):
         create = self.client.post(

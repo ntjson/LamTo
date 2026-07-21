@@ -19,6 +19,7 @@ ReportSummary _summary() => ReportSummary(
     ..id = 42
     ..text = 'Leak'
     ..status = StatusEnum.SUBMITTED
+    ..isPrivate = false
     ..locationPathSnapshot = 'B / Hall'
     ..createdAt = DateTime.utc(2026, 7, 17),
 );

@@ -56,6 +56,7 @@ ReportSummary _report(String text, StatusEnum status) => ReportSummary(
     ..id = 1
     ..text = text
     ..status = status
+    ..isPrivate = false
     ..locationPathSnapshot = 'B / Hall'
     ..createdAt = DateTime.utc(2026, 7, 9),
 );

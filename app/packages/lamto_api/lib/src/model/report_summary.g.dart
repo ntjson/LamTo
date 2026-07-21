@@ -14,6 +14,8 @@ class _$ReportSummary extends ReportSummary {
   @override
   final StatusEnum status;
   @override
+  final bool isPrivate;
+  @override
   final String locationPathSnapshot;
   @override
   final DateTime createdAt;
@@ -25,6 +27,7 @@ class _$ReportSummary extends ReportSummary {
       {required this.id,
       required this.text,
       required this.status,
+      required this.isPrivate,
       required this.locationPathSnapshot,
       required this.createdAt})
       : super._();
@@ -42,6 +45,7 @@ class _$ReportSummary extends ReportSummary {
         id == other.id &&
         text == other.text &&
         status == other.status &&
+        isPrivate == other.isPrivate &&
         locationPathSnapshot == other.locationPathSnapshot &&
         createdAt == other.createdAt;
   }
@@ -52,6 +56,7 @@ class _$ReportSummary extends ReportSummary {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
+    _$hash = $jc(_$hash, isPrivate.hashCode);
     _$hash = $jc(_$hash, locationPathSnapshot.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
@@ -64,6 +69,7 @@ class _$ReportSummary extends ReportSummary {
           ..add('id', id)
           ..add('text', text)
           ..add('status', status)
+          ..add('isPrivate', isPrivate)
           ..add('locationPathSnapshot', locationPathSnapshot)
           ..add('createdAt', createdAt))
         .toString();
@@ -86,6 +92,10 @@ class ReportSummaryBuilder
   StatusEnum? get status => _$this._status;
   set status(StatusEnum? status) => _$this._status = status;
 
+  bool? _isPrivate;
+  bool? get isPrivate => _$this._isPrivate;
+  set isPrivate(bool? isPrivate) => _$this._isPrivate = isPrivate;
+
   String? _locationPathSnapshot;
   String? get locationPathSnapshot => _$this._locationPathSnapshot;
   set locationPathSnapshot(String? locationPathSnapshot) =>
@@ -105,6 +115,7 @@ class ReportSummaryBuilder
       _id = $v.id;
       _text = $v.text;
       _status = $v.status;
+      _isPrivate = $v.isPrivate;
       _locationPathSnapshot = $v.locationPathSnapshot;
       _createdAt = $v.createdAt;
       _$v = null;
@@ -133,6 +144,8 @@ class ReportSummaryBuilder
               text, r'ReportSummary', 'text'),
           status: BuiltValueNullFieldError.checkNotNull(
               status, r'ReportSummary', 'status'),
+          isPrivate: BuiltValueNullFieldError.checkNotNull(
+              isPrivate, r'ReportSummary', 'isPrivate'),
           locationPathSnapshot: BuiltValueNullFieldError.checkNotNull(
               locationPathSnapshot, r'ReportSummary', 'locationPathSnapshot'),
           createdAt: BuiltValueNullFieldError.checkNotNull(

@@ -214,6 +214,7 @@ class ReportSummarySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     text = serializers.CharField()
     status = serializers.ChoiceField(choices=IssueReport.Status.choices)
+    is_private = serializers.BooleanField()
     location_path_snapshot = serializers.CharField()
     created_at = serializers.DateTimeField()
 
