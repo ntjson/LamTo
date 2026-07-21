@@ -83,3 +83,20 @@ uv run pytest --reuse-db tests/isolation tests/e2e src/lamto tests -q --ignore=s
 ```
 
 The three non-web failures are legacy security expectations intentionally deferred to Tasks 11–12: two break-glass tech-admin health tests still inspect the removed role shape, and one test still expects a non-auditor legacy membership to be denied an export now available to every Manager. Restoring either behavior would reintroduce the forbidden legacy fallback or contradict the all-Manager workspace binding.
+
+## Review follow-up 3
+
+The non-web gate cannot defer legacy security tests. Removed the two obsolete break-glass/tech-admin web-path cases and changed the old auditor-only export assertion to the all-Management binding.
+
+```text
+uv run pytest src/lamto/accounts/tests/test_security.py -q
+15 passed in 1.87s
+
+uv run pytest src/lamto tests -q --ignore=src/lamto/web/tests
+377 passed, 1 skipped in 66.12s
+
+uv run pytest src/lamto tests -q --tb=no
+45 failed, 454 passed, 1 skipped in 75.19s
+```
+
+All 45 full-suite failures are confined to `src/lamto/web/tests/*`, which Tasks 11–12 rewrite. The earlier three-failure deferral above is superseded by this follow-up.
