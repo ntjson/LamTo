@@ -149,7 +149,7 @@ def work_order_detail(request, pk):
             else:
                 messages.success(
                     request,
-                    "Work completed. The Board reviews and accepts the finished work next.",
+                    "Work completed. Management reviews and accepts the finished work next.",
                 )
                 return redirect("web:work-order-detail", pk=work_order.pk)
 

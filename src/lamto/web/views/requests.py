@@ -1,4 +1,4 @@
-"""Operator workspace: triage, cases, work orders, proposals."""
+"""Management workspace: triage, cases, work orders, proposals."""
 
 import json
 

@@ -1,4 +1,4 @@
-"""Board workspace: acceptance, payments, and publication."""
+"""Management workspace: acceptance, payments, and publication."""
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required

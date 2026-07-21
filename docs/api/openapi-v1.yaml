@@ -1013,6 +1013,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/Verification'
           nullable: true
+        approvers:
+          type: array
+          items: {}
+        corrections:
+          type: array
+          items: {}
         redacted_documents:
           type: array
           items:
@@ -1021,7 +1027,9 @@ components:
           $ref: '#/components/schemas/Proof'
       required:
       - actual_cost_vnd
+      - approvers
       - contractor_name
+      - corrections
       - id
       - integrity_status
       - payload

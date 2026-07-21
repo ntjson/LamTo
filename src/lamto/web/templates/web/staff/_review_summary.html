@@ -5,7 +5,7 @@
     <div><dt>{% trans "Action" %}</dt><dd>
       {% if review_kind == "fund_record" %}{% trans "Record fund source" %}{% elif review_kind == "fund_verify" %}{% trans "Verify fund source" %}{% elif review_kind == "proposal_create" %}{% trans "Submit proposal" %}{% elif review_kind == "proposal_publish" %}{% trans "Publish to resident ledger" %}{% elif review_kind == "work_accept" %}{% trans "Accept work" %}{% elif review_kind == "payment_record" %}{% trans "Record payment" %}{% elif review_kind == "payment_verify" %}{% trans "Verify payment" %}{% endif %}
     </dd></div>
-    <div><dt>{% trans "Acting as" %}</dt><dd>{{ membership.get_role_display }} · {{ membership.organization.name }}</dd></div>
+    <div><dt>{% trans "Acting as" %}</dt><dd>{% trans "Management" %} · {{ membership.building.name }}</dd></div>
 
     {% if review_kind == "fund_record" %}
     <div><dt>{% trans "Source type" %}</dt><dd>{{ sign_form.entry_type.value }}</dd></div>

@@ -167,6 +167,9 @@ class LedgerEntryDetailSerializer(serializers.Serializer):
     )
     payload = serializers.JSONField()
     verification = VerificationSerializer(allow_null=True)
+    # Compatibility-only fields retained for the shipped Flutter contract.
+    approvers = serializers.ListField(child=serializers.JSONField())
+    corrections = serializers.ListField(child=serializers.JSONField())
     redacted_documents = RedactedDocumentSerializer(many=True)
     proof = ProofSerializer()
 

@@ -25,9 +25,10 @@ from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
 from lamto.web.staff import require_management_context, staff_context
 
 
-def collect_health_snapshot() -> dict:
+def collect_health_snapshot(building_id: int) -> dict:
     now = timezone.now()
-    pending_outbox = BlockchainOutboxEvent.objects.filter(
+    outbox = BlockchainOutboxEvent.objects.filter(building_id=building_id)
+    pending_outbox = outbox.filter(
         status__in=[
             BlockchainOutboxEvent.Status.PENDING,
             BlockchainOutboxEvent.Status.SUBMITTED,
@@ -40,26 +41,28 @@ def collect_health_snapshot() -> dict:
 
     status_counts = {
         row["status"]: row["c"]
-        for row in BlockchainOutboxEvent.objects.values("status").annotate(c=Count("id"))
+        for row in outbox.values("status").annotate(c=Count("id"))
     }
     last_confirmed = (
-        BlockchainOutboxEvent.objects.filter(status=BlockchainOutboxEvent.Status.CONFIRMED)
+        outbox.filter(status=BlockchainOutboxEvent.Status.CONFIRMED)
         .order_by("-confirmed_at")
         .values("chain_confirmed_block", "confirmed_at", "transaction_hash")
         .first()
     )
     latest_backup = BackupMarker.objects.order_by("-signed_at").first()
     mismatches = VerificationObservation.objects.filter(
+        published_entry__case__building_id=building_id,
         result=VerificationObservation.Result.MISMATCH
     ).count()
 
-    notification_failures = NotificationDelivery.objects.filter(
+    deliveries = NotificationDelivery.objects.filter(building_id=building_id)
+    notification_failures = deliveries.filter(
         status__in=[
             NotificationDelivery.Status.FAILED,
             NotificationDelivery.Status.DEAD,
         ]
     ).count()
-    push_qs = NotificationDelivery.objects.filter(
+    push_qs = deliveries.filter(
         channel=NotificationDelivery.Channel.PUSH
     )
     push_failures = push_qs.filter(
@@ -75,10 +78,14 @@ def collect_health_snapshot() -> dict:
         status=NotificationDelivery.Status.SENT,
         last_error__startswith=PUSH_SUPPRESSED_PREFIX,
     ).count()
-    dead_devices = Device.objects.filter(active=False).count()
+    devices = Device.objects.filter(
+        Q(user__residentoccupancy__unit__building_id=building_id)
+        | Q(user__managementmembership__building_id=building_id)
+    ).distinct()
+    dead_devices = devices.filter(active=False).count()
     # Max whole days since last_seen_at among inactive devices (age signal, not only count).
     oldest_inactive = (
-        Device.objects.filter(active=False)
+        devices.filter(active=False)
         .order_by("last_seen_at")
         .values_list("last_seen_at", flat=True)
         .first()
@@ -87,7 +94,7 @@ def collect_health_snapshot() -> dict:
         stale_device_max_inactive_days = 0
     else:
         stale_device_max_inactive_days = max(0, (now - oldest_inactive).days)
-    quarantined = QuarantinedUpload.objects.count()
+    quarantined = QuarantinedUpload.objects.filter(building_id=building_id).count()
 
     # A non-empty outbox is normal. Warn only when delivery is aging or failing.
     queue_failed = status_counts.get(
@@ -140,10 +147,15 @@ def collect_health_snapshot() -> dict:
     }
 
 
-def collect_pilot_metrics() -> dict:
+def collect_pilot_metrics(building_id: int) -> dict:
     """Non-authoritative pilot metrics — never used as workflow authority."""
-    suggestions = TriageSuggestion.objects.count()
-    decisions = TriageDecision.objects.select_related("suggestion").all()
+    suggestions_qs = TriageSuggestion.objects.filter(
+        job__report__building_id=building_id
+    )
+    suggestions = suggestions_qs.count()
+    decisions = TriageDecision.objects.filter(
+        report__building_id=building_id
+    ).select_related("suggestion")
     accepted = 0
     edited = 0
     for decision in decisions.iterator(chunk_size=200):
@@ -156,17 +168,18 @@ def collect_pilot_metrics() -> dict:
         else:
             accepted += 1
 
-    duplicate_confirmations = TriageSuggestion.objects.exclude(
+    duplicate_confirmations = suggestions_qs.exclude(
         duplicate_report_ids=[]
     ).count()
 
-    triage_latency_ms = TriageSuggestion.objects.aggregate(avg=Avg("elapsed_ms")).get("avg")
+    triage_latency_ms = suggestions_qs.aggregate(avg=Avg("elapsed_ms")).get("avg")
 
     # Work response time: assignment → first in-progress (proxy: created vs updated status).
     work_response = None
     # Publication time / anchoring delay remain coarse aggregates when timestamps exist.
     anchoring_delay_seconds = None
     confirmed = BlockchainOutboxEvent.objects.filter(
+        building_id=building_id,
         status=BlockchainOutboxEvent.Status.CONFIRMED,
         confirmed_at__isnull=False,
     )
@@ -200,7 +213,7 @@ def collect_pilot_metrics() -> dict:
 @require_GET
 def ops_health(request):
     membership, memberships = require_management_context(request)
-    snapshot = collect_health_snapshot()
+    snapshot = collect_health_snapshot(membership.building_id)
     record_audit(
         request.user,
         membership,
@@ -230,7 +243,7 @@ def ops_health(request):
 @require_GET
 def pilot_metrics(request):
     membership, memberships = require_management_context(request)
-    metrics = collect_pilot_metrics()
+    metrics = collect_pilot_metrics(membership.building_id)
     record_audit(
         request.user,
         membership,

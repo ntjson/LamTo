@@ -25,7 +25,7 @@
   <div class="panel-header">
     <div>
       <h1 id="inbox-heading">{% trans "Action inbox" %}</h1>
-      <p class="hint">{% blocktrans with role=membership.get_role_display building=membership.organization.building.name %}Work assigned to {{ role }} at {{ building }}.{% endblocktrans %}</p>
+      <p class="hint">{% blocktrans with building=membership.building.name %}Work assigned to Management at {{ building }}.{% endblocktrans %}</p>
     </div>
     {% if action_page.paginator.count %}<p class="queue-count">{% staff_task_count action_page.paginator.count %}</p>{% endif %}
   </div>

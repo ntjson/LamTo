@@ -166,10 +166,12 @@ class ExportsAndHealthTests(TestCase):
             password="x",
             display_name="Push Ops",
         )
+        ManagementMembership.objects.create(user=user, building=self.building)
         now = timezone.now()
         # True FCM success
         NotificationDelivery.objects.create(
             recipient=user,
+            building=self.building,
             channel=NotificationDelivery.Channel.PUSH,
             status=NotificationDelivery.Status.SENT,
             event_key=f"{EVENT_PUBLICATION}:entry:ok",
@@ -181,6 +183,7 @@ class ExportsAndHealthTests(TestCase):
         # Suppressed (not FCM success)
         NotificationDelivery.objects.create(
             recipient=user,
+            building=self.building,
             channel=NotificationDelivery.Channel.PUSH,
             status=NotificationDelivery.Status.SENT,
             event_key=f"{EVENT_PUBLICATION}:entry:cap",
@@ -192,6 +195,7 @@ class ExportsAndHealthTests(TestCase):
         # Failure
         NotificationDelivery.objects.create(
             recipient=user,
+            building=self.building,
             channel=NotificationDelivery.Channel.PUSH,
             status=NotificationDelivery.Status.FAILED,
             event_key=f"{EVENT_PUBLICATION}:entry:fail",
@@ -219,7 +223,7 @@ class ExportsAndHealthTests(TestCase):
             last_seen_at=now,
         )
 
-        snap = collect_health_snapshot()
+        snap = collect_health_snapshot(self.building.pk)
         self.assertEqual(snap["push_sent_success"], 1)
         self.assertEqual(snap["push_suppressed"], 1)
         self.assertEqual(snap["push_failures"], 1)
@@ -246,6 +250,60 @@ class ExportsAndHealthTests(TestCase):
         self.assertFalse(data["authoritative"])
         self.assertIn("ai_suggestion_accepted", data)
         self.assertIn("triage_latency_ms_avg", data)
+
+    def test_health_and_pilot_metrics_exclude_other_building_rows(self):
+        from lamto.accounts.models import Unit
+        from lamto.maintenance.models import (
+            BuildingLocation,
+            IssueReport,
+            TriageJob,
+            TriageSuggestion,
+        )
+        from lamto.notifications.models import NotificationDelivery
+        from lamto.web.views.health import collect_health_snapshot, collect_pilot_metrics
+
+        other = Building.objects.create(name=self._unique("Other Building"))
+        other_user = self.make_membership("other-manager", building=other).user
+        NotificationDelivery.objects.create(
+            recipient=other_user,
+            building=other,
+            event_key="other:failed",
+            channel=NotificationDelivery.Channel.PUSH,
+            status=NotificationDelivery.Status.FAILED,
+            subject="s",
+            body="b",
+        )
+        unit = Unit.objects.create(building=other, label="1A")
+        location = BuildingLocation.objects.create(building=other, name="Lobby")
+        report = IssueReport.objects.create(
+            reporter=other_user,
+            unit=unit,
+            text="x",
+            selected_location=location,
+            location_path_snapshot="Other / Lobby",
+        )
+        job = TriageJob.objects.create(report=report)
+        TriageSuggestion.objects.create(
+            job=job,
+            category="x",
+            interpreted_location="Lobby",
+            urgency="LOW",
+            confidence_percent=90,
+            department="x",
+            deadline_minutes=60,
+            raw_response={},
+            provider_request_id="other",
+            elapsed_ms=999,
+        )
+
+        self.assertEqual(collect_health_snapshot(self.building.pk)["push_failures"], 0)
+        self.assertEqual(collect_pilot_metrics(self.building.pk)["ai_suggestions_total"], 0)
+        self.client.force_login(self.tech.user)
+        self.enroll_and_bind(self.tech.user)
+        health = self.client.get(reverse("web:ops-health") + "?format=json").json()
+        metrics = self.client.get(reverse("web:pilot-metrics") + "?format=json").json()
+        self.assertEqual(health["push_failures"], 0)
+        self.assertEqual(metrics["ai_suggestions_total"], 0)
 
     def test_backup_objects_command_filesystem_mode(self):
         from django.core.management import call_command

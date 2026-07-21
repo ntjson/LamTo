@@ -373,6 +373,8 @@ class LedgerDetailView(APIView):
                 if verification is not None
                 else None
             ),
+            "approvers": [],
+            "corrections": [],
             "redacted_documents": [
                 {
                     **doc,

@@ -240,7 +240,7 @@
     }
 
     // Never trust a pre-filled signature when the server declared a required
-    // signer — stale Operator signatures were the main multi-account footgun.
+    // signer — stale Management signatures were the main multi-account footgun.
     var mustReselect = !!expectedSigner(form);
     if (
       !mustReselect &&

@@ -1,4 +1,4 @@
-"""Operator workspace: triage, cases, work orders, proposals."""
+"""Management workspace: triage, cases, work orders, proposals."""
 
 import json
 
@@ -459,7 +459,7 @@ def proposal_create(request, pk):
                 else:
                     raise
             else:
-                messages.success(request, "Proposal submitted for Board review.")
+                messages.success(request, "Proposal submitted for Management review.")
                 return redirect("web:proposal-detail", pk=proposal.pk)
 
     return render(

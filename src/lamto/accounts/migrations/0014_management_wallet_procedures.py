@@ -1,9 +1,11 @@
+import os
+
 from django.db import migrations
 
 
 MANAGEMENT_WALLET_PROCEDURES = r"""
-GRANT SELECT, UPDATE ON TABLE public.accounts_managementmembership TO lamto_service;
-SET ROLE lamto_service;
+GRANT SELECT, UPDATE ON TABLE public.accounts_managementmembership TO __SERVICE_ROLE__;
+SET ROLE __SERVICE_ROLE__;
 
 CREATE OR REPLACE FUNCTION lamto_security.accounts_register_signer_wallet(
     p_membership_id bigint, p_address text, p_authorization text
@@ -114,11 +116,26 @@ RESET ROLE;
 """
 
 
+def apply_management_wallet_procedures(apps, schema_editor):
+    service_role = schema_editor.connection.ops.quote_name(
+        os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
+    )
+    schema_editor.execute(
+        MANAGEMENT_WALLET_PROCEDURES.replace(
+            "__SERVICE_ROLE__", service_role
+        ).replace("%", "%%")
+    )
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("accounts", "0013_alter_signerauthorizationrequest_requested_by_and_more"),
     ]
 
     operations = [
-        migrations.RunSQL(MANAGEMENT_WALLET_PROCEDURES, migrations.RunSQL.noop),
+        migrations.RunPython(
+            apply_management_wallet_procedures,
+            # Forward-only: stage policy does not preserve removed role data/workflows.
+            migrations.RunPython.noop,
+        ),
     ]

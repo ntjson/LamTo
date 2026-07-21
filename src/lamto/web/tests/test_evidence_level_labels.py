@@ -92,13 +92,13 @@ class EvidenceLevelLabelTests(TestCase):
         self.assertIn("CHAIN_CONFIRMED", set(level_by_event.values()))
 
     def test_health_snapshot_reports_anchoring_backend(self):
-        self.assertEqual(collect_health_snapshot()["anchoring_backend"], "besu")
+        self.assertEqual(collect_health_snapshot(self.seed.building.pk)["anchoring_backend"], "besu")
         with override_settings(EVIDENCE_ANCHORING_BACKEND="disabled"):
             self.assertEqual(
-                collect_health_snapshot()["anchoring_backend"], "disabled"
+                collect_health_snapshot(self.seed.building.pk)["anchoring_backend"], "disabled"
             )
 
     def test_pilot_metrics_reports_anchoring_backend(self):
-        self.assertEqual(collect_pilot_metrics()["anchoring_backend"], "besu")
+        self.assertEqual(collect_pilot_metrics(self.seed.building.pk)["anchoring_backend"], "besu")
         with override_settings(EVIDENCE_ANCHORING_BACKEND="disabled"):
-            self.assertEqual(collect_pilot_metrics()["anchoring_backend"], "disabled")
+            self.assertEqual(collect_pilot_metrics(self.seed.building.pk)["anchoring_backend"], "disabled")

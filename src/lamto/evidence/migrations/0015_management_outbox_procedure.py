@@ -1,3 +1,4 @@
+import os
 from importlib import import_module
 
 from django.db import migrations
@@ -8,7 +9,7 @@ _legacy_sql = import_module(
 ).INSERT_FUNCTION_WITH_BUILDING
 
 MANAGEMENT_OUTBOX_PROCEDURE = (
-    "SET ROLE lamto_service;\n"
+    "SET ROLE __SERVICE_ROLE__;\n"
     + _legacy_sql.replace(
         """    PERFORM 1 FROM public.accounts_organizationmembership
     WHERE id = p_membership_id AND active
@@ -28,6 +29,17 @@ MANAGEMENT_OUTBOX_PROCEDURE = (
 )
 
 
+def apply_management_outbox_procedure(apps, schema_editor):
+    service_role = schema_editor.connection.ops.quote_name(
+        os.getenv("POSTGRES_SERVICE_ROLE") or "lamto_service"
+    )
+    schema_editor.execute(
+        MANAGEMENT_OUTBOX_PROCEDURE.replace(
+            "__SERVICE_ROLE__", service_role
+        ).replace("%", "%%")
+    )
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("accounts", "0014_management_wallet_procedures"),
@@ -35,5 +47,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(MANAGEMENT_OUTBOX_PROCEDURE, migrations.RunSQL.noop),
+        migrations.RunPython(
+            apply_management_outbox_procedure,
+            # Forward-only: stage policy does not preserve removed role data/workflows.
+            migrations.RunPython.noop,
+        ),
     ]

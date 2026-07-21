@@ -330,7 +330,7 @@ class NotificationPreferenceForm(forms.Form):
 
 
 class PreparePublicationForm(SignedDecisionForm):
-    """Board ledger publication (signed)."""
+    """Management ledger publication (signed)."""
 
     publication_id = forms.IntegerField(min_value=1, widget=forms.HiddenInput())
     # Must match EIP-712 publication_timestamp baked into typed data.
@@ -357,7 +357,7 @@ class PreparePublicationForm(SignedDecisionForm):
 
 
 class CreateProposalForm(forms.Form):
-    """Operator-entered proposal draft; the quotation pair uploads on prepare."""
+    """Management-entered proposal draft; the quotation pair uploads on prepare."""
 
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
     contractor_name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": "input"}))

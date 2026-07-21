@@ -104,6 +104,14 @@ class LedgerApiTests(TestCase):
         )
         assert response.status_code == 200, response.content
         body = response.json()
+        assert set(body) == {
+            "id", "contractor_name", "actual_cost_vnd", "published_at",
+            "proposed_amount_vnd", "integrity_status", "what_was_fixed", "why",
+            "payload", "verification", "approvers", "corrections",
+            "redacted_documents", "proof",
+        }
+        assert body["approvers"] == []
+        assert body["corrections"] == []
         assert body["id"] == self.entry.pk
         assert body["contractor_name"] == self.entry.contractor_name
         assert body["actual_cost_vnd"] == self.entry.actual_cost_vnd

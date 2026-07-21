@@ -36,7 +36,7 @@ class ManagementWorkspaceTests(TestCase):
         return membership
 
     def test_management_can_open_every_navigation_area(self):
-        self.login_management()
+        membership = self.login_management()
         for name in (
             "staff-home",
             "action-inbox",
@@ -54,6 +54,8 @@ class ManagementWorkspaceTests(TestCase):
                     self.client.get(reverse(f"web:{name}"), follow=True).status_code,
                     200,
                 )
+        inbox = self.client.get(reverse("web:action-inbox"))
+        self.assertContains(inbox, f"Work assigned to Management at {membership.building.name}.")
 
     def test_resident_only_user_is_denied_management_routes(self):
         user = get_user_model().objects.create_user(
@@ -146,4 +148,5 @@ class ManagementWorkspaceTests(TestCase):
         self.assertEqual(verify_response.context["payment"], payment)
         self.assertContains(verify_response, f"Payment #{payment.pk}")
         self.assertContains(verify_response, "Verify payment")
+        self.assertContains(verify_response, f"Management · {verifier.building.name}")
         self.assertNotEqual(recorder, verifier)
