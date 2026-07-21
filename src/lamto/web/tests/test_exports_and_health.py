@@ -14,10 +14,8 @@ from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 
-from lamto.accounts.capabilities import AUDIT_EXPORT, TECH_ADMIN
-from lamto.accounts.models import BackupMarker, Building, Organization, OrganizationMembership
+from lamto.accounts.models import BackupMarker, Building, ManagementMembership
 from lamto.accounts.security import RECENT_REAUTH_KEY
-from lamto.accounts.services import grant_capability
 from lamto.audit.models import AuditEvent
 from lamto.audit.services import record_audit
 from lamto.web.views.exports import neutralize_cell
@@ -29,7 +27,7 @@ class ExportsAndHealthTests(TestCase):
         self._seq = n
         return f"{base}-{n}"
 
-    def make_membership(self, role, suffix, capabilities=(), *, building=None):
+    def make_membership(self, suffix, *, building=None, management=True):
         building = building or self.building
         suffix = self._unique(suffix)
         user = get_user_model().objects.create_user(
@@ -37,17 +35,9 @@ class ExportsAndHealthTests(TestCase):
             password="secret-pass-123",
             display_name=suffix,
         )
-        organization = Organization.objects.create(
-            building=building,
-            name=suffix,
-            kind=OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role],
-        )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
-        for code in capabilities:
-            grant_capability(membership, code)
-        return membership
+        if management:
+            return ManagementMembership.objects.create(user=user, building=building)
+        return user
 
     def enroll_and_bind(self, user):
         device = TOTPDevice.objects.create(
@@ -61,21 +51,9 @@ class ExportsAndHealthTests(TestCase):
 
     def setUp(self):
         self.building = Building.objects.create(name=self._unique("Export Building"))
-        self.auditor = self.make_membership(
-            OrganizationMembership.Role.AUDITOR,
-            "auditor",
-            capabilities=(AUDIT_EXPORT,),
-        )
-        self.operator = self.make_membership(
-            OrganizationMembership.Role.OPERATOR,
-            "operator",
-            capabilities=(),
-        )
-        self.tech = self.make_membership(
-            OrganizationMembership.Role.TECH_ADMIN,
-            "tech",
-            capabilities=(TECH_ADMIN,),
-        )
+        self.auditor = self.make_membership("auditor")
+        self.resident = self.make_membership("resident", management=False)
+        self.tech = self.make_membership("tech")
 
     def test_neutralize_spreadsheet_formula_prefixes(self):
         self.assertEqual(neutralize_cell("=CMD()"), "'=CMD()")
@@ -115,9 +93,9 @@ class ExportsAndHealthTests(TestCase):
         self.assertNotIn("private_key", body.lower())
         self.assertNotIn("bank_account", body.lower())
 
-    def test_non_auditor_export_denied_and_audited(self):
-        self.client.force_login(self.operator.user)
-        self.enroll_and_bind(self.operator.user)
+    def test_non_management_export_denied(self):
+        self.client.force_login(self.resident)
+        self.enroll_and_bind(self.resident)
         response = self.client.get(reverse("web:audit-export"))
         self.assertEqual(response.status_code, 403)
 
@@ -132,11 +110,7 @@ class ExportsAndHealthTests(TestCase):
         self.assertNotIn("raw_bytes", header)
         self.assertNotIn("storage_body", header)
 
-    def test_health_requires_tech_admin(self):
-        self.client.force_login(self.auditor.user)
-        self.enroll_and_bind(self.auditor.user)
-        self.assertEqual(self.client.get(reverse("web:ops-health")).status_code, 403)
-
+    def test_health_requires_management(self):
         self.client.force_login(self.tech.user)
         self.enroll_and_bind(self.tech.user)
         response = self.client.get(reverse("web:ops-health") + "?format=json")

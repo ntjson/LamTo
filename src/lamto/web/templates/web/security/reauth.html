@@ -1,61 +1,9 @@
 {% extends "web/base.html" %}
 {% block body_class %}no-bottom-nav{% endblock %}
 {% block bottom_nav %}{% endblock %}
-{% block title %}{% if break_glass %}Break-glass · LamTo{% elif break_glass_consent %}Authorize break-glass · LamTo{% else %}Re-authenticate · LamTo{% endif %}{% endblock %}
+{% block title %}Re-authenticate · LamTo{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="reauth-heading">
-  {% if break_glass %}
-  <h1 id="reauth-heading">Start break-glass support session</h1>
-  <p class="lede">Grants account/organization support and health access only. Never finance, documents, or stakeholder keys. Max 60 minutes. Requires a dual-control consent token issued by the organization authorizer after their re-authentication.</p>
-  {% if active_session %}
-  <p>Active session #{{ active_session.pk }} expires {{ active_session.expires_at }}.</p>
-  {% endif %}
-  <form method="post" class="stack-form">
-    {% csrf_token %}
-    <div class="field">
-      <label for="reason">Reason (required)</label>
-      <textarea id="reason" name="reason" class="input" required></textarea>
-    </div>
-    <div class="field">
-      <label for="authorizing_membership_id">Authorizing organization membership id</label>
-      <input id="authorizing_membership_id" name="authorizing_membership_id" class="input" required>
-    </div>
-    <div class="field">
-      <label for="consent_token">Authorizer consent token</label>
-      <input id="consent_token" name="consent_token" class="input" required autocomplete="off"
-             placeholder="Token from authorizer re-auth consent">
-    </div>
-    <div class="field">
-      <label for="duration_minutes">Duration minutes (max 60)</label>
-      <input id="duration_minutes" name="duration_minutes" type="number" min="1" max="60" value="60" class="input">
-    </div>
-    <button type="submit" class="button button-primary">Start break-glass</button>
-  </form>
-  {% elif break_glass_consent %}
-  <h1 id="reauth-heading">Authorize break-glass for a technical administrator</h1>
-  <p class="lede">Your recent password + authenticator confirmation is required. The issued token is single-purpose, expires in 10 minutes, and does not grant you elevated access.</p>
-  {% if consent_token %}
-  <p class="lede"><strong>Consent token</strong> (copy to the technical administrator):</p>
-  <pre class="input" style="white-space:pre-wrap;word-break:break-all">{{ consent_token }}</pre>
-  {% endif %}
-  <form method="post" class="stack-form">
-    {% csrf_token %}
-    <div class="field">
-      <label for="tech_membership_id">Technical administrator membership id</label>
-      <input id="tech_membership_id" name="tech_membership_id" class="input" required>
-    </div>
-    {% if tech_admins %}
-    <p class="lede">Known tech-admin memberships:</p>
-    <ul>
-      {% for t in tech_admins %}
-      <li>#{{ t.pk }} — {{ t.user.email }} ({{ t.organization.name }})</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    <p class="lede">If re-auth has expired, you will be redirected to confirm password and authenticator first.</p>
-    <button type="submit" class="button button-primary">Issue consent token</button>
-  </form>
-  {% else %}
   <h1 id="reauth-heading">Confirm it is you</h1>
   <p class="lede">Sensitive financial actions require password and authenticator code within the last five minutes.</p>
   <form method="post" class="stack-form">
@@ -71,6 +19,5 @@
     </div>
     <button type="submit" class="button button-primary">Confirm</button>
   </form>
-  {% endif %}
 </section>
 {% endblock %}

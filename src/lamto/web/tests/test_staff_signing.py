@@ -16,8 +16,6 @@ from io import StringIO
 from lamto.accounts.models import (
     Building,
     ManagementMembership,
-    Organization,
-    OrganizationMembership,
 )
 from lamto.documents.models import Document, DocumentVersion
 from lamto.web.forms.staff import (
@@ -257,15 +255,8 @@ class UploadDocumentPairTests(TestCase):
             authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
             status=WorkOrder.Status.ASSIGNED,
         )
-        organization = Organization.objects.create(
-            building=self.building,
-            name="Cleanup operator",
-            kind=Organization.Kind.OPERATOR,
-        )
-        membership = OrganizationMembership.objects.create(
-            user=self.user,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
+        membership = ManagementMembership.objects.get(
+            user=self.user, building=self.building
         )
         proposal = Proposal.objects.create(
             work_order=work,

@@ -1,4 +1,4 @@
-"""Auditor CSV exports with formula neutralization and capability gates."""
+"""Management CSV exports with formula neutralization."""
 
 from __future__ import annotations
 
@@ -11,16 +11,14 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 
-from lamto.accounts.capabilities import AUDIT_EXPORT
 from lamto.accounts.models import ManagementMembership
-from lamto.accounts.security import deny_tech_admin_business_access, require_staff_mfa
-from lamto.accounts.services import require_management
+from lamto.accounts.security import require_staff_mfa
 from lamto.audit.models import AuditEvent
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import MaintenanceFundEntry, VerificationObservation
-from lamto.web.staff import membership_building_id, require_staff_capability
+from lamto.web.staff import require_management_context
 
 
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
@@ -51,7 +49,7 @@ def _csv_stream(header: list[str], rows):
 
 def _require_auditor_export(request):
     require_staff_mfa(request)
-    membership, memberships = require_staff_capability(request, AUDIT_EXPORT)
+    membership, memberships = require_management_context(request)
     return membership, memberships
 
 
@@ -63,7 +61,7 @@ def audit_export(request):
         membership, _ = _require_auditor_export(request)
     except PermissionDenied as error:
         try:
-            mid = request.session.get("active_membership_id")
+            mid = request.session.get("active_management_id")
             m = ManagementMembership.objects.filter(pk=mid, user=request.user).first()
             record_audit(
                 request.user,
@@ -78,7 +76,7 @@ def audit_export(request):
             pass
         raise
 
-    building_id = membership_building_id(membership)
+    building_id = membership.building_id
     kind = (request.GET.get("kind") or "audit_events").strip()
 
     try:
@@ -96,7 +94,7 @@ def audit_export(request):
 
         record_audit(
             request.user,
-            require_management(request.user, building_id),
+            membership,
             "audit.export",
             "Export",
             kind,
@@ -107,7 +105,7 @@ def audit_export(request):
         try:
             record_audit(
                 request.user,
-                require_management(request.user, building_id),
+                membership,
                 "audit.export",
                 "Export",
                 kind,

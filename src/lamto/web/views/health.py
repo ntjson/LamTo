@@ -14,15 +14,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
-from lamto.accounts.capabilities import TECH_ADMIN
-from lamto.accounts.models import BackupMarker, OrganizationMembership
-from lamto.accounts.security import (
-    active_break_glass_session,
-    assert_break_glass_allows_path,
-    is_break_glass_active,
-    require_staff_mfa,
-)
-from lamto.accounts.services import require_capability, require_management
+from lamto.accounts.models import BackupMarker
 from lamto.audit.services import record_audit
 from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent
@@ -30,20 +22,11 @@ from lamto.finance.models import VerificationObservation
 from lamto.maintenance.models import TriageDecision, TriageJob, TriageSuggestion, WorkOrder
 from lamto.notifications.models import Device, NotificationDelivery
 from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
-from lamto.web.staff import resolve_active_membership, staff_context
+from lamto.web.staff import require_management_context, staff_context
 
 
 def _require_tech_admin(request):
-    require_staff_mfa(request)
-    membership, memberships = resolve_active_membership(request)
-    if membership.role != OrganizationMembership.Role.TECH_ADMIN:
-        # Prefer explicit capability when granted on platform membership.
-        try:
-            membership = require_capability(request.user, membership.pk, TECH_ADMIN)
-        except PermissionDenied:
-            raise PermissionDenied("Technical administrator access required.")
-    assert_break_glass_allows_path(request)
-    return membership, memberships
+    return require_management_context(request)
 
 
 def collect_health_snapshot() -> dict:
@@ -224,12 +207,12 @@ def ops_health(request):
     snapshot = collect_health_snapshot()
     record_audit(
         request.user,
-        require_management(request.user, membership.organization.building_id),
+        membership,
         "ops.health",
         "Health",
         "snapshot",
         "accepted",
-        {"break_glass": is_break_glass_active(request.user)},
+        {},
     )
     if request.GET.get("format") == "json":
         return JsonResponse(snapshot)
@@ -242,7 +225,6 @@ def ops_health(request):
             memberships,
             nav_active="ops",
             health=snapshot,
-            break_glass=active_break_glass_session(request.user),
             panel="health",
         ),
     )

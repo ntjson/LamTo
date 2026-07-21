@@ -33,7 +33,7 @@
       {% endif %}
 
       {% if expected_signer %}
-      <details class="technical-proof" {% if membership.role == "AUDITOR" %}open{% endif %}>
+      <details class="technical-proof">
         <summary>{% trans "Technical proof" %}</summary>
         <dl class="detail-list">
           <div><dt>{% trans "Registered acceptance wallet" %}</dt><dd>{% include "web/staff/_hash_value.html" with value=expected_signer label=_("Wallet address") %}</dd></div>
@@ -41,7 +41,7 @@
       </details>
       {% endif %}
 
-      {% if "proposal.create" in capabilities and work_order.requires_spending %}
+      {% if work_order.requires_spending %}
       <p><a class="button button-secondary" href="{% url 'web:proposal-create' work_order.pk %}">{% trans "Create spending proposal" %}</a></p>
       {% endif %}
     </div>

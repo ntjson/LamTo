@@ -8,12 +8,6 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
-from lamto.accounts.capabilities import (
-    LEDGER_PUBLISH,
-    PROPOSAL_CREATE,
-    REPORT_TRIAGE,
-    WORK_ASSIGN,
-)
 from lamto.accounts.security import require_recent_auth
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
@@ -41,7 +35,7 @@ from lamto.web.forms.staff import (
     PreparePublicationForm,
     SignProposalForm,
 )
-from lamto.web.staff import membership_building, membership_building_id, require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import require_management_context, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
@@ -73,8 +67,8 @@ def _proposal_publishable(proposal) -> bool:
 @login_required
 @require_GET
 def case_list(request):
-    membership, memberships = require_staff_capability(request, REPORT_TRIAGE)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     # Active cases filter by urgency (same ?status= chip pattern as work list).
     from lamto.maintenance.ai import URGENCIES
 
@@ -173,8 +167,8 @@ def case_list(request):
 @require_http_methods(["GET", "POST"])
 def report_detail(request, pk):
     """Staff triage surface for IssueReport pk only (not MaintenanceCase)."""
-    membership, memberships = resolve_active_membership(request)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     report = get_object_or_404(IssueReport, pk=pk, unit__building_id=building_id)
 
     link = report.case_reports.filter(case__active=True).select_related("case").first()
@@ -185,7 +179,7 @@ def report_detail(request, pk):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "confirm_triage":
-            require_staff_capability(request, REPORT_TRIAGE)
+            require_management_context(request)
             if form.is_valid():
                 try:
                     case = form.save(report, request.user)
@@ -232,8 +226,8 @@ def report_detail(request, pk):
 @require_http_methods(["GET", "POST"])
 def case_detail(request, pk):
     """MaintenanceCase pk only (not IssueReport)."""
-    membership, memberships = resolve_active_membership(request)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     case = get_object_or_404(MaintenanceCase, pk=pk, building_id=building_id)
     report = case.reports.order_by("pk").first()
 
@@ -241,7 +235,7 @@ def case_detail(request, pk):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create_work_order":
-            require_staff_capability(request, WORK_ASSIGN)
+            require_management_context(request)
             work_form = CreateWorkOrderForm(request.POST, building_id=building_id)
             if work_form.is_valid():
                 try:
@@ -285,8 +279,8 @@ def case_detail(request, pk):
 @login_required
 @require_GET
 def proposal_list(request):
-    membership, memberships = resolve_active_membership(request)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     status = request.GET.get("status") or ""
     status_groups = {
         "preparing": (Proposal.Status.DRAFT, Proposal.Status.REJECTED),
@@ -368,13 +362,13 @@ def proposal_list(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def proposal_detail(request, pk):
-    membership, memberships = resolve_active_membership(request)
+    membership, memberships = require_management_context(request)
     proposal = get_object_or_404(
         Proposal.objects.select_related(
             "current_version", "work_order__case", "creator_membership"
         ),
         pk=pk,
-        work_order__case__building_id=membership_building_id(membership),
+        work_order__case__building_id=membership.building_id,
     )
     publish_form = PreparePublicationForm(request.POST or None)
     can_publish = _proposal_publishable(proposal)
@@ -395,7 +389,7 @@ def proposal_detail(request, pk):
                     "page, or wait if a publication snapshot is already awaiting confirmation.",
                 )
             else:
-                require_staff_capability(request, LEDGER_PUBLISH)
+                require_management_context(request)
                 if publish_form.is_valid():
                     try:
                         snapshot = publish_form.save(proposal, membership)
@@ -432,8 +426,7 @@ def proposal_detail(request, pk):
                             request,
                             action="Publish to resident ledger",
                             acting_as=(
-                                f"{membership.get_role_display()} · "
-                                f"{membership_building(membership).name}"
+                                f"{membership.building.name}"
                             ),
                             details=[
                                 {
@@ -590,8 +583,8 @@ def proposal_create(request, pk):
     render the signed form with the exact typed data. action=submit: freeze
     the immutable version via the domain service.
     """
-    membership, memberships = require_staff_capability(request, PROPOSAL_CREATE)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     work_order = get_object_or_404(
         WorkOrder.objects.select_related("case"),
         pk=pk,

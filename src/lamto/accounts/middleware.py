@@ -1,4 +1,4 @@
-"""Staff workspace security: MFA gate, break-glass request audit, reauth redirect."""
+"""Staff workspace security: MFA gate and reauth redirect."""
 
 from __future__ import annotations
 
@@ -8,11 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.urls import reverse
 
-from lamto.accounts.security import (
-    RecentAuthRequired,
-    assert_break_glass_allows_path,
-    require_staff_mfa,
-)
+from lamto.accounts.security import RecentAuthRequired, require_staff_mfa
 
 # MFA enrollment/verify must remain reachable before OTP is confirmed.
 _MFA_EXEMPT_PREFIXES = (
@@ -22,12 +18,10 @@ _MFA_EXEMPT_PREFIXES = (
 
 
 class StaffSecurityMiddleware:
-    """Enforce staff MFA and break-glass controls on every /s/ request.
+    """Enforce staff MFA on every /s/ request.
 
     - Confirmed TOTP + OTP-verified session required for all /s/ routes
       except MFA setup/verify (so users can enroll and step up).
-    - Every request under an active break-glass session is audited and
-      business route prefixes remain denied.
     - RecentAuthRequired → redirect to reauth with next=.
     """
 
@@ -50,8 +44,6 @@ class StaffSecurityMiddleware:
         if not exempt:
             require_staff_mfa(request)
 
-        # Audit every break-glass request (including MFA-exempt security paths).
-        assert_break_glass_allows_path(request, path=path)
         return None
 
     def process_exception(self, request, exception):

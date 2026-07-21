@@ -8,20 +8,12 @@ from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 
-from lamto.accounts.capabilities import (
-    PAYMENT_RECORD,
-    PAYMENT_VERIFY,
-    LEDGER_PUBLISH,
-    REPORT_TRIAGE,
-)
 from lamto.accounts.models import (
     Building,
-    Organization,
-    OrganizationMembership,
+    ManagementMembership,
     Unit,
 )
 from lamto.accounts.security import RECENT_REAUTH_KEY
-from lamto.accounts.services import grant_capability
 from lamto.finance.models import AcceptanceRecord, PaymentEvidence, Proposal
 from lamto.maintenance.models import (
     BuildingLocation,
@@ -42,7 +34,7 @@ class ListPatternTests(TestCase):
         session = self.client.session
         session[DEVICE_ID_SESSION_KEY] = device.persistent_id
         session[RECENT_REAUTH_KEY] = time.time()
-        session["active_membership_id"] = membership.pk
+        session["active_management_id"] = membership.pk
         session.save()
 
     def _make_work(self, building, case, assignee, status):
@@ -56,20 +48,15 @@ class ListPatternTests(TestCase):
             status=status,
         )
 
-    def _case_world(self, *, email_prefix="lp", role=OrganizationMembership.Role.MAINTENANCE, org_kind=Organization.Kind.OPERATOR):
+    def _case_world(self, *, email_prefix="lp", **_legacy_role):
         building = Building.objects.create(name=f"List {email_prefix}")
         location = BuildingLocation.objects.create(
             building=building, name="Lobby", active=True
         )
-        org = Organization.objects.create(
-            building=building, name="Org", kind=org_kind
-        )
         user = get_user_model().objects.create_user(
             email=f"{email_prefix}@example.test", password="secret", display_name="U"
         )
-        membership = OrganizationMembership.objects.create(
-            user=user, organization=org, role=role
-        )
+        membership = ManagementMembership.objects.create(user=user, building=building)
         unit = Unit.objects.create(building=building, label="A-1")
         resident = get_user_model().objects.create_user(
             email=f"{email_prefix}-r@example.test", password="secret", display_name="R"
@@ -139,9 +126,7 @@ class ListPatternTests(TestCase):
     def test_case_list_filters_active_cases_by_urgency(self):
         building, location, user, membership, high_case = self._case_world(
             email_prefix="cases",
-            role=OrganizationMembership.Role.OPERATOR,
         )
-        grant_capability(membership, REPORT_TRIAGE)
         # Second case with LOW urgency (needs its own decision for OneToOne).
         unit2 = Unit.objects.create(building=building, label="B-2")
         resident2 = get_user_model().objects.create_user(
@@ -198,10 +183,7 @@ class ListPatternTests(TestCase):
     def test_proposal_list_filters_by_status(self):
         building, _loc, user, membership, case = self._case_world(
             email_prefix="prop",
-            role=OrganizationMembership.Role.BOARD,
-            org_kind=Organization.Kind.BOARD,
         )
-        grant_capability(membership, LEDGER_PUBLISH)
         work = self._make_work(building, case, user, WorkOrder.Status.ASSIGNED)
         draft = Proposal.objects.create(
             work_order=work,
@@ -283,7 +265,7 @@ class ListPatternTests(TestCase):
                 payment.external_status, PaymentEvidence.ExternalStatus.COMPLETED
             )
 
-            membership = seed.roles["board_payment_verifier"]
+            membership = seed.management_memberships[1]
             self._login(membership.user, membership)
 
             all_resp = self.client.get(reverse("web:payment-list"))

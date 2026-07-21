@@ -1,7 +1,7 @@
-"""Capability-scoped action inbox queries.
+"""Management action inbox queries.
 
 The inbox is authoritative for staff work; email is a secondary channel.
-Never combines capabilities across memberships — callers pass a single membership.
+Callers pass a single building-scoped management membership.
 """
 
 from __future__ import annotations
@@ -13,17 +13,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from lamto.accounts.capabilities import (
-    AUDIT_EXPORT,
-    LEDGER_PUBLISH,
-    PAYMENT_RECORD,
-    PAYMENT_VERIFY,
-    PROPOSAL_CREATE,
-    REPORT_TRIAGE,
-    WORK_ACCEPT,
-    WORK_ASSIGN,
-)
-from lamto.accounts.models import CapabilityGrant, Organization, OrganizationMembership
+from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
@@ -62,22 +52,16 @@ class ActionItem:
         return deadline_tone(self.deadline_at)
 
 
-def _has(membership, code: str) -> bool:
-    if membership is None or not membership.active:
-        return False
-    return CapabilityGrant.objects.filter(membership=membership, code=code).exists()
-
-
 def _building_id(membership) -> int:
-    return membership.organization.building_id
+    return membership.building_id
 
 
-def action_items_for(membership: OrganizationMembership) -> list[ActionItem]:
-    """Return action items for a single active membership (never combined)."""
+def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
+    """Return every surviving queue for one active management membership."""
     if membership is None or not membership.active:
         return []
     membership = (
-        OrganizationMembership.objects.select_related("organization", "user")
+        ManagementMembership.objects.select_related("building", "user")
         .filter(pk=membership.pk, active=True)
         .first()
     )
@@ -88,40 +72,16 @@ def action_items_for(membership: OrganizationMembership) -> list[ActionItem]:
     building_id = _building_id(membership)
     now = timezone.now()
 
-    if _has(membership, REPORT_TRIAGE):
-        items.extend(_manual_triage_items(building_id))
-        items.extend(_deadline_risk_items(building_id))
-        items.extend(_quarantined_upload_items(building_id, membership))
-
-    if _has(membership, WORK_ASSIGN):
-        items.extend(_deadline_risk_items(building_id))
-
-    if membership.role == OrganizationMembership.Role.MAINTENANCE:
-        items.extend(_assigned_work_items(membership.user_id, building_id))
-
-    if _has(membership, PROPOSAL_CREATE):
-        items.extend(_proposal_create_candidates(building_id))
-
-    if _has(membership, WORK_ACCEPT):
-        items.extend(_work_acceptance_items(building_id))
-
-    if _has(membership, PAYMENT_RECORD):
-        items.extend(_payment_record_items(building_id))
-
-    if _has(membership, PAYMENT_VERIFY):
-        items.extend(_payment_verify_items(building_id))
-
-    if _has(membership, LEDGER_PUBLISH):
-        items.extend(_pending_publication_items(building_id))
-
-    if _has(membership, AUDIT_EXPORT) or membership.role == OrganizationMembership.Role.AUDITOR:
-        items.extend(_integrity_mismatch_items(building_id))
-        items.extend(_failed_outbox_items(building_id))
-
-    # Board also sees integrity mismatch and failed outbox for ops awareness.
-    if membership.organization.kind == Organization.Kind.BOARD:
-        items.extend(_integrity_mismatch_items(building_id))
-        items.extend(_failed_outbox_items(building_id))
+    items.extend(_manual_triage_items(building_id))
+    items.extend(_deadline_risk_items(building_id))
+    items.extend(_assigned_work_items(membership.user_id, building_id))
+    items.extend(_work_acceptance_items(building_id))
+    items.extend(_payment_record_items(building_id))
+    items.extend(_payment_verify_items(building_id))
+    items.extend(_pending_publication_items(building_id))
+    items.extend(_integrity_mismatch_items(building_id))
+    items.extend(_failed_outbox_items(building_id))
+    items.extend(_quarantined_upload_items(building_id, membership))
 
     # Deduplicate by (kind, target_type, target_id)
     seen = set()

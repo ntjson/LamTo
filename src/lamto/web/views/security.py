@@ -1,4 +1,4 @@
-"""MFA enrollment/verification, re-authentication, and break-glass support views."""
+"""MFA enrollment/verification, re-authentication, login, and logout views."""
 
 from __future__ import annotations
 
@@ -23,24 +23,17 @@ from lamto.accounts.mfa import (
     revoke_totp_device,
     verify_totp_for_session,
 )
-from lamto.accounts.models import OrganizationMembership
+from lamto.accounts.models import ManagementMembership
 from lamto.accounts.security import (
-    active_break_glass_session,
     assert_not_throttled,
     client_ip,
-    issue_break_glass_consent,
     record_auth_failure,
-    require_recent_auth,
-    require_staff_mfa,
     reset_auth_throttle,
-    revoke_break_glass,
     revoke_session,
     rotate_session,
-    start_break_glass,
     user_has_confirmed_totp,
     user_is_otp_verified,
 )
-from lamto.web.staff import resolve_active_membership
 from lamto.audit.services import record_audit
 
 
@@ -76,7 +69,7 @@ class SecureLoginView(LoginView):
         if user_has_confirmed_totp(user):
             self.request.session["mfa_pending_user_id"] = user.pk
             return redirect("web:mfa-verify")
-        if OrganizationMembership.objects.filter(user=user, active=True).exists():
+        if ManagementMembership.objects.filter(user=user, active=True).exists():
             return redirect("web:mfa-setup")
         return redirect(self.get_success_url())
 
@@ -89,7 +82,7 @@ class SecureLoginView(LoginView):
         User = get_user_model()
         user = User.objects.filter(email__iexact=username.strip()).first() if username else None
         if user is not None:
-            membership = user.organizationmembership_set.filter(active=True).first()
+            membership = user.managementmembership_set.filter(active=True).first()
             if membership is not None:
                 try:
                     record_audit(
@@ -202,126 +195,10 @@ def mfa_revoke_device(request, device_id: int):
     return redirect("web:mfa-setup")
 
 
-@login_required
-@require_http_methods(["GET", "POST"])
-def break_glass_consent_view(request):
-    """Authorizer dual-control: re-auth then issue a short-lived consent token.
-
-    Tech admins cannot start break-glass with a free-typed membership id alone;
-    they must present a token produced by this endpoint after the authorizer's
-    password + OTP re-authentication.
-    """
-    require_staff_mfa(request)
-    membership, memberships = resolve_active_membership(request)
-    if membership.role == OrganizationMembership.Role.TECH_ADMIN:
-        raise PermissionDenied("Technical administrators cannot self-authorize break-glass.")
-    consent_token = None
-    if request.method == "POST":
-        try:
-            require_recent_auth(request)
-            tech_id = int(request.POST.get("tech_membership_id") or 0)
-            tech = OrganizationMembership.objects.get(
-                pk=tech_id,
-                active=True,
-                role=OrganizationMembership.Role.TECH_ADMIN,
-            )
-            consent_token = issue_break_glass_consent(
-                authorizing_membership=membership,
-                tech_membership=tech,
-            )
-            messages.success(
-                request,
-                "Consent token issued. Give it to the technical administrator "
-                "to start break-glass (expires in 10 minutes).",
-            )
-        except (ValidationError, OrganizationMembership.DoesNotExist, TypeError, ValueError) as error:
-            messages.error(request, str(error))
-        except PermissionDenied as error:
-            # RecentAuthRequired is a subclass and is handled by middleware redirect.
-            raise
-    tech_admins = OrganizationMembership.objects.filter(
-        active=True,
-        role=OrganizationMembership.Role.TECH_ADMIN,
-    ).select_related("user", "organization")[:100]
-    return render(
-        request,
-        "web/security/reauth.html",
-        {
-            "break_glass_consent": True,
-            "consent_token": consent_token,
-            "tech_admins": tech_admins,
-            "membership": membership,
-        },
-    )
-
-
-@login_required
-@require_http_methods(["GET", "POST"])
-def break_glass_start_view(request):
-    tech = (
-        OrganizationMembership.objects.filter(
-            user=request.user,
-            active=True,
-            role=OrganizationMembership.Role.TECH_ADMIN,
-        )
-        .select_related("organization")
-        .first()
-    )
-    if tech is None:
-        raise PermissionDenied("Technical administrator membership required.")
-    if request.method == "POST":
-        reason = request.POST.get("reason", "")
-        authorizer_id = request.POST.get("authorizing_membership_id")
-        consent_token = request.POST.get("consent_token", "")
-        try:
-            authorizer = OrganizationMembership.objects.get(pk=int(authorizer_id), active=True)
-            start_break_glass(
-                tech_membership=tech,
-                authorizing_membership=authorizer,
-                reason=reason,
-                consent_token=consent_token,
-                duration_minutes=int(request.POST.get("duration_minutes") or 60),
-            )
-        except (ValidationError, OrganizationMembership.DoesNotExist, TypeError, ValueError) as error:
-            messages.error(request, str(error))
-        else:
-            messages.success(request, "Break-glass session started.")
-            return redirect("web:ops-health")
-    authorizers = OrganizationMembership.objects.filter(active=True).exclude(
-        role=OrganizationMembership.Role.TECH_ADMIN
-    )[:100]
-    return render(
-        request,
-        "web/security/reauth.html",
-        {
-            "break_glass": True,
-            "authorizers": authorizers,
-            "active_session": active_break_glass_session(request.user),
-        },
-    )
-
-
-@login_required
-@require_POST
-def break_glass_revoke_view(request, session_id: int):
-    from lamto.accounts.models import BreakGlassSession
-
-    session = BreakGlassSession.objects.filter(pk=session_id).first()
-    if session is None or session.membership.user_id != request.user.pk:
-        raise PermissionDenied("Unknown break-glass session.")
-    try:
-        revoke_break_glass(session, revoked_by=request.user, reason=request.POST.get("reason", ""))
-    except ValidationError as error:
-        messages.error(request, str(error))
-    else:
-        messages.success(request, "Break-glass session revoked.")
-    return redirect("web:ops-health")
-
-
 @require_POST
 def secure_logout(request):
     if request.user.is_authenticated:
-        membership = request.user.organizationmembership_set.filter(active=True).first()
+        membership = request.user.managementmembership_set.filter(active=True).first()
         if membership is not None:
             try:
                 record_audit(

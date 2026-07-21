@@ -23,21 +23,21 @@
     </div>
     {% if membership and membership_count <= 1 %}
     <p class="building-label">
-      {{ membership.organization.building.name }} · {{ membership.get_role_display }}
+      {{ membership.building.name }}
     </p>
     {% elif membership and membership_count > 1 %}
     <details class="membership-switcher">
       <summary class="building-label membership-switcher-summary">
-        {{ membership.organization.building.name }} · {{ membership.get_role_display }}
+        {{ membership.building.name }}
       </summary>
       <div class="membership-bar membership-bar-disclosure" role="region" aria-label="{% trans 'Active membership' %}">
-        <form method="post" action="{% url 'web:switch-membership' %}" class="membership-form" data-busy-on-submit>
+        <form method="post" action="{% url 'web:switch-building' %}" class="membership-form" data-busy-on-submit>
           {% csrf_token %}
-          <label for="active-membership">{% trans "Switch membership" %}</label>
-          <select id="active-membership" name="membership" class="input">
+          <label for="active-building">{% trans "Switch building" %}</label>
+          <select id="active-building" name="building" class="input">
             {% for m in memberships %}
             <option value="{{ m.pk }}" {% if membership and m.pk == membership.pk %}selected{% endif %}>
-              {{ m.organization.building.name }} — {{ m.get_role_display }}
+              {{ m.building.name }}
             </option>
             {% endfor %}
           </select>

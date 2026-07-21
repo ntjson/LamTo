@@ -25,21 +25,10 @@ urlpatterns = [
     path("s/security/mfa/verify/", security.mfa_verify, name="mfa-verify"),
     path("s/security/mfa/revoke/<int:device_id>/", security.mfa_revoke_device, name="mfa-revoke"),
     path("s/security/reauth/", security.reauth, name="reauth"),
-    path("s/security/break-glass/", security.break_glass_start_view, name="break-glass-start"),
-    path(
-        "s/security/break-glass/consent/",
-        security.break_glass_consent_view,
-        name="break-glass-consent",
-    ),
-    path(
-        "s/security/break-glass/<int:session_id>/revoke/",
-        security.break_glass_revoke_view,
-        name="break-glass-revoke",
-    ),
     # Staff shell
     path("s/", staff_common.staff_home, name="staff-home"),
     path("s/inbox/", staff_common.action_inbox, name="action-inbox"),
-    path("s/membership/", staff_common.switch_membership, name="switch-membership"),
+    path("s/building/", staff_common.switch_building, name="switch-building"),
     # Operator / shared case & proposal — distinct routes for report vs case PKs
     path("s/cases/", operator.case_list, name="case-list"),
     path("s/reports/<int:pk>/", operator.report_detail, name="staff-report-detail"),

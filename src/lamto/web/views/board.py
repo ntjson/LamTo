@@ -6,11 +6,6 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
-from lamto.accounts.capabilities import (
-    PAYMENT_RECORD,
-    PAYMENT_VERIFY,
-    WORK_ACCEPT,
-)
 from lamto.accounts.security import require_recent_auth, require_staff_mfa
 from lamto.documents.models import Document
 from lamto.finance.models import AcceptanceRecord, PaymentEvidence
@@ -19,7 +14,7 @@ from lamto.web.forms.staff import (
     RecordPaymentForm,
     VerifyPaymentForm,
 )
-from lamto.web.staff import membership_building_id, require_staff_capability, resolve_active_membership, staff_context
+from lamto.web.staff import require_management_context, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
@@ -34,8 +29,8 @@ def payment_record(request):
     """Privileged signed financial action: requires MFA + recent re-auth."""
     require_staff_mfa(request)
     require_recent_auth(request)
-    membership, memberships = require_staff_capability(request, PAYMENT_RECORD)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     acceptance_id = request.POST.get("acceptance_id")
     acceptance = get_object_or_404(
         AcceptanceRecord,
@@ -86,8 +81,8 @@ def payment_record(request):
 @login_required
 @require_GET
 def payment_list(request):
-    membership, memberships = resolve_active_membership(request)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     status = request.GET.get("status") or ""
     status_groups = {
         "completed": (PaymentEvidence.ExternalStatus.COMPLETED,),
@@ -195,8 +190,8 @@ def payment_record_detail(request, pk):
     )
     from lamto.web.staff_signing import new_event_id
 
-    membership, memberships = require_staff_capability(request, PAYMENT_RECORD)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     acceptance = get_object_or_404(
         AcceptanceRecord.objects.select_related("work_order", "payment", "outbox_event"),
         pk=pk,
@@ -360,8 +355,8 @@ def payment_verify_detail(request, pk):
     from lamto.finance.payments import build_payment_verification_evidence_typed_data
     from lamto.web.staff_signing import new_event_id
 
-    membership, memberships = resolve_active_membership(request)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     from lamto.finance.models import PublishedLedgerEntry
 
     payment = get_object_or_404(
@@ -404,7 +399,7 @@ def payment_verify_detail(request, pk):
         payment_tx = payment.outbox_event.transaction_hash
 
     if request.method == "POST" and verify_form is not None and can_verify:
-        require_staff_capability(request, PAYMENT_VERIFY)
+        require_management_context(request)
         require_recent_auth(request)
         if verify_form.is_valid():
             try:
@@ -507,8 +502,8 @@ def accept_work(request, pk):
     from lamto.maintenance.models import WorkOrder
     from lamto.web.staff_signing import new_event_id
 
-    membership, memberships = require_staff_capability(request, WORK_ACCEPT)
-    building_id = membership_building_id(membership)
+    membership, memberships = require_management_context(request)
+    building_id = membership.building_id
     work_order = get_object_or_404(
         WorkOrder,
         pk=pk,
