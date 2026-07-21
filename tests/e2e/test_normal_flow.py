@@ -79,3 +79,12 @@ def test_standalone_proposal_happy_path(seeded_pilot):
     assert is_settled(settlement.outbox_event.status)
     assert ledger.entry.settlement_id == settlement.pk
     assert rating.proposal_id == seeded_pilot.seed.proposal.pk
+    assert rating.satisfied is True
+    assert ledger.actual_cost_vnd == DEFAULT_AMOUNT_VND
+    assert ledger.status == "Record verified"
+    assert ledger.has_redacted_documents()
+
+    verification = seeded_pilot.verify_latest_ledger_entry()
+    assert verification.document_hashes_match
+    assert verification.chain_events_match
+    assert verification.recomputed_fund_balance_vnd == ledger.current_fund_balance_vnd
