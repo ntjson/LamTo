@@ -560,4 +560,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fundChartRange12m => '12 months';
+
+  @override
+  String get proposalsSegment => 'Proposals';
+
+  @override
+  String get ledgerSegment => 'Ledger';
+
+  @override
+  String get proposalStatusPublished => 'Published';
+
+  @override
+  String get proposalStatusInProgress => 'In progress';
+
+  @override
+  String get proposalStatusNotProceeding => 'Not proceeding';
+
+  @override
+  String get proposalStatusCompleted => 'Completed';
+
+  @override
+  String get proposalStatusClosed => 'Closed';
+
+  @override
+  String get proposalStatusDraft => 'Draft';
+
+  @override
+  String get proposalProblem => 'Problem or need';
+
+  @override
+  String get proposalAction => 'Proposed action';
+
+  @override
+  String get proposalCost => 'Estimated cost';
+
+  @override
+  String get proposalFund => 'Funding source';
+
+  @override
+  String get proposalContractor => 'Contractor';
+
+  @override
+  String get proposalSchedule => 'Expected schedule';
+
+  @override
+  String get proposalVersions => 'Published versions';
+
+  @override
+  String proposalVersion(String number) {
+    return 'Version $number';
+  }
+
+  @override
+  String get proposalSettlement => 'Payment settlement';
+
+  @override
+  String get proposalSettled => 'Paid and acknowledged by the payee';
+
+  @override
+  String get proposalUnsettled => 'Payment not yet settled';
+
+  @override
+  String get proposalViewFromLedger => 'View proposal';
+
+  @override
+  String get proposalRateCta => 'Rate the result';
 }

@@ -9,10 +9,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/error_retry.dart';
+import '../../core/adaptive_page_route.dart';
 import '../../core/failure.dart';
 import '../../core/format.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
+import '../proposals/proposal_detail_screen.dart';
 import '../transparency/transparency_repository.dart';
 import 'evidence_labels.dart';
 
@@ -61,6 +63,7 @@ class LedgerDetailScreen extends ConsumerWidget {
       context,
     ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace');
     final titleStyle = Theme.of(context).textTheme.titleMedium;
+    final proposalId = (entry.payload?.value as Map?)?['proposal_id'] as int?;
     final conclusionColor = verified
         ? Theme.of(context).colorScheme.primary
         : Theme.of(context).colorScheme.error;
@@ -105,6 +108,21 @@ class LedgerDetailScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
+        if (proposalId != null) ...[
+          ListTile(
+            minTileHeight: 48,
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.proposalViewFromLedger),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              adaptivePageRoute(
+                builder: (_) => ProposalDetailScreen(proposalId: proposalId),
+              ),
+            ),
+          ),
+          const Divider(),
+        ],
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
           childrenPadding: const EdgeInsets.only(bottom: 16),

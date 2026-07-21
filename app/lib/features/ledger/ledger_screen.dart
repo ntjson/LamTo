@@ -11,6 +11,7 @@ import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
+import '../proposals/proposals_list_screen.dart';
 import '../transparency/fund_chart.dart';
 import '../transparency/transparency_repository.dart';
 import 'evidence_labels.dart';
@@ -67,6 +68,28 @@ final ledgerListProvider =
 /// Selected chart range on the Sổ quỹ tab; survives tab switches.
 final fundChartRangeProvider = StateProvider<String>((_) => '6m');
 
+final ledgerSegmentProvider = StateProvider<int>((_) => 0);
+
+class _LedgerSegmentControl extends ConsumerWidget {
+  const _LedgerSegmentControl();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final selected = ref.watch(ledgerSegmentProvider);
+    return SegmentedButton<int>(
+      segments: [
+        ButtonSegment(value: 0, label: Text(l10n.ledgerSegment)),
+        ButtonSegment(value: 1, label: Text(l10n.proposalsSegment)),
+      ],
+      selected: {selected},
+      showSelectedIcon: false,
+      onSelectionChanged: (value) =>
+          ref.read(ledgerSegmentProvider.notifier).state = value.first,
+    );
+  }
+}
+
 /// DESIGN.md filter-chip: Quiet Surface at rest, Accountability Indigo with
 /// on-primary ink when selected (never a semantic state color).
 class _PeriodChip extends StatelessWidget {
@@ -101,6 +124,24 @@ class LedgerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final segment = ref.watch(ledgerSegmentProvider);
+    if (segment == 1) {
+      return const Material(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: _LedgerSegmentControl(),
+              ),
+            ),
+            Expanded(child: ProposalsListScreen(showTitle: false)),
+          ],
+        ),
+      );
+    }
     final entries = ref.watch(ledgerListProvider);
     final controller = ref.read(ledgerListProvider.notifier);
     final chartRange = ref.watch(fundChartRangeProvider);
@@ -127,6 +168,11 @@ class LedgerScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
+            const SizedBox(
+              width: double.infinity,
+              child: _LedgerSegmentControl(),
+            ),
+            const SizedBox(height: 16),
             Text(
               l10n.ledgerTitle,
               style: Theme.of(context).textTheme.titleLarge,

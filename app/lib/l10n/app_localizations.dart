@@ -1123,6 +1123,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'12 months'**
   String get fundChartRange12m;
+
+  /// No description provided for @proposalsSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposals'**
+  String get proposalsSegment;
+
+  /// No description provided for @ledgerSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Ledger'**
+  String get ledgerSegment;
+
+  /// No description provided for @proposalStatusPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get proposalStatusPublished;
+
+  /// No description provided for @proposalStatusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get proposalStatusInProgress;
+
+  /// No description provided for @proposalStatusNotProceeding.
+  ///
+  /// In en, this message translates to:
+  /// **'Not proceeding'**
+  String get proposalStatusNotProceeding;
+
+  /// No description provided for @proposalStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get proposalStatusCompleted;
+
+  /// No description provided for @proposalStatusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get proposalStatusClosed;
+
+  /// No description provided for @proposalStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get proposalStatusDraft;
+
+  /// No description provided for @proposalProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'Problem or need'**
+  String get proposalProblem;
+
+  /// No description provided for @proposalAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposed action'**
+  String get proposalAction;
+
+  /// No description provided for @proposalCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated cost'**
+  String get proposalCost;
+
+  /// No description provided for @proposalFund.
+  ///
+  /// In en, this message translates to:
+  /// **'Funding source'**
+  String get proposalFund;
+
+  /// No description provided for @proposalContractor.
+  ///
+  /// In en, this message translates to:
+  /// **'Contractor'**
+  String get proposalContractor;
+
+  /// No description provided for @proposalSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected schedule'**
+  String get proposalSchedule;
+
+  /// No description provided for @proposalVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'Published versions'**
+  String get proposalVersions;
+
+  /// No description provided for @proposalVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {number}'**
+  String proposalVersion(String number);
+
+  /// No description provided for @proposalSettlement.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment settlement'**
+  String get proposalSettlement;
+
+  /// No description provided for @proposalSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid and acknowledged by the payee'**
+  String get proposalSettled;
+
+  /// No description provided for @proposalUnsettled.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment not yet settled'**
+  String get proposalUnsettled;
+
+  /// No description provided for @proposalViewFromLedger.
+  ///
+  /// In en, this message translates to:
+  /// **'View proposal'**
+  String get proposalViewFromLedger;
+
+  /// No description provided for @proposalRateCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate the result'**
+  String get proposalRateCta;
 }
 
 class _AppLocalizationsDelegate

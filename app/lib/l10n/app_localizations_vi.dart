@@ -561,4 +561,69 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get fundChartRange12m => '12 tháng';
+
+  @override
+  String get proposalsSegment => 'Đề xuất';
+
+  @override
+  String get ledgerSegment => 'Sổ quỹ';
+
+  @override
+  String get proposalStatusPublished => 'Đã công bố';
+
+  @override
+  String get proposalStatusInProgress => 'Đang thực hiện';
+
+  @override
+  String get proposalStatusNotProceeding => 'Không thực hiện';
+
+  @override
+  String get proposalStatusCompleted => 'Đã hoàn thành';
+
+  @override
+  String get proposalStatusClosed => 'Đã đóng';
+
+  @override
+  String get proposalStatusDraft => 'Bản nháp';
+
+  @override
+  String get proposalProblem => 'Vấn đề hoặc nhu cầu';
+
+  @override
+  String get proposalAction => 'Phương án đề xuất';
+
+  @override
+  String get proposalCost => 'Chi phí dự kiến';
+
+  @override
+  String get proposalFund => 'Nguồn kinh phí';
+
+  @override
+  String get proposalContractor => 'Nhà thầu';
+
+  @override
+  String get proposalSchedule => 'Tiến độ dự kiến';
+
+  @override
+  String get proposalVersions => 'Các phiên bản đã công bố';
+
+  @override
+  String proposalVersion(String number) {
+    return 'Phiên bản $number';
+  }
+
+  @override
+  String get proposalSettlement => 'Quyết toán thanh toán';
+
+  @override
+  String get proposalSettled => 'Đã thanh toán và bên nhận đã xác nhận';
+
+  @override
+  String get proposalUnsettled => 'Chưa quyết toán thanh toán';
+
+  @override
+  String get proposalViewFromLedger => 'Xem đề xuất';
+
+  @override
+  String get proposalRateCta => 'Đánh giá kết quả';
 }
