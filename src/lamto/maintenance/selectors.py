@@ -35,12 +35,12 @@ def resident_report_timeline(report):
         )
     )
     cases = []
-    for link in CaseReport.objects.filter(report=report).select_related("case").order_by(
-        "case_id"
-    ):
+    for link in CaseReport.objects.filter(report=report).select_related("case").prefetch_related(
+        "case__updates__evidence_links__version"
+    ).order_by("case_id"):
         case = link.case
         updates = []
-        for update in case.updates.prefetch_related("evidence_links__version").order_by("pk"):
+        for update in case.updates.all().order_by("pk"):
             updates.append(
                 {
                     "id": update.pk,
