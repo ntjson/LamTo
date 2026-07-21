@@ -64,3 +64,68 @@ exit 0
 - Confirmed declined reports cannot expose a stale rating action.
 - Confirmed form editing locks the privacy switch after submission or while busy.
 - Concern: `ReportSummary` does not expose privacy, so list badges require one detail-provider request per visible report. Add `is_private` to the summary API and regenerate the client in a separate API-contract task if list scale makes this material.
+
+## Review Correction: Report Summary Privacy Contract
+
+### Plan deviation
+
+Review identified that the private list badge could not be implemented correctly or efficiently because Task 1 omitted `is_private` from the report-summary API contract. Per explicit user direction, this correction is a documented exception to the stage 4 plan's "client regen only in Task 1" rule: Task 3 now completes the omitted Task 1 contract field and regenerates the Dart client. The previous per-row `ReportDetail` fetch workaround was removed.
+
+### Files
+
+- `src/lamto/api/serializers.py`: added `ReportSummarySerializer.is_private`.
+- `src/lamto/api/tests/test_reports.py`: list API now asserts a private report returns `is_private: true`.
+- `docs/api/openapi-v1.yaml`: added required `ReportSummary.is_private`.
+- `app/packages/lamto_api/doc/ReportSummary.md`: regenerated documentation.
+- `app/packages/lamto_api/lib/src/model/report_summary.dart`: regenerated `isPrivate` model field/serializer.
+- `app/packages/lamto_api/lib/src/model/report_summary.g.dart`: regenerated built-value implementation.
+- `app/packages/lamto_api/test/report_summary_test.dart`: regenerated model test stub.
+- `app/lib/features/reports/my_issues_screen.dart`: badge now reads `report.isPrivate`; removed detail-provider watch and per-row request.
+- `app/test/my_issues_test.dart`: private summary drives badge and asserts zero detail fetches.
+- `app/test/home_screen_test.dart`, `app/test/report_form_test.dart`, `app/test/report_submitter_test.dart`, `app/test/reports_repository_test.dart`: updated required summary fixtures/mock responses.
+
+### TDD evidence
+
+Backend red:
+
+```text
+SECRET_KEY=test POSTGRES_DB=lamto POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 POSTGRES_EXECUTOR_ROLE=lamto_writer CLAMAV_HOST=127.0.0.1 CLAMAV_PORT=3310 AI_TRIAGE_URL='' AI_TRIAGE_TOKEN='' PRIVATE_STORAGE_BUCKET=lamto-documents PRIVATE_STORAGE_ENDPOINT_URL=http://127.0.0.1:9000 PRIVATE_STORAGE_ACCESS_KEY=x PRIVATE_STORAGE_SECRET_KEY=x .venv/bin/pytest src/lamto/api/tests/test_reports.py::ReportCreateTests::test_list_returns_only_own_reports
+FAILED: KeyError: 'is_private'
+```
+
+Flutter red after client regeneration:
+
+```text
+cd app && flutter test test/my_issues_test.dart
+FAILED: private badge absent because the row still fetched ReportDetail rather than reading ReportSummary.isPrivate
+```
+
+### Exact verification
+
+```text
+SECRET_KEY=test POSTGRES_DB=lamto POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 POSTGRES_EXECUTOR_ROLE=lamto_writer CLAMAV_HOST=127.0.0.1 CLAMAV_PORT=3310 AI_TRIAGE_URL='' AI_TRIAGE_TOKEN='' PRIVATE_STORAGE_BUCKET=lamto-documents PRIVATE_STORAGE_ENDPOINT_URL=http://127.0.0.1:9000 PRIVATE_STORAGE_ACCESS_KEY=x PRIVATE_STORAGE_SECRET_KEY=x .venv/bin/pytest src/lamto/api/tests/test_reports.py
+7 passed in 13.29s
+```
+
+```text
+cd app && flutter analyze
+No issues found! (ran in 1.5s)
+```
+
+```text
+cd app && flutter test
+153 tests passed; 0 failed (All tests passed!)
+```
+
+```text
+bash app/tool/check_api_generated.sh
+OK: generated API client matches the committed schema.
+```
+
+### Commit
+
+`fbf28a0 fix(api): expose report privacy in summaries`
+
+### Concerns
+
+None. The list response now carries privacy directly and list rendering performs no detail requests.
