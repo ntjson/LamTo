@@ -2,19 +2,29 @@ import time
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.urls import resolve, reverse
+from django.urls import reverse
 from django.utils import timezone
 from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
 
-from lamto.accounts.models import Building, ManagementMembership, Unit
+from lamto.accounts.models import Building, ManagementMembership, ResidentOccupancy, Unit
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase, TriageDecision
-from lamto.web.views import payments
+from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 
 class ManagementWorkspaceTests(TestCase):
+    def authenticate_management(self, membership):
+        self.client.force_login(membership.user)
+        device = TOTPDevice.objects.create(
+            user=membership.user, name="test", confirmed=True, key=random_hex()
+        )
+        session = self.client.session
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session[RECENT_REAUTH_KEY] = time.time()
+        session.save()
+
     def login_management(self):
         user = get_user_model().objects.create_user(
             email="manager@example.test", password="secret", display_name="Manager"
@@ -22,14 +32,7 @@ class ManagementWorkspaceTests(TestCase):
         membership = ManagementMembership.objects.create(
             user=user, building=Building.objects.create(name="Tower")
         )
-        self.client.force_login(user)
-        device = TOTPDevice.objects.create(
-            user=user, name="test", confirmed=True, key=random_hex()
-        )
-        session = self.client.session
-        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
-        session[RECENT_REAUTH_KEY] = time.time()
-        session.save()
+        self.authenticate_management(membership)
         return membership
 
     def test_management_can_open_every_navigation_area(self):
@@ -56,6 +59,13 @@ class ManagementWorkspaceTests(TestCase):
         user = get_user_model().objects.create_user(
             email="resident@example.test", password="secret", display_name="Resident"
         )
+        building = Building.objects.create(name="Resident Tower")
+        ResidentOccupancy.objects.create(
+            user=user,
+            unit=Unit.objects.create(building=building, label="R-1"),
+            active=True,
+        )
+        self.assertFalse(ManagementMembership.objects.filter(user=user).exists())
         self.client.force_login(user)
         for path in ("/s/", "/s/cases/", "/s/payments/"):
             with self.subTest(path=path):
@@ -102,9 +112,38 @@ class ManagementWorkspaceTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, f"Case #{case.pk}")
 
-    def test_payment_record_and_second_manager_verify_paths_are_distinct(self):
-        record = resolve("/s/payments/record/17/")
-        verify = resolve("/s/payments/verify/17/")
+    def test_recorder_and_second_manager_can_reach_separate_payment_steps(self):
+        seed = seed_pilot_world(
+            building_name="Payment Tower",
+            email_prefix="workspace-payment",
+            create_opening_fund=False,
+        )
+        driver = PilotDomainDriver(seed)
+        driver.confirm_triage_and_create_paid_work_order()
+        driver.submit_signed_proposal()
+        driver.complete_assigned_work()
+        payment = driver.accept_and_record_payment()
+        acceptance = payment.acceptance
+        recorder, verifier = seed.management_memberships
 
-        self.assertIs(record.func, payments.payment_record_detail)
-        self.assertIs(verify.func, payments.payment_verify_detail)
+        self.authenticate_management(recorder)
+        record_response = self.client.get(
+            reverse("web:payment-record-detail", kwargs={"pk": acceptance.pk})
+        )
+        self.assertRedirects(
+            record_response,
+            reverse("web:payment-verify-detail", kwargs={"pk": payment.pk}),
+            fetch_redirect_response=False,
+        )
+
+        self.client.logout()
+        self.authenticate_management(verifier)
+        verify_response = self.client.get(
+            reverse("web:payment-verify-detail", kwargs={"pk": payment.pk})
+        )
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertEqual(verify_response.context["membership"], verifier)
+        self.assertEqual(verify_response.context["payment"], payment)
+        self.assertContains(verify_response, f"Payment #{payment.pk}")
+        self.assertContains(verify_response, "Verify payment")
+        self.assertNotEqual(recorder, verifier)

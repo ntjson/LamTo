@@ -37,3 +37,8 @@
 - `uv run pytest src/lamto tests -q`: 474 passed, 1 skipped.
 
 Tests used the repository `.env` with `POSTGRES_USER=lamto_owner` and `POSTGRES_PASSWORD=lamto-owner`. The stale `test_lamto` database created under the writer role was dropped and recreated for the runs.
+
+## Review follow-up
+
+- The resident denial fixture now has a real active `ResidentOccupancy` and explicitly has no `ManagementMembership`.
+- Payment workspace coverage now creates a surviving accepted-work/payment chain with the pilot domain driver, verifies the recorder's payment-record HTTP transition, then authenticates the distinct second manager and renders the payment verification detail with the expected context and action.
