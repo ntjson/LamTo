@@ -7,8 +7,7 @@ from eth_account.messages import encode_typed_data
 
 from lamto.accounts.models import (
     Building,
-    Organization,
-    OrganizationMembership,
+    ManagementMembership,
 )
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceType
@@ -26,12 +25,7 @@ def make_signing_membership(building, *, email):
     user = get_user_model().objects.create_user(
         email=email, password="x", display_name=email
     )
-    organization = Organization.objects.create(
-        building=building, name=f"Org {email}", kind=Organization.Kind.BOARD
-    )
-    membership = OrganizationMembership.objects.create(
-        user=user, organization=organization, role=OrganizationMembership.Role.BOARD
-    )
+    membership = ManagementMembership.objects.create(user=user, building=building)
     account = Account.create()
     challenge = begin_wallet_registration(membership)
     proof = Account.sign_message(

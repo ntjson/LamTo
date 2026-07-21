@@ -13,7 +13,8 @@ from django.db.models import Max
 from django.utils import timezone
 from PIL import Image, UnidentifiedImageError
 
-from lamto.accounts.models import OrganizationMembership, ResidentOccupancy
+from lamto.accounts.models import ManagementMembership, ResidentOccupancy
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 
 from .models import Document, DocumentVersion, QuarantinedUpload
@@ -45,14 +46,7 @@ PHOTO_KINDS = {
 
 
 def _membership_for(uploader, building):
-    membership = (
-        OrganizationMembership.objects.select_related("organization")
-        .filter(user=uploader, active=True, organization__building=building)
-        .first()
-    )
-    if membership is None:
-        raise PermissionDenied("Document uploader does not belong to this building.")
-    return membership
+    return require_management(uploader, getattr(building, "pk", building))
 
 
 def _audit(uploader, membership, action, target_id, result, metadata=None):
@@ -109,7 +103,7 @@ def _retention_expires_at():
 def _create_rejection(uploader, membership, metadata, reason, occupancy=None):
     building = None
     if membership is not None:
-        building = membership.organization.building
+        building = membership.building
     elif occupancy is not None:
         building = occupancy.unit.building
     rejected = QuarantinedUpload.objects.create(
@@ -165,13 +159,13 @@ def _store(storage, storage_key, file_obj, content_type):
 
 def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
     memberships = list(
-        OrganizationMembership.objects.select_related("organization")
+        ManagementMembership.objects.select_related("building")
         .filter(user=uploader, active=True)
         .order_by("pk")
     )
     if not memberships:
         raise PermissionDenied("Quarantine upload cannot be audited.")
-    building_ids = {m.organization.building_id for m in memberships}
+    building_ids = {m.building_id for m in memberships}
     if len(building_ids) > 1:
         raise PermissionDenied(
             "Ambiguous building for quarantine; active membership must be unique to one building."
@@ -188,7 +182,7 @@ def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
         provider_version_id = _store(storages["private"], storage_key, temporary, metadata["content_type"])
     quarantined = QuarantinedUpload.objects.create(
         uploader=uploader,
-        building=membership.organization.building,
+        building=membership.building,
         reason=reason,
         storage_key=storage_key,
         provider_version_id=provider_version_id,
@@ -214,11 +208,10 @@ def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
 
 
 def create_document_version(document, uploaded_file, variant, uploader, scanner, *, _redacts=None, allow_resident_occupancy=False) -> DocumentVersion:
-    membership = (
-        OrganizationMembership.objects.select_related("organization")
-        .filter(user=uploader, active=True, organization__building=document.building)
-        .first()
-    )
+    try:
+        membership = require_management(uploader, document.building_id)
+    except PermissionDenied:
+        membership = None
     occupancy = None
     if membership is None:
         if not (
@@ -273,7 +266,7 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
             )
             building = None
             if membership is not None:
-                building = membership.organization.building
+                building = membership.building
             elif occupancy is not None:
                 building = occupancy.unit.building
             quarantined = QuarantinedUpload.objects.create(

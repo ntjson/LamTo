@@ -12,8 +12,7 @@ from eth_account.messages import encode_typed_data
 
 from lamto.accounts.models import (
     Building,
-    Organization,
-    OrganizationMembership,
+    ManagementMembership,
     SignerAuthorizationRequest,
     SignerWallet,
     WalletRegistrationChallenge,
@@ -86,18 +85,12 @@ class EvidenceOutboxTests(TestCase):
     def valid_payload(self, event_type=EvidenceType.PROPOSAL_CREATED, **changes):
         return {**VALID_PAYLOADS[event_type], **changes}
 
-    def make_membership(self, role=OrganizationMembership.Role.OPERATOR, suffix="one"):
-        kind = OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role]
+    def make_membership(self, role=None, suffix="one"):
         building = Building.objects.create(name=f"Building {suffix}")
-        organization = Organization.objects.create(
-            building=building, name=f"Organization {suffix}", kind=kind
-        )
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
         )
-        return OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
+        return ManagementMembership.objects.create(user=user, building=building)
 
     def register(self, membership, account=None):
         account = account or Account.create()
@@ -136,11 +129,7 @@ class EvidenceOutboxTests(TestCase):
         self.assertEqual(request.status, SignerAuthorizationRequest.Status.PENDING)
         self.assertTrue(AuditEvent.objects.filter(action="wallet.register", target_id=str(wallet.pk)).exists())
 
-    def test_wallet_registration_rejects_ineligible_role_and_expired_or_reused_nonce(self):
-        maintenance = self.make_membership(OrganizationMembership.Role.MAINTENANCE, "maintenance")
-        with self.assertRaises(PermissionDenied):
-            begin_wallet_registration(maintenance)
-
+    def test_wallet_registration_rejects_expired_or_reused_nonce(self):
         membership = self.make_membership(suffix="expiry")
         account = Account.create()
         challenge = begin_wallet_registration(membership)
@@ -319,9 +308,7 @@ class EvidenceOutboxTests(TestCase):
         self.assertEqual(event.status, BlockchainOutboxEvent.Status.SUBMITTED)
 
     def test_wallet_database_boundary_rejects_orm_queryset_and_raw_bypasses(self):
-        maintenance = self.make_membership(
-            OrganizationMembership.Role.MAINTENANCE, "direct-wallet"
-        )
+        maintenance = self.make_membership(suffix="direct-wallet")
         with self.assertRaises(IntegrityError), transaction.atomic():
             SignerWallet.objects.create(membership=maintenance, address=Account.create().address)
 
@@ -653,17 +640,10 @@ class ConcurrentOutboxTests(TransactionTestCase):
 
     def make_membership(self, suffix):
         building = Building.objects.create(name=f"Building {suffix}")
-        organization = Organization.objects.create(
-            building=building,
-            name=f"Organization {suffix}",
-            kind=Organization.Kind.OPERATOR,
-        )
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
         )
-        return OrganizationMembership.objects.create(
-            user=user, organization=organization, role=OrganizationMembership.Role.OPERATOR
-        )
+        return ManagementMembership.objects.create(user=user, building=building)
 
     def register(self, membership, account):
         challenge = begin_wallet_registration(membership)
@@ -704,7 +684,7 @@ class ConcurrentOutboxTests(TransactionTestCase):
             close_old_connections()
             try:
                 barrier.wait(timeout=5)
-                membership = OrganizationMembership.objects.get(pk=memberships[index])
+                membership = ManagementMembership.objects.get(pk=memberships[index])
                 with transaction.atomic():
                     outcomes[index] = queue_signed_event(
                         event_id,

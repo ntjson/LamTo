@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 
-from lamto.accounts.models import Building, Organization, OrganizationMembership
+from lamto.accounts.models import Building, ManagementMembership
 from lamto.documents.models import QuarantinedUpload
 from lamto.documents.services import quarantine_upload
 
@@ -32,14 +32,7 @@ class QuarantineBuildingTests(TestCase):
         user = get_user_model().objects.create_user(
             email="q@example.test", password="x", display_name="Q"
         )
-        organization = Organization.objects.create(
-            building=building, name="Q Op", kind=Organization.Kind.OPERATOR
-        )
-        OrganizationMembership.objects.create(
-            user=user,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
+        ManagementMembership.objects.create(user=user, building=building)
         upload = SimpleUploadedFile("bad.bin", b"x" * 10, content_type="application/octet-stream")
         quarantined = quarantine_upload(upload, user, "test reason")
         assert quarantined.building_id == building.pk

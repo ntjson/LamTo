@@ -170,8 +170,7 @@ class DeadlineRiskNotificationTests(TestCase):
 
         from django.contrib.auth import get_user_model
 
-        from lamto.accounts.models import Building, Organization, OrganizationMembership
-        from lamto.accounts.services import grant_capability
+        from lamto.accounts.models import Building, ManagementMembership
         from lamto.config.worker import process_deadline_risk_batch
         from lamto.maintenance.models import (
             BuildingLocation,
@@ -197,23 +196,7 @@ class DeadlineRiskNotificationTests(TestCase):
             password="secret",
             display_name="Operator",
         )
-        op_org = Organization.objects.create(
-            building=building, name="Ops", kind=Organization.Kind.OPERATOR
-        )
-        maint_org = Organization.objects.create(
-            building=building, name="Maint", kind=Organization.Kind.OPERATOR
-        )
-        op_m = OrganizationMembership.objects.create(
-            user=op_user,
-            organization=op_org,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
-        grant_capability(op_m, "work.assign")
-        OrganizationMembership.objects.create(
-            user=assignee_user,
-            organization=maint_org,
-            role=OrganizationMembership.Role.MAINTENANCE,
-        )
+        ManagementMembership.objects.create(user=op_user, building=building)
         unit = __import__("lamto.accounts.models", fromlist=["Unit"]).Unit.objects.create(
             building=building, label="D-1"
         )

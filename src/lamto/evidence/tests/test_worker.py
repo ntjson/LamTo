@@ -10,8 +10,7 @@ from eth_account.messages import encode_typed_data
 
 from lamto.accounts.models import (
     Building,
-    Organization,
-    OrganizationMembership,
+    ManagementMembership,
     SignerAuthorizationRequest,
 )
 from lamto.audit.models import AuditEvent
@@ -129,18 +128,12 @@ class FakeChainClient:
 class OutboxEventFactoryMixin:
     """Wallet + signed-event setup shared by worker test variants."""
 
-    def make_membership(self, role=OrganizationMembership.Role.OPERATOR, suffix="worker"):
-        kind = OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[role]
+    def make_membership(self, role=None, suffix="worker"):
         building = Building.objects.create(name=f"Building {suffix}")
-        organization = Organization.objects.create(
-            building=building, name=f"Organization {suffix}", kind=kind
-        )
         user = get_user_model().objects.create_user(
             email=f"{suffix}@example.test", password="secret", display_name=suffix
         )
-        return OrganizationMembership.objects.create(
-            user=user, organization=organization, role=role
-        )
+        return ManagementMembership.objects.create(user=user, building=building)
 
     def register(self, membership, account=None):
         account = account or Account.create()

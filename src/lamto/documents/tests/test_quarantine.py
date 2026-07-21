@@ -9,7 +9,7 @@ from django.core.files.storage import storages
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from lamto.accounts.models import Building, Organization, OrganizationMembership
+from lamto.accounts.models import Building, ManagementMembership
 from lamto.audit.models import AuditEvent
 from lamto.documents.models import Document, DocumentVersion, QuarantinedUpload
 from lamto.documents.scanner import DocumentScanUnavailable, scan_with_clamav
@@ -35,14 +35,7 @@ class QuarantineTests(TestCase):
             email="operator@example.test", password="secret", display_name="Operator"
         )
         self.building = Building.objects.create(name="Minh An Residence")
-        organization = Organization.objects.create(
-            building=self.building, name="Operator", kind=Organization.Kind.OPERATOR
-        )
-        OrganizationMembership.objects.create(
-            user=self.uploader,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
+        ManagementMembership.objects.create(user=self.uploader, building=self.building)
         self.document = Document.objects.create(
             building=self.building, kind=Document.Kind.QUOTATION
         )

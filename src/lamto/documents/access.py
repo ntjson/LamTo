@@ -3,7 +3,8 @@ import hashlib
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import storages
 
-from lamto.accounts.models import OrganizationMembership, ResidentOccupancy
+from lamto.accounts.models import ManagementMembership, ResidentOccupancy
+from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 
 from .models import DocumentVersion
@@ -32,11 +33,7 @@ def _resident_occupancy(user, version):
 
 
 def _allowed(user, membership, version, occupancy):
-    if membership is None:
-        return False
-    if membership.organization.building_id != version.document.building_id:
-        return False
-    return membership.role == OrganizationMembership.Role.AUDITOR
+    return membership is not None or occupancy is not None
 
 
 def _read_stored_version(version):
@@ -75,15 +72,14 @@ def read_version_bytes(version) -> bytes:
 
 
 def authorize_download(user, membership_id, version) -> bytes:
-    membership = (
-        OrganizationMembership.objects.select_related("organization")
-        .filter(pk=membership_id, user=user, active=True)
-        .first()
-    )
-    audit_membership = membership or OrganizationMembership.objects.filter(
+    try:
+        membership = require_management(user, version.document.building_id)
+    except PermissionDenied:
+        membership = None
+    audit_membership = membership or ManagementMembership.objects.filter(
         user=user, active=True
     ).first()
-    occupancy = _resident_occupancy(user, version) if audit_membership is None else None
+    occupancy = _resident_occupancy(user, version) if membership is None else None
     if audit_membership is None and occupancy is None:
         occupancy = ResidentOccupancy.objects.filter(user=user, active=True).first()
     audit_metadata = {"occupancy_id": occupancy.id} if occupancy else None

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from lamto.accounts.models import CapabilityGrant, OrganizationMembership
 from lamto.notifications.services import (
     EVENT_CASE_STATUS,
     EVENT_DEADLINE_RISK,
@@ -21,31 +20,20 @@ from lamto.notifications.services import (
 )
 
 
-def _users_with_capability(building_id: int, code: str):
-    memberships = (
-        OrganizationMembership.objects.filter(
-            active=True,
-            organization__building_id=building_id,
-            capabilitygrant__code=code,
+def _management_users(building_id: int):
+    from lamto.accounts.models import ManagementMembership
+
+    return [
+        membership.user
+        for membership in ManagementMembership.objects.select_related("user").filter(
+            building_id=building_id, active=True
         )
-        .select_related("user")
-        .distinct()
-    )
-    return [m.user for m in memberships]
-
-
-def _users_with_role(building_id: int, role: str):
-    memberships = OrganizationMembership.objects.filter(
-        active=True,
-        organization__building_id=building_id,
-        role=role,
-    ).select_related("user")
-    return [m.user for m in memberships]
+    ]
 
 
 def notify_report_receipt(report):
     building_id = report.unit.building_id
-    recipients = [report.reporter] + _users_with_capability(building_id, "report.triage")
+    recipients = [report.reporter] + _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_REPORT_RECEIPT}:report:{report.pk}",
@@ -57,9 +45,7 @@ def notify_report_receipt(report):
 
 
 def notify_triage_confirmed(case, report):
-    recipients = [report.reporter] + _users_with_capability(
-        case.building_id, "report.triage"
-    )
+    recipients = [report.reporter] + _management_users(case.building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_TRIAGE_STATUS}:case:{case.pk}",
@@ -71,9 +57,7 @@ def notify_triage_confirmed(case, report):
 
 
 def notify_work_assigned(work_order):
-    recipients = [work_order.assignee] + _users_with_capability(
-        work_order.case.building_id, "work.assign"
-    )
+    recipients = [work_order.assignee] + _management_users(work_order.case.building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_WORK_ASSIGNED}:work:{work_order.pk}",
@@ -85,9 +69,7 @@ def notify_work_assigned(work_order):
 
 
 def notify_deadline_risk(work_order):
-    recipients = [work_order.assignee] + _users_with_capability(
-        work_order.case.building_id, "work.assign"
-    )
+    recipients = [work_order.assignee] + _management_users(work_order.case.building_id)
     # Idempotent per work order + calendar day so re-queue is safe within a day
     # but can re-alert on later days if still at risk.
     day = work_order.deadline_at.date().isoformat() if work_order.deadline_at else "unknown"
@@ -103,11 +85,7 @@ def notify_deadline_risk(work_order):
 
 def notify_work_accepted(record):
     building_id = record.work_order.case.building_id
-    recipients = (
-        [record.work_order.assignee]
-        + _users_with_capability(building_id, "work.accept")
-        + _users_with_capability(building_id, "payment.record")
-    )
+    recipients = [record.work_order.assignee] + _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_WORK_ACCEPTED}:acceptance:{record.pk}",
@@ -140,7 +118,7 @@ def notify_work_rateable(record):
 
 def notify_payment_recorded(payment):
     building_id = payment.acceptance.work_order.case.building_id
-    recipients = _users_with_capability(building_id, "payment.verify") + [
+    recipients = _management_users(building_id) + [
         payment.recorder.user
     ]
     notify_users(
@@ -162,11 +140,7 @@ def notify_payment_verified(verification):
     else:
         code = EVENT_PAYMENT_REJECTED
         subject = "Payment rejected"
-    recipients = (
-        [payment.recorder.user]
-        + _users_with_capability(building_id, "payment.record")
-        + _users_with_capability(building_id, "ledger.publish")
-    )
+    recipients = [payment.recorder.user] + _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{code}:verification:{verification.pk}",
@@ -179,7 +153,7 @@ def notify_payment_verified(verification):
 
 def notify_publication(entry):
     building_id = entry.case.building_id
-    # Residents in building + board
+    # Residents and management in the building.
     from lamto.accounts.models import ResidentOccupancy
 
     residents = [
@@ -188,9 +162,7 @@ def notify_publication(entry):
             unit__building_id=building_id, active=True
         ).select_related("user")
     ]
-    recipients = residents + _users_with_role(
-        building_id, OrganizationMembership.Role.BOARD
-    )
+    recipients = residents + _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_PUBLICATION}:entry:{entry.pk}",
@@ -203,10 +175,7 @@ def notify_publication(entry):
 
 def notify_integrity_mismatch(entry, observation):
     building_id = entry.case.building_id
-    recipients = (
-        _users_with_role(building_id, OrganizationMembership.Role.BOARD)
-        + _users_with_role(building_id, OrganizationMembership.Role.AUDITOR)
-    )
+    recipients = _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_INTEGRITY_MISMATCH}:entry:{entry.pk}:obs:{observation.pk}",
@@ -220,7 +189,7 @@ def notify_integrity_mismatch(entry, observation):
 def notify_quarantined_upload(upload, building_id=None):
     recipients = [upload.uploader]
     if building_id is not None:
-        recipients += _users_with_capability(building_id, "report.triage")
+        recipients += _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_QUARANTINED_UPLOAD}:upload:{upload.pk}",

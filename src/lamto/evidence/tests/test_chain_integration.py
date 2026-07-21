@@ -17,8 +17,7 @@ from web3 import Web3
 
 from lamto.accounts.models import (
     Building,
-    Organization,
-    OrganizationMembership,
+    ManagementMembership,
     SignerAuthorizationRequest,
 )
 from lamto.config.secrets import coalesce_secret
@@ -114,21 +113,13 @@ class ChainIntegrationTests(TestCase):
             chain_id=int(os.environ.get("BLOCKCHAIN_CHAIN_ID", "1337")),
         )
 
-        kind = OrganizationMembership.ROLE_TO_ORGANIZATION_KIND[
-            OrganizationMembership.Role.OPERATOR
-        ]
         building = Building.objects.create(name="Integration Building")
-        organization = Organization.objects.create(
-            building=building, name="Integration Org", kind=kind
-        )
         user = get_user_model().objects.create_user(
             email="integration@example.test",
             password="secret",
             display_name="integration",
         )
-        self.membership = OrganizationMembership.objects.create(
-            user=user, organization=organization, role=OrganizationMembership.Role.OPERATOR
-        )
+        self.membership = ManagementMembership.objects.create(user=user, building=building)
         self.stakeholder = Account.create()
         challenge = begin_wallet_registration(self.membership)
         proof = Account.sign_message(

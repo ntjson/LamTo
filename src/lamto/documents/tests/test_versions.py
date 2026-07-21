@@ -10,7 +10,7 @@ from django.test import TestCase, override_settings
 from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
-from lamto.accounts.models import Building, Organization, OrganizationMembership
+from lamto.accounts.models import Building, ManagementMembership
 from lamto.documents.models import Document, DocumentVersion, QuarantinedUpload
 from lamto.documents.services import (
     DocumentStorageError,
@@ -34,14 +34,7 @@ class DocumentVersionTests(TestCase):
             email="operator@example.test", password="secret", display_name="Operator"
         )
         building = Building.objects.create(name="Minh An Residence")
-        organization = Organization.objects.create(
-            building=building, name="Operator", kind=Organization.Kind.OPERATOR
-        )
-        OrganizationMembership.objects.create(
-            user=uploader,
-            organization=organization,
-            role=OrganizationMembership.Role.OPERATOR,
-        )
+        ManagementMembership.objects.create(user=uploader, building=building)
         return uploader, building
 
     def test_original_and_redacted_bytes_get_distinct_immutable_hashes(self):
