@@ -10,13 +10,13 @@
   <div class="workflow-section">
     <h2>{% trans "Review and sign" %}</h2>
     <p class="hint">{% blocktrans with amount=sign_form.amount_vnd.value|intcomma name=sign_form.contractor_name.value %}Amount {{ amount }} VND · {{ name }}{% endblocktrans %}</p>
-    <p class="hint">{% trans "The quotation is uploaded and frozen. Sign with your wallet to submit for Board review." %}</p>
+    <p class="hint">{% trans "The quotation is uploaded and frozen. Sign with your wallet to publish the proposal for work." %}</p>
     <form method="post" class="stack-form" data-signed-form data-review-form>
       {% csrf_token %}
       <input type="hidden" name="action" value="submit">
       {{ sign_form.as_p }}
       <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign and send this proposal for Board review." %}</p>
+      <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign and publish this proposal for work." %}</p>
       <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
       {% include "web/staff/_review_summary.html" with review_kind="proposal_create" review_id="proposal-create" %}
       <button type="submit" class="button button-primary">{% trans "Submit proposal" %}</button>

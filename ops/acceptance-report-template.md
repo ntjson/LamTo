@@ -9,15 +9,13 @@
 
 | Scenario | Pass? | Evidence (test log / ticket / screenshot) |
 |----------|-------|-------------------------------------------|
-| Normal path (report → published ledger → auditor verify) | ☐ | |
+| Normal path (report → published ledger → integrity verification) | ☐ | |
 | Chain paused: work pending anchor; publish blocked then retry same IDs | ☐ | |
 | Payment self-verify denied; publisher dual-control denials | ☐ | |
-| Proposal revision after signature requires re-approval | ☐ | |
+| Proposal revision after signature requires a new publication | ☐ | |
 | AI/email outage: report + action inbox authoritative | ☐ | |
-| Role/object/file access denials | ☐ | |
-| Emergency drill isolated (no fund post, permanent label) | ☐ | |
-| Emergency outcomes: ratified / rejected / overdue | ☐ | |
-| Tamper mismatch + correction preserves original / fund reconciles | ☐ | |
+| Cross-building object/file access denials | ☐ | |
+| Tamper mismatch blocks publication and preserves the original evidence | ☐ | |
 | Backup/outbox replay idempotent (no duplicate rows) | ☐ | |
 
 ## Automated results
@@ -32,28 +30,22 @@
 
 - Opening / pre-pilot balance: ________ VND  
 - Post normal-path balance: ________ VND  
-- Drill fund delta (must be 0): ________ VND  
 - Duplicate financial/chain rows found: ________ (must be 0)  
 - Unresolved high-severity findings: ________ (must be 0)  
 
 ## Sign-off
 
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Board | | | |
-| Operator | | | |
-| Resident representative | | | |
-| Auditor | | | |
-| Maintenance | | | |
-| Participating resident | | | |
+| Participant | Name | Signature | Date |
+|-------------|------|-----------|------|
+| Management participant | | | |
+| Second Management participant (maker-checker) | | | |
+| Participating resident, or a person chosen by participating residents | | | |
 
 ## Attestations
 
 - [ ] No safety incident was manufactured for the pilot.
 - [ ] Safety action was never delayed for pilot or chain availability.
-- [ ] Pilot was not held open awaiting an emergency.
 - [ ] Wallet private keys were not exported to shared channels.
-- [ ] Drill records remain permanently labeled and non-convertible.
 
 **Overall decision:** ☐ Accept  ☐ Accept with observations  ☐ Reject  
 

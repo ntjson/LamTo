@@ -27,10 +27,9 @@ maker-checker → publication → resident ledger → integrity verification.
 ## Safety and ethics
 
 - **No incident is manufactured.** Do not stage false hazards or delay real safety work.
-- If a genuine emergency arises during the pilot window, follow
-  `ops/emergency-drill-runbook.md` / live emergency procedures — safety action is
-  never delayed for pilot paperwork.
-- The pilot is **not held open** awaiting an emergency to complete acceptance.
+- If a genuine emergency arises during the pilot window, follow the building's
+  emergency procedures outside LamTo. Safety action is never delayed for pilot
+  paperwork.
 
 ## Participants
 

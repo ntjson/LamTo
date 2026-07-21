@@ -26,6 +26,16 @@ A stale `test_lamto` database was dropped, and the targeted test run rebuilt it 
 - Full suite: `460 passed, 1 skipped`
 - `git diff --check`: clean
 
+## Final live-documentation audit
+
+Removed the obsolete emergency drill runbook and its final link. The acceptance report now covers the surviving normal, isolation, anchoring, integrity, and maker-checker scenarios, with sign-off by Management participants and a participating resident (or someone chosen by participating residents) rather than deleted roles. Live operations docs and staff templates were swept for all former staff-role labels, emergency drill/ratification workflow, support elevation, and grants; no stale product guidance remains outside the preserved historical plans/specs and migrations.
+
+Also removed stale former-role review copy and template conditionals from proposal, payment, and signing-summary views.
+
+- Deleted-runbook link/residue checks: clean
+- Full suite: `460 passed, 1 skipped`
+- `git diff --check`: clean
+
 The skipped test is pre-existing and unrelated to Task 13.
 
 ## Follow-up residue cleanup
