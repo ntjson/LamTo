@@ -127,6 +127,21 @@ class ResidentOccupancy(models.Model):
     active = models.BooleanField(default=True)
 
 
+class ManagementMembership(models.Model):
+    """The single Management staff role, scoped to a building."""
+
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    building = models.ForeignKey(Building, on_delete=models.PROTECT)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "building"], name="management_membership_once"
+            )
+        ]
+
+
 class SignerWallet(models.Model):
     membership = models.ForeignKey(OrganizationMembership, on_delete=models.PROTECT)
     address = models.CharField(max_length=42)
