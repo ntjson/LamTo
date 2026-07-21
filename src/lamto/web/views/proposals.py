@@ -175,11 +175,11 @@ def proposal_detail(request, pk):
                 if action == "decide":
                     proceed = request.POST.get("proceed") in {"1", "true", "on"}
                     with transaction.atomic():
+                        if proceed and proposal.case_id:
+                            start_case_work(proposal.case, request.user)
                         decide_proposal(
                             proposal, request.user, proceed, request.POST.get("note", ""),
                         )
-                        if proceed and proposal.case_id:
-                            start_case_work(proposal.case, request.user)
                 elif action == "progress":
                     publish_progress(
                         proposal=proposal, manager=request.user, cause=request.POST.get("cause", ""),
