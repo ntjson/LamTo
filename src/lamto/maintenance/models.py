@@ -217,55 +217,6 @@ class InfoRequest(models.Model):
         ]
 
 
-class WorkOrder(models.Model):
-    class Status(models.TextChoices):
-        ASSIGNED = "ASSIGNED", "Assigned"
-        IN_PROGRESS = "IN_PROGRESS", "In progress"
-        AWAITING_ACCEPTANCE = "AWAITING_ACCEPTANCE", "Awaiting acceptance"
-        ACCEPTED = "ACCEPTED", "Accepted"
-        CLOSED = "CLOSED", "Closed"
-        CANCELLED = "CANCELLED", "Cancelled"
-
-    class AuthorizationStatus(models.TextChoices):
-        NOT_REQUIRED = "NOT_REQUIRED", "Not required"
-        PENDING = "PENDING", "Pending"
-        AUTHORIZED = "AUTHORIZED", "Authorized"
-
-    case = models.ForeignKey(MaintenanceCase, on_delete=models.PROTECT, related_name="work_orders")
-    assignee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    priority = models.CharField(max_length=16)
-    deadline_at = models.DateTimeField()
-    requires_spending = models.BooleanField()
-    authorization_status = models.CharField(
-        max_length=16, choices=AuthorizationStatus.choices, default=AuthorizationStatus.NOT_REQUIRED
-    )
-    status = models.CharField(max_length=24, choices=Status.choices, default=Status.ASSIGNED)
-    cause = models.TextField(blank=True)
-    result = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True, blank=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-
-    @property
-    def authorization_state(self):
-        return self.authorization_status
-
-    @authorization_state.setter
-    def authorization_state(self, value):
-        self.authorization_status = value
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                condition=(
-                    models.Q(requires_spending=False, authorization_status="NOT_REQUIRED")
-                    | models.Q(requires_spending=True, authorization_status__in=["PENDING", "AUTHORIZED"])
-                ),
-                name="work_order_spending_authorization",
-            ),
-        ]
-
-
 class AppendOnlyModel(models.Model):
     class Meta:
         abstract = True
@@ -280,7 +231,7 @@ class AppendOnlyModel(models.Model):
 
 
 class WorkUpdate(AppendOnlyModel):
-    work_order = models.ForeignKey(WorkOrder, on_delete=models.PROTECT, related_name="updates")
+    case = models.ForeignKey(MaintenanceCase, on_delete=models.PROTECT, related_name="updates")
     cause = models.TextField()
     result = models.TextField()
     evidence = models.ManyToManyField(DocumentVersion, through="WorkUpdateEvidence", related_name="work_updates")
@@ -309,23 +260,19 @@ class CompletionRating(models.Model):
         on_delete=models.PROTECT,
         related_name="completion_ratings",
     )
-    work_order = models.ForeignKey(
-        WorkOrder,
+    case = models.ForeignKey(
+        MaintenanceCase,
         on_delete=models.PROTECT,
         related_name="completion_ratings",
     )
-    score = models.PositiveSmallIntegerField()
+    satisfied = models.BooleanField()
     comment = models.CharField(max_length=500, blank=True)
     created_at = models.DateTimeField()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["resident", "work_order"],
-                name="completion_rating_once_per_resident_work_order",
-            ),
-            models.CheckConstraint(
-                condition=models.Q(score__gte=1, score__lte=5),
-                name="completion_rating_score_range",
+                fields=["resident", "case"],
+                name="completion_rating_once_per_resident_case",
             ),
         ]

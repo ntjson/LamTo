@@ -5,9 +5,7 @@ from lamto.maintenance.models import (
     CaseReport,
     CompletionRating,
     IssueReport,
-    WorkOrder,
 )
-from lamto.maintenance.ratings import ELIGIBLE_STATUSES
 
 
 def resident_reports(user):
@@ -19,16 +17,12 @@ def resident_reports(user):
     )
 
 
-def rateable_work_orders(user, report):
-    """Completed work on the report's cases the user has not rated yet."""
+def rateable_cases(user, report):
+    """Completed cases for the report that the user has not rated yet."""
     case_ids = CaseReport.objects.filter(report=report).values_list("case_id", flat=True)
-    rated = CompletionRating.objects.filter(resident=user).values_list(
-        "work_order_id", flat=True
-    )
-    return WorkOrder.objects.filter(
-        case_id__in=case_ids,
-        status__in=ELIGIBLE_STATUSES,
-    ).exclude(pk__in=rated)
+    rated = CompletionRating.objects.filter(resident=user).values_list("case_id", flat=True)
+    from .models import MaintenanceCase
+    return MaintenanceCase.objects.filter(pk__in=case_ids, completed_at__isnull=False).exclude(pk__in=rated)
 
 
 def resident_report_timeline(report):
@@ -37,7 +31,7 @@ def resident_report_timeline(report):
     decision = getattr(report, "triage_decision", None)
     rated_ids = set(
         CompletionRating.objects.filter(resident_id=report.reporter_id).values_list(
-            "work_order_id", flat=True
+            "case_id", flat=True
         )
     )
     cases = []
@@ -45,19 +39,8 @@ def resident_report_timeline(report):
         "case_id"
     ):
         case = link.case
-        work_orders = []
-        for wo in case.work_orders.select_related("acceptance").order_by("pk"):
-            acceptance = getattr(wo, "acceptance", None)
-            work_orders.append(
-                {
-                    "id": wo.pk,
-                    "status": wo.status,
-                    "deadline_at": wo.deadline_at,
-                    "completed_at": wo.completed_at,
-                    "accepted_at": getattr(acceptance, "accepted_at", None),
-                    "can_rate": wo.status in ELIGIBLE_STATUSES and wo.pk not in rated_ids,
-                }
-            )
+        updates = [{"id": u.pk, "cause": u.cause, "result": u.result, "created_at": u.created_at}
+                   for u in case.updates.order_by("pk")]
         cases.append(
             {
                 "id": case.pk,
@@ -65,7 +48,10 @@ def resident_report_timeline(report):
                 "urgency": case.urgency,
                 "deadline_at": case.deadline_at,
                 "active": case.active,
-                "work_orders": work_orders,
+                "completed_at": case.completed_at,
+                "closed_at": case.closed_at,
+                "updates": updates,
+                "can_rate": case.completed_at is not None and case.pk not in rated_ids,
             }
         )
     info = report.info_requests.filter(resolved_at__isnull=True).first()

@@ -227,13 +227,11 @@ class ReportPhotoUploadSerializer(serializers.Serializer):
     photo = serializers.FileField(help_text="JPEG/PNG image; scanned by ClamAV before storage.")
 
 
-class ReportWorkOrderSerializer(serializers.Serializer):
+class ReportWorkUpdateSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    status = serializers.CharField()
-    deadline_at = serializers.DateTimeField()
-    completed_at = serializers.DateTimeField(allow_null=True)
-    accepted_at = serializers.DateTimeField(allow_null=True)
-    can_rate = serializers.BooleanField()
+    cause = serializers.CharField()
+    result = serializers.CharField()
+    created_at = serializers.DateTimeField()
 
 
 class ReportCaseSerializer(serializers.Serializer):
@@ -242,7 +240,10 @@ class ReportCaseSerializer(serializers.Serializer):
     urgency = serializers.CharField()
     deadline_at = serializers.DateTimeField()
     active = serializers.BooleanField()
-    work_orders = ReportWorkOrderSerializer(many=True)
+    completed_at = serializers.DateTimeField(allow_null=True)
+    closed_at = serializers.DateTimeField(allow_null=True)
+    updates = ReportWorkUpdateSerializer(many=True)
+    can_rate = serializers.BooleanField()
 
 
 class ReportDetailSerializer(serializers.Serializer):
@@ -270,15 +271,15 @@ class InfoReplyResultSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=IssueReport.Status.choices)
 
 
-class WorkRatingSerializer(serializers.Serializer):
-    score = serializers.IntegerField(min_value=1, max_value=5)
+class CaseRatingSerializer(serializers.Serializer):
+    satisfied = serializers.BooleanField()
     comment = serializers.CharField(required=False, allow_blank=True, max_length=500)
 
 
-class WorkRatingResultSerializer(serializers.Serializer):
+class CaseRatingResultSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    work_order_id = serializers.IntegerField()
-    score = serializers.IntegerField()
+    case_id = serializers.IntegerField()
+    satisfied = serializers.BooleanField()
 
 
 class LocationSerializer(serializers.Serializer):

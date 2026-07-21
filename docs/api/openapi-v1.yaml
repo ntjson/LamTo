@@ -902,9 +902,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Resource not found (code=not_found).
-  /api/v1/work/{id}/rating:
+  /api/v1/cases/{id}/rating:
     post:
-      operationId: work_rating_create
+      operationId: case_rating_create
       parameters:
       - in: path
         name: id
@@ -912,18 +912,18 @@ paths:
           type: integer
         required: true
       tags:
-      - work
+      - cases
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkRatingRequest'
+              $ref: '#/components/schemas/CaseRatingRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WorkRatingRequest'
+              $ref: '#/components/schemas/CaseRatingRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WorkRatingRequest'
+              $ref: '#/components/schemas/CaseRatingRequest'
         required: true
       security:
       - knoxApiToken: []
@@ -932,7 +932,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WorkRatingResult'
+                $ref: '#/components/schemas/CaseRatingResult'
           description: ''
         '400':
           content:
@@ -1447,17 +1447,28 @@ components:
           format: date-time
         active:
           type: boolean
-        work_orders:
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+        updates:
           type: array
           items:
-            $ref: '#/components/schemas/ReportWorkOrder'
+            $ref: '#/components/schemas/ReportWorkUpdate'
+        can_rate:
+          type: boolean
       required:
       - active
       - category
       - deadline_at
       - id
       - urgency
-      - work_orders
+      - updates
+      - can_rate
     ReportCreateRequest:
       type: object
       properties:
@@ -1577,33 +1588,23 @@ components:
       - location_path_snapshot
       - status
       - text
-    ReportWorkOrder:
+    ReportWorkUpdate:
       type: object
       properties:
         id:
           type: integer
-        status:
+        cause:
           type: string
-        deadline_at:
+        result:
           type: string
-          format: date-time
-        completed_at:
-          type: string
-          format: date-time
-          nullable: true
-        accepted_at:
+        created_at:
           type: string
           format: date-time
-          nullable: true
-        can_rate:
-          type: boolean
       required:
-      - accepted_at
-      - can_rate
-      - completed_at
-      - deadline_at
+      - cause
+      - result
+      - created_at
       - id
-      - status
     StatusEnum:
       enum:
       - SUBMITTED
@@ -1649,31 +1650,29 @@ components:
       - decision
       - verified_at
       - verified_by
-    WorkRatingRequest:
+    CaseRatingRequest:
       type: object
       properties:
-        score:
-          type: integer
-          maximum: 5
-          minimum: 1
+        satisfied:
+          type: boolean
         comment:
           type: string
           maxLength: 500
       required:
-      - score
-    WorkRatingResult:
+      - satisfied
+    CaseRatingResult:
       type: object
       properties:
         id:
           type: integer
-        work_order_id:
+        case_id:
           type: integer
-        score:
-          type: integer
+        satisfied:
+          type: boolean
       required:
       - id
-      - score
-      - work_order_id
+      - satisfied
+      - case_id
   securitySchemes:
     knoxApiToken:
       type: apiKey

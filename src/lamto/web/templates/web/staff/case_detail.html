@@ -31,7 +31,7 @@
   </dl>
   {% if case.proposal %}
   <p><a class="button button-secondary" href="{% url 'web:proposal-detail' case.proposal.pk %}">{% trans "View spending proposal" %}</a></p>
-  {% elif work_orders %}
+  {% elif case %}
   <p><a class="button button-secondary" href="{% url 'web:proposal-create' case.pk %}">{% trans "Create spending proposal" %}</a></p>
   {% endif %}
   {% endif %}
@@ -42,28 +42,27 @@
     <div><dt>{% trans "Management queue" %}</dt><dd>{{ case.department }}</dd></div>
     <div><dt>{% trans "Deadline" %}</dt><dd>{% if case.deadline_at %}{{ case.deadline_at|staff_datetime }}{% else %}{% trans "Not set" %}{% endif %}</dd></div>
   </dl>
-  <h2>{% trans "Work orders" %}</h2>
+  <h2>{% trans "Progress" %}</h2>
   <ul class="task-list">
-    {% for wo in work_orders %}
+    {% for update in updates %}
     <li>
-      <a class="task-row task-row-simple" href="{% url 'web:work-order-detail' wo.pk %}">
-        <span class="task-subject">{% blocktrans with id=wo.pk status=wo.get_status_display %}Work order #{{ id }} · {{ status }}{% endblocktrans %}</span>
-        <span class="task-amount"><span class="sr-only">{% trans "No amount recorded" %}</span><span aria-hidden="true">—</span></span>
-        <span class="task-meta"><span class="sr-only">{% trans "Open work order" %}</span></span>
-      </a>
+      <strong>{{ update.cause }}</strong> — {{ update.result }}
     </li>
     {% empty %}
-    <li class="empty-state"><p>{% trans "No work orders yet." %}</p></li>
+    <li class="empty-state"><p>{% trans "No progress updates yet." %}</p></li>
     {% endfor %}
   </ul>
   {% if work_form %}
-  <h2>{% trans "Create work order" %}</h2>
+  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="start_work"><button type="submit" class="button">{% trans "Start work" %}</button></form>
+  <h2>{% trans "Publish progress" %}</h2>
   <form method="post" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
-    <input type="hidden" name="action" value="create_work_order">
     {{ work_form.as_p }}
-    <button type="submit" class="button button-primary">{% trans "Create work order" %}</button>
+    <button name="action" value="publish_progress" type="submit" class="button">{% trans "Publish progress" %}</button>
+    <button name="action" value="complete_work" type="submit" class="button button-primary">{% trans "Complete work" %}</button>
   </form>
+  <h2>{% trans "Ratings" %}</h2>
+  <ul>{% for rating in ratings %}<li>{{ rating.resident }}: {{ rating.satisfied|yesno:"Satisfied,Not satisfied" }}</li>{% empty %}<li>{% trans "No ratings yet." %}</li>{% endfor %}</ul>
   {% endif %}
   {% elif form %}
   {% if report.declined_reason %}<p><strong>{% trans "Decline reason" %}:</strong> {{ report.declined_reason }}</p>{% endif %}

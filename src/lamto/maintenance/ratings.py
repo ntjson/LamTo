@@ -5,31 +5,19 @@ from django.utils import timezone
 from lamto.audit.services import record_audit
 from lamto.accounts.models import ResidentOccupancy
 
-from .models import CaseReport, CompletionRating, WorkOrder
-
-
-ELIGIBLE_STATUSES = frozenset(
-    {
-        WorkOrder.Status.ACCEPTED,
-        WorkOrder.Status.CLOSED,
-    }
-)
+from .cases import TERMINAL_STATUSES
+from .models import CaseReport, CompletionRating, IssueReport, MaintenanceCase
 
 
 @transaction.atomic
-def rate_completed_work(resident, work_order, score, comment="") -> CompletionRating:
-    work_order = (
-        WorkOrder.objects.select_for_update()
-        .select_related("case")
-        .filter(pk=getattr(work_order, "pk", None))
-        .first()
-    )
-    if work_order is None:
-        raise ValidationError("Work order is required.")
-    if work_order.status not in ELIGIBLE_STATUSES:
-        raise ValidationError("Only accepted or closed work can be rated.")
-    if type(score) is not int or score < 1 or score > 5:
-        raise ValidationError("Rating score must be an integer from 1 to 5.")
+def rate_completed_case(resident, case, satisfied, comment="") -> CompletionRating:
+    case = MaintenanceCase.objects.select_for_update().filter(pk=getattr(case, "pk", None)).first()
+    if case is None:
+        raise ValidationError("Case is required.")
+    if case.completed_at is None:
+        raise ValidationError("Only completed cases can be rated.")
+    if type(satisfied) is not bool:
+        raise ValidationError("Satisfied must be a boolean.")
     if comment is None:
         comment = ""
     if not isinstance(comment, str):
@@ -39,25 +27,25 @@ def rate_completed_work(resident, work_order, score, comment="") -> CompletionRa
         raise ValidationError("Rating comment must be at most 500 characters.")
 
     owns_report = CaseReport.objects.filter(
-        case_id=work_order.case_id,
+        case=case,
         report__reporter_id=getattr(resident, "pk", None),
     ).exists()
     if not owns_report:
         raise PermissionDenied("Only residents who reported this case may rate the work.")
 
     occupancy = ResidentOccupancy.objects.filter(
-        user=resident, active=True, unit__building_id=work_order.case.building_id
+        user=resident, active=True, unit__building_id=case.building_id
     ).first()
     if occupancy is None:
         raise PermissionDenied("Active occupancy in the building is required to rate work.")
 
-    if CompletionRating.objects.filter(resident=resident, work_order=work_order).exists():
-        raise ValidationError("This work order has already been rated by this resident.")
+    if CompletionRating.objects.filter(resident=resident, case=case).exists():
+        raise ValidationError("This case has already been rated by this resident.")
 
     rating = CompletionRating.objects.create(
         resident=resident,
-        work_order=work_order,
-        score=score,
+        case=case,
+        satisfied=satisfied,
         comment=comment,
         created_at=timezone.now(),
     )
@@ -68,6 +56,13 @@ def rate_completed_work(resident, work_order, score, comment="") -> CompletionRa
         target_type="CompletionRating",
         target_id=str(rating.pk),
         result="accepted",
-        metadata={"occupancy_id": occupancy.pk, "work_order_id": work_order.pk},
+        metadata={"occupancy_id": occupancy.pk, "case_id": case.pk},
     )
+    IssueReport.objects.filter(
+        case_reports__case=case, reporter=resident, status=IssueReport.Status.COMPLETED
+    ).update(status=IssueReport.Status.CLOSED)
+    if not IssueReport.objects.filter(case_reports__case=case).exclude(status__in=TERMINAL_STATUSES).exists():
+        case.active = False
+        case.closed_at = timezone.now()
+        case.save(update_fields=["active", "closed_at"])
     return rating

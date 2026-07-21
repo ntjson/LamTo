@@ -1,7 +1,7 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from lamto.web.views import exports, fund, health, payments, proposals, requests, security, staff_common, work
+from lamto.web.views import exports, fund, health, payments, proposals, requests, security, staff_common
 
 app_name = "web"
 
@@ -25,8 +25,6 @@ urlpatterns = [
     path("s/proposals/<int:pk>/", proposals.proposal_detail, name="proposal-detail"),
     path("s/cases/<int:pk>/propose/", proposals.proposal_create, name="proposal-create"),
     # Work (dies in stage 2)
-    path("s/work/", work.work_order_list, name="work-order-list"),
-    path("s/work/<int:pk>/", work.work_order_detail, name="work-order-detail"),
     path("s/cases/<int:pk>/accept/", payments.accept_work, name="work-accept"),
     # Payments
     path("s/payments/", payments.payment_list, name="payment-list"),

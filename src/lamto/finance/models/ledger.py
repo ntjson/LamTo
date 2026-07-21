@@ -5,7 +5,7 @@ from django.utils import timezone
 from lamto.accounts.models import Building, ManagementMembership, SignerWallet
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
-from lamto.maintenance.models import MaintenanceCase, WorkOrder
+from lamto.maintenance.models import MaintenanceCase
 
 from .execution import PaymentEvidence
 from .proposals import InsertOnlyModel, Proposal
@@ -249,7 +249,6 @@ class PublishedLedgerEntry(InsertOnlyModel):
     snapshot = models.OneToOneField(
         PublicationSnapshot, on_delete=models.PROTECT, related_name="ledger_entry"
     )
-    work_order = models.ForeignKey(WorkOrder, on_delete=models.PROTECT)
     case = models.ForeignKey(MaintenanceCase, on_delete=models.PROTECT)
     proposal = models.OneToOneField(
         Proposal, on_delete=models.PROTECT, related_name="published_ledger_entry"

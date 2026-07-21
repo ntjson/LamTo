@@ -10,7 +10,7 @@ from lamto.evidence.models import EvidenceType
 from lamto.evidence.services import queue_signed_event
 from lamto.evidence.signatures import normalize_signature
 from lamto.maintenance.cases import TERMINAL_STATUSES
-from lamto.maintenance.models import CaseReport, IssueReport, MaintenanceCase, WorkOrder
+from lamto.maintenance.models import CaseReport, IssueReport, MaintenanceCase
 
 from .models import Proposal, ProposalDocument, ProposalVersion
 
@@ -216,9 +216,6 @@ def submit_proposal_version(
     locked_proposal.current_version = version
     locked_proposal.status = Proposal.Status.NORMAL_AUTHORIZED
     locked_proposal.save(update_fields=["current_version", "status"])
-    case.work_orders.filter(requires_spending=True).update(
-        authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED
-    )
     record_audit(
         membership.user,
         membership,

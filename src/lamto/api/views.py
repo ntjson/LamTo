@@ -57,8 +57,8 @@ from lamto.api.serializers import (
     ReportPhotoUploadSerializer,
     ReportSummarySerializer,
     TokenResponseSerializer,
-    WorkRatingResultSerializer,
-    WorkRatingSerializer,
+    CaseRatingResultSerializer,
+    CaseRatingSerializer,
 )
 from lamto.notifications.devices import deactivate_device, register_device
 from lamto.notifications.models import NotificationDelivery, NotificationPreference
@@ -100,9 +100,9 @@ from lamto.finance.selectors import (
     published_ledger_entries,
     published_ledger_entry_for_proof,
 )
-from lamto.maintenance.models import BuildingLocation, IssueReport, WorkOrder
+from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
 from lamto.maintenance.cases import reply_information
-from lamto.maintenance.ratings import rate_completed_work
+from lamto.maintenance.ratings import rate_completed_case
 from lamto.maintenance.reporting import (
     ReportClientRefConflict,
     attach_report_photo,
@@ -624,28 +624,26 @@ class DocumentDownloadView(APIView):
         return response
 
 
-class WorkRatingView(APIView):
+class CaseRatingView(APIView):
     @extend_schema(
-        request=WorkRatingSerializer,
-        responses={201: WorkRatingResultSerializer, **problem_responses(400, 401, 403, 404)},
+        request=CaseRatingSerializer,
+        responses={201: CaseRatingResultSerializer, **problem_responses(400, 401, 403, 404)},
     )
     def post(self, request, pk):
         # Scope to work orders on a case the caller reported: existence is not
         # revealed for other tenants' work (spec 2.3 -> 404).
-        work_order = (
-            WorkOrder.objects.filter(pk=pk, case__case_reports__report__reporter=request.user)
+        case = (
+            MaintenanceCase.objects.filter(pk=pk, case_reports__report__reporter=request.user)
             .distinct()
             .first()
         )
-        if work_order is None:
-            raise exceptions.NotFound("Work order not found.")
-        serializer = WorkRatingSerializer(data=request.data)
+        if case is None:
+            raise exceptions.NotFound("Case not found.")
+        serializer = CaseRatingSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            rating = rate_completed_work(
-                request.user,
-                work_order,
-                serializer.validated_data["score"],
+            rating = rate_completed_case(
+                request.user, case, serializer.validated_data["satisfied"],
                 serializer.validated_data.get("comment", ""),
             )
         except DjangoValidationError as error:
@@ -653,8 +651,8 @@ class WorkRatingView(APIView):
         except DjangoPermissionDenied:
             raise exceptions.PermissionDenied("Only residents who reported this case may rate the work.")
         return Response(
-            WorkRatingResultSerializer(
-                {"id": rating.pk, "work_order_id": work_order.pk, "score": rating.score}
+            CaseRatingResultSerializer(
+                {"id": rating.pk, "case_id": case.pk, "satisfied": rating.satisfied}
             ).data,
             status=201,
         )

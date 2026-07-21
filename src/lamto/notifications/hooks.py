@@ -14,7 +14,6 @@ from lamto.notifications.services import (
     EVENT_REPORT_RECEIPT,
     EVENT_TRIAGE_STATUS,
     EVENT_WORK_ACCEPTED,
-    EVENT_WORK_ASSIGNED,
     EVENT_WORK_COMPLETED,
     notify_users,
 )
@@ -73,39 +72,22 @@ def notify_triage_confirmed(case, report):
     )
 
 
-def notify_work_assigned(work_order):
-    recipients = [work_order.assignee] + _management_users(work_order.case.building_id)
+def notify_deadline_risk(case):
+    recipients = _management_users(case.building_id)
+    day = case.deadline_at.date().isoformat() if case.deadline_at else "unknown"
     notify_users(
         recipients,
-        event_key=f"{EVENT_WORK_ASSIGNED}:work:{work_order.pk}",
-        subject="Work assigned",
-        body=f"Work order #{work_order.pk} assigned (deadline {work_order.deadline_at}).",
-        event_code=EVENT_WORK_ASSIGNED,
-        building=work_order.case.building_id,
-    )
-
-
-def notify_deadline_risk(work_order):
-    recipients = [work_order.assignee] + _management_users(work_order.case.building_id)
-    # Idempotent per work order + calendar day so re-queue is safe within a day
-    # but can re-alert on later days if still at risk.
-    day = work_order.deadline_at.date().isoformat() if work_order.deadline_at else "unknown"
-    notify_users(
-        recipients,
-        event_key=f"{EVENT_DEADLINE_RISK}:work:{work_order.pk}:day:{day}",
+        event_key=f"{EVENT_DEADLINE_RISK}:case:{case.pk}:day:{day}",
         subject="Deadline risk",
-        body=f"Work order #{work_order.pk} approaches deadline {work_order.deadline_at}.",
+        body=f"Case #{case.pk} approaches deadline {case.deadline_at}.",
         event_code=EVENT_DEADLINE_RISK,
-        building=work_order.case.building_id,
+        building=case.building_id,
     )
 
 
 def notify_work_accepted(record):
-    work_order = record.case.work_orders.filter(status="ACCEPTED").order_by(
-        "-completed_at", "-pk"
-    ).first()
     building_id = record.case.building_id
-    recipients = ([work_order.assignee] if work_order else []) + _management_users(building_id)
+    recipients = _management_users(building_id)
     notify_users(
         recipients,
         event_key=f"{EVENT_WORK_ACCEPTED}:acceptance:{record.pk}",
@@ -116,23 +98,29 @@ def notify_work_accepted(record):
     )
 
 
-def notify_work_rateable(record):
-    """Prompt the reporting residents to rate completed work (spec 7.4)."""
+def _case_reporters(case):
     from lamto.maintenance.models import CaseReport
-
-    case = record.case
-    building_id = case.building_id
-    residents = [
+    return [
         link.report.reporter
         for link in CaseReport.objects.filter(case=case).select_related("report__reporter")
     ]
+
+
+def notify_progress_update(update):
+    case = update.case
+    notify_users(_case_reporters(case), event_key=f"case_progress:update:{update.pk}",
+                 subject="Case progress update", body=f"{update.cause}: {update.result}",
+                 event_code=EVENT_CASE_STATUS, building=case.building_id)
+
+
+def notify_case_completed(case):
     notify_users(
-        residents,
+        _case_reporters(case),
         event_key=f"{EVENT_WORK_COMPLETED}:case:{case.pk}",
         subject="Work completed",
         body=f"Case #{case.pk} is complete — please rate it.",
         event_code=EVENT_WORK_COMPLETED,
-        building=building_id,
+        building=case.building_id,
     )
 
 

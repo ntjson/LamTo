@@ -27,14 +27,17 @@ from lamto.finance.proposals import (
     create_proposal,
     submit_proposal_version,
 )
-from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion, WorkOrder
-from lamto.maintenance.cases import TERMINAL_STATUSES, decline_report, request_information
+from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion
+from lamto.maintenance.cases import (
+    TERMINAL_STATUSES, complete_case_work, decline_report, publish_progress,
+    request_information, start_case_work,
+)
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
     DeclineReportForm,
     InfoRequestForm,
     CreateProposalForm,
-    CreateWorkOrderForm,
+    ProgressUpdateForm,
     PreparePublicationForm,
     SignProposalForm,
 )
@@ -81,7 +84,7 @@ def case_list(request):
     cases_qs = (
         MaintenanceCase.objects.filter(building_id=building_id, active=True)
         .select_related("location")
-        .annotate(work_count=Count("work_orders"))
+        .annotate(work_count=Count("updates"))
     )
     if status in urgency_groups:
         cases_qs = cases_qs.filter(urgency__in=urgency_groups[status])
@@ -246,28 +249,34 @@ def case_detail(request, pk):
     work_form = None
     if request.method == "POST":
         action = request.POST.get("action")
-        if action == "create_work_order":
-            require_management_context(request)
-            work_form = CreateWorkOrderForm(request.POST, building_id=building_id)
+        if action == "start_work":
+            try:
+                start_case_work(case, request.user)
+            except (ValidationError, PermissionDenied) as error:
+                messages.error(request, "; ".join(getattr(error, "messages", [str(error)])))
+            else:
+                messages.success(request, "Case work started.")
+            return redirect("web:case-detail", pk=case.pk)
+        if action in {"publish_progress", "complete_work"}:
+            work_form = ProgressUpdateForm(request.POST, building_id=building_id, uploader_id=request.user.pk)
             if work_form.is_valid():
                 try:
-                    wo = work_form.save(case, request.user)
+                    service = complete_case_work if action == "complete_work" else publish_progress
+                    service(case, request.user, work_form.cleaned_data["cause"],
+                            work_form.cleaned_data["result"],
+                            list(work_form.cleaned_data["before_versions"]),
+                            list(work_form.cleaned_data["after_versions"]))
                 except (ValidationError, PermissionDenied) as error:
                     if isinstance(error, ValidationError):
                         work_form.add_error(None, error)
                     else:
                         raise
                 else:
-                    messages.success(
-                        request,
-                        f"Work order #{wo.pk} created. The assignee can now start work.",
-                    )
-                    return redirect("web:work-order-detail", pk=wo.pk)
+                    messages.success(request, "Case work completed." if action == "complete_work" else "Progress published.")
+                    return redirect("web:case-detail", pk=case.pk)
 
     if work_form is None:
-        work_form = CreateWorkOrderForm(building_id=building_id)
-
-    work_orders = list(case.work_orders.order_by("-created_at"))
+        work_form = ProgressUpdateForm(building_id=building_id, uploader_id=request.user.pk)
 
     return render(
         request,
@@ -281,7 +290,9 @@ def case_detail(request, pk):
             case=case,
             form=None,
             work_form=work_form,
-            work_orders=work_orders,
+            work_orders=[],
+            updates=case.updates.order_by("-created_at"),
+            ratings=case.completion_ratings.select_related("resident").order_by("created_at"),
             list_mode=False,
             mode="case",
         ),

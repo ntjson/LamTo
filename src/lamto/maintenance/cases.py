@@ -1,5 +1,7 @@
 """Request-outcome services on the report/case pair."""
 
+from datetime import timedelta
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -7,13 +9,118 @@ from django.utils import timezone
 from lamto.accounts.models import ResidentOccupancy
 from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
+from lamto.documents.models import Document, DocumentVersion
 
-from .models import CaseReport, InfoRequest, IssueReport
+from .models import (
+    CaseReport, InfoRequest, IssueReport, MaintenanceCase, WorkUpdate, WorkUpdateEvidence,
+)
 
 TERMINAL_STATUSES = frozenset(
     {IssueReport.Status.DECLINED, IssueReport.Status.COMPLETED, IssueReport.Status.CLOSED}
 )
 RATING_WINDOW_DAYS = 14
+
+
+def _locked_case(case):
+    case = MaintenanceCase.objects.select_for_update().filter(pk=getattr(case, "pk", None)).first()
+    if case is None or not case.active or case.completed_at is not None:
+        raise ValidationError("An active, uncompleted case is required.")
+    return case
+
+
+def _evidence_versions(versions, kind, building_id, uploader):
+    versions = list(versions)
+    if not versions:
+        return []
+    ids = [getattr(version, "pk", None) for version in versions]
+    if None in ids or len(ids) != len(set(ids)):
+        raise ValidationError("Progress requires distinct evidence versions.")
+    valid = list(DocumentVersion.objects.select_for_update().select_related("document").filter(
+        pk__in=ids, document__building_id=building_id, document__kind=kind,
+        variant=DocumentVersion.Variant.ORIGINAL, scan_status=DocumentVersion.ScanStatus.CLEAN,
+        uploader=uploader,
+    ))
+    if len(valid) != len(ids) or any(not v.content_type.lower().startswith("image/") for v in valid):
+        raise ValidationError("Progress evidence must be clean original images from the case building.")
+    return valid
+
+
+def _append_update(case, manager, cause, result, before_versions, after_versions):
+    if not (cause or "").strip() or not (result or "").strip():
+        raise ValidationError("Progress updates need both a cause and a result.")
+    before = _evidence_versions(before_versions, Document.Kind.BEFORE_PHOTO, case.building_id, manager)
+    after = _evidence_versions(after_versions, Document.Kind.AFTER_PHOTO, case.building_id, manager)
+    update = WorkUpdate.objects.create(case=case, cause=cause.strip(), result=result.strip())
+    WorkUpdateEvidence.objects.bulk_create([
+        *[WorkUpdateEvidence(update=update, version=v, kind=WorkUpdateEvidence.Kind.BEFORE) for v in before],
+        *[WorkUpdateEvidence(update=update, version=v, kind=WorkUpdateEvidence.Kind.AFTER) for v in after],
+    ])
+    return update
+
+
+@transaction.atomic
+def start_case_work(case, manager) -> MaintenanceCase:
+    case = _locked_case(case)
+    membership = require_management(manager, case.building_id)
+    for report in IssueReport.objects.filter(case_reports__case=case).exclude(status__in=TERMINAL_STATUSES):
+        report.status = IssueReport.Status.IN_PROGRESS
+        report.save(update_fields=["status"])
+    record_audit(actor=manager, membership=membership, action="case.work_started",
+                 target_type="MaintenanceCase", target_id=str(case.pk), result="accepted")
+    return case
+
+
+@transaction.atomic
+def publish_progress(case, manager, cause, result, before_versions=(), after_versions=()) -> WorkUpdate:
+    case = _locked_case(case)
+    membership = require_management(manager, case.building_id)
+    update = _append_update(case, manager, cause, result, before_versions, after_versions)
+    record_audit(actor=manager, membership=membership, action="case.progress_published",
+                 target_type="WorkUpdate", target_id=str(update.pk), result="accepted",
+                 metadata={"case_id": case.pk})
+    try:
+        from lamto.notifications.hooks import notify_progress_update
+        notify_progress_update(update)
+    except Exception:
+        pass
+    return update
+
+
+@transaction.atomic
+def complete_case_work(case, manager, cause, result, before_versions=(), after_versions=()) -> MaintenanceCase:
+    case = _locked_case(case)
+    membership = require_management(manager, case.building_id)
+    update = _append_update(case, manager, cause, result, before_versions, after_versions)
+    case.completed_at = timezone.now()
+    case.save(update_fields=["completed_at"])
+    for report in IssueReport.objects.filter(case_reports__case=case).exclude(status__in=TERMINAL_STATUSES):
+        report.status = IssueReport.Status.COMPLETED
+        report.save(update_fields=["status"])
+    record_audit(actor=manager, membership=membership, action="case.work_completed",
+                 target_type="MaintenanceCase", target_id=str(case.pk), result="accepted",
+                 metadata={"work_update_id": update.pk})
+    try:
+        from lamto.notifications.hooks import notify_case_completed
+        notify_case_completed(case)
+    except Exception:
+        pass
+    return case
+
+
+@transaction.atomic
+def close_expired_completed_cases(now=None) -> int:
+    now = now or timezone.now()
+    cases = list(MaintenanceCase.objects.select_for_update().filter(
+        completed_at__lte=now - timedelta(days=RATING_WINDOW_DAYS), closed_at__isnull=True
+    ))
+    for case in cases:
+        IssueReport.objects.filter(case_reports__case=case, status=IssueReport.Status.COMPLETED).update(
+            status=IssueReport.Status.CLOSED
+        )
+        case.active = False
+        case.closed_at = now
+        case.save(update_fields=["active", "closed_at"])
+    return len(cases)
 
 
 def _locked_report(report):

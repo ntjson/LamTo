@@ -10,11 +10,6 @@ from lamto.finance.models import MaintenanceFundEntry, PaymentVerification
 from lamto.finance.payments import record_payment, verify_payment
 from lamto.maintenance.models import BuildingLocation
 from lamto.maintenance.triage import confirm_triage
-from lamto.maintenance.workorders import (
-    complete_work_order,
-    create_work_order,
-    start_work_order,
-)
 from lamto.notifications.models import NotificationPreference
 from lamto.notifications.services import PREFERENCE_EVENT_CHOICES
 
@@ -81,33 +76,7 @@ class DeclineReportForm(forms.Form):
     reason = forms.CharField(widget=forms.Textarea, label="Reason shown to the resident")
 
 
-class CreateWorkOrderForm(forms.Form):
-    assignee = forms.ModelChoiceField(
-        queryset=ManagementMembership.objects.none(),
-        label="Assignee (Management user)",
-        widget=forms.Select(attrs={"class": "input"}),
-    )
-    requires_spending = forms.BooleanField(required=False, initial=True)
-
-    def __init__(self, *args, building_id=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if building_id is not None:
-            self.fields["assignee"].queryset = ManagementMembership.objects.filter(
-                active=True,
-                building_id=building_id,
-            ).select_related("user")
-
-    def save(self, case, operator):
-        membership = self.cleaned_data["assignee"]
-        return create_work_order(
-            case,
-            operator,
-            membership.user,
-            bool(self.cleaned_data.get("requires_spending")),
-        )
-
-
-class CompleteWorkOrderForm(forms.Form):
+class ProgressUpdateForm(forms.Form):
     cause = forms.CharField(widget=forms.Textarea(attrs={"class": "input", "rows": 3}))
     result = forms.CharField(widget=forms.Textarea(attrs={"class": "input", "rows": 3}))
     before_versions = forms.ModelMultipleChoiceField(
@@ -145,17 +114,6 @@ class CompleteWorkOrderForm(forms.Form):
 
         self.fields["before_versions"].label_from_instance = _label
         self.fields["after_versions"].label_from_instance = _label
-
-    def save(self, work_order, maintenance_user):
-        return complete_work_order(
-            work_order,
-            maintenance_user,
-            self.cleaned_data["cause"],
-            self.cleaned_data["result"],
-            list(self.cleaned_data["before_versions"]),
-            list(self.cleaned_data["after_versions"]),
-        )
-
 
 class SignedDecisionForm(forms.Form):
     """Common fields for wallet-signed domain actions."""

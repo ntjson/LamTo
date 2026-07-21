@@ -128,8 +128,7 @@ def process_integrity_batch(*, limit: int = 20) -> ProcessorResult:
 def process_deadline_risk_batch(*, limit: int = 50) -> ProcessorResult:
     """Queue deadline-risk notifications for near-due work orders.
 
-    Scans active work orders within a 24h horizon and calls
-    ``notify_deadline_risk`` (idempotent event_key per work order + day).
+    Scans active cases within a 24h horizon and calls ``notify_deadline_risk``.
     """
     name = "deadline_risk"
     try:
@@ -137,7 +136,7 @@ def process_deadline_risk_batch(*, limit: int = 50) -> ProcessorResult:
 
         from django.utils import timezone
 
-        from lamto.maintenance.models import WorkOrder
+        from lamto.maintenance.models import MaintenanceCase
         from lamto.notifications.hooks import notify_deadline_risk
 
         now = timezone.now()
@@ -145,26 +144,22 @@ def process_deadline_risk_batch(*, limit: int = 50) -> ProcessorResult:
         # Include slightly overdue items still open (missed deadline awareness).
         floor = now - timedelta(hours=24)
         qs = (
-            WorkOrder.objects.filter(
+            MaintenanceCase.objects.filter(
                 deadline_at__lte=horizon,
                 deadline_at__gte=floor,
-                status__in=[
-                    WorkOrder.Status.ASSIGNED,
-                    WorkOrder.Status.IN_PROGRESS,
-                    WorkOrder.Status.AWAITING_ACCEPTANCE,
-                ],
+                active=True,
+                completed_at__isnull=True,
             )
-            .select_related("case", "assignee")
             .order_by("deadline_at", "pk")[:limit]
         )
         count = 0
-        for work_order in qs:
+        for case in qs:
             try:
-                notify_deadline_risk(work_order)
+                notify_deadline_risk(case)
                 count += 1
             except Exception:
                 logger.exception(
-                    "notify_deadline_risk failed for work order %s", work_order.pk
+                    "notify_deadline_risk failed for case %s", case.pk
                 )
         return ProcessorResult(
             name=name, ok=True, count=count, detail=f"queued={count}"

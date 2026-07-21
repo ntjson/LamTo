@@ -11,7 +11,6 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType, is_settled
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
-from lamto.maintenance.models import WorkOrder
 
 from .fund import create_publication_outflow, get_or_create_fund
 from .models import (
@@ -566,11 +565,8 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
         raise ValidationError("Payment must remain VERIFIED at finalization.")
     version = proposal.current_version
     case = proposal.case
-    work_order = case.work_orders.filter(
-        status=WorkOrder.Status.ACCEPTED
-    ).order_by("-completed_at", "-pk").first()
-    if work_order is None:
-        raise ValidationError("Accepted work is required before publication.")
+    if case.completed_at is None:
+        raise ValidationError("Completed case work is required before publication.")
 
     fund = get_or_create_fund(case.building_id)
     published_at = timezone.now()
@@ -585,7 +581,6 @@ def finalize_publication(snapshot_id) -> PublishedLedgerEntry:
         proposal=proposal,
         defaults={
             "snapshot": snapshot,
-            "work_order": work_order,
             "case": case,
             "payment": payment,
             "actual_cost_vnd": acceptance.actual_cost_vnd,

@@ -371,16 +371,12 @@ def proposal_create(request, pk):
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
     case = get_object_or_404(
-        MaintenanceCase.objects.prefetch_related("work_orders"),
+        MaintenanceCase.objects.all(),
         pk=pk,
         building_id=building_id,
     )
     if request.method == "POST":
         require_recent_auth(request)
-    if not case.work_orders.filter(requires_spending=True).exists():
-        messages.error(request, "This case does not require spending.")
-        return redirect("web:case-detail", pk=case.pk)
-
     existing = (
         Proposal.objects.filter(case=case)
         .select_related("current_version")

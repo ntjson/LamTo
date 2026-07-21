@@ -16,7 +16,6 @@ from lamto.maintenance.models import (
     MaintenanceCase,
     ReportPhoto,
     TriageDecision,
-    WorkOrder,
 )
 
 
@@ -37,12 +36,6 @@ def checks():
         (
             "case_report",
             CaseReport.objects.exclude(case__building=F("report__unit__building")),
-        ),
-        (
-            "work_order_decision_chain",
-            WorkOrder.objects.exclude(
-                case__building=F("case__decision__report__unit__building")
-            ),
         ),
         (
             "fund_entry_proposal",

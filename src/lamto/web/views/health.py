@@ -19,7 +19,7 @@ from lamto.audit.services import record_audit
 from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import VerificationObservation
-from lamto.maintenance.models import TriageDecision, TriageJob, TriageSuggestion, WorkOrder
+from lamto.maintenance.models import TriageDecision, TriageJob, TriageSuggestion
 from lamto.notifications.models import Device, NotificationDelivery
 from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
 from lamto.web.staff import require_management_context, staff_context

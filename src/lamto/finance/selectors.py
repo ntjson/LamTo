@@ -25,7 +25,6 @@ def published_ledger_entries(building_id):
         .select_related(
             "snapshot",
             "snapshot__outbox_event",
-            "work_order",
             "case",
             "proposal",
             "proposal__current_version",
@@ -170,11 +169,11 @@ def fund_series(building_id, *, range_key):
 def _ledger_story_fields(entry, payload):
     """Resident-visible plain-language story for §6.3(6).
 
-    Prefer completion narratives on the work order; fall back to report text /
+    Prefer the latest case progress narrative; fall back to report text /
     case category.
     """
-    work = entry.work_order
     case = entry.case
+    work = case.updates.order_by("-created_at", "-pk").first()
     report = None
     decision = getattr(case, "decision", None)
     if decision is not None:

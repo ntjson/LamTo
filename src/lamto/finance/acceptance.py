@@ -9,7 +9,7 @@ from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
 from lamto.evidence.services import queue_signed_event, utc_rfc3339
 from lamto.evidence.signatures import build_evidence_typed_data
-from lamto.maintenance.models import MaintenanceCase, WorkOrder, WorkUpdate, WorkUpdateEvidence
+from lamto.maintenance.models import MaintenanceCase, WorkUpdate, WorkUpdateEvidence
 
 from .models import AcceptanceRecord, Proposal
 
@@ -24,18 +24,6 @@ def _locked_case(case):
     if locked is None:
         raise ValidationError("Case does not exist.")
     return locked
-
-
-def _case_work_order(case, *, lock=False):
-    work_orders = case.work_orders.filter(
-        status=WorkOrder.Status.AWAITING_ACCEPTANCE
-    ).order_by("completed_at", "pk")
-    if lock:
-        work_orders = work_orders.select_for_update()
-    work_order = work_orders.first()
-    if work_order is None:
-        raise ValidationError("Case has no work order awaiting acceptance.")
-    return work_order
 
 
 def _require_document_pair(original, redacted, kind, building_id, *, lock=False):
@@ -78,8 +66,8 @@ def _require_document_pair(original, redacted, kind, building_id, *, lock=False)
     return original, redacted
 
 
-def _completion_photo_hashes(work_order, *, lock=False):
-    updates = WorkUpdate.objects.filter(work_order=work_order).order_by("-pk")
+def _completion_photo_hashes(case, *, lock=False):
+    updates = WorkUpdate.objects.filter(case=case).order_by("-pk")
     if lock:
         updates = updates.select_for_update()
     update = updates.first()
@@ -97,7 +85,7 @@ def _completion_photo_hashes(work_order, *, lock=False):
     after = [link.version.sha256 for link in links if link.kind == WorkUpdateEvidence.Kind.AFTER]
     if not before or not after:
         raise ValidationError("Acceptance requires before and after image hashes.")
-    if not work_order.cause.strip() or not work_order.result.strip():
+    if not update.cause.strip() or not update.result.strip():
         raise ValidationError("Acceptance requires work cause and result.")
     return before + after
 
@@ -137,9 +125,10 @@ def build_acceptance_evidence_payload(
         Document.Kind.ACCEPTANCE_REPORT,
         building_id,
     )
-    work_order = _case_work_order(case)
-    photo_hashes = _completion_photo_hashes(work_order)
-    acceptance_timestamp = timestamp or work_order.completed_at or timezone.now()
+    if case.completed_at is None:
+        raise ValidationError("Case work must be completed before acceptance.")
+    photo_hashes = _completion_photo_hashes(case)
+    acceptance_timestamp = timestamp or case.completed_at
     return {
         "case_id": case.pk,
         "actual_cost_vnd": actual_cost_vnd,
@@ -194,8 +183,9 @@ def accept_work(
     timestamp=None,
 ) -> AcceptanceRecord:
     case = _locked_case(case)
-    work_order = _case_work_order(case, lock=True)
     actor = require_management(membership.user, case.building_id)
+    if case.completed_at is None:
+        raise ValidationError("Case work must be completed before acceptance.")
     if AcceptanceRecord.objects.filter(case=case).exists():
         raise ValidationError("Case has already been accepted.")
     if type(actual_cost_vnd) is not int or actual_cost_vnd <= 0:
@@ -216,9 +206,9 @@ def accept_work(
         building_id,
         lock=True,
     )
-    photo_hashes = _completion_photo_hashes(work_order, lock=True)
+    photo_hashes = _completion_photo_hashes(case, lock=True)
     previous_hash = _acceptance_previous_hash(case)
-    acceptance_timestamp = timestamp or work_order.completed_at or timezone.now()
+    acceptance_timestamp = timestamp or case.completed_at
     payload = {
         "case_id": case.pk,
         "actual_cost_vnd": actual_cost_vnd,
@@ -251,8 +241,6 @@ def accept_work(
         outbox_event=event,
         accepted_at=accepted_at,
     )
-    work_order.status = WorkOrder.Status.ACCEPTED
-    work_order.save(update_fields=["status"])
     record_audit(
         actor.user,
         actor,
@@ -267,10 +255,9 @@ def accept_work(
         },
     )
     try:
-        from lamto.notifications.hooks import notify_work_accepted, notify_work_rateable
+        from lamto.notifications.hooks import notify_work_accepted
 
         notify_work_accepted(record)
-        notify_work_rateable(record)
     except Exception:
         pass
     return record

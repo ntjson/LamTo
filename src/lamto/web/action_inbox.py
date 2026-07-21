@@ -29,7 +29,6 @@ from lamto.maintenance.models import (
     IssueReport,
     MaintenanceCase,
     TriageJob,
-    WorkOrder,
 )
 
 
@@ -75,7 +74,7 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
     items.extend(_manual_triage_items(building_id))
     items.extend(_review_queue_items(building_id))
     items.extend(_deadline_risk_items(building_id))
-    items.extend(_assigned_work_items(membership.user_id, building_id))
+    items.extend(_in_progress_case_items(building_id))
     items.extend(_work_acceptance_items(building_id))
     items.extend(_payment_record_items(building_id))
     items.extend(_payment_verify_items(building_id))
@@ -147,7 +146,8 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
     cases = MaintenanceCase.objects.filter(
         building_id=building_id,
         active=True,
-        deadline_at__lte=horizon,
+        completed_at__isnull=True,
+        deadline_at__lt=horizon,
     ).order_by("deadline_at")[:30]
     for case in cases:
         items.append(
@@ -162,60 +162,23 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
                 deadline_at=case.deadline_at,
             )
         )
-    work = WorkOrder.objects.filter(
-        case__building_id=building_id,
-        deadline_at__lte=horizon,
-        status__in=[
-            WorkOrder.Status.ASSIGNED,
-            WorkOrder.Status.IN_PROGRESS,
-            WorkOrder.Status.AWAITING_ACCEPTANCE,
-        ],
-    ).order_by("deadline_at")[:30]
-    for wo in work:
-        items.append(
-            ActionItem(
-                kind="deadline_risk",
-                title="Deadline risk",
-                summary=f"Work order #{wo.pk} due {wo.deadline_at}",
-                target_type="WorkOrder",
-                target_id=wo.pk,
-                url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
-                priority=15,
-                deadline_at=wo.deadline_at,
-            )
-        )
     return items
 
 
-def _assigned_work_items(user_id: int, building_id: int) -> list[ActionItem]:
-    items = []
-    qs = WorkOrder.objects.filter(
-        case__building_id=building_id,
-        assignee_id=user_id,
-        status__in=[WorkOrder.Status.ASSIGNED, WorkOrder.Status.IN_PROGRESS],
-    ).order_by("deadline_at")[:50]
-    for wo in qs:
-        items.append(
-            ActionItem(
-                kind="assigned_work",
-                title="Assigned work",
-                summary=f"Work order #{wo.pk} · {wo.status}",
-                target_type="WorkOrder",
-                target_id=wo.pk,
-                url=reverse("web:work-order-detail", kwargs={"pk": wo.pk}),
-                priority=20,
-                deadline_at=wo.deadline_at,
-            )
-        )
-    return items
+def _in_progress_case_items(building_id: int) -> list[ActionItem]:
+    return [ActionItem(kind="in_progress_case", title="Case in progress",
+                       summary=f"Case #{case.pk} · {case.category}", target_type="MaintenanceCase",
+                       target_id=case.pk, url=reverse("web:case-detail", kwargs={"pk": case.pk}),
+                       priority=20, deadline_at=case.deadline_at)
+            for case in MaintenanceCase.objects.filter(
+                building_id=building_id, active=True, completed_at__isnull=True,
+                reports__status=IssueReport.Status.IN_PROGRESS).distinct().order_by("deadline_at")[:50]]
 
 
 def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
     items = []
     qs = MaintenanceCase.objects.filter(
         building_id=building_id,
-        work_orders__requires_spending=True,
-        work_orders__authorization_status=WorkOrder.AuthorizationStatus.PENDING,
         proposal__isnull=True,
     ).distinct().order_by("created_at")[:30]
     for case in qs:
@@ -237,7 +200,7 @@ def _work_acceptance_items(building_id: int) -> list[ActionItem]:
     items = []
     qs = MaintenanceCase.objects.filter(
         building_id=building_id,
-        work_orders__status=WorkOrder.Status.AWAITING_ACCEPTANCE,
+        completed_at__isnull=False,
         acceptance__isnull=True,
     ).distinct().order_by("deadline_at")[:40]
     for case in qs:

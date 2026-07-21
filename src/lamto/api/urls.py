@@ -24,7 +24,7 @@ urlpatterns = [
     path("reports/<int:pk>", views.ReportDetailView.as_view(), name="report-detail"),
     path("reports/<int:pk>/info-reply", views.ReportInfoReplyView.as_view(), name="report-info-reply"),
     path("reports/<int:pk>/photos", views.ReportPhotoUploadView.as_view(), name="report-photos"),
-    path("work/<int:pk>/rating", views.WorkRatingView.as_view(), name="work-rating"),
+    path("cases/<int:pk>/rating", views.CaseRatingView.as_view(), name="case-rating"),
     path("locations", views.LocationListView.as_view(), name="locations"),
     path("notifications", views.NotificationListView.as_view(), name="notifications"),
     path(
