@@ -9,15 +9,9 @@ from django.utils import timezone
 from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
-from eth_account import Account
-from eth_account.messages import encode_typed_data
 
 from lamto.accounts.security import RECENT_REAUTH_KEY
-from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import EvidenceType
-from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import Proposal, ProposalVersion
-from lamto.finance.proposals import ZERO_HASH, build_proposal_evidence_payload
 from lamto.documents.models import Document, DocumentVersion
 from lamto.maintenance.models import IssueReport
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world

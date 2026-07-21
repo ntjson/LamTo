@@ -13,7 +13,6 @@ from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import EvidenceType
-from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.finance.models import (
     Proposal,
     PublishedLedgerEntry,

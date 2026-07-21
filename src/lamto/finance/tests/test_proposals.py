@@ -3,14 +3,9 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
-from eth_account import Account
-from eth_account.messages import encode_typed_data
 
 from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.documents.models import Document, DocumentVersion
-from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import EvidenceType
-from lamto.evidence.signatures import build_evidence_typed_data
 from lamto.maintenance.models import (
     BuildingLocation,
     CaseReport,
@@ -93,8 +88,7 @@ class ProposalVersionTests(TestCase):
             uploader=operator,
             redacts=quotation,
         )
-        account = Account.create()
-        return membership, case, quotation, account
+        return membership, case, quotation, None
 
     def test_create_proposal_is_case_anchored_and_proposes_linked_reports(self):
         operator, case, _quotation, _account = self.make_signed_proposal_inputs()
@@ -170,19 +164,7 @@ class ProposalVersionTests(TestCase):
     ):
         event_id = event_id or "0x" + "aa" * 32
         previous_hash = previous_hash or "0x" + "00" * 32
-        payload = build_proposal_evidence_payload(
-            proposal, amount_vnd, contractor_name, [quotation]
-        )
-        typed_data = build_evidence_typed_data(
-            event_id,
-            EvidenceType.PROPOSAL_CREATED,
-            "0x" + payload_hash(payload),
-            previous_hash,
-        )
-        signature = Account.sign_message(
-            encode_typed_data(full_message=typed_data), account.key
-        ).signature.hex()
-        return signature, event_id
+        return "", event_id
 
     def test_submitted_version_is_signed_immutable_and_tied_to_case(self):
         operator, case, quotation, account = self.make_signed_proposal_inputs()
@@ -270,19 +252,7 @@ class ProposalVersionTests(TestCase):
     def test_submission_uses_platform_signature_not_submitted_signature(self):
         operator, case, quotation, account = self.make_signed_proposal_inputs()
         proposal = create_proposal(case, operator)
-        other_account = Account.create()
-        payload = build_proposal_evidence_payload(
-            proposal, 18_500_000, "Company X", [quotation]
-        )
-        typed_data = build_evidence_typed_data(
-            "0x" + "cc" * 32,
-            EvidenceType.PROPOSAL_CREATED,
-            "0x" + payload_hash(payload),
-            "0x" + "00" * 32,
-        )
-        bad_signature = Account.sign_message(
-            encode_typed_data(full_message=typed_data), other_account.key
-        ).signature.hex()
+        bad_signature = "ignored client signature"
         version = submit_proposal_version(
             proposal, 18_500_000, "Company X", [quotation], bad_signature, "0x" + "cc" * 32
         )

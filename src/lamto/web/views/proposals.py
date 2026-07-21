@@ -141,8 +141,6 @@ def proposal_detail(request, pk):
     publish_form = None
     can_publish = False
     version = proposal.current_version
-    publish_typed_data = None
-    publish_expected_signer = ""
 
     if request.method == "POST":
         action = request.POST.get("action") or "publish"
@@ -190,8 +188,6 @@ def proposal_detail(request, pk):
             version=version,
             publish_form=publish_form if can_publish else None,
             can_publish=can_publish,
-            publish_typed_data=publish_typed_data,
-            publish_expected_signer=publish_expected_signer,
             publication_pending=publication_pending,
             publication_snapshot=publication_snapshot,
             accountability_stages=accountability_chain_for(proposal),
@@ -224,8 +220,6 @@ def proposal_create(request, pk):
         return redirect("web:proposal-detail", pk=existing.pk)
 
     create_form = CreateProposalForm(request.POST or None, request.FILES or None)
-    sign_form = None
-    typed_data = None
     if request.method == "POST" and create_form.is_valid():
         try:
             original, _redacted = upload_document_pair(
@@ -260,8 +254,6 @@ def proposal_create(request, pk):
             finance_active="proposals",
             case=case,
             create_form=create_form,
-            sign_form=sign_form,
-            typed_data=typed_data,
         ),
     )
 
@@ -295,5 +287,5 @@ def standalone_proposal_create(request):
                 return redirect("web:proposal-detail", pk=proposal.pk)
     return render(request, "web/staff/proposal_create.html", staff_context(
         request, membership, memberships, nav_active="finance", finance_active="proposals",
-        case=None, create_form=form, sign_form=None, typed_data=None,
+        case=None, create_form=form,
     ))

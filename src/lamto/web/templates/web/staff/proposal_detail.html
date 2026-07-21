@@ -49,33 +49,6 @@
     </div>
 
     <div class="record-action">
-      {% if can_publish and publish_form %}
-      <div class="workflow-section">
-        <h2>{% trans "Prepare publication" %}</h2>
-        <p>{% trans "Publish the verified outcome to the resident ledger. LamTo records the proof fields automatically." %}</p>
-        <form method="post" class="stack-form" data-signed-form data-review-form id="publish-form"
-              {% if publish_expected_signer %}data-expected-signer="{{ publish_expected_signer }}"{% endif %}>
-          {% csrf_token %}
-          <input type="hidden" name="action" value="publish">
-          {{ publish_form.as_p }}
-          {% if publish_typed_data %}
-          <script type="application/json" data-typed-data>{{ publish_typed_data|safe }}</script>
-          <p class="hint signing-status" data-signing-status id="publish-signing-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign and prepare the resident-facing publication." %}</p>
-          {% else %}
-          <p class="hint signing-status" data-signing-status id="publish-signing-status" role="status" aria-live="polite" aria-atomic="true">{% trans "Publication is not ready. Review the unmet checks above." %}</p>
-          {% endif %}
-          <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-          {% include "web/staff/_review_summary.html" with review_kind="proposal_publish" review_id="proposal-publish" %}
-          <div class="form-actions">
-            <button type="submit" class="button button-primary" aria-describedby="publish-signing-status" {% if not publish_typed_data %}aria-disabled="true"{% endif %}>
-              {% trans "Sign and publish to resident ledger" %}
-            </button>
-            <a class="button button-secondary" href="{% url 'web:proposal-list' %}">{% trans "Cancel" %}</a>
-          </div>
-        </form>
-      </div>
-      {% endif %}
-
       {% if publication_pending %}
       <div class="workflow-section">
         <h2>{% trans "Publication awaiting confirmation" %}</h2>

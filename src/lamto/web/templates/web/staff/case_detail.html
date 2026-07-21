@@ -36,9 +36,8 @@
   <p><a class="button button-secondary" href="{% url 'web:proposal-create' case.pk %}">{% trans "Create spending proposal" %}</a></p>
   {% endif %}
   {% if accept_form %}
-  <form method="post" data-signed-form data-review-form>
+  <form method="post">
     {% csrf_token %}{{ accept_form.as_p }}
-    {% include "web/staff/_review_summary.html" with title="What you are signing" next_step="What happens next" %}
     <button type="submit" class="button button-primary">{% trans "Sign and accept work" %}</button>
   </form>
   {% endif %}

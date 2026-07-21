@@ -63,6 +63,10 @@ class BlockchainOutboxEvent(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
+                condition=~models.Q(signer_address=""),
+                name="outbox_signer_address_required",
+            ),
+            models.CheckConstraint(
                 condition=models.Q(event_id__regex=r"^0x[0-9a-f]{64}$"),
                 name="outbox_event_id_bytes32",
             ),

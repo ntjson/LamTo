@@ -10,8 +10,6 @@ from django.utils import timezone
 from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
-from eth_account import Account
-from eth_account.messages import encode_typed_data
 
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.documents.models import DocumentVersion

@@ -9,15 +9,11 @@
 <p class="hint">{% trans "This source is already verified." %}</p>
 {% elif verify_form %}
 <div class="workflow-section">
-  <h2>{% trans "Sign verification" %}</h2>
+  <h2>{% trans "Verify source" %}</h2>
   <p class="hint">{% trans "A source recorder cannot verify their own source." %}</p>
-  <form method="post" class="stack-form" data-signed-form data-review-form>
+  <form method="post" class="stack-form">
     {% csrf_token %}
     {{ verify_form.as_p }}
-    <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-    <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign this independent verification." %}</p>
-    <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-    {% include "web/staff/_review_summary.html" with review_kind="fund_verify" review_id="fund-verify" %}
     <button type="submit" class="button button-primary">{% trans "Verify source" %}</button>
   </form>
 </div>

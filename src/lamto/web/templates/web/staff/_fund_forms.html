@@ -2,30 +2,13 @@
 <section class="panel">
   {% if mode == "record" %}
   <h1>{% trans "Record fund source" %}</h1>
-  {% if sign_form %}
-  <div class="workflow-section">
-    <h2>{% trans "Review and sign" %}</h2>
-    <p class="hint">{{ sign_form.entry_type.value }} · {{ sign_form.amount_vnd.value|intcomma }} VND</p>
-    <form method="post" class="stack-form" data-signed-form data-review-form>
-      {% csrf_token %}
-      <input type="hidden" name="action" value="submit">
-      {{ sign_form.as_p }}
-      <script type="application/json" data-typed-data>{{ typed_data|safe }}</script>
-      <p class="hint signing-status" data-signing-status role="status" aria-live="polite" aria-atomic="true">{% trans "Ready to sign this fund source record." %}</p>
-      <p class="message message-error signing-error" data-signing-error role="alert" hidden></p>
-      {% include "web/staff/_review_summary.html" with review_kind="fund_record" review_id="fund-record" %}
-      <button type="submit" class="button button-primary">{% trans "Record source" %}</button>
-    </form>
-  </div>
-  {% else %}
   <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
     {% csrf_token %}
     <input type="hidden" name="action" value="prepare">
     {{ record_form.as_p }}
     <p class="hint">{% trans "Upload the source evidence original and a redacted copy (PDF). Amounts are integer VND." %}</p>
-    <button type="submit" class="button button-primary">{% trans "Prepare source" %}</button>
+    <button type="submit" class="button button-primary">{% trans "Record source" %}</button>
   </form>
-  {% endif %}
   {% endif %}
   {% if mode == "verify" %}{% include "web/staff/_fund_verify.html" %}{% endif %}
 </section>
