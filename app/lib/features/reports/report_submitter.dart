@@ -57,6 +57,7 @@ class ReportSubmitter {
         clientRef: draft.clientRef,
         text: draft.text,
         locationId: draft.locationId!,
+        isPrivate: draft.isPrivate,
       );
       reportId = summary.id;
     } on DioException catch (e) {

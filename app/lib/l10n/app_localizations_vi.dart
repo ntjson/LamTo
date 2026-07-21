@@ -185,6 +185,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reportEnableNotifications => 'Nhận thông báo cập nhật';
 
   @override
+  String get privateToggleTitle => 'Yêu cầu riêng tư';
+
+  @override
+  String get privateToggleSubtitle =>
+      'Chỉ bạn và Ban quản lý xem được yêu cầu này. Yêu cầu riêng tư không đưa vào đề xuất cộng đồng.';
+
+  @override
+  String get privateBadge => 'Riêng tư';
+
+  @override
   String get issuesTitle => 'Việc của tôi';
 
   @override
@@ -200,7 +210,28 @@ class AppLocalizationsVi extends AppLocalizations {
   String get statusResolved => 'Đã xử lý';
 
   @override
-  String get statusDeclined => 'Đã từ chối';
+  String get statusSubmitted => 'Đã gửi';
+
+  @override
+  String get statusInReview => 'Đang xem xét';
+
+  @override
+  String get statusNeedsInfo => 'Cần bạn bổ sung thông tin';
+
+  @override
+  String get statusDeclined => 'Không tiếp nhận';
+
+  @override
+  String get statusInProgress => 'Đang xử lý';
+
+  @override
+  String get statusProposed => 'Đã lập đề xuất';
+
+  @override
+  String get statusCompleted => 'Đã hoàn thành';
+
+  @override
+  String get statusClosed => 'Đã đóng';
 
   @override
   String issueDetailTitle(int id) {
@@ -228,6 +259,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get timelineCompleted => 'Công việc đã hoàn thành';
+
+  @override
+  String get declinedTitle => 'Ban quản lý quyết định không tiếp nhận';
 
   @override
   String get rateWorkCta => 'Đánh giá công việc';

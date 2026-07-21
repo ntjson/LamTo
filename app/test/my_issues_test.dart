@@ -22,6 +22,19 @@ ReportSummary _report(
     ..createdAt = DateTime.utc(2026, 7, 17),
 );
 
+ReportDetail _detail(int id, {bool isPrivate = false}) => ReportDetail(
+  (b) => b
+    ..id = id
+    ..text = 'Private issue'
+    ..status = StatusEnum.SUBMITTED
+    ..isPrivate = isPrivate
+    ..locationPathSnapshot = 'B / Hall'
+    ..unitLabel = 'B-1204'
+    ..createdAt = DateTime.utc(2026, 7, 17)
+    ..photos = ListBuilder<ReportPhoto>()
+    ..cases = ListBuilder<ReportCase>(),
+);
+
 PaginatedReportSummaryList _page(List<ReportSummary> items, {String? next}) =>
     PaginatedReportSummaryList(
       (b) => b
@@ -30,8 +43,9 @@ PaginatedReportSummaryList _page(List<ReportSummary> items, {String? next}) =>
     );
 
 class _FakeRepo implements ReportsRepository {
-  _FakeRepo(this.pages);
+  _FakeRepo(this.pages, {this.details = const {}});
   final Map<String?, PaginatedReportSummaryList> pages;
+  final Map<int, ReportDetail> details;
   final cursors = <String?>[];
 
   @override
@@ -45,11 +59,12 @@ class _FakeRepo implements ReportsRepository {
     required String clientRef,
     required String text,
     required int locationId,
+    bool isPrivate = false,
   }) => throw UnimplementedError();
   @override
   Future<List<Location>> fetchLocations() => throw UnimplementedError();
   @override
-  Future<ReportDetail> fetchReport(int id) => throw UnimplementedError();
+  Future<ReportDetail> fetchReport(int id) async => details[id]!;
   @override
   Future<CaseRatingResult> rateCase({
     required int caseId,
@@ -72,9 +87,51 @@ void main() {
     expect(isActiveReportStatus(StatusEnum.DECLINED), isFalse);
     expect(
       reportStatusLabel(StatusEnum.DECLINED, AppLocalizationsEn()),
-      'Declined',
+      'Not proceeding',
     );
     expect(reportStatusTone(StatusEnum.DECLINED), StatusTone.warning);
+  });
+
+  test('all report statuses have plain-language labels and semantic tones', () {
+    final l10n = AppLocalizationsEn();
+    expect(
+      {for (final status in StatusEnum.values) reportStatusLabel(status, l10n)},
+      {
+        'Submitted',
+        'In review',
+        'Needs your information',
+        'Not proceeding',
+        'In progress',
+        'Proposal created',
+        'Completed',
+        'Closed',
+      },
+    );
+    expect(reportStatusTone(StatusEnum.NEEDS_INFO), StatusTone.warning);
+    expect(reportStatusTone(StatusEnum.COMPLETED), StatusTone.success);
+  });
+
+  testWidgets('shows a private badge on a private report row', (tester) async {
+    final repo = _FakeRepo(
+      {
+        null: _page([_report(1, 'Private issue')]),
+      },
+      details: {1: _detail(1, isPrivate: true)},
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [reportsRepositoryProvider.overrideWithValue(repo)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const MyIssuesScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Riêng tư'), findsOneWidget);
   });
 
   testWidgets('lists reports with status chip and loads the next page', (
@@ -99,7 +156,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Thang máy kêu'), findsOneWidget);
-    expect(find.text('Đang mở'), findsOneWidget); // status paired with text
+    expect(find.text('Đã gửi'), findsOneWidget); // status paired with text
 
     await tester.tap(find.text('Tải thêm'));
     await tester.pumpAndSettle();

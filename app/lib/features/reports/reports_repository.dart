@@ -21,6 +21,7 @@ abstract class ReportsRepository {
     required String clientRef,
     required String text,
     required int locationId,
+    bool isPrivate = false,
   });
   Future<PaginatedReportSummaryList> listReports({String? cursor});
   Future<ReportDetail> fetchReport(int id);
@@ -55,12 +56,14 @@ class DioReportsRepository implements ReportsRepository {
     required String clientRef,
     required String text,
     required int locationId,
+    bool isPrivate = false,
   }) async {
     final res = await _reports.reportsCreate(
       reportCreateRequest: ReportCreateRequest(
         (b) => b
           ..clientRef = clientRef
           ..text = text
+          ..isPrivate = isPrivate
           ..locationId = locationId,
       ),
     );

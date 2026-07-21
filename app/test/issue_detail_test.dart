@@ -11,12 +11,14 @@ import 'package:lamto_api/lamto_api.dart';
 ReportDetail _detail({
   required bool canRate,
   StatusEnum status = StatusEnum.SUBMITTED,
+  String? declinedReason,
   MapBuilder<String, JsonObject?>? openInfoRequest,
 }) => ReportDetail(
   (b) => b
     ..id = 42
     ..text = 'Thang máy kêu to'
     ..status = status
+    ..declinedReason = declinedReason
     ..isPrivate = false
     ..locationPathSnapshot = 'Tòa A / Thang máy 2'
     ..unitLabel = 'B-1204'
@@ -95,6 +97,7 @@ class _FakeRepo implements ReportsRepository {
     required String clientRef,
     required String text,
     required int locationId,
+    bool isPrivate = false,
   }) => throw UnimplementedError();
   @override
   Future<List<Location>> fetchLocations() => throw UnimplementedError();
@@ -133,6 +136,23 @@ void main() {
     expect(find.textContaining('Đã ghép vào yêu cầu xử lý'), findsOneWidget);
     expect(find.textContaining('Đã cố định cáp'), findsOneWidget);
     expect(find.textContaining('Công việc đã hoàn thành'), findsOneWidget);
+    expect(find.text('Đánh giá công việc'), findsNothing);
+  });
+
+  testWidgets('shows a declined reason and hides rating', (tester) async {
+    await _pump(
+      tester,
+      _FakeRepo(
+        _detail(
+          canRate: true,
+          status: StatusEnum.DECLINED,
+          declinedReason: 'Outside management responsibility',
+        ),
+      ),
+    );
+
+    expect(find.text('Ban quản lý quyết định không tiếp nhận'), findsOneWidget);
+    expect(find.text('Outside management responsibility'), findsOneWidget);
     expect(find.text('Đánh giá công việc'), findsNothing);
   });
 

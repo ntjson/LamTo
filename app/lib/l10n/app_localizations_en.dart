@@ -185,6 +185,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportEnableNotifications => 'Get update notifications';
 
   @override
+  String get privateToggleTitle => 'Private request';
+
+  @override
+  String get privateToggleSubtitle =>
+      'Only you and Management can see this request. Private requests are not part of community proposals.';
+
+  @override
+  String get privateBadge => 'Private';
+
+  @override
   String get issuesTitle => 'My issues';
 
   @override
@@ -200,7 +210,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusResolved => 'Resolved';
 
   @override
-  String get statusDeclined => 'Declined';
+  String get statusSubmitted => 'Submitted';
+
+  @override
+  String get statusInReview => 'In review';
+
+  @override
+  String get statusNeedsInfo => 'Needs your information';
+
+  @override
+  String get statusDeclined => 'Not proceeding';
+
+  @override
+  String get statusInProgress => 'In progress';
+
+  @override
+  String get statusProposed => 'Proposal created';
+
+  @override
+  String get statusCompleted => 'Completed';
+
+  @override
+  String get statusClosed => 'Closed';
 
   @override
   String issueDetailTitle(int id) {
@@ -228,6 +259,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get timelineCompleted => 'Work completed';
+
+  @override
+  String get declinedTitle => 'Management decided not to proceed';
 
   @override
   String get rateWorkCta => 'Rate this work';

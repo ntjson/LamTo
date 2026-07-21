@@ -422,6 +422,24 @@ abstract class AppLocalizations {
   /// **'Get update notifications'**
   String get reportEnableNotifications;
 
+  /// No description provided for @privateToggleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Private request'**
+  String get privateToggleTitle;
+
+  /// No description provided for @privateToggleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Only you and Management can see this request. Private requests are not part of community proposals.'**
+  String get privateToggleSubtitle;
+
+  /// No description provided for @privateBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get privateBadge;
+
   /// No description provided for @issuesTitle.
   ///
   /// In en, this message translates to:
@@ -452,11 +470,53 @@ abstract class AppLocalizations {
   /// **'Resolved'**
   String get statusResolved;
 
+  /// No description provided for @statusSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get statusSubmitted;
+
+  /// No description provided for @statusInReview.
+  ///
+  /// In en, this message translates to:
+  /// **'In review'**
+  String get statusInReview;
+
+  /// No description provided for @statusNeedsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs your information'**
+  String get statusNeedsInfo;
+
   /// No description provided for @statusDeclined.
   ///
   /// In en, this message translates to:
-  /// **'Declined'**
+  /// **'Not proceeding'**
   String get statusDeclined;
+
+  /// No description provided for @statusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get statusInProgress;
+
+  /// No description provided for @statusProposed.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposal created'**
+  String get statusProposed;
+
+  /// No description provided for @statusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get statusCompleted;
+
+  /// No description provided for @statusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get statusClosed;
 
   /// No description provided for @issueDetailTitle.
   ///
@@ -499,6 +559,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Work completed'**
   String get timelineCompleted;
+
+  /// No description provided for @declinedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Management decided not to proceed'**
+  String get declinedTitle;
 
   /// No description provided for @rateWorkCta.
   ///

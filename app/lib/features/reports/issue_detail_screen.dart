@@ -122,6 +122,15 @@ class IssueDetailScreen extends ConsumerWidget {
             ),
           ),
         ],
+        if (report.declinedReason != null) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              title: Text(l10n.declinedTitle),
+              subtitle: Text(report.declinedReason!),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         for (final (icon, label, tone) in steps)
           ListTile(
@@ -134,14 +143,16 @@ class IssueDetailScreen extends ConsumerWidget {
             title: Text(label),
           ),
         for (final caseItem in rateable)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: FilledButton.icon(
-              icon: const Icon(Icons.star_outline),
-              label: Text(l10n.rateWorkCta),
-              onPressed: () => _openRateSheet(context, ref, l10n, caseItem.id),
+          if (report.status != StatusEnum.DECLINED)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: FilledButton.icon(
+                icon: const Icon(Icons.star_outline),
+                label: Text(l10n.rateWorkCta),
+                onPressed: () =>
+                    _openRateSheet(context, ref, l10n, caseItem.id),
+              ),
             ),
-          ),
       ],
     );
   }

@@ -35,6 +35,7 @@ DioException _problem(int status, String code) {
 
 class _FakeRepo implements ReportsRepository {
   final createdRefs = <String>[];
+  final privateValues = <bool>[];
   final uploaded = <String>[];
   Object? createError;
   Set<String> failPhotoPaths = {};
@@ -47,8 +48,10 @@ class _FakeRepo implements ReportsRepository {
     required String clientRef,
     required String text,
     required int locationId,
+    bool isPrivate = false,
   }) async {
     createdRefs.add(clientRef);
+    privateValues.add(isPrivate);
     final error = createError;
     if (error != null) throw error;
     return _summary(42);
@@ -119,6 +122,12 @@ void main() {
     expect(outcome.allPhotosUploaded, isTrue);
     expect(repo.uploaded, ['/tmp/a.jpg', '/tmp/b.jpg']);
     expect(await drafts.read(7), isNull); // text committed -> draft gone
+  });
+
+  test('submit forwards draft privacy', () async {
+    final draft = draftOf().copyWith(isPrivate: true);
+    await submitter.submit(draft: draft, occupancyId: 7);
+    expect(repo.privateValues.single, isTrue);
   });
 
   test(

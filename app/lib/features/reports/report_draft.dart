@@ -19,6 +19,7 @@ class ReportDraft {
     this.locationId,
     this.locationLabel = '',
     this.photoPaths = const [],
+    this.isPrivate = false,
   });
 
   factory ReportDraft.fresh() => ReportDraft(clientRef: uuidV4());
@@ -30,6 +31,7 @@ class ReportDraft {
 
   /// App-owned absolute paths under `report_draft_photos/<occupancyId>/`.
   final List<String> photoPaths;
+  final bool isPrivate;
 
   bool get isEmpty => text.isEmpty && locationId == null && photoPaths.isEmpty;
 
@@ -39,6 +41,7 @@ class ReportDraft {
     int? locationId,
     String? locationLabel,
     List<String>? photoPaths,
+    bool? isPrivate,
   }) {
     return ReportDraft(
       clientRef: clientRef ?? this.clientRef,
@@ -46,25 +49,27 @@ class ReportDraft {
       locationId: locationId ?? this.locationId,
       locationLabel: locationLabel ?? this.locationLabel,
       photoPaths: photoPaths ?? this.photoPaths,
+      isPrivate: isPrivate ?? this.isPrivate,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'client_ref': clientRef,
-        'text': text,
-        'location_id': locationId,
-        'location_label': locationLabel,
-        'photo_paths': photoPaths,
-      };
+    'client_ref': clientRef,
+    'text': text,
+    'location_id': locationId,
+    'location_label': locationLabel,
+    'photo_paths': photoPaths,
+    'is_private': isPrivate,
+  };
 
   factory ReportDraft.fromJson(Map<String, dynamic> json) => ReportDraft(
-        clientRef: json['client_ref'] as String,
-        text: (json['text'] as String?) ?? '',
-        locationId: json['location_id'] as int?,
-        locationLabel: (json['location_label'] as String?) ?? '',
-        photoPaths:
-            ((json['photo_paths'] as List?) ?? const []).cast<String>(),
-      );
+    clientRef: json['client_ref'] as String,
+    text: (json['text'] as String?) ?? '',
+    locationId: json['location_id'] as int?,
+    locationLabel: (json['location_label'] as String?) ?? '',
+    photoPaths: ((json['photo_paths'] as List?) ?? const []).cast<String>(),
+    isPrivate: (json['is_private'] as bool?) ?? false,
+  );
 }
 
 /// Draft persistence keyed by occupancy id (a report belongs to the selected
@@ -122,8 +127,10 @@ class ReportDraftStore {
   /// autosave calls apply in enqueue order (last write wins).
   Future<void> write(int occupancyId, ReportDraft draft) {
     return _enqueue(occupancyId, () async {
-      await (await _prefs)
-          .setString(_key(occupancyId), jsonEncode(draft.toJson()));
+      await (await _prefs).setString(
+        _key(occupancyId),
+        jsonEncode(draft.toJson()),
+      );
     });
   }
 
@@ -141,16 +148,13 @@ class ReportDraftStore {
   Future<void> clearAll() async {
     while (_writeChains.isNotEmpty) {
       final pending = List<Future<void>>.from(_writeChains.values);
-      await Future.wait(
-        pending.map((f) => f.catchError((Object _) {})),
-      );
+      await Future.wait(pending.map((f) => f.catchError((Object _) {})));
       // Drop only the futures we waited on; keep any replacement chained
       // during the wait so the next loop pass awaits it too.
       _writeChains.removeWhere((_, future) => pending.contains(future));
     }
     final prefs = await _prefs;
-    final keys =
-        prefs.getKeys().where((k) => k.startsWith(_prefix)).toList();
+    final keys = prefs.getKeys().where((k) => k.startsWith(_prefix)).toList();
     for (final key in keys) {
       await prefs.remove(key);
     }
