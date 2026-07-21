@@ -8,12 +8,16 @@ from knox.models import AuthToken
 from lamto.api.views import ProposalCursorPagination
 from lamto.documents.models import Document
 from lamto.evidence.models import EvidenceLevel
+from django.core.exceptions import ValidationError
+
+from lamto.finance.models import Proposal
 from lamto.finance.proposals import (
     create_standalone_proposal,
     decide_proposal,
     publish_proposal_version,
 )
 from lamto.maintenance.cases import complete_proposal_work, publish_progress
+from lamto.maintenance.ratings import rate_completed_proposal
 from lamto.testing.factories import PilotDomainDriver, new_event_id, seed_pilot_world
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-api-proposals-")
@@ -163,6 +167,22 @@ class ProposalApiTests(TestCase):
         body = self.client.get(detail_url, headers=auth).json()
         assert settled.settled_at is not None
         assert body["settlement"]["settled_at"] is not None
+
+        proposal.refresh_from_db()
+        proposal.status = Proposal.Status.CLOSED
+        proposal.save(update_fields=["status"])
+        with self.assertRaises(ValidationError):
+            rate_completed_proposal(self.resident, proposal, True)
+        closed = self.client.post(
+            reverse("api:proposal-rating", args=[proposal.pk]),
+            data={"satisfied": True},
+            content_type="application/json",
+            headers=auth,
+        )
+        assert closed.status_code == 400
+
+        proposal.status = Proposal.Status.COMPLETED
+        proposal.save(update_fields=["status"])
 
         rated = self.client.post(
             reverse("api:proposal-rating", args=[proposal.pk]),

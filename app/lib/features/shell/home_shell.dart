@@ -23,6 +23,11 @@ final shellTabProvider = StateProvider<int>((_) => 0);
 
 const ledgerTabIndex = 2;
 
+void selectLedgerTab(WidgetRef ref) {
+  ref.read(ledgerSegmentProvider.notifier).state = 0;
+  ref.read(shellTabProvider.notifier).state = ledgerTabIndex;
+}
+
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
   @override

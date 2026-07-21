@@ -11,6 +11,7 @@ import '../../l10n/app_localizations.dart';
 import '../ledger/ledger_detail_screen.dart';
 import '../reports/issue_detail_screen.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
+import '../shell/home_shell.dart';
 import '../transparency/transparency_repository.dart';
 import 'deep_link.dart';
 
@@ -120,7 +121,7 @@ class NotificationsScreen extends ConsumerWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    onTap: () => _open(context, controller, notice),
+                    onTap: () => _open(context, ref, controller, notice),
                   ),
                 if (controller.hasMore)
                   LoadMoreButton(
@@ -144,6 +145,7 @@ class NotificationsScreen extends ConsumerWidget {
 
   void _open(
     BuildContext context,
+    WidgetRef ref,
     NotificationsController controller,
     NotificationFeed notice,
   ) {
@@ -155,6 +157,7 @@ class NotificationsScreen extends ConsumerWidget {
           adaptivePageRoute(builder: (_) => IssueDetailScreen(reportId: id)),
         );
       case DeepLinkLedger(:final id):
+        selectLedgerTab(ref);
         Navigator.push(
           context,
           adaptivePageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),

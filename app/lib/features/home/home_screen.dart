@@ -162,8 +162,7 @@ class HomeScreen extends ConsumerWidget {
         FundChart(
           range: '6m',
           compact: true,
-          onTap: () =>
-              ref.read(shellTabProvider.notifier).state = ledgerTabIndex,
+          onTap: () => selectLedgerTab(ref),
         ),
       ],
     );
