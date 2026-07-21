@@ -17,9 +17,9 @@ from .models import (
     AuthThrottleBucket,
     BreakGlassRevocation,
     BreakGlassSession,
-    ManagementMembership,
     OrganizationMembership,
 )
+from .services import require_management
 
 RECENT_REAUTH_KEY = "recent_reauth_at"
 DEFAULT_REAUTH_MAX_AGE = 300
@@ -28,14 +28,6 @@ THROTTLE_WINDOW_SECONDS = 15 * 60
 BREAK_GLASS_MAX_MINUTES = 60
 BREAK_GLASS_CONSENT_MAX_AGE = 600  # seconds; authorizer dual-control token
 BREAK_GLASS_CONSENT_SALT = "lamto.break_glass.consent"
-
-
-def _management_membership(membership):
-    return ManagementMembership.objects.filter(
-        user_id=membership.user_id,
-        building_id=membership.organization.building_id,
-        active=True,
-    ).first()
 
 
 class RecentAuthRequired(PermissionDenied):
@@ -205,7 +197,9 @@ def _deny_sensitive(request, reason: str, extra: dict | None = None) -> None:
     try:
         record_audit(
             request.user if getattr(request.user, "is_authenticated", False) else None,
-            _management_membership(membership) if membership else None,
+            require_management(request.user, membership.organization.building_id)
+            if membership
+            else None,
             "security.sensitive_action",
             "Session",
             str(getattr(request.user, "pk", "") or ""),
@@ -280,18 +274,15 @@ def assert_break_glass_allows_path(request, path: str | None = None) -> None:
     if session is None:
         return
     path = path if path is not None else request.path
-    try:
-        record_audit(
-            request.user,
-            _management_membership(session.membership),
-            "security.break_glass.request",
-            "BreakGlassSession",
-            str(session.pk),
-            "observed",
-            {"path": path, "method": request.method},
-        )
-    except Exception:
-        pass
+    record_audit(
+        request.user,
+        require_management(request.user, session.membership.organization.building_id),
+        "security.break_glass.request",
+        "BreakGlassSession",
+        str(session.pk),
+        "observed",
+        {"path": path, "method": request.method},
+    )
     for prefix in BUSINESS_ROUTE_PREFIXES:
         if path.startswith(prefix):
             raise PermissionDenied(
@@ -322,19 +313,20 @@ def issue_break_glass_consent(
         "authorizer_user_id": authorizing_membership.user_id,
         "tech_id": tech_membership.pk,
     }
+    management_membership = require_management(
+        authorizing_membership.user,
+        authorizing_membership.organization.building_id,
+    )
     token = signing.dumps(payload, salt=BREAK_GLASS_CONSENT_SALT, compress=True)
-    try:
-        record_audit(
-            authorizing_membership.user,
-            _management_membership(authorizing_membership),
-            "security.break_glass.consent",
-            "OrganizationMembership",
-            str(tech_membership.pk),
-            "accepted",
-            {"tech_membership_id": tech_membership.pk},
-        )
-    except Exception:
-        pass
+    record_audit(
+        authorizing_membership.user,
+        management_membership,
+        "security.break_glass.consent",
+        "OrganizationMembership",
+        str(tech_membership.pk),
+        "accepted",
+        {"tech_membership_id": tech_membership.pk},
+    )
     return token
 
 
@@ -394,6 +386,10 @@ def start_break_glass(
     )
     minutes = min(max(int(duration_minutes), 1), BREAK_GLASS_MAX_MINUTES)
     now = _now()
+    management_membership = require_management(
+        tech_membership.user,
+        tech_membership.organization.building_id,
+    )
     session = BreakGlassSession.objects.create(
         membership=tech_membership,
         reason=reason.strip(),
@@ -403,7 +399,7 @@ def start_break_glass(
     )
     record_audit(
         tech_membership.user,
-        _management_membership(tech_membership),
+        management_membership,
         "security.break_glass.start",
         "BreakGlassSession",
         str(session.pk),
@@ -429,6 +425,10 @@ def revoke_break_glass(
     now = _now()
     if session.expires_at <= now:
         raise ValidationError("Break-glass session already expired.")
+    management_membership = require_management(
+        revoked_by,
+        session.membership.organization.building_id,
+    )
     rev = BreakGlassRevocation.objects.create(
         session=session,
         revoked_by=revoked_by,
@@ -437,7 +437,7 @@ def revoke_break_glass(
     )
     record_audit(
         revoked_by,
-        _management_membership(session.membership),
+        management_membership,
         "security.break_glass.revoke",
         "BreakGlassSession",
         str(session.pk),

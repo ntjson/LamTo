@@ -13,7 +13,12 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from io import StringIO
 
-from lamto.accounts.models import Building, ManagementMembership
+from lamto.accounts.models import (
+    Building,
+    ManagementMembership,
+    Organization,
+    OrganizationMembership,
+)
 from lamto.documents.models import Document, DocumentVersion
 from lamto.web.forms.staff import (
     AcceptWorkForm,
@@ -252,7 +257,16 @@ class UploadDocumentPairTests(TestCase):
             authorization_status=WorkOrder.AuthorizationStatus.AUTHORIZED,
             status=WorkOrder.Status.ASSIGNED,
         )
-        membership = ManagementMembership.objects.get(user=self.user)
+        organization = Organization.objects.create(
+            building=self.building,
+            name="Cleanup operator",
+            kind=Organization.Kind.OPERATOR,
+        )
+        membership = OrganizationMembership.objects.create(
+            user=self.user,
+            organization=organization,
+            role=OrganizationMembership.Role.OPERATOR,
+        )
         proposal = Proposal.objects.create(
             work_order=work,
             creator_membership=membership,

@@ -459,6 +459,47 @@ class SecurityTests(TestCase):
         )
         self.assertIsNotNone(session.pk)
 
+    def test_break_glass_start_without_management_membership_does_not_mutate(self):
+        tech = self.make_membership(
+            OrganizationMembership.Role.TECH_ADMIN, "tech-no-management"
+        )
+        board = self.make_membership(
+            OrganizationMembership.Role.BOARD, "authz-no-management"
+        )
+        ManagementMembership.objects.filter(user=tech.user).update(active=False)
+
+        with self.assertRaises(PermissionDenied):
+            start_break_glass(
+                tech_membership=tech,
+                authorizing_membership=board,
+                reason="Must not persist",
+                consent_token=self.consent_for(board, tech),
+            )
+
+        self.assertFalse(BreakGlassSession.objects.filter(membership=tech).exists())
+
+    def test_break_glass_revoke_without_management_membership_does_not_mutate(self):
+        tech = self.make_membership(
+            OrganizationMembership.Role.TECH_ADMIN,
+            "tech-revoke-no-management",
+        )
+        board = self.make_membership(
+            OrganizationMembership.Role.BOARD,
+            "authz-revoke-no-management",
+        )
+        session = start_break_glass(
+            tech_membership=tech,
+            authorizing_membership=board,
+            reason="Started while active",
+            consent_token=self.consent_for(board, tech),
+        )
+        ManagementMembership.objects.filter(user=tech.user).update(active=False)
+
+        with self.assertRaises(PermissionDenied):
+            revoke_break_glass(session, revoked_by=tech.user)
+
+        self.assertFalse(session.revocations.exists())
+
     def test_break_glass_request_path_is_audited(self):
         """Every /s/ request under break-glass is audited via middleware (Finding 4)."""
         tech = self.make_membership(
