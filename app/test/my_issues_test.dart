@@ -5,13 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/features/reports/my_issues_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
+import 'package:lamto/l10n/app_localizations_en.dart';
+import 'package:lamto/theme.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-ReportSummary _report(int id, String text) => ReportSummary(
+ReportSummary _report(int id, String text, {String status = 'SUBMITTED'}) =>
+    ReportSummary(
       (b) => b
         ..id = id
         ..text = text
-        ..status = 'OPEN'
+        ..status = status
         ..locationPathSnapshot = 'B / Hall'
         ..createdAt = DateTime.utc(2026, 7, 17),
     );
@@ -35,44 +38,56 @@ class _FakeRepo implements ReportsRepository {
   }
 
   @override
-  Future<ReportSummary> createReport(
-          {required String clientRef,
-          required String text,
-          required int locationId}) =>
-      throw UnimplementedError();
+  Future<ReportSummary> createReport({
+    required String clientRef,
+    required String text,
+    required int locationId,
+  }) => throw UnimplementedError();
   @override
   Future<List<Location>> fetchLocations() => throw UnimplementedError();
   @override
   Future<ReportDetail> fetchReport(int id) => throw UnimplementedError();
   @override
-  Future<WorkRatingResult> rateWork(
-          {required int workOrderId, required int score, String comment = ''}) =>
-      throw UnimplementedError();
+  Future<WorkRatingResult> rateWork({
+    required int workOrderId,
+    required int score,
+    String comment = '',
+  }) => throw UnimplementedError();
   @override
-  Future<ReportPhoto> uploadPhoto(
-          {required int reportId,
-          required String path,
-          required String filename}) =>
-      throw UnimplementedError();
+  Future<ReportPhoto> uploadPhoto({
+    required int reportId,
+    required String path,
+    required String filename,
+  }) => throw UnimplementedError();
 }
 
 void main() {
-  testWidgets('lists reports with status chip and loads the next page',
-      (tester) async {
+  test('declined reports are terminal without a success presentation', () {
+    expect(isActiveReportStatus('DECLINED'), isFalse);
+    expect(reportStatusLabel('DECLINED', AppLocalizationsEn()), 'DECLINED');
+    expect(reportStatusTone('DECLINED'), StatusTone.warning);
+  });
+
+  testWidgets('lists reports with status chip and loads the next page', (
+    tester,
+  ) async {
     final repo = _FakeRepo({
-      null: _page([_report(1, 'Thang máy kêu')],
-          next: 'http://x/api/v1/reports?cursor=abc'),
+      null: _page([
+        _report(1, 'Thang máy kêu'),
+      ], next: 'http://x/api/v1/reports?cursor=abc'),
       'abc': _page([_report(2, 'Đèn hành lang hỏng')]),
     });
-    await tester.pumpWidget(ProviderScope(
-      overrides: [reportsRepositoryProvider.overrideWithValue(repo)],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('vi'),
-        home: const MyIssuesScreen(),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [reportsRepositoryProvider.overrideWithValue(repo)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const MyIssuesScreen(),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text('Thang máy kêu'), findsOneWidget);
     expect(find.text('Đang mở'), findsOneWidget); // status paired with text
@@ -86,15 +101,17 @@ void main() {
 
   testWidgets('empty state', (tester) async {
     final repo = _FakeRepo({null: _page([])});
-    await tester.pumpWidget(ProviderScope(
-      overrides: [reportsRepositoryProvider.overrideWithValue(repo)],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('vi'),
-        home: const MyIssuesScreen(),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [reportsRepositoryProvider.overrideWithValue(repo)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const MyIssuesScreen(),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text('Bạn chưa gửi phản ánh nào.'), findsOneWidget);
   });
