@@ -49,12 +49,12 @@ class LedgerApiTests(TestCase):
         driver = PilotDomainDriver(cls.seed)
         driver.submit_report("Lobby lamp flickers", "Lift 2")
         driver.confirm_triage_case()
-        driver.submit_signed_proposal()
+        driver.publish_proposal()
         driver.complete_assigned_work()
         driver.record_settlement_transfer()
         driver.record_settlement_ack()
         driver.confirm_all_chain_events()
-        driver.sign_publication_snapshot()
+        driver.publish_settlement_entry()
         driver.confirm_all_chain_events()
         cls.entry = PublishedLedgerEntry.objects.get(
             case__building=cls.seed.building

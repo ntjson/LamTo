@@ -47,7 +47,7 @@ from lamto.finance.proposals import (
     decide_proposal as decide_published_proposal,
     publish_proposal_version,
 )
-from lamto.finance.publication import publish_settlement_entry
+from lamto.finance.publication import publish_settlement_entry as publish_entry
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
 from lamto.maintenance.cases import (
     complete_case_work,
@@ -385,8 +385,6 @@ class PilotDomainDriver:
         self._ctx["amount_vnd"] = amount_vnd
         return version
 
-    submit_signed_proposal = publish_proposal
-
     def publish_standalone_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
         manager = self.seed.management_memberships[0]
         quotation_original, _ = self.seed.document_pair(
@@ -515,7 +513,7 @@ class PilotDomainDriver:
         self._ctx["settlement"] = settlement
         return settlement
 
-    def sign_publication_snapshot(self):
+    def publish_settlement_entry(self):
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
         publisher = self.seed.management_memberships[1]
@@ -547,7 +545,7 @@ class PilotDomainDriver:
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
         settlement = proposal.settlement
-        entry = publish_settlement_entry(settlement)
+        entry = publish_entry(settlement)
         self._ctx["ledger_entry"] = entry
         return entry
 

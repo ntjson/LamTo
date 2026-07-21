@@ -279,7 +279,7 @@ Delete the `"approvals"` key and both fill-ins. Integrity verification walks onl
 - [ ] **Step 4: Migration + test reshape**
 
 Run: `uv run python manage.py makemigrations finance`
-Update `test_publication.py`/`test_integrity.py`: remove approval setup steps; assert publish succeeds directly after `submit_proposal_version`; regenerate any hard-coded payload-hash expectations by computing them from the new payload builder (never paste stale hashes).
+Update `test_publication.py`/`test_integrity.py`: remove approval setup steps; assert publish succeeds directly after `publish_proposal_version`; regenerate any hard-coded payload-hash expectations by computing them from the new payload builder (never paste stale hashes).
 
 - [ ] **Step 5: Verify green**
 

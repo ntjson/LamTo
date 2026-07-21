@@ -279,14 +279,3 @@ def publish_proposal_version(
         {"proposal_id": locked_proposal.pk, "number": number, "event_id": event.event_id},
     )
     return version
-
-
-def submit_proposal_version(proposal, amount_vnd, contractor_name, quotation_versions, signature, event_id):
-    """Temporary compatibility for pre-stage-3 callers; publishing is platform-signed."""
-    return publish_proposal_version(
-        proposal, proposal.creator_membership, amount_vnd=amount_vnd,
-        contractor_name=contractor_name, fund_code="GENERAL",
-        purpose=proposal.case.category if proposal.case_id else "Maintenance",
-        proposed_action="Perform proposed maintenance", expected_schedule="To be scheduled",
-        quotation_versions=quotation_versions, event_id=event_id,
-    )

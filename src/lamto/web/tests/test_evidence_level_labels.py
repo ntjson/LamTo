@@ -41,7 +41,7 @@ class EvidenceLevelLabelTests(TestCase):
         driver.record_settlement_transfer()
         driver.record_settlement_ack()
         driver.confirm_all_chain_events()
-        driver.sign_publication_snapshot()
+        driver.publish_settlement_entry()
         driver.confirm_all_chain_events()
         cls.entry = PublishedLedgerEntry.objects.get(case__building=cls.seed.building)
 

@@ -23,13 +23,11 @@ def _stream_sha256(version):
 
 def _related_outbox_events(entry):
     proposal = entry.proposal
-    version = proposal.current_version
     settlement = _load_execution_chain(proposal)
-    events = [
-        version.outbox_event if version is not None else None,
-        settlement.outbox_event,
+    versions = proposal.versions.select_related("outbox_event").order_by("number")
+    return [version.outbox_event for version in versions if version.outbox_event_id] + [
+        settlement.outbox_event
     ]
-    return [event for event in events if event is not None]
 
 
 def _check_chain_records(events):

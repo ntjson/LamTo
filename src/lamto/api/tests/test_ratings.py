@@ -19,7 +19,7 @@ def _accepted_work(seed):
     d = PilotDomainDriver(seed)
     d.submit_report("Lift noise", "Lift 2")
     d.confirm_triage_case()
-    d.submit_signed_proposal()
+    d.publish_proposal()
     d.complete_assigned_work()
     return MaintenanceCase.objects.get(building=seed.building)
 

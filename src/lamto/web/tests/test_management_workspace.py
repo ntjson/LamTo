@@ -147,7 +147,7 @@ class ManagementWorkspaceTests(TestCase):
         )
         driver = PilotDomainDriver(seed)
         driver.confirm_triage_case()
-        driver.submit_signed_proposal()
+        driver.publish_proposal()
         driver.complete_assigned_work()
         settlement = driver.record_settlement_transfer()
         recorder, verifier = seed.management_memberships

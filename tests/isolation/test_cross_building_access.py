@@ -161,12 +161,12 @@ class CrossBuildingAccessTests(TestCase):
             f"{B_LEAK_MARKER} lift noise", "Lift 2"
         )
         driver.confirm_triage_case()
-        driver.submit_signed_proposal()
+        driver.publish_proposal()
         driver.complete_assigned_work()
         driver.record_settlement_transfer()
         driver.record_settlement_ack()
         driver.confirm_all_chain_events()
-        driver.sign_publication_snapshot()
+        driver.publish_settlement_entry()
         driver.confirm_all_chain_events()
 
         b_building = cls.seed_b.building
