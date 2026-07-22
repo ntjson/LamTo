@@ -40,7 +40,7 @@ from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
 )
-from lamto.web.staff_documents import new_event_id, upload_document_pair
+from lamto.web.staff_documents import new_event_id
 
 
 @login_required

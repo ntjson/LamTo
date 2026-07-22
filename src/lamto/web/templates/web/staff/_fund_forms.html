@@ -6,7 +6,7 @@
     {% csrf_token %}
     <input type="hidden" name="action" value="prepare">
     {{ record_form.as_p }}
-    <p class="hint">{% trans "Upload the source evidence original and a redacted copy (PDF). Amounts are integer VND." %}</p>
+    <p class="hint">{% trans "Upload the source evidence (PDF). Amounts are integer VND." %}</p>
     <button type="submit" class="button button-primary">{% trans "Record source" %}</button>
   </form>
   {% endif %}

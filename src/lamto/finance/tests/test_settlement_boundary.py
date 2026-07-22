@@ -37,7 +37,7 @@ class SettlementBoundaryTests(TestCase):
         proposal.refresh_from_db()
         self.assertEqual(_load_execution_chain(proposal), settlement)
         gates = {gate for _document, _digest, gate in _collect_document_checks(proposal, proposal.current_version, settlement)}
-        self.assertTrue({"SETTLEMENT_TRANSFER_ORIGINAL", "SETTLEMENT_TRANSFER_REDACTED", "SETTLEMENT_ACK_ORIGINAL", "SETTLEMENT_ACK_REDACTED"}.issubset(gates))
+        self.assertTrue({"SETTLEMENT_TRANSFER", "SETTLEMENT_ACK"}.issubset(gates))
 
     def test_publication_finalizes_and_integrity_traverses_settlement_chain(self):
         driver, settlement = self.flow()

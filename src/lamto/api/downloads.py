@@ -14,7 +14,7 @@ from django.db.models import Q
 
 from lamto.accounts.tenancy import active_occupancies
 from lamto.config.log_filters import DownloadTokenLogFilter, scrub_download_token_in_text
-from lamto.documents.models import Document, DocumentVersion
+from lamto.documents.models import Document
 from lamto.evidence.models import SETTLED_STATUSES
 from lamto.finance.models import Proposal, ProposalDocument, PublishedLedgerEntry
 from lamto.maintenance.models import ReportPhoto, WorkUpdateEvidence
@@ -95,7 +95,7 @@ def issue_download_token(user_id: int, version_id: int) -> str:
 
 
 def resident_can_download(user, version) -> bool:
-    """True only for the caller's own report photos and the redacted
+    """True only for the caller's own report photos and the published-ledger
     published-ledger documents their building has published. Staff-only kinds
     are refused by RESIDENT_DOWNLOADABLE_KINDS before any lookup runs."""
     if version.document.kind not in RESIDENT_DOWNLOADABLE_KINDS:
@@ -107,8 +107,6 @@ def resident_can_download(user, version) -> bool:
             version=version,
             update__case__case_reports__report__reporter=user,
         ).exists()
-    if version.variant != DocumentVersion.Variant.REDACTED:
-        return False
     building_ids = list(active_occupancies(user).values_list("unit__building_id", flat=True))
     if not building_ids:
         return False
@@ -123,7 +121,7 @@ def resident_can_download(user, version) -> bool:
                 Proposal.Status.COMPLETED,
                 Proposal.Status.CLOSED,
             ],
-            document_version__redacted_versions=version,
+            document_version=version,
         ).exists()
     ):
         return True
@@ -134,8 +132,8 @@ def resident_can_download(user, version) -> bool:
             settlement__outbox_event__status__in=SETTLED_STATUSES,
         )
         .filter(
-            Q(settlement__transfer_redacted=version)
-            | Q(settlement__ack_redacted=version)
+            Q(settlement__transfer_original=version)
+            | Q(settlement__ack_original=version)
         )
         .exists()
     )

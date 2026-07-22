@@ -31,18 +31,11 @@ class StandaloneProposalTests(TestCase):
     def quotation(self):
         key = secrets.token_hex(8)
         document = Document.objects.create(building=self.building, kind=Document.Kind.QUOTATION)
-        original = DocumentVersion.objects.create(
+        return DocumentVersion.objects.create(
             document=document, version=1, variant=DocumentVersion.Variant.ORIGINAL,
             storage_key=f"o-{key}", provider_version_id=f"o-{key}", filename="q.pdf",
             content_type="application/pdf", byte_size=1, sha256="1" * 64, uploader=self.manager,
         )
-        DocumentVersion.objects.create(
-            document=document, version=2, variant=DocumentVersion.Variant.REDACTED,
-            storage_key=f"r-{key}", provider_version_id=f"r-{key}", filename="q-r.pdf",
-            content_type="application/pdf", byte_size=1, sha256="2" * 64, uploader=self.manager,
-            redacts=original,
-        )
-        return original
 
     def case(self):
         location = BuildingLocation.objects.create(building=self.building, name="Lobby")

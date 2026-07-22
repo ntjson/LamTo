@@ -119,20 +119,20 @@ class RecordSettlementTransferForm(forms.Form):
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
     payee_name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": "input"}))
     bank_reference = forms.CharField(max_length=64, widget=forms.TextInput(attrs={"class": "input"}))
-    proof_pair = forms.ChoiceField(choices=(), widget=forms.Select(attrs={"class": "input"}))
+    proof = forms.ChoiceField(choices=(), widget=forms.Select(attrs={"class": "input"}))
 
     def __init__(self, *args, proof_choices=(), **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["proof_pair"].choices = [("", "Select evidence…"), *proof_choices]
+        self.fields["proof"].choices = [("", "Select evidence…"), *proof_choices]
 
 
 class RecordSettlementAcknowledgementForm(forms.Form):
     event_id = forms.CharField(max_length=66, widget=forms.HiddenInput())
-    proof_pair = forms.ChoiceField(choices=(), widget=forms.Select(attrs={"class": "input"}))
+    proof = forms.ChoiceField(choices=(), widget=forms.Select(attrs={"class": "input"}))
 
     def __init__(self, *args, proof_choices=(), **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["proof_pair"].choices = [("", "Select evidence…"), *proof_choices]
+        self.fields["proof"].choices = [("", "Select evidence…"), *proof_choices]
 
 
 class NotificationPreferenceForm(forms.Form):
@@ -177,7 +177,7 @@ class NotificationPreferenceForm(forms.Form):
 
 
 class CreateProposalForm(forms.Form):
-    """Management-entered proposal draft; the quotation pair uploads on prepare."""
+    """Management-entered proposal draft; the quotation uploads on prepare."""
 
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
     contractor_name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": "input"}))
@@ -186,7 +186,6 @@ class CreateProposalForm(forms.Form):
     proposed_action = forms.CharField(required=False, widget=forms.Textarea(attrs={"class": "input"}))
     expected_schedule = forms.CharField(max_length=200, required=False, widget=forms.TextInput(attrs={"class": "input"}))
     quotation_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
-    quotation_redacted = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
 
 
 class StandaloneProposalForm(CreateProposalForm):
@@ -197,7 +196,7 @@ class StandaloneProposalForm(CreateProposalForm):
 
 
 class RecordFundSourceForm(forms.Form):
-    """Fund source draft; the evidence pair uploads on prepare."""
+    """Fund source draft; the evidence uploads on prepare."""
 
     entry_type = forms.ChoiceField(
         choices=[
@@ -208,4 +207,3 @@ class RecordFundSourceForm(forms.Form):
     )
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
     evidence_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
-    evidence_redacted = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))

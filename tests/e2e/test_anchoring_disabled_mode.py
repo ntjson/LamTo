@@ -89,15 +89,14 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
     # --- Fund flow (record then self-confirm) -----------------------------
     fund = get_or_create_fund(seed.building)
     (recorder,) = seed.management_memberships
-    original, redacted = seed.document_pair(
+    evidence = seed.document(
         Document.Kind.CONTRACT, recorder.user, "offchain-inflow"
     )
     inflow = record_fund_source(
         fund,
         MaintenanceFundEntry.EntryType.INFLOW,
         5_000_000,
-        original,
-        redacted,
+        evidence,
         recorder,
     )
     verify_fund_source(inflow, recorder)

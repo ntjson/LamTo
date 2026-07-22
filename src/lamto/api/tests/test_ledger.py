@@ -183,7 +183,7 @@ class LedgerApiTests(TestCase):
     def test_standalone_entry_list_detail_story_and_download(self):
         manager = self.seed.management_memberships[0]
         proposal = create_standalone_proposal(self.seed.building, manager)
-        quotation, _ = self.seed.document_pair(Document.Kind.QUOTATION, manager.user, "standalone-q")
+        quotation = self.seed.document(Document.Kind.QUOTATION, manager.user, "standalone-q")
         publish_proposal_version(
             proposal, manager, amount_vnd=2_000_000, contractor_name="Standalone Co",
             fund_code="GENERAL", purpose="Lobby repaint", proposed_action="Repaint lobby",
@@ -192,16 +192,15 @@ class LedgerApiTests(TestCase):
         )
         decide_proposal(proposal, manager.user, True)
         complete_proposal_work(proposal, manager.user, "Peeling paint", "Lobby repainted")
-        transfer_original, transfer_redacted = self.seed.document_pair(Document.Kind.PAYMENT_PROOF, manager.user, "standalone-transfer")
+        transfer_original = self.seed.document(Document.Kind.PAYMENT_PROOF, manager.user, "standalone-transfer")
         settlement = record_transfer(
             proposal, manager, amount_vnd=2_000_000, payee_name="Standalone Co",
             bank_reference="STANDALONE-1", transfer_original=transfer_original,
-            transfer_redacted=transfer_redacted,
         )
         acknowledger = self.seed.management_memberships[0]
-        ack_original, ack_redacted = self.seed.document_pair(Document.Kind.PAYMENT_PROOF, acknowledger.user, "standalone-ack")
+        ack_original = self.seed.document(Document.Kind.PAYMENT_PROOF, acknowledger.user, "standalone-ack")
         settlement = record_acknowledgement(
-            settlement, acknowledger, ack_original=ack_original, ack_redacted=ack_redacted,
+            settlement, acknowledger, ack_original=ack_original,
             event_id="0x" + secrets.token_hex(32),
         )
         proposal.refresh_from_db()

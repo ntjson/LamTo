@@ -51,42 +51,24 @@ def get_or_create_fund(building) -> MaintenanceFund:
     return fund
 
 
-def _require_evidence_pair(original, redacted, building_id, *, lock=False):
-    original_id = getattr(original, "pk", None)
-    redacted_id = getattr(redacted, "pk", None)
-    if original_id is None or redacted_id is None:
-        raise ValidationError("Fund source evidence documents are required.")
-    queryset = DocumentVersion.objects.select_related("document").filter(
-        pk__in={original_id, redacted_id}
-    )
+def _require_evidence(evidence, building_id, *, lock=False):
+    evidence_id = getattr(evidence, "pk", None)
+    if evidence_id is None:
+        raise ValidationError("Fund source evidence document is required.")
+    queryset = DocumentVersion.objects.select_related("document").filter(pk=evidence_id)
     if lock:
         queryset = queryset.select_for_update()
-    versions = {version.pk: version for version in queryset}
-    if original_id not in versions or redacted_id not in versions:
+    version = queryset.first()
+    if version is None:
         raise ValidationError("Fund source evidence versions must still exist.")
-    original = versions[original_id]
-    redacted = versions[redacted_id]
     if (
-        original.document.building_id != building_id
-        or original.variant != DocumentVersion.Variant.ORIGINAL
-        or original.scan_status != DocumentVersion.ScanStatus.CLEAN
-        or original.redacts_id is not None
+        version.document.building_id != building_id
+        or version.scan_status != DocumentVersion.ScanStatus.CLEAN
     ):
         raise ValidationError(
-            "Fund evidence originals must be clean, safe, and in the fund building."
+            "Fund evidence must be clean, safe, and in the fund building."
         )
-    if (
-        redacted.document_id != original.document_id
-        or redacted.document.building_id != building_id
-        or redacted.variant != DocumentVersion.Variant.REDACTED
-        or redacted.scan_status != DocumentVersion.ScanStatus.CLEAN
-        or redacted.redacts_id != original.pk
-        or redacted.sha256 == original.sha256
-    ):
-        raise ValidationError(
-            "Fund evidence requires a distinct clean redacted copy in the fund building."
-        )
-    return original, redacted
+    return version
 
 
 def _validate_source_amount(entry_type, amount_vnd):
@@ -126,7 +108,6 @@ def _locked_entry(entry):
             "fund__building",
             "recorder__user",
             "evidence_original",
-            "evidence_redacted",
         ).get(pk=locked_id)
     )
 
@@ -136,8 +117,7 @@ def record_fund_source(
     fund,
     entry_type,
     amount_vnd,
-    evidence_original,
-    evidence_redacted,
+    evidence,
     recorder,
     fund_entry_id=None,
     timestamp=None,
@@ -146,12 +126,7 @@ def record_fund_source(
     fund = _locked_fund(fund)
     actor = require_management(recorder.user, fund.building_id)
     _validate_source_amount(entry_type, amount_vnd)
-    evidence_original, evidence_redacted = _require_evidence_pair(
-        evidence_original,
-        evidence_redacted,
-        fund.building_id,
-        lock=True,
-    )
+    evidence = _require_evidence(evidence, fund.building_id, lock=True)
     if fund_entry_id is None:
         fund_entry_id = allocate_fund_entry_id()
     if type(fund_entry_id) is not int or fund_entry_id <= 0:
@@ -161,7 +136,7 @@ def record_fund_source(
     entry_timestamp = timestamp or timezone.now()
     if not isinstance(entry_timestamp, type(timezone.now())) or entry_timestamp.tzinfo is None:
         raise ValidationError("Fund entry timestamp must be timezone-aware.")
-    key = source_key or _source_key(entry_type, fund.pk, evidence_original.sha256)
+    key = source_key or _source_key(entry_type, fund.pk, evidence.sha256)
     if MaintenanceFundEntry.objects.filter(source_key=key).exists():
         raise ValidationError("Fund source key already exists.")
     entry = MaintenanceFundEntry(
@@ -169,10 +144,8 @@ def record_fund_source(
         fund=fund,
         entry_type=entry_type,
         amount_vnd=amount_vnd,
-        evidence_original=evidence_original,
-        evidence_redacted=evidence_redacted,
-        evidence_original_hash=evidence_original.sha256,
-        evidence_redacted_hash=evidence_redacted.sha256,
+        evidence_original=evidence,
+        evidence_original_hash=evidence.sha256,
         recorder=actor,
         source_key=key,
         recorded_at=timezone.now(),

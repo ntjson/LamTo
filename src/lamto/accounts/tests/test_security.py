@@ -74,7 +74,7 @@ class SecurityTests(TestCase):
             "bank_reference": "REF-1",
             "amount_vnd": "1000",
             "external_status": "COMPLETED",
-            "proof_pair": "1:2",
+            "proof": "1",
             "event_id": "0x" + "11" * 32,
             "signature": "0x" + "22" * 65,
             "settlement_id": "1",

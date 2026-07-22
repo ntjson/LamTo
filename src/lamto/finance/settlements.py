@@ -20,25 +20,23 @@ def normalize_bank_reference(value):
     return value
 
 
-def _require_proof_pair(original, redacted, building_id, *, lock=False):
-    ids = {getattr(original, "pk", None), getattr(redacted, "pk", None)}
-    qs = DocumentVersion.objects.select_related("document").filter(pk__in=ids)
+def _require_proof(proof, building_id, *, lock=False):
+    qs = DocumentVersion.objects.select_related("document").filter(pk=getattr(proof, "pk", None))
     if lock:
         qs = qs.select_for_update()
-    versions = {v.pk: v for v in qs}
-    original, redacted = versions.get(getattr(original, "pk", None)), versions.get(getattr(redacted, "pk", None))
-    if not original or not redacted or original.document.kind != Document.Kind.PAYMENT_PROOF or original.document.building_id != building_id or original.variant != DocumentVersion.Variant.ORIGINAL or original.scan_status != DocumentVersion.ScanStatus.CLEAN or original.redacts_id is not None or redacted.document_id != original.document_id or redacted.variant != DocumentVersion.Variant.REDACTED or redacted.scan_status != DocumentVersion.ScanStatus.CLEAN or redacted.redacts_id != original.pk or redacted.sha256 == original.sha256:
-        raise ValidationError("Settlement evidence requires a distinct clean original/redacted payment-proof pair in the proposal building.")
-    return original, redacted
+    version = qs.first()
+    if not version or version.document.kind != Document.Kind.PAYMENT_PROOF or version.document.building_id != building_id or version.scan_status != DocumentVersion.ScanStatus.CLEAN:
+        raise ValidationError("Settlement evidence requires a clean payment proof in the proposal building.")
+    return version
 
 
 def build_settlement_evidence_payload(settlement):
     proposal = settlement.proposal
-    return {"schema": "settlement.v1", "settlement_id": settlement.pk, "proposal_id": proposal.pk, "proposal_version": proposal.current_version.number, "amount_vnd": settlement.amount_vnd, "payee_name": settlement.payee_name, "bank_reference": normalize_bank_reference(settlement.bank_reference), "transfer_original_sha256": settlement.transfer_original.sha256, "transfer_redacted_sha256": settlement.transfer_redacted.sha256, "ack_original_sha256": settlement.ack_original.sha256, "ack_redacted_sha256": settlement.ack_redacted.sha256, "transfer_recorded_at": utc_rfc3339(settlement.transfer_recorded_at), "ack_recorded_at": utc_rfc3339(settlement.ack_recorded_at)}
+    return {"schema": "settlement.v1", "settlement_id": settlement.pk, "proposal_id": proposal.pk, "proposal_version": proposal.current_version.number, "amount_vnd": settlement.amount_vnd, "payee_name": settlement.payee_name, "bank_reference": normalize_bank_reference(settlement.bank_reference), "transfer_original_sha256": settlement.transfer_original.sha256, "ack_original_sha256": settlement.ack_original.sha256, "transfer_recorded_at": utc_rfc3339(settlement.transfer_recorded_at), "ack_recorded_at": utc_rfc3339(settlement.ack_recorded_at)}
 
 
 @transaction.atomic
-def record_transfer(proposal, membership, *, amount_vnd, payee_name, bank_reference, transfer_original, transfer_redacted):
+def record_transfer(proposal, membership, *, amount_vnd, payee_name, bank_reference, transfer_original):
     proposal = Proposal.objects.select_for_update().get(pk=proposal.pk)
     actor = require_management(membership.user, proposal.building_id)
     if proposal.status != Proposal.Status.COMPLETED:
@@ -50,24 +48,24 @@ def record_transfer(proposal, membership, *, amount_vnd, payee_name, bank_refere
     payee_name = str(payee_name or "").strip()
     if not payee_name:
         raise ValidationError("Payee name is required.")
-    original, redacted = _require_proof_pair(transfer_original, transfer_redacted, proposal.building_id, lock=True)
-    settlement = Settlement.objects.create(proposal=proposal, amount_vnd=amount_vnd, payee_name=payee_name, bank_reference=normalize_bank_reference(bank_reference), transfer_original=original, transfer_redacted=redacted, transfer_recorded_by=actor, transfer_recorded_at=timezone.now())
+    original = _require_proof(transfer_original, proposal.building_id, lock=True)
+    settlement = Settlement.objects.create(proposal=proposal, amount_vnd=amount_vnd, payee_name=payee_name, bank_reference=normalize_bank_reference(bank_reference), transfer_original=original, transfer_recorded_by=actor, transfer_recorded_at=timezone.now())
     record_audit(actor.user, actor, "settlement.transfer_recorded", "Settlement", str(settlement.pk), "accepted")
     return settlement
 
 
 @transaction.atomic
-def record_acknowledgement(settlement, membership, *, ack_original, ack_redacted, event_id):
+def record_acknowledgement(settlement, membership, *, ack_original, event_id):
     settlement = Settlement.objects.select_for_update().get(pk=settlement.pk)
     actor = require_management(membership.user, settlement.proposal.building_id)
     if settlement.settled_at is not None:
         raise ValidationError("Settlement is already settled.")
-    original, redacted = _require_proof_pair(ack_original, ack_redacted, settlement.proposal.building_id, lock=True)
+    original = _require_proof(ack_original, settlement.proposal.building_id, lock=True)
     now = timezone.now()
-    settlement.ack_original, settlement.ack_redacted, settlement.ack_recorded_by, settlement.ack_recorded_at = original, redacted, actor, now
+    settlement.ack_original, settlement.ack_recorded_by, settlement.ack_recorded_at = original, actor, now
     event = queue_platform_event(event_id, EvidenceType.SETTLEMENT, build_settlement_evidence_payload(settlement), "0x" + settlement.proposal.current_version.outbox_event.payload_hash, settlement.proposal.building)
     settlement.outbox_event, settlement.settled_at = event, now
-    settlement.save(update_fields=["ack_original", "ack_redacted", "ack_recorded_by", "ack_recorded_at", "outbox_event", "settled_at"])
+    settlement.save(update_fields=["ack_original", "ack_recorded_by", "ack_recorded_at", "outbox_event", "settled_at"])
     from .fund import create_settlement_outflow
     create_settlement_outflow(settlement)
     from .publication import publish_settlement_entry

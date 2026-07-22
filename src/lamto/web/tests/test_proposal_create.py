@@ -67,7 +67,6 @@ class ProposalCreateTests(TestCase):
                 "proposed_action": "Replace bearings",
                 "expected_schedule": "August 2026",
                 "quotation_original": _pdf("q.pdf", b"orig"),
-                "quotation_redacted": _pdf("qr.pdf", b"redacted differs"),
             },
         )
         self.assertEqual(prepare.status_code, 302)
@@ -85,7 +84,6 @@ class ProposalCreateTests(TestCase):
             "fund_code": "GENERAL", "purpose": "Lift jerks",
             "proposed_action": "Replace bearings", "expected_schedule": "August 2026",
             "quotation_original": _pdf("q.pdf", b"orig"),
-            "quotation_redacted": _pdf("qr.pdf", b"redacted differs"),
         })
         proposal = Proposal.objects.get(case=self.work)
 

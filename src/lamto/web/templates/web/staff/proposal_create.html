@@ -10,7 +10,7 @@
     {% csrf_token %}
     <input type="hidden" name="action" value="prepare">
     {{ create_form.as_p }}
-    <p class="hint">{% trans "Upload the quotation original and a redacted copy (PDF). Amounts are integer VND." %}</p>
+    <p class="hint">{% trans "Upload the quotation (PDF). Amounts are integer VND." %}</p>
     <button type="submit" class="button button-primary">{% trans "Publish proposal" %}</button>
   </form>
 </section>

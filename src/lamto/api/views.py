@@ -391,7 +391,7 @@ class LedgerDetailView(APIView):
                         args=[issue_download_token(request.user.pk, doc["version_id"])],
                     ),
                 }
-                for doc in detail["redacted_docs"]
+                for doc in detail["docs"]
             ],
             "proof": {
                 "evidence_level": detail["evidence_level"],

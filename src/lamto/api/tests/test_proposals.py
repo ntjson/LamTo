@@ -54,7 +54,7 @@ class ProposalApiTests(TestCase):
 
     def _standalone(self, purpose):
         proposal = create_standalone_proposal(self.seed.building, self.manager)
-        original, _redacted = self.seed.document_pair(
+        original = self.seed.document(
             Document.Kind.QUOTATION, self.manager.user, purpose.lower().replace(" ", "-")
         )
         publish_proposal_version(
@@ -123,7 +123,7 @@ class ProposalApiTests(TestCase):
             EvidenceLevel.CHAIN_CONFIRMED,
         }
         document = body["versions"][0]["supporting_documents"][0]
-        assert document["filename"].endswith("-redacted.pdf")
+        assert document["filename"].endswith(".pdf")
         assert self.client.get(
             document["download_url"], headers=self._auth()
         ).status_code == 200

@@ -35,7 +35,7 @@ from lamto.web.views.staff_common import (
     accountability_chain_for,
     prepare_record_list,
 )
-from lamto.web.staff_documents import new_event_id, upload_document_pair
+from lamto.web.staff_documents import new_event_id, upload_document
 
 
 def _proposal_publishable(proposal) -> bool:
@@ -222,10 +222,9 @@ def proposal_create(request, pk):
     create_form = CreateProposalForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and create_form.is_valid():
         try:
-            original, _redacted = upload_document_pair(
+            original = upload_document(
                 case.building, Document.Kind.QUOTATION, request.user,
                 create_form.cleaned_data["quotation_original"],
-                create_form.cleaned_data["quotation_redacted"],
             )
             proposal = existing or create_proposal(case, membership)
             publish_proposal_version(
@@ -267,9 +266,9 @@ def standalone_proposal_create(request):
         require_recent_auth(request)
         if form.is_valid():
             try:
-                original, _ = upload_document_pair(
+                original = upload_document(
                     membership.building, Document.Kind.QUOTATION, request.user,
-                    form.cleaned_data["quotation_original"], form.cleaned_data["quotation_redacted"],
+                    form.cleaned_data["quotation_original"],
                 )
                 proposal = create_standalone_proposal(membership.building, membership)
                 publish_proposal_version(

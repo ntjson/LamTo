@@ -352,19 +352,18 @@ class ProposalSerializer(serializers.Serializer):
         rows = []
         for version in proposal.versions.all():
             documents = []
-            for original in version.quotations.all():
-                for redacted in original.redacted_versions.all():
-                    documents.append(
-                        {
-                            "id": redacted.pk,
-                            "filename": redacted.filename,
-                            "sha256": redacted.sha256,
-                            "download_url": reverse(
-                                "api:document-download",
-                                args=[issue_download_token(request.user.pk, redacted.pk)],
-                            ),
-                        }
-                    )
+            for quotation in version.quotations.all():
+                documents.append(
+                    {
+                        "id": quotation.pk,
+                        "filename": quotation.filename,
+                        "sha256": quotation.sha256,
+                        "download_url": reverse(
+                            "api:document-download",
+                            args=[issue_download_token(request.user.pk, quotation.pk)],
+                        ),
+                    }
+                )
             rows.append(
                 {
                     "number": version.number,

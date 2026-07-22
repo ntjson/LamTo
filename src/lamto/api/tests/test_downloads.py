@@ -284,7 +284,7 @@ class DownloadTests(TestCase):
 
         resident = self.seed.residents[0]
         manager = self.seed.management_users[0]
-        _original, contract = self.seed.document_pair(Document.Kind.CONTRACT, manager, "fund-contract")
+        contract = self.seed.document(Document.Kind.CONTRACT, manager, "fund-contract")
 
         self.assertNotIn(Document.Kind.CONTRACT, RESIDENT_DOWNLOADABLE_KINDS)
         with self.assertNumQueries(0):

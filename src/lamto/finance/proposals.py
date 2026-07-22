@@ -28,11 +28,11 @@ def spending_proposal_cases():
 ZERO_HASH = "0x" + "00" * 32
 
 
-def _quotation_pairs(building_id, quotation_versions, *, lock=False):
+def _quotation_versions(building_id, quotation_versions, *, lock=False):
     supplied = list(quotation_versions or [])
     ids = [getattr(version, "pk", None) for version in supplied]
     if not ids or any(value is None for value in ids) or len(set(ids)) != len(ids):
-        raise ValidationError("At least one distinct quotation original is required.")
+        raise ValidationError("At least one distinct quotation is required.")
     queryset = DocumentVersion.objects.select_related("document").filter(pk__in=ids)
     if lock:
         queryset = queryset.select_for_update()
@@ -40,48 +40,28 @@ def _quotation_pairs(building_id, quotation_versions, *, lock=False):
     if len(versions) != len(ids):
         raise ValidationError("Every quotation version must still exist.")
 
-    pairs = []
+    resolved = []
     for version_id in ids:
-        original = versions[version_id]
+        version = versions[version_id]
         if (
-            original.document.kind != original.document.Kind.QUOTATION
-            or original.document.building_id != building_id
-            or original.variant != DocumentVersion.Variant.ORIGINAL
-            or original.scan_status != DocumentVersion.ScanStatus.CLEAN
-            or original.redacts_id is not None
+            version.document.kind != version.document.Kind.QUOTATION
+            or version.document.building_id != building_id
+            or version.scan_status != DocumentVersion.ScanStatus.CLEAN
         ):
-            raise ValidationError("Quotation originals must be clean, safe, and in the work-order building.")
-        redacted_queryset = DocumentVersion.objects.select_related("document").filter(
-            document_id=original.document_id,
-            redacts_id=original.pk,
-            variant=DocumentVersion.Variant.REDACTED,
-            scan_status=DocumentVersion.ScanStatus.CLEAN,
-        ).order_by("-version")
-        if lock:
-            redacted_queryset = redacted_queryset.select_for_update()
-        redacted = redacted_queryset.first()
-        if (
-            redacted is None
-            or redacted.document.kind != redacted.document.Kind.QUOTATION
-            or redacted.document.building_id != building_id
-            or redacted.sha256 == original.sha256
-        ):
-            raise ValidationError("Each quotation original requires a distinct clean redacted copy.")
-        pairs.append((original, redacted))
-    return pairs
+            raise ValidationError("Quotations must be clean, safe, and in the work-order building.")
+        resolved.append(version)
+    return resolved
 
 
 def _submission_snapshot(proposal, amount_vnd, contractor_name, fund_code, purpose,
-                         proposed_action, expected_schedule, pairs, number):
+                         proposed_action, expected_schedule, versions, number):
     case = proposal.case
     quotation_snapshot = [
         {
-            "original_id": original.pk,
-            "original_sha256": original.sha256,
-            "redacted_id": redacted.pk,
-            "redacted_sha256": redacted.sha256,
+            "version_id": version.pk,
+            "sha256": version.sha256,
         }
-        for original, redacted in pairs
+        for version in versions
     ]
     snapshot = {
         "proposal_id": proposal.pk,
@@ -103,8 +83,7 @@ def _submission_snapshot(proposal, amount_vnd, contractor_name, fund_code, purpo
         "building_id": proposal.building_id,
         "amount_vnd": amount_vnd,
         "proposal_snapshot_hash": payload_hash(snapshot),
-        "quotation_original_hash": payload_hash([original.sha256 for original, _ in pairs]),
-        "quotation_redacted_hash": payload_hash([redacted.sha256 for _, redacted in pairs]),
+        "quotation_original_hash": payload_hash([version.sha256 for version in versions]),
     }
     if case:
         evidence_payload.update(
@@ -126,11 +105,11 @@ def build_proposal_evidence_payload(proposal, amount_vnd, contractor_name, quota
     if not isinstance(contractor_name, str) or not contractor_name.strip():
         raise ValidationError("Contractor name is required.")
     purpose = proposal.case.category if purpose is None and proposal.case_id else (purpose or "")
-    pairs = _quotation_pairs(proposal.building_id or proposal.case.building_id, quotation_versions)
+    versions = _quotation_versions(proposal.building_id or proposal.case.building_id, quotation_versions)
     number = (ProposalVersion.objects.filter(proposal=proposal).aggregate(Max("number"))["number__max"] or 0) + 1
     _, evidence_payload = _submission_snapshot(
         proposal, amount_vnd, contractor_name.strip(), fund_code, purpose,
-        proposed_action, expected_schedule, pairs, number
+         proposed_action, expected_schedule, versions, number
     )
     return evidence_payload
 
@@ -229,12 +208,12 @@ def publish_proposal_version(
         if not isinstance(value, str) or not value.strip():
             raise ValidationError(message)
 
-    pairs = _quotation_pairs(locked_proposal.building_id, quotation_versions, lock=True)
+    versions = _quotation_versions(locked_proposal.building_id, quotation_versions, lock=True)
     previous = locked_proposal.versions.order_by("-number").first()
     number = (previous.number if previous else 0) + 1
     snapshot, evidence_payload = _submission_snapshot(
         locked_proposal, amount_vnd, contractor_name.strip(), fund_code.strip(), purpose.strip(),
-        proposed_action.strip(), expected_schedule.strip(), pairs, number
+         proposed_action.strip(), expected_schedule.strip(), versions, number
     )
     previous_hash = "0x" + previous.outbox_event.payload_hash if previous else ZERO_HASH
     event = queue_platform_event(
@@ -262,8 +241,7 @@ def publish_proposal_version(
     ProposalDocument.objects.bulk_create(
         [
             ProposalDocument(proposal_version=version, document_version=document)
-            for pair in pairs
-            for document in pair
+            for document in versions
         ]
     )
     locked_proposal.current_version = version

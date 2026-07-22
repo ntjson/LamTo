@@ -75,19 +75,6 @@ class ProposalVersionTests(TestCase):
             sha256="1" * 64,
             uploader=operator,
         )
-        DocumentVersion.objects.create(
-            document=document,
-            version=2,
-            variant=DocumentVersion.Variant.REDACTED,
-            storage_key="quotation-redacted",
-            provider_version_id="quotation-redacted",
-            filename="quotation-redacted.pdf",
-            content_type="application/pdf",
-            byte_size=9,
-            sha256="2" * 64,
-            uploader=operator,
-            redacts=quotation,
-        )
         return membership, case, quotation, None
 
     def test_create_proposal_is_case_anchored_and_proposes_linked_reports(self):
@@ -193,7 +180,7 @@ class ProposalVersionTests(TestCase):
         self.assertEqual(proposal.current_version_id, second.pk)
         self.assertEqual(proposal.status, proposal.Status.PUBLISHED)
 
-    def test_submission_requires_positive_amount_and_safe_quotation_pair(self):
+    def test_submission_requires_positive_amount_and_safe_quotation(self):
         operator, case, quotation, account = self.make_signed_proposal_inputs()
         proposal = create_proposal(case, operator)
         with self.assertRaises(ValidationError):
@@ -214,8 +201,8 @@ class ProposalVersionTests(TestCase):
             sha256="3" * 64,
             uploader=operator.user,
         )
-        with self.assertRaises(ValidationError):
-            self.publish_version(proposal, operator, unsafe_quotation)
+        version = self.publish_version(proposal, operator, unsafe_quotation)
+        self.assertEqual(version.snapshot["quotation_versions"][0]["version_id"], unsafe_quotation.pk)
 
     def test_publication_uses_platform_signature(self):
         operator, case, quotation, account = self.make_signed_proposal_inputs()

@@ -37,15 +37,7 @@ class MaintenanceFundEntry(InsertOnlyModel):
         on_delete=models.PROTECT,
         related_name="+",
     )
-    evidence_redacted = models.ForeignKey(
-        DocumentVersion,
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
     evidence_original_hash = models.CharField(max_length=64, blank=True)
-    evidence_redacted_hash = models.CharField(max_length=64, blank=True)
     recorder = models.ForeignKey(
         ManagementMembership,
         null=True,

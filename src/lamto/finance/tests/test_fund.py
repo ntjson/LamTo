@@ -12,13 +12,13 @@ class OffchainFundTests(TestCase):
     def setUp(self):
         self.seed = seed_pilot_world(building_name=f"Fund {self._testMethodName}", create_sample_report=False)
         self.recorder = self.seed.management_memberships[0]
-        self.original, self.redacted = self.seed.document_pair(Document.Kind.CONTRACT, self.recorder.user, "fund")
+        self.evidence = self.seed.document(Document.Kind.CONTRACT, self.recorder.user, "fund")
         self.fund = get_or_create_fund(self.seed.building)
 
     def test_record_and_self_confirm_are_offchain_and_move_the_balance(self):
         before = BlockchainOutboxEvent.objects.count()
         balance_before = fund_balance(self.seed.building.pk)
-        entry = record_fund_source(self.fund, MaintenanceFundEntry.EntryType.INFLOW, 50_000_000, self.original, self.redacted, self.recorder)
+        entry = record_fund_source(self.fund, MaintenanceFundEntry.EntryType.INFLOW, 50_000_000, self.evidence, self.recorder)
         # The balance only counts confirmed sources, so recording alone moves nothing.
         self.assertEqual(fund_balance(self.seed.building.pk), balance_before)
 
@@ -31,7 +31,7 @@ class OffchainFundTests(TestCase):
     def test_a_source_cannot_be_confirmed_twice(self):
         entry = record_fund_source(
             self.fund, MaintenanceFundEntry.EntryType.INFLOW, 1_000_000,
-            self.original, self.redacted, self.recorder,
+            self.evidence, self.recorder,
         )
         verify_fund_source(entry, self.recorder)
         with self.assertRaisesRegex(ValidationError, "already been verified"):

@@ -44,7 +44,6 @@ class PlatformSigningTests(TestCase):
             "case_snapshot_hash": "0" * 64,
             "report_snapshot_hash": "0" * 64,
             "quotation_original_hash": "0" * 64,
-            "quotation_redacted_hash": "0" * 64,
         }
 
         event = queue_platform_event(

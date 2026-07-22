@@ -9,7 +9,7 @@ from django.db import connection, transaction
 
 from lamto.documents.models import Document, DocumentVersion
 from lamto.documents.scanner import scan_with_clamav
-from lamto.documents.services import add_redacted_copy, create_document_version
+from lamto.documents.services import create_document_version
 
 logger = logging.getLogger(__name__)
 
@@ -39,82 +39,55 @@ def _delete_storage_blob(storage_key, provider_version_id=""):
         return False
 
 
-def upload_document_pair(building, kind, uploader, original_file, redacted_file):
-    """Upload an (original, redacted) PDF pair through the ClamAV pipeline.
+def upload_document(building, kind, uploader, file):
+    """Upload one PDF through the ClamAV pipeline.
 
-    Returns two linked clean DocumentVersions (redacted.redacts == original) —
-    the exact shape the proposal/fund evidence validators require. Raises
-    ValidationError on any rejection, quarantine, or identical bytes so views
-    surface one uniform error.
-
-    Both steps run inside transaction.atomic(). If the redacted upload fails
-    after the original was written, the transaction rolls back so no unpaired
-    original remains valid as proposal/fund evidence, and any blobs already
-    written to private storage are purged (storage is not transactional).
+    Returns a clean DocumentVersion, the exact shape the evidence validators
+    require. Storage is not transactional, so blobs already written are
+    purged when the transaction rolls back.
     """
     written_blobs = []  # (storage_key, provider_version_id)
     try:
         with transaction.atomic():
             document = Document.objects.create(building=building, kind=kind)
-            original = create_document_version(
+            version = create_document_version(
                 document,
-                original_file,
+                file,
                 DocumentVersion.Variant.ORIGINAL,
                 uploader,
                 scan_with_clamav,
             )
-            written_blobs.append((original.storage_key, original.provider_version_id or ""))
-            redacted = add_redacted_copy(original, redacted_file, uploader, scan_with_clamav)
-            written_blobs.append((redacted.storage_key, redacted.provider_version_id or ""))
+            written_blobs.append((version.storage_key, version.provider_version_id or ""))
     except ValueError as error:  # DocumentUploadRejected/Quarantined + identical-bytes all subclass ValueError
         for key, pvid in written_blobs:
             _delete_storage_blob(key, pvid)
         raise ValidationError(f"Evidence upload failed: {error}") from error
-    return original, redacted
+    return version
 
 
-def document_pair_options(building_id: int, kind: str):
-    """Return clean original/redacted pairs for a building and document kind.
+def document_options(building_id: int, kind: str):
+    """Return clean document versions for a building and document kind.
 
-    Each option is ``(value, label, original, redacted)`` where value is
-    ``"<original_pk>:<redacted_pk>"`` and label is human-readable filenames.
-    Scoped to the building; incomplete pairs are omitted.
+    Each option is ``(value, label, version)`` where value is the version pk.
     """
     versions = (
         DocumentVersion.objects.filter(
             document__building_id=building_id,
             document__kind=kind,
-            variant__in=(DocumentVersion.Variant.ORIGINAL, DocumentVersion.Variant.REDACTED),
             scan_status=DocumentVersion.ScanStatus.CLEAN,
         )
         .select_related("document")
-        .order_by("document_id", "-version")
+        .order_by("-pk")
     )
-    pairs = {}
-    for version in versions:
-        pairs.setdefault(version.document_id, {}).setdefault(version.variant, version)
-    options = []
-    for pair in pairs.values():
-        original = pair.get(DocumentVersion.Variant.ORIGINAL)
-        redacted = pair.get(DocumentVersion.Variant.REDACTED)
-        if original and redacted:
-            options.append(
-                (
-                    f"{original.pk}:{redacted.pk}",
-                    f"{original.filename} / {redacted.filename}",
-                    original,
-                    redacted,
-                )
-            )
-    return options
+    return [(str(version.pk), version.filename, version) for version in versions]
 
 
-def selected_pair(options, value):
-    """Resolve a pair value against freshly rebuilt options; None if gone."""
+def selected_document(options, value):
+    """Resolve a document value against freshly rebuilt options; None if gone."""
     return next(
         (
-            (original, redacted)
-            for key, _, original, redacted in options
+            version
+            for key, _, version in options
             if key == value
         ),
         None,
@@ -145,8 +118,7 @@ def _enable_document_append_only_triggers():
 def _hard_delete_document(document_id: int) -> int:
     """Delete a Document and its versions, then purge storage blobs.
 
-    Redacted versions reference originals via PROTECT self-FK, so delete redacted
-    rows first. Uses QuerySet.delete() (instance .delete() raises append-only).
+    Uses QuerySet.delete() (instance .delete() raises append-only).
     Returns the number of storage blobs successfully purged.
     """
     versions = list(
@@ -154,7 +126,6 @@ def _hard_delete_document(document_id: int) -> int:
             "storage_key", "provider_version_id"
         )
     )
-    DocumentVersion.objects.filter(document_id=document_id, redacts__isnull=False).delete()
     DocumentVersion.objects.filter(document_id=document_id).delete()
     Document.objects.filter(pk=document_id).delete()
     purged = 0
@@ -186,18 +157,12 @@ def _referenced_document_ids():
     protected = set(
         ProposalDocument.objects.values_list("document_version__document_id", flat=True)
     )
-    for field in ("evidence_original_id", "evidence_redacted_id"):
-        protected |= _docs_from_version_ids(
-            MaintenanceFundEntry.objects.exclude(**{field: None}).values_list(
-                field, flat=True
-            )
+    protected |= _docs_from_version_ids(
+        MaintenanceFundEntry.objects.exclude(evidence_original_id=None).values_list(
+            "evidence_original_id", flat=True
         )
-    settlement_fields = (
-        "transfer_original_id",
-        "transfer_redacted_id",
-        "ack_original_id",
-        "ack_redacted_id",
     )
+    settlement_fields = ("transfer_original_id", "ack_original_id")
     for model, fields in ((Settlement, settlement_fields),):
         for field in fields:
             protected |= _docs_from_version_ids(
@@ -240,7 +205,7 @@ def stale_prepared_ops_candidates(*, older_than_hours=24):
 
 
 def cleanup_stale_prepared_ops(*, older_than_hours=24, dry_run=False):
-    """Expire prepared-but-never-signed staff drafts and orphan document pairs.
+    """Expire prepared-but-never-signed staff drafts and orphan documents.
 
     Removes:
     - Document rows whose versions are all older than the threshold and that

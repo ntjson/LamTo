@@ -93,41 +93,22 @@ def write_bytes(key: str, content: bytes) -> None:
     storage.save(key, ContentFile(content))
 
 
-def document_pair(building, kind, uploader, tag: str):
-    document = Document.objects.create(building=building, kind=kind)
-    uniq = secrets.token_hex(6)
-    original_bytes = f"{tag}-original-content".encode()
-    redacted_bytes = f"{tag}-redacted-content".encode()
-    original_key = f"pilot/{uniq}/{tag}-original"
-    redacted_key = f"pilot/{uniq}/{tag}-redacted"
-    write_bytes(original_key, original_bytes)
-    write_bytes(redacted_key, redacted_bytes)
-    original = DocumentVersion.objects.create(
-        document=document,
+def document(building, kind, uploader, tag: str):
+    content = f"{tag}-content".encode()
+    key = f"pilot/{secrets.token_hex(6)}/{tag}"
+    write_bytes(key, content)
+    return DocumentVersion.objects.create(
+        document=Document.objects.create(building=building, kind=kind),
         version=1,
         variant=DocumentVersion.Variant.ORIGINAL,
-        storage_key=original_key,
-        provider_version_id=original_key,
-        filename=f"{tag}-original.pdf",
+        storage_key=key,
+        provider_version_id=key,
+        filename=f"{tag}.pdf",
         content_type="application/pdf",
-        byte_size=len(original_bytes),
-        sha256=hashlib.sha256(original_bytes).hexdigest(),
+        byte_size=len(content),
+        sha256=hashlib.sha256(content).hexdigest(),
         uploader=uploader,
     )
-    redacted = DocumentVersion.objects.create(
-        document=document,
-        version=2,
-        variant=DocumentVersion.Variant.REDACTED,
-        storage_key=redacted_key,
-        provider_version_id=redacted_key,
-        filename=f"{tag}-redacted.pdf",
-        content_type="application/pdf",
-        byte_size=len(redacted_bytes),
-        sha256=hashlib.sha256(redacted_bytes).hexdigest(),
-        uploader=uploader,
-        redacts=original,
-    )
-    return original, redacted
 
 
 def photo(building, kind, uploader, tag: str):
@@ -188,8 +169,8 @@ class PilotSeed:
         self._seq += 1
         return f"{base}-{self._seq}"
 
-    def document_pair(self, kind, uploader, tag: str | None = None):
-        return document_pair(self.building, kind, uploader, tag or self._tag("doc"))
+    def document(self, kind, uploader, tag: str | None = None):
+        return document(self.building, kind, uploader, tag or self._tag("doc"))
 
     def photo(self, kind, uploader, tag: str | None = None):
         return photo(self.building, kind, uploader, tag or self._tag("photo"))
@@ -258,15 +239,14 @@ def seed_pilot_world(
 def seed_opening_fund(seed: PilotSeed, amount_vnd: int = DEFAULT_FUND_OPENING_VND):
     fund = get_or_create_fund(seed.building)
     (recorder,) = seed.management_memberships
-    original, redacted = seed.document_pair(
+    evidence = seed.document(
         Document.Kind.CONTRACT, recorder.user, "fund-opening"
     )
     entry = record_fund_source(
         fund,
         MaintenanceFundEntry.EntryType.OPENING_BALANCE,
         amount_vnd,
-        original,
-        redacted,
+        evidence,
         recorder,
     )
     verify_fund_source(entry, recorder)
@@ -369,7 +349,7 @@ class PilotDomainDriver:
     def publish_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
         manager = self.seed.management_memberships[0]
         work = self.seed.case or self._ctx["case"]
-        quotation_original, _ = self.seed.document_pair(
+        quotation_original = self.seed.document(
             Document.Kind.QUOTATION, manager.user, "quotation"
         )
         proposal = create_proposal(work, manager)
@@ -390,7 +370,7 @@ class PilotDomainDriver:
 
     def publish_standalone_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
         manager = self.seed.management_memberships[0]
-        quotation_original, _ = self.seed.document_pair(
+        quotation_original = self.seed.document(
             Document.Kind.QUOTATION, manager.user, "standalone-quotation"
         )
         proposal = create_standalone_proposal(self.seed.building, manager)
@@ -483,7 +463,7 @@ class PilotDomainDriver:
     def record_settlement_transfer(self, amount_vnd: int | None = None):
         amount_vnd = amount_vnd or self._ctx.get("amount_vnd", DEFAULT_AMOUNT_VND)
         recorder = self.seed.management_memberships[0]
-        original, redacted = self.seed.document_pair(
+        proof = self.seed.document(
             Document.Kind.PAYMENT_PROOF, recorder.user, "settlement-transfer"
         )
         settlement = record_transfer(
@@ -492,8 +472,7 @@ class PilotDomainDriver:
             amount_vnd=amount_vnd,
             payee_name="Pilot Contractor Co",
             bank_reference=f"BANK-PILOT-{new_event_id()[-12:]}",
-            transfer_original=original,
-            transfer_redacted=redacted,
+            transfer_original=proof,
         )
         self._ctx["settlement"] = settlement
         return settlement
@@ -501,14 +480,13 @@ class PilotDomainDriver:
     def record_settlement_ack(self):
         settlement = self._ctx["settlement"]
         recorder = self.seed.management_memberships[0]
-        original, redacted = self.seed.document_pair(
+        proof = self.seed.document(
             Document.Kind.PAYMENT_PROOF, recorder.user, "settlement-ack"
         )
         settlement = record_acknowledgement(
             settlement,
             recorder,
-            ack_original=original,
-            ack_redacted=redacted,
+            ack_original=proof,
             event_id=new_event_id(),
         )
         if not self.seed.chain_paused:
@@ -578,14 +556,14 @@ class PilotDomainDriver:
         else:
             display = status
         # After the normal flow integrity verification may run; otherwise expose cost.
-        redacted_ok = bool(
+        documents_ok = bool(
             entry.resident_payload.get("document_hashes")
-            or entry.settlement.transfer_redacted_id
+            or entry.settlement.transfer_original_id
         )
         return SimpleNamespace(
             actual_cost_vnd=entry.actual_cost_vnd,
             status=display if status != "UNCHECKED" else "Record verified",
-            has_redacted_documents=lambda: redacted_ok,
+            has_documents=lambda: documents_ok,
             current_fund_balance_vnd=self.fund_balance(),
             entry=entry,
             effective_integrity_status=status,

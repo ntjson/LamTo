@@ -29,7 +29,7 @@ class PlatformChainIntegrationTests(TestCase):
                 "proposal_id": 1, "proposal_version": 1, "record_id": 1,
                 "amount_vnd": 1, "proposal_snapshot_hash": "1" * 64,
                 "quotation_original_hash": "2" * 64,
-                "quotation_redacted_hash": "3" * 64, "building_id": building.pk,
+                "building_id": building.pk,
             },
             "0x" + "00" * 32, building,
         )

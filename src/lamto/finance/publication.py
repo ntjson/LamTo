@@ -40,14 +40,11 @@ def _collect_document_checks(proposal, version, settlement, using="default"):
 
     checks = []
     for item in version.snapshot.get("quotation_versions", []):
-        original = DocumentVersion.objects.using(using).get(pk=item["original_id"])
-        redacted = DocumentVersion.objects.using(using).get(pk=item["redacted_id"])
-        checks.extend(((original, item["original_sha256"], "QUOTATION_ORIGINAL"), (redacted, item["redacted_sha256"], "QUOTATION_REDACTED")))
+        quotation = DocumentVersion.objects.using(using).get(pk=item["version_id"])
+        checks.append((quotation, item["sha256"], "QUOTATION"))
     checks.extend((
-        (settlement.transfer_original, settlement.transfer_original.sha256, "SETTLEMENT_TRANSFER_ORIGINAL"),
-        (settlement.transfer_redacted, settlement.transfer_redacted.sha256, "SETTLEMENT_TRANSFER_REDACTED"),
-        (settlement.ack_original, settlement.ack_original.sha256, "SETTLEMENT_ACK_ORIGINAL"),
-        (settlement.ack_redacted, settlement.ack_redacted.sha256, "SETTLEMENT_ACK_REDACTED"),
+        (settlement.transfer_original, settlement.transfer_original.sha256, "SETTLEMENT_TRANSFER"),
+        (settlement.ack_original, settlement.ack_original.sha256, "SETTLEMENT_ACK"),
     ))
     return checks
 
@@ -56,7 +53,7 @@ def _collect_document_checks(proposal, version, settlement, using="default"):
 def publish_settlement_entry(settlement) -> PublishedLedgerEntry:
     settlement = type(settlement).objects.select_for_update(of=("self",)).select_related(
         "proposal__current_version", "proposal__case__decision__report", "transfer_original",
-        "transfer_redacted", "ack_original", "ack_redacted", "outbox_event",
+        "ack_original", "outbox_event",
     ).get(pk=settlement.pk)
     existing = PublishedLedgerEntry.objects.filter(settlement=settlement).first()
     if existing:

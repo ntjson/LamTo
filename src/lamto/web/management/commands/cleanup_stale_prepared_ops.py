@@ -12,7 +12,7 @@ from lamto.web.staff_documents import cleanup_stale_prepared_ops
 
 class Command(BaseCommand):
     help = (
-        "Delete prepared-but-never-signed staff document pairs and draft "
+        "Delete prepared-but-never-signed staff documents and draft "
         "proposals older than N hours, and purge their private-storage blobs. "
         "Requires table-owner DB credentials (lamto_owner) — not lamto_writer."
     )

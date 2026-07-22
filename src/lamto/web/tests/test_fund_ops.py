@@ -183,7 +183,6 @@ class FundRecordTests(TestCase):
                 "entry_type": MaintenanceFundEntry.EntryType.INFLOW,
                 "amount_vnd": 2_000_000,
                 "evidence_original": _pdf("e.pdf", b"orig"),
-                "evidence_redacted": _pdf("er.pdf", b"redacted differs"),
             },
         )
         self.assertRedirects(response, reverse("web:fund-home"))
@@ -230,9 +229,9 @@ class FundVerifyTests(TestCase):
 
         fund = get_or_create_fund(seed.building)
         recorder = seed.management_memberships[0]
-        original, redacted = seed.document_pair(Document.Kind.CONTRACT, recorder.user, "inflow")
+        evidence = seed.document(Document.Kind.CONTRACT, recorder.user, "inflow")
         return record_fund_source(
-            fund, MaintenanceFundEntry.EntryType.INFLOW, 1_000_000, original, redacted,
+            fund, MaintenanceFundEntry.EntryType.INFLOW, 1_000_000, evidence,
             recorder,
         )
 

@@ -27,7 +27,7 @@ from lamto.finance.selectors import (
 )
 from lamto.web.forms.staff import RecordFundSourceForm
 from lamto.web.staff import require_management_context, staff_context
-from lamto.web.staff_documents import upload_document_pair
+from lamto.web.staff_documents import upload_document
 
 
 FUND_CHART_RANGES = (
@@ -107,16 +107,15 @@ def fund_record(request):
     record_form = RecordFundSourceForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and record_form.is_valid():
         try:
-            original, redacted = upload_document_pair(
+            evidence = upload_document(
                 building,
                 Document.Kind.CONTRACT,
                 request.user,
                 record_form.cleaned_data["evidence_original"],
-                record_form.cleaned_data["evidence_redacted"],
             )
             entry_type = record_form.cleaned_data["entry_type"]
             amount = record_form.cleaned_data["amount_vnd"]
-            record_fund_source(fund, entry_type, amount, original, redacted, membership)
+            record_fund_source(fund, entry_type, amount, evidence, membership)
         except (ValidationError, PermissionDenied) as error:
             if isinstance(error, ValidationError):
                 record_form.add_error(None, error)

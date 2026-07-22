@@ -55,7 +55,7 @@ def test_realistic_normal_flow(page, seeded_pilot):
     assert rating.satisfied is True
     assert ledger.actual_cost_vnd == DEFAULT_AMOUNT_VND
     assert ledger.status == "Record verified"
-    assert ledger.has_redacted_documents()
+    assert ledger.has_documents()
 
     verification = seeded_pilot.verify_latest_ledger_entry()
     assert verification.document_hashes_match
@@ -85,7 +85,7 @@ def test_standalone_proposal_happy_path(seeded_pilot):
     assert rating.satisfied is True
     assert ledger.actual_cost_vnd == DEFAULT_AMOUNT_VND
     assert ledger.status == "Record verified"
-    assert ledger.has_redacted_documents()
+    assert ledger.has_documents()
 
     verification = seeded_pilot.verify_latest_ledger_entry()
     assert verification.document_hashes_match

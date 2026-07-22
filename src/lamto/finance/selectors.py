@@ -24,7 +24,7 @@ from lamto.maintenance.models import CompletionRating, WorkUpdate
 def resident_proposals(building_id, user):
     """Published proposal records with the complete resident detail graph."""
     versions = ProposalVersion.objects.select_related("outbox_event").prefetch_related(
-        "quotations__redacted_versions"
+        "quotations"
     ).order_by("number", "pk")
     updates = WorkUpdate.objects.order_by("created_at", "pk")
     return (
@@ -78,8 +78,8 @@ def published_ledger_entry_for_proof(building_id, pk):
         .filter(pk=pk)
         .select_related(
             "case__decision__report",
-            "settlement__transfer_redacted",
-            "settlement__ack_redacted",
+            "settlement__transfer_original",
+            "settlement__ack_original",
             "settlement__outbox_event",
             "proposal__current_version",
         )
@@ -231,13 +231,13 @@ def ledger_entry_proof(entry):
     """
     payload = entry.resident_payload or {}
     version = entry.proposal.current_version
-    redacted_docs = []
+    docs = []
     for label, version_obj in (
-        ("Transfer evidence (redacted)", entry.settlement.transfer_redacted),
-        ("Payee acknowledgement (redacted)", entry.settlement.ack_redacted),
+        ("Transfer evidence", entry.settlement.transfer_original),
+        ("Payee acknowledgement", entry.settlement.ack_original),
     ):
         if version_obj is not None:
-            redacted_docs.append(
+            docs.append(
                 {
                     "label": label,
                     "filename": version_obj.filename,
@@ -262,7 +262,7 @@ def ledger_entry_proof(entry):
             else payload.get("proposed_amount_vnd")
         ),
         "verification": None,
-        "redacted_docs": redacted_docs,
+        "docs": docs,
         "events": events,
         "transaction_ids": [
             event.transaction_hash for event in events if event.transaction_hash

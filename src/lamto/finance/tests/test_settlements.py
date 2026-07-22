@@ -21,15 +21,13 @@ class SettlementTests(TestCase):
         cls.manager = User.objects.create_user(email="m@x.vn", password="pw")
         cls.membership = ManagementMembership.objects.create(user=cls.manager, building=cls.building)
 
-    def pair(self, kind, tag):
+    def document(self, kind, tag):
         doc = Document.objects.create(building=self.building, kind=kind)
-        original = DocumentVersion.objects.create(document=doc, version=1, variant="ORIGINAL", storage_key=f"{tag}-o", provider_version_id=f"{tag}-o", filename="o.pdf", content_type="application/pdf", byte_size=1, sha256=secrets.token_hex(32), uploader=self.manager)
-        redacted = DocumentVersion.objects.create(document=doc, version=2, variant="REDACTED", storage_key=f"{tag}-r", provider_version_id=f"{tag}-r", filename="r.pdf", content_type="application/pdf", byte_size=1, sha256=secrets.token_hex(32), uploader=self.manager, redacts=original)
-        return original, redacted
+        return DocumentVersion.objects.create(document=doc, version=1, variant="ORIGINAL", storage_key=f"{tag}-o", provider_version_id=f"{tag}-o", filename="o.pdf", content_type="application/pdf", byte_size=1, sha256=secrets.token_hex(32), uploader=self.manager)
 
     def completed(self):
         proposal = create_standalone_proposal(self.building, self.membership)
-        quote, _ = self.pair(Document.Kind.QUOTATION, "q")
+        quote = self.document(Document.Kind.QUOTATION, "q")
         version = publish_proposal_version(proposal, self.membership, amount_vnd=100, contractor_name="Acme", fund_code="GENERAL", purpose="Repair", proposed_action="Fix", expected_schedule="Now", quotation_versions=[quote], event_id="0x" + secrets.token_hex(32))
         proposal.status = Proposal.Status.COMPLETED
         proposal.completed_at = timezone.now()
@@ -37,15 +35,15 @@ class SettlementTests(TestCase):
         return proposal, version
 
     def transfer(self, proposal, amount=100):
-        original, redacted = self.pair(Document.Kind.PAYMENT_PROOF, secrets.token_hex(3))
-        return record_transfer(proposal, self.membership, amount_vnd=amount, payee_name="Acme", bank_reference=" bank  001 ", transfer_original=original, transfer_redacted=redacted)
+        proof = self.document(Document.Kind.PAYMENT_PROOF, secrets.token_hex(3))
+        return record_transfer(proposal, self.membership, amount_vnd=amount, payee_name="Acme", bank_reference=" bank  001 ", transfer_original=proof)
 
     def test_transfer_then_ack_settles_and_anchors(self):
         proposal, version = self.completed()
         settlement = self.transfer(proposal)
         self.assertIsNone(settlement.settled_at)
-        original, redacted = self.pair(Document.Kind.PAYMENT_PROOF, "ack")
-        settlement = record_acknowledgement(settlement, self.membership, ack_original=original, ack_redacted=redacted, event_id="0x" + secrets.token_hex(32))
+        proof = self.document(Document.Kind.PAYMENT_PROOF, "ack")
+        settlement = record_acknowledgement(settlement, self.membership, ack_original=proof, event_id="0x" + secrets.token_hex(32))
         self.assertIsNotNone(settlement.settled_at)
         self.assertEqual(settlement.outbox_event.event_type, EvidenceType.SETTLEMENT)
         self.assertEqual(settlement.outbox_event.previous_hash, "0x" + version.outbox_event.payload_hash)
@@ -60,10 +58,10 @@ class SettlementTests(TestCase):
     def test_ack_on_settled_settlement_is_rejected(self):
         proposal, _ = self.completed()
         settlement = self.transfer(proposal)
-        original, redacted = self.pair(Document.Kind.PAYMENT_PROOF, "ack")
-        record_acknowledgement(settlement, self.membership, ack_original=original, ack_redacted=redacted, event_id="0x" + secrets.token_hex(32))
+        proof = self.document(Document.Kind.PAYMENT_PROOF, "ack")
+        record_acknowledgement(settlement, self.membership, ack_original=proof, event_id="0x" + secrets.token_hex(32))
         with self.assertRaises(ValidationError):
-            record_acknowledgement(settlement, self.membership, ack_original=original, ack_redacted=redacted, event_id="0x" + secrets.token_hex(32))
+            record_acknowledgement(settlement, self.membership, ack_original=proof, event_id="0x" + secrets.token_hex(32))
 
     def test_amount_must_be_a_positive_integer(self):
         proposal, _ = self.completed()
@@ -86,12 +84,11 @@ class SettlementTests(TestCase):
         Proposal.objects.filter(pk=proposal.pk).update(completed_at=completed_at)
         proposal.refresh_from_db()
         settlement = self.transfer(proposal)
-        original, redacted = self.pair(Document.Kind.PAYMENT_PROOF, "late-ack")
+        proof = self.document(Document.Kind.PAYMENT_PROOF, "late-ack")
         settlement = record_acknowledgement(
             settlement,
             self.membership,
-            ack_original=original,
-            ack_redacted=redacted,
+            ack_original=proof,
             event_id="0x" + secrets.token_hex(32),
         )
 
