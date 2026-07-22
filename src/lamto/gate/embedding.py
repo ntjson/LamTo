@@ -70,3 +70,48 @@ def get_embedder() -> FaceEmbedder:
         raise FaceEmbedderUnavailable(
             f"Could not load configured face embedder: {path}"
         ) from exc
+
+
+class InsightFaceEmbedder:
+    MODEL_NAME = "buffalo_l"
+    _analysis = None
+
+    @classmethod
+    def _model(cls):
+        if cls._analysis is None:
+            try:
+                from insightface.app import FaceAnalysis
+                analysis = FaceAnalysis(name=cls.MODEL_NAME, allowed_modules=["detection", "recognition"], providers=["CPUExecutionProvider"])
+                analysis.prepare(ctx_id=-1, det_size=(640, 640))
+                cls._analysis = analysis
+            except Exception as error:
+                raise FaceEmbedderUnavailable(f"InsightFace model could not be loaded: {error}") from error
+        return cls._analysis
+
+    @property
+    def model_version(self):
+        import insightface
+        return f"insightface-{insightface.__version__}"
+
+    def embed(self, image_bytes: bytes) -> EmbeddingResult:
+        import cv2
+        import numpy as np
+        image = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            raise NoFaceDetected("Image could not be decoded.")
+        try:
+            faces = self._model().get(image)
+        except FaceEmbedderUnavailable:
+            raise
+        except Exception as error:
+            raise FaceEmbedderUnavailable(f"Face analysis failed: {error}") from error
+        faces = [f for f in faces if float(f.det_score) >= settings.GATE_MIN_FACE_DET_SCORE]
+        if not faces: raise NoFaceDetected("No face detected in the image.")
+        if len(faces) > 1: raise MultipleFacesDetected("More than one face detected in the image.")
+        face = faces[0]
+        x1, y1, x2, y2 = (int(v) for v in face.bbox)
+        if min(x2 - x1, y2 - y1) < settings.GATE_MIN_FACE_PIXELS: raise FaceTooSmall("The face is too small in the frame.")
+        crop = image[max(y1, 0):max(y2, 0), max(x1, 0):max(x2, 0)]
+        if crop.size and cv2.Laplacian(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var() < settings.GATE_MIN_FACE_SHARPNESS:
+            raise FaceTooBlurry("The face is too blurry.")
+        return EmbeddingResult(face.normed_embedding.tolist(), self.MODEL_NAME, self.model_version, float(face.det_score))

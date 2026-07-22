@@ -2,6 +2,9 @@
 
 Use this list before promoting a pilot environment. Every item is required unless marked optional.
 
+- [ ] `buffalo_l` (~326MB) is baked under `INSIGHTFACE_HOME`; never download it on first request.
+- [ ] Changing the face model triggers resident re-enrolment and threshold recalibration.
+
 ## Transport and edge
 
 - [ ] HTTPS terminated at the reverse proxy with a valid certificate

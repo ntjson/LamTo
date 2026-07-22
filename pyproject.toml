@@ -22,6 +22,9 @@ dependencies = [
   "drf-spectacular>=0.28,<1",
   "gunicorn>=23,<24",
   "firebase-admin>=6,<8",
+  "onnxruntime>=1.20,<2",
+  "insightface>=0.7.3,<0.8",
+  "opencv-python-headless>=4.10,<5",
 ]
 
 [project.optional-dependencies]
@@ -41,4 +44,7 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 filterwarnings = [
   "ignore::DeprecationWarning",
+]
+markers = [
+  "insightface: exercises the real InsightFace model; needs model files, deselected by default",
 ]

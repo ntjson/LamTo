@@ -338,7 +338,9 @@ GATE_MIN_FACE_DET_SCORE = float(os.getenv("GATE_MIN_FACE_DET_SCORE", "0.6"))
 GATE_MIN_FACE_SHARPNESS = float(os.getenv("GATE_MIN_FACE_SHARPNESS", "40"))
 # Dotted path to the FaceEmbedder implementation. Empty until Task 13 lands the
 # production embedder; get_embedder() raises rather than guessing.
-GATE_FACE_EMBEDDER = os.getenv("GATE_FACE_EMBEDDER", "")
+GATE_FACE_EMBEDDER = os.getenv(
+    "GATE_FACE_EMBEDDER", "lamto.gate.embedding.InsightFaceEmbedder"
+)
 GATE_EMBEDDING_KEY = coalesce_secret(os.getenv("GATE_EMBEDDING_KEY"), SECRET_KEY)
 
 # --- Resident API (spec 3): DRF + knox tokens + OpenAPI schema ---
