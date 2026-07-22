@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'lamto.maintenance',
     'lamto.web',
     'lamto.notifications',
+    'lamto.config',
     'rest_framework',
     'knox',
     'drf_spectacular',
