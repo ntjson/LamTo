@@ -347,7 +347,7 @@ class PilotDomainDriver:
     def publish_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
         manager = self.seed.management_memberships[0]
         work = self.seed.case or self._ctx["case"]
-        quotation_original = self.seed.document(
+        quotation = self.seed.document(
             Document.Kind.QUOTATION, manager.user, "quotation"
         )
         proposal = create_proposal(work, manager)
@@ -356,19 +356,19 @@ class PilotDomainDriver:
             proposal, manager, amount_vnd=amount_vnd,
             contractor_name="Pilot Contractor Co", fund_code="GENERAL",
             purpose=work.category, proposed_action="Repair the affected equipment",
-            expected_schedule="Within 14 days", quotation_versions=[quotation_original],
+            expected_schedule="Within 14 days", quotation_versions=[quotation],
             event_id=event_id,
         )
         self.seed.proposal = proposal
         self._ctx["proposal"] = proposal
         self._ctx["proposal_version"] = version
-        self._ctx["quotation_original"] = quotation_original
+        self._ctx["quotation"] = quotation
         self._ctx["amount_vnd"] = amount_vnd
         return version
 
     def publish_standalone_proposal(self, amount_vnd: int = DEFAULT_AMOUNT_VND):
         manager = self.seed.management_memberships[0]
-        quotation_original = self.seed.document(
+        quotation = self.seed.document(
             Document.Kind.QUOTATION, manager.user, "standalone-quotation"
         )
         proposal = create_standalone_proposal(self.seed.building, manager)
@@ -376,7 +376,7 @@ class PilotDomainDriver:
             proposal, manager, amount_vnd=amount_vnd,
             contractor_name="Pilot Contractor Co", fund_code="GENERAL",
             purpose="Preventive maintenance", proposed_action="Service the equipment",
-            expected_schedule="Within 14 days", quotation_versions=[quotation_original],
+            expected_schedule="Within 14 days", quotation_versions=[quotation],
             event_id=new_event_id(),
         )
         self.seed.proposal = proposal
@@ -470,7 +470,7 @@ class PilotDomainDriver:
             amount_vnd=amount_vnd,
             payee_name="Pilot Contractor Co",
             bank_reference=f"BANK-PILOT-{new_event_id()[-12:]}",
-            transfer_original=proof,
+            transfer=proof,
         )
         self._ctx["settlement"] = settlement
         return settlement
@@ -484,7 +484,7 @@ class PilotDomainDriver:
         settlement = record_acknowledgement(
             settlement,
             recorder,
-            ack_original=proof,
+            ack=proof,
             event_id=new_event_id(),
         )
         if not self.seed.chain_paused:
@@ -556,7 +556,7 @@ class PilotDomainDriver:
         # After the normal flow integrity verification may run; otherwise expose cost.
         documents_ok = bool(
             entry.resident_payload.get("document_hashes")
-            or entry.settlement.transfer_original_id
+            or entry.settlement.transfer_id
         )
         return SimpleNamespace(
             actual_cost_vnd=entry.actual_cost_vnd,

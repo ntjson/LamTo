@@ -16,7 +16,7 @@ def test_tampered_document_blocks_publish(page, seeded_pilot):
 
     settlement = seeded_pilot._ctx["settlement"]
     storage = storages["private"]
-    with storage.open(settlement.transfer_original.storage_key, "wb") as handle:
+    with storage.open(settlement.transfer.storage_key, "wb") as handle:
         handle.write(b"tampered-for-e2e")
 
     observation = seeded_pilot.verify_latest_ledger_entry().observation

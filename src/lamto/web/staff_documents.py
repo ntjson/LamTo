@@ -157,11 +157,11 @@ def _referenced_document_ids():
         ProposalDocument.objects.values_list("document_version__document_id", flat=True)
     )
     protected |= _docs_from_version_ids(
-        MaintenanceFundEntry.objects.exclude(evidence_original_id=None).values_list(
-            "evidence_original_id", flat=True
+        MaintenanceFundEntry.objects.exclude(evidence_id=None).values_list(
+            "evidence_id", flat=True
         )
     )
-    settlement_fields = ("transfer_original_id", "ack_original_id")
+    settlement_fields = ("transfer_id", "ack_id")
     for model, fields in ((Settlement, settlement_fields),):
         for field in fields:
             protected |= _docs_from_version_ids(

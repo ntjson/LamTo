@@ -182,7 +182,7 @@ class FundRecordTests(TestCase):
             {
                 "entry_type": MaintenanceFundEntry.EntryType.INFLOW,
                 "amount_vnd": 2_000_000,
-                "evidence_original": _pdf("e.pdf", b"orig"),
+                "evidence": _pdf("e.pdf", b"orig"),
             },
         )
         self.assertRedirects(response, reverse("web:fund-home"))

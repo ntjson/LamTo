@@ -224,7 +224,7 @@ def proposal_create(request, pk):
         try:
             original = upload_document(
                 case.building, Document.Kind.QUOTATION, request.user,
-                create_form.cleaned_data["quotation_original"],
+                create_form.cleaned_data["quotation"],
             )
             proposal = existing or create_proposal(case, membership)
             publish_proposal_version(
@@ -268,7 +268,7 @@ def standalone_proposal_create(request):
             try:
                 original = upload_document(
                     membership.building, Document.Kind.QUOTATION, request.user,
-                    form.cleaned_data["quotation_original"],
+                    form.cleaned_data["quotation"],
                 )
                 proposal = create_standalone_proposal(membership.building, membership)
                 publish_proposal_version(

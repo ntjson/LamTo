@@ -83,7 +83,7 @@ def _submission_snapshot(proposal, amount_vnd, contractor_name, fund_code, purpo
         "building_id": proposal.building_id,
         "amount_vnd": amount_vnd,
         "proposal_snapshot_hash": payload_hash(snapshot),
-        "quotation_original_hash": payload_hash([version.sha256 for version in versions]),
+        "quotation_hash": payload_hash([version.sha256 for version in versions]),
     }
     if case:
         evidence_payload.update(

@@ -192,15 +192,15 @@ class LedgerApiTests(TestCase):
         )
         decide_proposal(proposal, manager.user, True)
         complete_proposal_work(proposal, manager.user, "Peeling paint", "Lobby repainted")
-        transfer_original = self.seed.document(Document.Kind.PAYMENT_PROOF, manager.user, "standalone-transfer")
+        transfer = self.seed.document(Document.Kind.PAYMENT_PROOF, manager.user, "standalone-transfer")
         settlement = record_transfer(
             proposal, manager, amount_vnd=2_000_000, payee_name="Standalone Co",
-            bank_reference="STANDALONE-1", transfer_original=transfer_original,
+            bank_reference="STANDALONE-1", transfer=transfer,
         )
         acknowledger = self.seed.management_memberships[0]
-        ack_original = self.seed.document(Document.Kind.PAYMENT_PROOF, acknowledger.user, "standalone-ack")
+        ack = self.seed.document(Document.Kind.PAYMENT_PROOF, acknowledger.user, "standalone-ack")
         settlement = record_acknowledgement(
-            settlement, acknowledger, ack_original=ack_original,
+            settlement, acknowledger, ack=ack,
             event_id="0x" + secrets.token_hex(32),
         )
         proposal.refresh_from_db()

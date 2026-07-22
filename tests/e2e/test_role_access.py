@@ -27,11 +27,11 @@ def test_role_access_denies_prohibited_document_reads(page, seeded_pilot):
     entry = PublishedLedgerEntry.objects.get(
         case__building=seeded_pilot.seed.building
     )
-    proof_original = entry.settlement.transfer_original
+    proof = entry.settlement.transfer
 
-    assert authorize_download(seeded_pilot.seed.residents[0], None, proof_original)
+    assert authorize_download(seeded_pilot.seed.residents[0], None, proof)
     manager = seeded_pilot.seed.management_memberships[0]
-    assert authorize_download(manager.user, manager.pk, proof_original)
+    assert authorize_download(manager.user, manager.pk, proof)
 
 
 def test_ai_outage_preserves_manual_triage_authority(page, seeded_pilot):
@@ -54,7 +54,7 @@ def test_proposal_change_after_signature_requires_resubmission(page, seeded_pilo
 
     manager = seeded_pilot.seed.management_memberships[0]
     proposal = seeded_pilot.seed.proposal
-    quotation = seeded_pilot._ctx["quotation_original"]
+    quotation = seeded_pilot._ctx["quotation"]
     event_id = new_event_id()
     version2 = publish_proposal_version(
         proposal, manager, amount_vnd=19_000_000, contractor_name="Changed",

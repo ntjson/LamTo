@@ -40,7 +40,7 @@ def settlement_record_transfer(request, pk):
             form.add_error("proof", "Selected evidence is no longer available.")
         else:
             try:
-                settlement = record_transfer(proposal, membership, transfer_original=proof, **{key: form.cleaned_data[key] for key in ("amount_vnd", "payee_name", "bank_reference")})
+                settlement = record_transfer(proposal, membership, transfer=proof, **{key: form.cleaned_data[key] for key in ("amount_vnd", "payee_name", "bank_reference")})
             except (ValidationError, PermissionDenied) as error:
                 form.add_error(None, error)
             else:
@@ -65,7 +65,7 @@ def settlement_record_ack(request, pk):
             form.add_error("proof", "Selected evidence is no longer available.")
         else:
             try:
-                record_acknowledgement(settlement, membership, ack_original=proof, event_id=form.cleaned_data["event_id"])
+                record_acknowledgement(settlement, membership, ack=proof, event_id=form.cleaned_data["event_id"])
             except (ValidationError, PermissionDenied) as error:
                 form.add_error(None, error)
             else:
@@ -77,5 +77,5 @@ def settlement_record_ack(request, pk):
 @login_required
 def settlement_detail(request, pk):
     membership, memberships = require_management_context(request)
-    settlement = get_object_or_404(Settlement.objects.select_related("proposal", "outbox_event", "transfer_original", "ack_original"), pk=pk, proposal__building_id=membership.building_id)
+    settlement = get_object_or_404(Settlement.objects.select_related("proposal", "outbox_event", "transfer", "ack"), pk=pk, proposal__building_id=membership.building_id)
     return render(request, "web/staff/settlement_detail.html", _context(request, membership, memberships, settlement=settlement))

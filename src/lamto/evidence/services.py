@@ -28,7 +28,7 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
     EvidenceType.PROPOSAL_CREATED: ({
         "proposal_id": "id", "proposal_version": "positive_int", "record_id": "id",
         "amount_vnd": "money", "proposal_snapshot_hash": "hash",
-        "quotation_original_hash": "hash",
+        "quotation_hash": "hash",
     }, {"building_id": "id", "case_id": "id", "report_id": "id", "case_snapshot_hash": "hash",
         "report_snapshot_hash": "hash", "estimated_amount_vnd": "money",
         "photo_hash": "hash", "photo_hashes": "hashes"}),
@@ -36,7 +36,7 @@ EVIDENCE_PAYLOAD_SCHEMAS = {
         "schema": frozenset({"settlement.v1"}), "settlement_id": "id",
         "proposal_id": "id", "proposal_version": "positive_int", "amount_vnd": "money",
         "payee_name": "text", "bank_reference": "text",
-        "transfer_original_sha256": "hash", "ack_original_sha256": "hash",
+        "transfer_sha256": "hash", "ack_sha256": "hash",
         "transfer_recorded_at": "timestamp", "ack_recorded_at": "timestamp",
     }, {}),
 }

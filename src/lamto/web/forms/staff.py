@@ -184,7 +184,7 @@ class CreateProposalForm(forms.Form):
     purpose = forms.CharField(required=False, widget=forms.Textarea(attrs={"class": "input"}))
     proposed_action = forms.CharField(required=False, widget=forms.Textarea(attrs={"class": "input"}))
     expected_schedule = forms.CharField(max_length=200, required=False, widget=forms.TextInput(attrs={"class": "input"}))
-    quotation_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    quotation = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
 
 
 class StandaloneProposalForm(CreateProposalForm):
@@ -205,4 +205,4 @@ class RecordFundSourceForm(forms.Form):
         widget=forms.Select(attrs={"class": "input"}),
     )
     amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
-    evidence_original = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    evidence = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))

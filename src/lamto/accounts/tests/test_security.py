@@ -112,7 +112,7 @@ class SecurityTests(TestCase):
         )
         self.assertNotEqual(response.status_code, 403)
 
-    def test_management_can_export_original_document_history(self):
+    def test_management_can_export_document_history(self):
         operator, auditor = self.make_operator_and_auditor()
         self.client.force_login(operator.user)
         self.enroll_and_bind(self.client, operator.user)

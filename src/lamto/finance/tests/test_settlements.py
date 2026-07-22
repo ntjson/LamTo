@@ -36,14 +36,14 @@ class SettlementTests(TestCase):
 
     def transfer(self, proposal, amount=100):
         proof = self.document(Document.Kind.PAYMENT_PROOF, secrets.token_hex(3))
-        return record_transfer(proposal, self.membership, amount_vnd=amount, payee_name="Acme", bank_reference=" bank  001 ", transfer_original=proof)
+        return record_transfer(proposal, self.membership, amount_vnd=amount, payee_name="Acme", bank_reference=" bank  001 ", transfer=proof)
 
     def test_transfer_then_ack_settles_and_anchors(self):
         proposal, version = self.completed()
         settlement = self.transfer(proposal)
         self.assertIsNone(settlement.settled_at)
         proof = self.document(Document.Kind.PAYMENT_PROOF, "ack")
-        settlement = record_acknowledgement(settlement, self.membership, ack_original=proof, event_id="0x" + secrets.token_hex(32))
+        settlement = record_acknowledgement(settlement, self.membership, ack=proof, event_id="0x" + secrets.token_hex(32))
         self.assertIsNotNone(settlement.settled_at)
         self.assertEqual(settlement.outbox_event.event_type, EvidenceType.SETTLEMENT)
         self.assertEqual(settlement.outbox_event.previous_hash, "0x" + version.outbox_event.payload_hash)
@@ -59,9 +59,9 @@ class SettlementTests(TestCase):
         proposal, _ = self.completed()
         settlement = self.transfer(proposal)
         proof = self.document(Document.Kind.PAYMENT_PROOF, "ack")
-        record_acknowledgement(settlement, self.membership, ack_original=proof, event_id="0x" + secrets.token_hex(32))
+        record_acknowledgement(settlement, self.membership, ack=proof, event_id="0x" + secrets.token_hex(32))
         with self.assertRaises(ValidationError):
-            record_acknowledgement(settlement, self.membership, ack_original=proof, event_id="0x" + secrets.token_hex(32))
+            record_acknowledgement(settlement, self.membership, ack=proof, event_id="0x" + secrets.token_hex(32))
 
     def test_amount_must_be_a_positive_integer(self):
         proposal, _ = self.completed()
@@ -88,7 +88,7 @@ class SettlementTests(TestCase):
         settlement = record_acknowledgement(
             settlement,
             self.membership,
-            ack_original=proof,
+            ack=proof,
             event_id="0x" + secrets.token_hex(32),
         )
 

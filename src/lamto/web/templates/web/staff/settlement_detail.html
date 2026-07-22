@@ -15,8 +15,8 @@
   <form method="post">{% csrf_token %}{{ ack_form.as_p }}<button type="submit">Record acknowledgement</button></form>
 {% else %}
   <p>{{ settlement.payee_name }} · {{ settlement.amount_vnd|intcomma }} VND</p>
-  <p>Transfer: {{ settlement.transfer_original.filename }}</p>
-  <p>Acknowledgement ({{ settlement.get_ack_kind_display }}): {% if settlement.ack_original %}{{ settlement.ack_original.filename }}{% else %}Pending — <a href="{% url 'web:settlement-record-ack' settlement.pk %}">record acknowledgement</a>{% endif %}</p>
+  <p>Transfer: {{ settlement.transfer.filename }}</p>
+  <p>Acknowledgement ({{ settlement.get_ack_kind_display }}): {% if settlement.ack %}{{ settlement.ack.filename }}{% else %}Pending — <a href="{% url 'web:settlement-record-ack' settlement.pk %}">record acknowledgement</a>{% endif %}</p>
   <p>Status: {% if settlement.settled_at %}Settled{% else %}Awaiting acknowledgement{% endif %}</p>
   <p>Anchor: {% include "web/staff/_evidence_level.html" with event=settlement.outbox_event %}</p>
 {% endif %}

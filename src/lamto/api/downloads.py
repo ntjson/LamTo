@@ -132,8 +132,8 @@ def resident_can_download(user, version) -> bool:
             settlement__outbox_event__status__in=SETTLED_STATUSES,
         )
         .filter(
-            Q(settlement__transfer_original=version)
-            | Q(settlement__ack_original=version)
+            Q(settlement__transfer=version)
+            | Q(settlement__ack=version)
         )
         .exists()
     )

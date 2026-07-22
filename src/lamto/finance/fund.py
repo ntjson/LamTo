@@ -107,7 +107,7 @@ def _locked_entry(entry):
         MaintenanceFundEntry.objects.select_related(
             "fund__building",
             "recorder__user",
-            "evidence_original",
+            "evidence",
         ).get(pk=locked_id)
     )
 
@@ -144,8 +144,8 @@ def record_fund_source(
         fund=fund,
         entry_type=entry_type,
         amount_vnd=amount_vnd,
-        evidence_original=evidence,
-        evidence_original_hash=evidence.sha256,
+        evidence=evidence,
+        evidence_hash=evidence.sha256,
         recorder=actor,
         source_key=key,
         recorded_at=timezone.now(),

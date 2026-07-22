@@ -43,8 +43,8 @@ def _collect_document_checks(proposal, version, settlement, using="default"):
         quotation = DocumentVersion.objects.using(using).get(pk=item["version_id"])
         checks.append((quotation, item["sha256"], "QUOTATION"))
     checks.extend((
-        (settlement.transfer_original, settlement.transfer_original.sha256, "SETTLEMENT_TRANSFER"),
-        (settlement.ack_original, settlement.ack_original.sha256, "SETTLEMENT_ACK"),
+        (settlement.transfer, settlement.transfer.sha256, "SETTLEMENT_TRANSFER"),
+        (settlement.ack, settlement.ack.sha256, "SETTLEMENT_ACK"),
     ))
     return checks
 
@@ -52,8 +52,8 @@ def _collect_document_checks(proposal, version, settlement, using="default"):
 @transaction.atomic
 def publish_settlement_entry(settlement) -> PublishedLedgerEntry:
     settlement = type(settlement).objects.select_for_update(of=("self",)).select_related(
-        "proposal__current_version", "proposal__case__decision__report", "transfer_original",
-        "ack_original", "outbox_event",
+        "proposal__current_version", "proposal__case__decision__report", "transfer",
+        "ack", "outbox_event",
     ).get(pk=settlement.pk)
     existing = PublishedLedgerEntry.objects.filter(settlement=settlement).first()
     if existing:

@@ -111,7 +111,7 @@ def fund_record(request):
                 building,
                 Document.Kind.CONTRACT,
                 request.user,
-                record_form.cleaned_data["evidence_original"],
+                record_form.cleaned_data["evidence"],
             )
             entry_type = record_form.cleaned_data["entry_type"]
             amount = record_form.cleaned_data["amount_vnd"]

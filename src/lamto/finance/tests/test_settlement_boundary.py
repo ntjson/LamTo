@@ -64,7 +64,7 @@ class SettlementBoundaryTests(TestCase):
             purpose="Elevator",
             proposed_action="Replace the affected equipment",
             expected_schedule="Within 21 days",
-            quotation_versions=[driver._ctx["quotation_original"]],
+            quotation_versions=[driver._ctx["quotation"]],
             event_id=new_event_id(),
         )
         driver.complete_assigned_work()
