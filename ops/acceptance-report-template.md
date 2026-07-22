@@ -21,7 +21,7 @@
 ## Automated results
 
 ```
-# paste: manage.py test lamto.finance.tests.test_pilot_acceptance
+# paste: manage.py test lamto.finance.tests.test_settlements -v 2
 # paste: pytest tests/e2e (or e2e-env-fail.log if browser blocked)
 # paste: verify_integrity / restore-drill notes if run
 ```

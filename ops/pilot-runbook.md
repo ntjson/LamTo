@@ -63,7 +63,7 @@ users, but no step requires a second person.
 
 ```bash
 source /tmp/grok-goal-717590634826/implementer/env.sh  # or project env
-.venv/bin/python manage.py test lamto.finance.tests.test_pilot_acceptance -v 2
+.venv/bin/python manage.py test lamto.finance.tests.test_settlements -v 2
 # optional browser suite (domain fallback if Chromium missing):
 .venv/bin/python -m pytest tests/e2e -v
 ```

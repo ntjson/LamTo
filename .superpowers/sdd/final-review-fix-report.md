@@ -42,4 +42,16 @@ Focused searches returned no matches for:
 
 ## Concerns
 
-The runbook's automated-proof section references `lamto.finance.tests.test_pilot_acceptance`, but that module no longer exists. An attempted run therefore produced one import error after the other 22 selected tests passed. Verification used `lamto.finance.tests.test_settlements` instead because it directly covers transfer evidence followed by acknowledgement. Updating the broader stale automated-proof section was outside the supplied findings.
+The runbook's automated-proof section originally referenced `lamto.finance.tests.test_pilot_acceptance`, but that module no longer exists. An attempted run therefore produced one import error after the other 22 selected tests passed. Verification used `lamto.finance.tests.test_settlements` instead because it directly covers transfer evidence followed by acknowledgement.
+
+## Follow-up Verification
+
+The stale command was replaced in both `ops/pilot-runbook.md` and `ops/acceptance-report-template.md`. The exact documented command was run with the owner database environment:
+
+```bash
+set -a; source ../../.env; set +a
+POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner \
+  .venv/bin/python manage.py test lamto.finance.tests.test_settlements -v 2
+```
+
+Result: 7 tests passed. A focused search found no remaining `lamto.finance.tests.test_pilot_acceptance` references in `ops/*.md`, and `git diff --check` passed with no output. The prior concern is resolved.
