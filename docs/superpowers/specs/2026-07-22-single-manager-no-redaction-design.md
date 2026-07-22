@@ -120,9 +120,23 @@ control.
 - `redacts` — the self-referential foreign key has nothing left to point at.
 
 `DocumentVersion.Variant` is deleted. `version` and the
-`document_version_once` constraint stay: append-only versioning is a genuine
-domain concept independent of redaction. Every version simply becomes `1`,
-because `add_redacted_copy` was the only producer of version 2.
+`document_version_once` constraint stay, and the versioning **mechanism** is
+untouched: `create_document_version` continues to lock the `Document` row and
+compute `next_version = Max("version") + 1`. Neither `variant` nor `redacts`
+participates in that calculation. Passing an existing `Document` still yields
+version 2, then 3, and so on, with uniqueness enforced per document.
+
+What changes is only how many versions today's callers produce. Removing
+redaction means one upload creates one `DocumentVersion` instead of an
+original/redacted pair — it does not cap a document at a single version. Every
+production caller (`create_resident_report_photo`, and the original half of
+`upload_document_pair`) already creates a fresh `Document` and then one version
+on it; `add_redacted_copy` was the only caller that passed an *existing*
+`Document`, which is why version 2 has so far only ever appeared as a
+redaction. Deleting it removes the current user of the counter, not the
+counter. A genuine later revision of the same document — a corrected quotation,
+a re-issued invoice — remains a supported insert whenever a caller needs it,
+and requires no schema change to add.
 
 `add_redacted_copy` in `src/lamto/documents/services.py` is deleted.
 `create_document_version` loses its `variant` and `_redacts` parameters; its
@@ -337,7 +351,8 @@ no change.
 
 ## Verification
 
-Two new tests cover the behaviour this change creates:
+Three new tests cover the behaviour this change creates or would otherwise
+leave unguarded:
 
 1. A single manager records a fund source, confirms it, and
    `fund_balance(verified_only=True)` reflects the amount. This is the
@@ -345,6 +360,12 @@ Two new tests cover the behaviour this change creates:
 2. `resident_can_download` returns `False` for a `CONTRACT` document version
    even when the resident has an active occupancy in that building. This pins
    the allowlist as a real gate rather than incidental behaviour.
+3. Two `create_document_version` calls against the same `Document` produce
+   `version` 1 and 2. `test_versions.py`'s two redaction tests are what
+   exercise the increment today, and deleting them would leave the counter
+   with no coverage at all. This replaces that coverage directly, and pins the
+   distinction the design depends on: one upload creates one version, but a
+   document is not capped at one version.
 
 Existing suites are updated, not deleted — they are the regression net for a
 change this wide:
