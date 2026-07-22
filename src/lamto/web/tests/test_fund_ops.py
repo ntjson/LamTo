@@ -86,7 +86,7 @@ class FundSelectorTests(TestCase):
 )
 class FundHomeTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
+        membership = seed.management_memberships[0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()
@@ -256,7 +256,7 @@ class FundVerifyTests(TestCase):
 )
 class ActionInboxChartTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
+        membership = seed.management_memberships[0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()

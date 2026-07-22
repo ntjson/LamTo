@@ -100,8 +100,8 @@ class ProposalCreateTests(TestCase):
         self.assertEqual(proposal.status, Proposal.Status.IN_PROGRESS)
         self.assertEqual(self.work.decision.report.status, IssueReport.Status.IN_PROGRESS)
 
-    def test_second_manager_can_open_proposal_create(self):
-        manager = self.seed.management_memberships[1]
+    def test_manager_can_open_proposal_create(self):
+        manager = self.seed.management_memberships[0]
         self.client.force_login(manager.user)
         device = TOTPDevice.objects.create(
             user=manager.user, name="t", confirmed=True, key=random_hex()

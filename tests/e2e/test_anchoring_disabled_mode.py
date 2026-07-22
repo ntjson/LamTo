@@ -86,9 +86,9 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
 
     balance_after_publication = fund_balance(seed.building.pk, verified_only=True)
 
-    # --- Fund flow (maker-checker stays mandatory) ------------------------
+    # --- Fund flow (record then self-confirm) -----------------------------
     fund = get_or_create_fund(seed.building)
-    recorder, verifier = seed.management_memberships
+    (recorder,) = seed.management_memberships
     original, redacted = seed.document_pair(
         Document.Kind.CONTRACT, recorder.user, "offchain-inflow"
     )
@@ -100,7 +100,7 @@ def test_disabled_mode_publication_and_fund_flows(page, temp_storage, settings):
         redacted,
         recorder,
     )
-    verify_fund_source(inflow, verifier)
+    verify_fund_source(inflow, recorder)
     assert (
         fund_balance(seed.building.pk, verified_only=True)
         == balance_after_publication + 5_000_000

@@ -61,7 +61,6 @@ class Command(BaseCommand):
             self.stdout.write(
                 "Idempotent reuse: no new rows created. Documented logins use prefix pilot-:\n"
                 f"  pilot-management-1@{PILOT_EMAIL_DOMAIN}\n"
-                f"  pilot-management-2@{PILOT_EMAIL_DOMAIN}\n"
                 f"  pilot-resident@{PILOT_EMAIL_DOMAIN}\n"
             )
             return

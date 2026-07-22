@@ -139,7 +139,7 @@ class ManagementWorkspaceTests(TestCase):
         self.assertEqual(report.status, IssueReport.Status.DECLINED)
         self.assertEqual(report.declined_reason, "Already repaired")
 
-    def test_recorder_and_second_manager_can_reach_separate_payment_steps(self):
+    def test_manager_can_reach_both_payment_steps(self):
         seed = seed_pilot_world(
             building_name="Payment Tower",
             email_prefix="workspace-payment",
@@ -150,18 +150,17 @@ class ManagementWorkspaceTests(TestCase):
         driver.publish_proposal()
         driver.complete_assigned_work()
         settlement = driver.record_settlement_transfer()
-        recorder, verifier = seed.management_memberships
+        (manager,) = seed.management_memberships
 
-        self.authenticate_management(recorder)
+        self.authenticate_management(manager)
         self.assertEqual(self.client.get(reverse("web:settlement-detail", kwargs={"pk": settlement.pk})).status_code, 200)
 
         self.client.logout()
-        self.authenticate_management(verifier)
+        self.authenticate_management(manager)
         verify_response = self.client.get(
             reverse("web:settlement-record-ack", kwargs={"pk": settlement.pk})
         )
         self.assertEqual(verify_response.status_code, 200)
-        self.assertEqual(verify_response.context["membership"], verifier)
+        self.assertEqual(verify_response.context["membership"], manager)
         self.assertEqual(verify_response.context["settlement"], settlement)
         self.assertContains(verify_response, f"settlement #{settlement.pk}", html=False)
-        self.assertNotEqual(recorder, verifier)

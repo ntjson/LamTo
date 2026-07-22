@@ -134,7 +134,7 @@ class ProposalApiTests(TestCase):
 
     def test_standalone_detail_distinguishes_absent_pending_and_settled_payment(self):
         proposal = self._standalone("Preventive lift maintenance")
-        decide_proposal(proposal, self.seed.management_users[1], True, "Go")
+        decide_proposal(proposal, self.seed.management_users[0], True, "Go")
         publish_progress(
             proposal=proposal,
             manager=self.manager.user,

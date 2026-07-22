@@ -198,7 +198,7 @@ class LedgerApiTests(TestCase):
             bank_reference="STANDALONE-1", transfer_original=transfer_original,
             transfer_redacted=transfer_redacted,
         )
-        acknowledger = self.seed.management_memberships[1]
+        acknowledger = self.seed.management_memberships[0]
         ack_original, ack_redacted = self.seed.document_pair(Document.Kind.PAYMENT_PROOF, acknowledger.user, "standalone-ack")
         settlement = record_acknowledgement(
             settlement, acknowledger, ack_original=ack_original, ack_redacted=ack_redacted,

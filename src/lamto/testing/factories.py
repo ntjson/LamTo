@@ -216,15 +216,18 @@ def seed_pilot_world(
         # Unique local-part avoids collisions when multiple seeds share one DB transaction.
         return f"{prefix}-{local}@{email_domain}"
 
-    for number in (1, 2):
-        user = get_user_model().objects.create_user(
-            email=email(f"management-{number}"),
-            password=password,
-            display_name=f"Pilot Manager {number}",
-        )
-        membership = ManagementMembership.objects.create(user=user, building=building)
-        seed.management_users.append(user)
-        seed.management_memberships.append(membership)
+    # One manager: sign-off happens offline, so the software needs one operator.
+    # The lists stay lists — a building may have several staff, none of whom
+    # exist to satisfy a dual-control rule.
+    manager = get_user_model().objects.create_user(
+        email=email("management-1"),
+        password=password,
+        display_name="Pilot Manager 1",
+    )
+    seed.management_users.append(manager)
+    seed.management_memberships.append(
+        ManagementMembership.objects.create(user=manager, building=building)
+    )
 
     resident = get_user_model().objects.create_user(
         email=email("resident"),
@@ -254,7 +257,7 @@ def seed_pilot_world(
 
 def seed_opening_fund(seed: PilotSeed, amount_vnd: int = DEFAULT_FUND_OPENING_VND):
     fund = get_or_create_fund(seed.building)
-    recorder, verifier = seed.management_memberships
+    (recorder,) = seed.management_memberships
     original, redacted = seed.document_pair(
         Document.Kind.CONTRACT, recorder.user, "fund-opening"
     )
@@ -266,7 +269,7 @@ def seed_opening_fund(seed: PilotSeed, amount_vnd: int = DEFAULT_FUND_OPENING_VN
         redacted,
         recorder,
     )
-    verify_fund_source(entry, verifier)
+    verify_fund_source(entry, recorder)
     return entry
 
 
@@ -405,7 +408,7 @@ class PilotDomainDriver:
     def decide_proposal(self, proceed: bool = True):
         proposal = self.seed.proposal or self._ctx["proposal"]
         decided = decide_published_proposal(
-            proposal, self.seed.management_users[1], proceed, "Approved for delivery"
+            proposal, self.seed.management_users[0], proceed, "Approved for delivery"
         )
         self.seed.proposal = decided
         self._ctx["proposal"] = decided
@@ -497,7 +500,7 @@ class PilotDomainDriver:
 
     def record_settlement_ack(self):
         settlement = self._ctx["settlement"]
-        recorder = self.seed.management_memberships[1]
+        recorder = self.seed.management_memberships[0]
         original, redacted = self.seed.document_pair(
             Document.Kind.PAYMENT_PROOF, recorder.user, "settlement-ack"
         )
@@ -516,13 +519,13 @@ class PilotDomainDriver:
     def publish_settlement_entry(self):
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
-        publisher = self.seed.management_memberships[1]
+        publisher = self.seed.management_memberships[0]
         return self._publish_with(publisher)
 
     def attempt_publication(self):
         proposal = self.seed.proposal or self._ctx["proposal"]
         proposal.refresh_from_db()
-        publisher = self.seed.management_memberships[1]
+        publisher = self.seed.management_memberships[0]
         try:
             self._publish_with(publisher)
             return SimpleNamespace(reason=None, blocked=False)
