@@ -25,7 +25,10 @@ class Command(BaseCommand):
             if (result.model_name, result.model_version) != (options["model_name"], options["model_version"]):
                 raise CommandError("Capture model name/version does not match the requested calibration scope.")
             probes.append((int(capture["occupancy_id"]), result.vector))
-        scores = score_pairs(Building.objects.get(pk=options["building"]), probes, model_name=options["model_name"], model_version=options["model_version"])
+        try:
+            scores = score_pairs(Building.objects.get(pk=options["building"]), probes, model_name=options["model_name"], model_version=options["model_version"])
+        except ValueError as error:
+            raise CommandError(str(error)) from error
         if not scores.genuine or not scores.impostor:
             raise CommandError("Labelled captures must produce both genuine and impostor scores.")
         for row in sweep(scores, .30, .60, .01):

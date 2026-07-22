@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
-from .photos import delete_pending_photo
+from .photos import queue_photo_deletion
 
 
 class ReviewNotPermitted(PermissionDenied):
@@ -22,8 +22,7 @@ def _assert_manages(membership, building_id):
 def _drop_photo(enrollment):
     photo = PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).first()
     if photo:
-        delete_pending_photo(photo.storage_key, photo.provider_version_id)
-        photo.delete()
+        queue_photo_deletion(photo)
 
 
 def approve_face(enrollment, membership):

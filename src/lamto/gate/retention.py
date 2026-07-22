@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import GateEvent, GatePurgeHeartbeat, PendingEnrollmentPhoto, ReviewStatus
-from .photos import delete_pending_photo
+from .photos import process_photo_deletions, queue_photo_deletion
 
 PURGE_STALE_AFTER_HOURS = 2
 
@@ -20,14 +20,14 @@ def purge_expired_enrollment_photos(now=None):
     now = now or timezone.now()
     expired = list(PendingEnrollmentPhoto.objects.filter(expires_at__lte=now).select_related("enrollment"))
     for photo in expired:
-        delete_pending_photo(photo.storage_key, photo.provider_version_id)
         with transaction.atomic():
             enrollment = photo.enrollment
             if enrollment.status == ReviewStatus.PENDING:
                 enrollment.status = ReviewStatus.EXPIRED
                 enrollment.embedding = None
                 enrollment.save(update_fields=["status", "embedding"])
-            photo.delete()
+            queue_photo_deletion(photo)
+    process_photo_deletions()
     return len(expired)
 
 

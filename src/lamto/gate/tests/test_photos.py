@@ -12,9 +12,17 @@ def _s3(response=None):
 
 
 def test_s3_put_requires_a_version_id():
-    with patch("lamto.gate.photos.storages", {"private": _s3()}):
+    storage = _s3()
+    storage.connection.meta.client.list_object_versions.return_value = {
+        "Versions": [{"Key": "gate/pending-enrollment/missing-version", "VersionId": "found-version"}]
+    }
+    with patch("lamto.gate.photos.storages", {"private": storage}), patch("lamto.gate.photos.uuid.uuid4") as uuid4:
+        uuid4.return_value.hex = "missing-version"
         with pytest.raises(PhotoVersionMissing):
             store_pending_photo(__import__("io").BytesIO(b"photo"), "image/jpeg")
+    storage.connection.meta.client.delete_object.assert_called_once_with(
+        Bucket="private", Key="gate/pending-enrollment/missing-version", VersionId="found-version"
+    )
 
 
 def test_s3_delete_never_falls_back_to_unversioned_delete():

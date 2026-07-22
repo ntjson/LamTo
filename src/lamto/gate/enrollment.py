@@ -10,7 +10,7 @@ from lamto.documents.scanner import scan_with_clamav
 from .crypto import seal_embedding
 from .embedding import get_embedder
 from .models import FaceEnrollment, PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
-from .photos import delete_pending_photo, store_pending_photo
+from .photos import delete_pending_photo, queue_photo_deletion, store_pending_photo
 from .plates import normalize_plate
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
@@ -42,8 +42,7 @@ def submit_face_enrollment(occupancy, uploaded_file, scanner=None):
             enrollment, _ = FaceEnrollment.objects.get_or_create(occupancy=occupancy)
             previous = PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).first()
             if previous:
-                delete_pending_photo(previous.storage_key, previous.provider_version_id)
-                previous.delete()
+                queue_photo_deletion(previous)
             enrollment.embedding = seal_embedding(result.vector)
             enrollment.model_name = result.model_name
             enrollment.model_version = result.model_version
@@ -70,7 +69,7 @@ def revoke_face_enrollment(occupancy):
             return
         photo = PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).first()
         if photo:
-            delete_pending_photo(photo.storage_key, photo.provider_version_id)
+            queue_photo_deletion(photo)
         enrollment.delete()
 
 

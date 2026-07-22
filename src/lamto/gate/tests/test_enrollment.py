@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from lamto.gate.embedding import NoFaceDetected
 from lamto.gate.enrollment import PhotoRejected, PlateAlreadyRegistered, revoke_face_enrollment, revoke_plate, submit_face_enrollment, submit_plate
-from lamto.gate.models import FaceEnrollment, PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
+from lamto.gate.models import FaceEnrollment, PendingEnrollmentPhoto, PhotoDeletion, ReviewStatus, VehiclePlate
 from lamto.gate.plates import PlateFormatError
 from lamto.gate.tests.fakes import FAKE_MODEL_NAME, face_bytes
 
@@ -32,6 +32,8 @@ def test_resubmitting_replaces_the_previous_pending_photo(occupancy, use_fake_em
     first = submit_face_enrollment(occupancy, _upload(face_bytes("one")), scanner=clean_scanner)
     first_key = PendingEnrollmentPhoto.objects.get(enrollment=first).storage_key
     submit_face_enrollment(occupancy, _upload(face_bytes("two")), scanner=clean_scanner)
+    from lamto.gate.photos import process_photo_deletions
+    process_photo_deletions()
     assert PendingEnrollmentPhoto.objects.count() == 1
     assert not os.path.exists(os.path.join(gate_storage, first_key))
 
@@ -64,6 +66,8 @@ def test_revoking_a_face_removes_the_row_and_the_photo(occupancy, use_fake_embed
     enrollment = submit_face_enrollment(occupancy, _upload(face_bytes("nguyen")), scanner=clean_scanner)
     key = PendingEnrollmentPhoto.objects.get(enrollment=enrollment).storage_key
     revoke_face_enrollment(occupancy)
+    from lamto.gate.photos import process_photo_deletions
+    process_photo_deletions()
     assert not FaceEnrollment.objects.exists()
     assert not os.path.exists(os.path.join(gate_storage, key))
 
@@ -74,6 +78,20 @@ def test_db_failure_compensates_the_newly_stored_photo(occupancy, use_fake_embed
             submit_face_enrollment(occupancy, _upload(face_bytes("nguyen")), scanner=clean_scanner)
     assert not any(os.scandir(os.path.join(gate_storage, "gate/pending-enrollment")))
     assert not FaceEnrollment.objects.exists()
+
+
+def test_resubmission_db_failure_preserves_previous_row_and_photo(occupancy, use_fake_embedder, gate_storage, clean_scanner):
+    enrollment = submit_face_enrollment(occupancy, _upload(face_bytes("old")), scanner=clean_scanner)
+    old_photo = PendingEnrollmentPhoto.objects.get(enrollment=enrollment)
+    old_embedding = bytes(enrollment.embedding)
+    with patch("lamto.gate.enrollment.PendingEnrollmentPhoto.objects.create", side_effect=IntegrityError):
+        with pytest.raises(IntegrityError):
+            submit_face_enrollment(occupancy, _upload(face_bytes("new")), scanner=clean_scanner)
+    enrollment.refresh_from_db()
+    assert bytes(enrollment.embedding) == old_embedding
+    assert PendingEnrollmentPhoto.objects.get(enrollment=enrollment).storage_key == old_photo.storage_key
+    assert os.path.exists(os.path.join(gate_storage, old_photo.storage_key))
+    assert not PhotoDeletion.objects.exists()
 
 
 def test_submitting_plates_normalizes_and_allows_several(occupancy):

@@ -135,6 +135,14 @@ class PendingEnrollmentPhoto(models.Model):
     expires_at = models.DateTimeField(db_index=True)
 
 
+class PhotoDeletion(models.Model):
+    """Durable storage deletion queued in the same transaction as its metadata change."""
+
+    storage_key = models.CharField(max_length=512, unique=True)
+    provider_version_id = models.CharField(max_length=512, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class GateDevice(models.Model):
     """A reader. Direction is declared, because one camera cannot infer it."""
 

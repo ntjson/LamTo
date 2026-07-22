@@ -22,6 +22,8 @@ def sweep(scores, start, stop, step):
 
 def score_pairs(building, probes, *, model_name, model_version):
     enrolled = {r.occupancy_id: unit_vector(open_embedding(r.embedding)) for r in FaceEnrollment.objects.filter(status=ReviewStatus.APPROVED, embedding__isnull=False, occupancy__unit__building=building, model_name=model_name, model_version=model_version)}
+    if any(occupancy_id not in enrolled for occupancy_id, _ in probes):
+        raise ValueError("Manifest occupancy is outside the selected building/model enrollment set.")
     scores = CalibrationScores()
     for occupancy_id, vector in probes:
         probe = unit_vector(vector)

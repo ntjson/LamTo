@@ -4,7 +4,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from lamto.accounts.models import Building, ManagementMembership, User
 from lamto.gate.enrollment import submit_face_enrollment, submit_plate
-from lamto.gate.models import PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
+from django.db import IntegrityError
+from lamto.gate.models import PendingEnrollmentPhoto, PhotoDeletion, ReviewStatus, VehiclePlate
 from lamto.gate.review import ReviewNotPermitted, ReviewNotPossible, approve_face, approve_plate, reject_face, reject_plate, revoke_face
 from lamto.gate.tests.fakes import face_bytes
 
@@ -36,13 +37,38 @@ def test_rejecting_a_face_deletes_the_vector_and_keeps_the_reason(occupancy, man
     assert not PendingEnrollmentPhoto.objects.exists()
 
 
-def test_photo_delete_failure_rolls_back_review_decision(occupancy, management, use_fake_embedder, gate_storage, clean_scanner):
+def test_photo_delete_failure_leaves_committed_decision_and_cleanup(occupancy, management, use_fake_embedder, gate_storage, clean_scanner):
     enrollment = _enrol(occupancy, clean_scanner)
-    with patch("lamto.gate.review.delete_pending_photo", side_effect=OSError), pytest.raises(OSError):
+    with patch("lamto.gate.photos.delete_pending_photo", side_effect=OSError):
         approve_face(enrollment, management)
     enrollment.refresh_from_db()
+    assert enrollment.status == ReviewStatus.APPROVED
+    assert not PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).exists()
+    assert PhotoDeletion.objects.exists()
+
+
+@pytest.mark.parametrize("decision", ["approve", "reject", "revoke"])
+def test_review_db_failure_preserves_photo_and_enrollment(decision, occupancy, management, use_fake_embedder, gate_storage, clean_scanner):
+    enrollment = _enrol(occupancy, clean_scanner)
+    photo = PendingEnrollmentPhoto.objects.get(enrollment=enrollment)
+    with patch("lamto.gate.photos.PhotoDeletion.objects.create", side_effect=IntegrityError), pytest.raises(IntegrityError):
+        {"approve": lambda: approve_face(enrollment, management),
+         "reject": lambda: reject_face(enrollment, management, "Bad photo"),
+         "revoke": lambda: revoke_face(enrollment, management)}[decision]()
+    enrollment.refresh_from_db()
     assert enrollment.status == ReviewStatus.PENDING
-    assert PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).exists()
+    assert enrollment.embedding is not None
+    assert PendingEnrollmentPhoto.objects.filter(pk=photo.pk).exists()
+
+
+def test_delete_failure_after_review_commit_leaves_durable_cleanup(occupancy, management, use_fake_embedder, gate_storage, clean_scanner):
+    enrollment = _enrol(occupancy, clean_scanner)
+    with patch("lamto.gate.photos.delete_pending_photo", side_effect=OSError):
+        approve_face(enrollment, management)
+    enrollment.refresh_from_db()
+    assert enrollment.status == ReviewStatus.APPROVED
+    assert not PendingEnrollmentPhoto.objects.exists()
+    assert PhotoDeletion.objects.exists()
 
 
 def test_rejecting_requires_a_reason(occupancy, management, use_fake_embedder, gate_storage, clean_scanner):
