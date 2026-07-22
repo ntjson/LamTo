@@ -76,7 +76,7 @@ def rate_completed_proposal(resident, proposal, satisfied, comment="") -> Comple
     ).first()
     if proposal is None:
         raise ValidationError("Standalone proposal is required.")
-    if proposal.completed_at is None:
+    if proposal.status != Proposal.Status.COMPLETED or proposal.completed_at is None:
         raise ValidationError("Only completed proposals can be rated.")
     if type(satisfied) is not bool:
         raise ValidationError("Satisfied must be a boolean.")

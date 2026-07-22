@@ -56,6 +56,7 @@ ReportSummary _report(String text, StatusEnum status) => ReportSummary(
     ..id = 1
     ..text = text
     ..status = status
+    ..isPrivate = false
     ..locationPathSnapshot = 'B / Hall'
     ..createdAt = DateTime.utc(2026, 7, 9),
 );
@@ -254,6 +255,33 @@ void main() {
         tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
         ledgerTabIndex,
       );
+      expect(find.byType(LedgerScreen), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
+  });
+
+  testWidgets('Ledger navigation resets a previous Proposals segment', (
+    tester,
+  ) async {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      await _pumpShell(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(HomeShell)),
+      );
+      container.read(ledgerSegmentProvider.notifier).state = 1;
+      container.read(shellTabProvider.notifier).state = ledgerTabIndex;
+      await tester.pump();
+      expect(container.read(ledgerSegmentProvider), 1);
+
+      await tester.tap(find.text('Trang chính').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FundChart));
+      await tester.pumpAndSettle();
+
+      expect(container.read(ledgerSegmentProvider), 0);
       expect(find.byType(LedgerScreen), findsOneWidget);
     } finally {
       debugDefaultTargetPlatformOverride = previous;

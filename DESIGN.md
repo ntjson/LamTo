@@ -1,6 +1,6 @@
 ---
 name: LamTo
-description: Accountability layer for apartment maintenance across a resident mobile app and staff web platform.
+description: Accountability layer for apartment maintenance across a resident mobile app and Management web workspace.
 colors:
   primary: "#2f3a8f"
   on-primary: "#ffffff"
@@ -124,7 +124,7 @@ components:
 
 **Creative North Star: "The Open Maintenance Desk"**
 
-LamTo feels like a well-lit resident service desk where reports, decisions, money, and proof are arranged in one readable sequence. A resident should understand what happened and what comes next while checking a phone in a building corridor; an operator should inspect the same evidence efficiently at a desktop.
+LamTo feels like a well-lit resident service desk where reports, decisions, money, and proof are arranged in one readable sequence. A resident should understand what happened and what comes next while checking a phone in a building corridor; Management staff should inspect the same evidence efficiently at a desktop.
 
 The resident app and staff web platform are distinct systems joined by one evidence chain. The app follows iOS Human Interface Guidelines and Android Material 3 conventions. The web surface is denser and task-oriented. Both explain human outcomes before exposing technical proof.
 

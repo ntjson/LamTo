@@ -185,6 +185,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportEnableNotifications => 'Get update notifications';
 
   @override
+  String get privateToggleTitle => 'Private request';
+
+  @override
+  String get privateToggleSubtitle =>
+      'Only you and Management can see this request. Private requests are not part of community proposals.';
+
+  @override
+  String get privateBadge => 'Private';
+
+  @override
   String get issuesTitle => 'My issues';
 
   @override
@@ -200,7 +210,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusResolved => 'Resolved';
 
   @override
-  String get statusDeclined => 'Declined';
+  String get statusSubmitted => 'Submitted';
+
+  @override
+  String get statusInReview => 'In review';
+
+  @override
+  String get statusNeedsInfo => 'Needs your information';
+
+  @override
+  String get statusDeclined => 'Not proceeding';
+
+  @override
+  String get statusInProgress => 'In progress';
+
+  @override
+  String get statusProposed => 'Proposal created';
+
+  @override
+  String get statusCompleted => 'Completed';
+
+  @override
+  String get statusClosed => 'Closed';
 
   @override
   String issueDetailTitle(int id) {
@@ -230,6 +261,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get timelineCompleted => 'Work completed';
 
   @override
+  String get progressTitle => 'Work progress';
+
+  @override
+  String get progressEmpty => 'No progress updates yet.';
+
+  @override
+  String get progressCompleted => 'Work completed';
+
+  @override
+  String get declinedTitle => 'Management decided not to proceed';
+
+  @override
   String get rateWorkCta => 'Rate this work';
 
   @override
@@ -249,6 +292,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rateThanks => 'Thank you for your rating.';
+
+  @override
+  String get infoRequestTitle => 'Management needs more information';
+
+  @override
+  String get infoReplyHint => 'Write your reply…';
+
+  @override
+  String get infoReplySubmit => 'Send reply';
+
+  @override
+  String get infoReplyPhotosHint =>
+      'You can also add photos from the photo section below.';
 
   @override
   String get workStatusAssigned => 'Assigned';
@@ -504,4 +560,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fundChartRange12m => '12 months';
+
+  @override
+  String get proposalsSegment => 'Proposals';
+
+  @override
+  String get ledgerSegment => 'Ledger';
+
+  @override
+  String get proposalStatusPublished => 'Published';
+
+  @override
+  String get proposalStatusInProgress => 'In progress';
+
+  @override
+  String get proposalStatusNotProceeding => 'Not proceeding';
+
+  @override
+  String get proposalStatusCompleted => 'Completed';
+
+  @override
+  String get proposalStatusClosed => 'Closed';
+
+  @override
+  String get proposalStatusDraft => 'Draft';
+
+  @override
+  String get proposalProblem => 'Problem or need';
+
+  @override
+  String get proposalAction => 'Proposed action';
+
+  @override
+  String get proposalCost => 'Estimated cost';
+
+  @override
+  String get proposalFund => 'Funding source';
+
+  @override
+  String get proposalContractor => 'Contractor';
+
+  @override
+  String get proposalSchedule => 'Expected schedule';
+
+  @override
+  String get proposalVersions => 'Published versions';
+
+  @override
+  String proposalVersion(String number) {
+    return 'Version $number';
+  }
+
+  @override
+  String get proposalSettlement => 'Payment settlement';
+
+  @override
+  String get proposalSettled => 'Paid and acknowledged by the payee';
+
+  @override
+  String get proposalUnsettled => 'Payment not yet settled';
+
+  @override
+  String get proposalViewFromLedger => 'View proposal';
+
+  @override
+  String get proposalRateCta => 'Rate the result';
 }

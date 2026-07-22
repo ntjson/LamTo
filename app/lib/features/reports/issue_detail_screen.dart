@@ -1,3 +1,4 @@
+import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -65,21 +66,10 @@ class IssueDetailScreen extends ConsumerWidget {
           l10n.timelineCase(caseItem.category),
           null,
         ),
-        for (final update in caseItem.updates)
-          (
-            Icons.build_outlined,
-            l10n.timelineWork(update.result, _date(caseItem.deadlineAt)),
-            null,
-          ),
-        if (caseItem.completedAt != null)
-          (
-            Icons.check_circle_outline,
-            '${l10n.timelineCompleted} · ${_date(caseItem.completedAt!)}',
-            StatusTone.success,
-          ),
       ],
     ];
     final rateable = report.cases.where((caseItem) => caseItem.canRate);
+    final infoRequestMessage = report.openInfoRequest?['message']?.value;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -90,6 +80,14 @@ class IssueDetailScreen extends ConsumerWidget {
           '${report.locationPathSnapshot} · ${report.unitLabel}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
+        if (report.status == StatusEnum.NEEDS_INFO &&
+            infoRequestMessage is String) ...[
+          const SizedBox(height: 16),
+          _InfoRequestBanner(
+            message: infoRequestMessage,
+            onReply: () => _showReplySheet(context, ref, report.id),
+          ),
+        ],
         if (report.photos.isNotEmpty) ...[
           const SizedBox(height: 12),
           SizedBox(
@@ -113,6 +111,15 @@ class IssueDetailScreen extends ConsumerWidget {
             ),
           ),
         ],
+        if (report.declinedReason != null) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              title: Text(l10n.declinedTitle),
+              subtitle: Text(report.declinedReason!),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         for (final (icon, label, tone) in steps)
           ListTile(
@@ -124,15 +131,41 @@ class IssueDetailScreen extends ConsumerWidget {
             ),
             title: Text(label),
           ),
-        for (final caseItem in rateable)
+        const SizedBox(height: 16),
+        Text(
+          l10n.progressTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        if (report.cases.every((caseItem) => caseItem.updates.isEmpty))
           Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: FilledButton.icon(
-              icon: const Icon(Icons.star_outline),
-              label: Text(l10n.rateWorkCta),
-              onPressed: () => _openRateSheet(context, ref, l10n, caseItem.id),
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              l10n.progressEmpty,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
+        for (final caseItem in report.cases) ...[
+          for (final update in caseItem.updates)
+            _ProgressTile(
+              createdAt: update.createdAt,
+              cause: update.cause,
+              result: update.result,
+              photos: update.photos,
+            ),
+          if (caseItem.completedAt != null)
+            _CompletedMarker(at: caseItem.completedAt!),
+        ],
+        for (final caseItem in rateable)
+          if (report.status != StatusEnum.DECLINED)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: FilledButton.icon(
+                icon: const Icon(Icons.star_outline),
+                label: Text(l10n.rateWorkCta),
+                onPressed: () =>
+                    _openRateSheet(context, ref, l10n, caseItem.id),
+              ),
+            ),
       ],
     );
   }
@@ -153,6 +186,223 @@ class IssueDetailScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.rateThanks)));
+    }
+  }
+
+  Future<void> _showReplySheet(
+    BuildContext context,
+    WidgetRef ref,
+    int reportId,
+  ) async {
+    final replied = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _InfoReplySheet(reportId: reportId),
+    );
+    if (replied == true && context.mounted) {
+      ref.invalidate(reportDetailProvider(reportId));
+    }
+  }
+}
+
+class _ProgressTile extends StatelessWidget {
+  const _ProgressTile({
+    required this.createdAt,
+    required this.cause,
+    required this.result,
+    required this.photos,
+  });
+
+  final DateTime createdAt;
+  final String cause;
+  final String result;
+  final BuiltList<ReportWorkUpdatePhoto> photos;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: const Icon(Icons.build_outlined),
+    title: Text(cause),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(result),
+        Text(_date(createdAt)),
+        if (photos.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 96,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final photo in photos)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: AuthenticatedImage(
+                        photo.downloadUrl,
+                        width: 96,
+                        height: 96,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _CompletedMarker extends StatelessWidget {
+  const _CompletedMarker({required this.at});
+
+  final DateTime at;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = statusToneColors(context, StatusTone.success);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(Icons.check_circle_outline, color: colors.fg),
+      title: Text(
+        '${AppLocalizations.of(context)!.progressCompleted} · ${_date(at)}',
+      ),
+    );
+  }
+}
+
+class _InfoRequestBanner extends StatelessWidget {
+  const _InfoRequestBanner({required this.message, required this.onReply});
+
+  final String message;
+  final VoidCallback onReply;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colors = statusToneColors(context, StatusTone.warning);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.bg,
+        border: Border.all(color: colors.fg),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: colors.fg),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.infoRequestTitle,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(message),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: onReply,
+                  child: Text(l10n.infoReplySubmit),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoReplySheet extends ConsumerStatefulWidget {
+  const _InfoReplySheet({required this.reportId});
+
+  final int reportId;
+
+  @override
+  ConsumerState<_InfoReplySheet> createState() => _InfoReplySheetState();
+}
+
+class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
+  final _text = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 16 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.infoRequestTitle,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _text,
+            minLines: 3,
+            maxLines: 5,
+            enabled: !_busy,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(hintText: l10n.infoReplyHint),
+          ),
+          const SizedBox(height: 8),
+          Text(l10n.infoReplyPhotosHint),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _busy || _text.text.trim().isEmpty ? null : _submit,
+            child: Text(l10n.infoReplySubmit),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(reportsRepositoryProvider)
+          .replyInfo(reportId: widget.reportId, text: _text.text.trim());
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = failureMessage(Failure.fromObject(e), l10n));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 }

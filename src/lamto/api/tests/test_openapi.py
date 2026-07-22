@@ -42,6 +42,7 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/fund/summary",
             "/api/v1/fund/series",
             "/api/v1/reports",
+            "/api/v1/proposals",
             "/api/v1/locations",
             "/api/v1/notifications",
             "/api/v1/devices",
@@ -63,6 +64,14 @@ class OpenApiDriftTests(SimpleTestCase):
             "/api/v1/cases/{id}/rating" in content
             or "/api/v1/cases/{pk}/rating" in content
         ), "case rating route missing from committed schema"
+        assert (
+            "/api/v1/proposals/{id}" in content
+            or "/api/v1/proposals/{pk}" in content
+        ), "proposal detail route missing from committed schema"
+        assert (
+            "/api/v1/proposals/{id}/rating" in content
+            or "/api/v1/proposals/{pk}/rating" in content
+        ), "proposal rating route missing from committed schema"
         assert (
             "/api/v1/notifications/{id}/read" in content
             or "/api/v1/notifications/{pk}/read" in content
@@ -108,6 +117,17 @@ class OpenApiDriftTests(SimpleTestCase):
             paths[detail_key]["get"],
             paths["/api/v1/fund/summary"]["get"],
             paths["/api/v1/reports"]["post"],
+            paths["/api/v1/proposals"]["get"],
+            paths[
+                "/api/v1/proposals/{id}"
+                if "/api/v1/proposals/{id}" in paths
+                else "/api/v1/proposals/{pk}"
+            ]["get"],
+            paths[
+                "/api/v1/proposals/{id}/rating"
+                if "/api/v1/proposals/{id}/rating" in paths
+                else "/api/v1/proposals/{pk}/rating"
+            ]["post"],
             paths["/api/v1/locations"]["get"],
             paths["/api/v1/notifications"]["get"],
         )

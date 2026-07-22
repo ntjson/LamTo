@@ -20,7 +20,25 @@ class _$Proposal extends Proposal {
   @override
   final DateTime? closedAt;
   @override
-  final BuiltMap<String, JsonObject?>? currentVersion;
+  final String purpose;
+  @override
+  final String proposedAction;
+  @override
+  final int amountVnd;
+  @override
+  final String fundCode;
+  @override
+  final String contractorName;
+  @override
+  final String expectedSchedule;
+  @override
+  final BuiltList<ProposalVersion> versions;
+  @override
+  final BuiltList<ProposalProgress> progress;
+  @override
+  final ProposalSettlement? settlement;
+  @override
+  final bool canRate;
 
   factory _$Proposal([void Function(ProposalBuilder)? updates]) =>
       (ProposalBuilder()..update(updates))._build();
@@ -32,7 +50,16 @@ class _$Proposal extends Proposal {
       required this.status,
       this.completedAt,
       this.closedAt,
-      this.currentVersion})
+      required this.purpose,
+      required this.proposedAction,
+      required this.amountVnd,
+      required this.fundCode,
+      required this.contractorName,
+      required this.expectedSchedule,
+      required this.versions,
+      required this.progress,
+      this.settlement,
+      required this.canRate})
       : super._();
   @override
   Proposal rebuild(void Function(ProposalBuilder) updates) =>
@@ -51,7 +78,16 @@ class _$Proposal extends Proposal {
         status == other.status &&
         completedAt == other.completedAt &&
         closedAt == other.closedAt &&
-        currentVersion == other.currentVersion;
+        purpose == other.purpose &&
+        proposedAction == other.proposedAction &&
+        amountVnd == other.amountVnd &&
+        fundCode == other.fundCode &&
+        contractorName == other.contractorName &&
+        expectedSchedule == other.expectedSchedule &&
+        versions == other.versions &&
+        progress == other.progress &&
+        settlement == other.settlement &&
+        canRate == other.canRate;
   }
 
   @override
@@ -63,7 +99,16 @@ class _$Proposal extends Proposal {
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, completedAt.hashCode);
     _$hash = $jc(_$hash, closedAt.hashCode);
-    _$hash = $jc(_$hash, currentVersion.hashCode);
+    _$hash = $jc(_$hash, purpose.hashCode);
+    _$hash = $jc(_$hash, proposedAction.hashCode);
+    _$hash = $jc(_$hash, amountVnd.hashCode);
+    _$hash = $jc(_$hash, fundCode.hashCode);
+    _$hash = $jc(_$hash, contractorName.hashCode);
+    _$hash = $jc(_$hash, expectedSchedule.hashCode);
+    _$hash = $jc(_$hash, versions.hashCode);
+    _$hash = $jc(_$hash, progress.hashCode);
+    _$hash = $jc(_$hash, settlement.hashCode);
+    _$hash = $jc(_$hash, canRate.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -77,7 +122,16 @@ class _$Proposal extends Proposal {
           ..add('status', status)
           ..add('completedAt', completedAt)
           ..add('closedAt', closedAt)
-          ..add('currentVersion', currentVersion))
+          ..add('purpose', purpose)
+          ..add('proposedAction', proposedAction)
+          ..add('amountVnd', amountVnd)
+          ..add('fundCode', fundCode)
+          ..add('contractorName', contractorName)
+          ..add('expectedSchedule', expectedSchedule)
+          ..add('versions', versions)
+          ..add('progress', progress)
+          ..add('settlement', settlement)
+          ..add('canRate', canRate))
         .toString();
   }
 }
@@ -109,11 +163,54 @@ class ProposalBuilder implements Builder<Proposal, ProposalBuilder> {
   DateTime? get closedAt => _$this._closedAt;
   set closedAt(DateTime? closedAt) => _$this._closedAt = closedAt;
 
-  MapBuilder<String, JsonObject?>? _currentVersion;
-  MapBuilder<String, JsonObject?> get currentVersion =>
-      _$this._currentVersion ??= MapBuilder<String, JsonObject?>();
-  set currentVersion(MapBuilder<String, JsonObject?>? currentVersion) =>
-      _$this._currentVersion = currentVersion;
+  String? _purpose;
+  String? get purpose => _$this._purpose;
+  set purpose(String? purpose) => _$this._purpose = purpose;
+
+  String? _proposedAction;
+  String? get proposedAction => _$this._proposedAction;
+  set proposedAction(String? proposedAction) =>
+      _$this._proposedAction = proposedAction;
+
+  int? _amountVnd;
+  int? get amountVnd => _$this._amountVnd;
+  set amountVnd(int? amountVnd) => _$this._amountVnd = amountVnd;
+
+  String? _fundCode;
+  String? get fundCode => _$this._fundCode;
+  set fundCode(String? fundCode) => _$this._fundCode = fundCode;
+
+  String? _contractorName;
+  String? get contractorName => _$this._contractorName;
+  set contractorName(String? contractorName) =>
+      _$this._contractorName = contractorName;
+
+  String? _expectedSchedule;
+  String? get expectedSchedule => _$this._expectedSchedule;
+  set expectedSchedule(String? expectedSchedule) =>
+      _$this._expectedSchedule = expectedSchedule;
+
+  ListBuilder<ProposalVersion>? _versions;
+  ListBuilder<ProposalVersion> get versions =>
+      _$this._versions ??= ListBuilder<ProposalVersion>();
+  set versions(ListBuilder<ProposalVersion>? versions) =>
+      _$this._versions = versions;
+
+  ListBuilder<ProposalProgress>? _progress;
+  ListBuilder<ProposalProgress> get progress =>
+      _$this._progress ??= ListBuilder<ProposalProgress>();
+  set progress(ListBuilder<ProposalProgress>? progress) =>
+      _$this._progress = progress;
+
+  ProposalSettlementBuilder? _settlement;
+  ProposalSettlementBuilder get settlement =>
+      _$this._settlement ??= ProposalSettlementBuilder();
+  set settlement(ProposalSettlementBuilder? settlement) =>
+      _$this._settlement = settlement;
+
+  bool? _canRate;
+  bool? get canRate => _$this._canRate;
+  set canRate(bool? canRate) => _$this._canRate = canRate;
 
   ProposalBuilder() {
     Proposal._defaults(this);
@@ -128,7 +225,16 @@ class ProposalBuilder implements Builder<Proposal, ProposalBuilder> {
       _status = $v.status;
       _completedAt = $v.completedAt;
       _closedAt = $v.closedAt;
-      _currentVersion = $v.currentVersion?.toBuilder();
+      _purpose = $v.purpose;
+      _proposedAction = $v.proposedAction;
+      _amountVnd = $v.amountVnd;
+      _fundCode = $v.fundCode;
+      _contractorName = $v.contractorName;
+      _expectedSchedule = $v.expectedSchedule;
+      _versions = $v.versions.toBuilder();
+      _progress = $v.progress.toBuilder();
+      _settlement = $v.settlement?.toBuilder();
+      _canRate = $v.canRate;
       _$v = null;
     }
     return this;
@@ -160,13 +266,33 @@ class ProposalBuilder implements Builder<Proposal, ProposalBuilder> {
                 status, r'Proposal', 'status'),
             completedAt: completedAt,
             closedAt: closedAt,
-            currentVersion: _currentVersion?.build(),
+            purpose: BuiltValueNullFieldError.checkNotNull(
+                purpose, r'Proposal', 'purpose'),
+            proposedAction: BuiltValueNullFieldError.checkNotNull(
+                proposedAction, r'Proposal', 'proposedAction'),
+            amountVnd: BuiltValueNullFieldError.checkNotNull(
+                amountVnd, r'Proposal', 'amountVnd'),
+            fundCode: BuiltValueNullFieldError.checkNotNull(
+                fundCode, r'Proposal', 'fundCode'),
+            contractorName: BuiltValueNullFieldError.checkNotNull(
+                contractorName, r'Proposal', 'contractorName'),
+            expectedSchedule: BuiltValueNullFieldError.checkNotNull(
+                expectedSchedule, r'Proposal', 'expectedSchedule'),
+            versions: versions.build(),
+            progress: progress.build(),
+            settlement: _settlement?.build(),
+            canRate: BuiltValueNullFieldError.checkNotNull(
+                canRate, r'Proposal', 'canRate'),
           );
     } catch (_) {
       late String _$failedField;
       try {
-        _$failedField = 'currentVersion';
-        _currentVersion?.build();
+        _$failedField = 'versions';
+        versions.build();
+        _$failedField = 'progress';
+        progress.build();
+        _$failedField = 'settlement';
+        _settlement?.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'Proposal', _$failedField, e.toString());

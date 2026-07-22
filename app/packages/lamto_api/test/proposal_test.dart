@@ -37,8 +37,53 @@ void main() {
       // TODO
     });
 
-    // BuiltMap<String, JsonObject> currentVersion
-    test('to test the property `currentVersion`', () async {
+    // String purpose
+    test('to test the property `purpose`', () async {
+      // TODO
+    });
+
+    // String proposedAction
+    test('to test the property `proposedAction`', () async {
+      // TODO
+    });
+
+    // int amountVnd
+    test('to test the property `amountVnd`', () async {
+      // TODO
+    });
+
+    // String fundCode
+    test('to test the property `fundCode`', () async {
+      // TODO
+    });
+
+    // String contractorName
+    test('to test the property `contractorName`', () async {
+      // TODO
+    });
+
+    // String expectedSchedule
+    test('to test the property `expectedSchedule`', () async {
+      // TODO
+    });
+
+    // BuiltList<ProposalVersion> versions
+    test('to test the property `versions`', () async {
+      // TODO
+    });
+
+    // BuiltList<ProposalProgress> progress
+    test('to test the property `progress`', () async {
+      // TODO
+    });
+
+    // ProposalSettlement settlement
+    test('to test the property `settlement`', () async {
+      // TODO
+    });
+
+    // bool canRate
+    test('to test the property `canRate`', () async {
       // TODO
     });
 

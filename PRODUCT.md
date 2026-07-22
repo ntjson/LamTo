@@ -12,7 +12,7 @@ adaptive
 
 **Primary:** Vietnamese-speaking residents. They report apartment maintenance issues, follow cases and work, and verify how published Maintenance Fund spending connects to original reports and evidence. Design trade-offs favor mobile-native clarity, plain Vietnamese, and low cognitive load.
 
-**Secondary:** Property-management operators, maintenance staff, the Management Board, resident representatives, and auditors. They coordinate work, review evidence, authorize distinct steps, publish verified outcomes, and audit the accountability chain through a denser desktop-first web surface.
+**Secondary:** Management staff. They review and classify resident requests with AI assistance, request missing information, decline with recorded reasons, handle work directly with published progress, create and publish immutable spending proposals, record settlement evidence, and maintain the fund ledger through a denser desktop-first web workspace.
 
 The resident app and staff web platform share one accountability model and evidence chain. Neither replaces the building's full maintenance, accounting, or property-management systems.
 
@@ -22,7 +22,7 @@ LamTo coordinates resident-reported maintenance cases and makes every published 
 
 The MVP focuses on maintenance accountability and financial transparency. It does not initiate payments, hold funds, introduce resident crypto wallets, or replace the building's existing operational systems.
 
-Success means completing one real normal maintenance case and one controlled emergency drill end to end. Residents and auditors can independently verify the evidence, tampering is detected, corrections remain append-only, and recovery creates neither lost nor duplicate records.
+Success means both happy paths complete end to end: a normal maintenance case and a standalone spending proposal, each with independently verifiable proposal and settlement anchors. Residents can independently verify the evidence, tampering is detected, corrections remain append-only, and recovery creates neither lost nor duplicate records.
 
 ## Positioning
 

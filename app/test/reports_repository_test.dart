@@ -9,12 +9,12 @@ import 'package:mocktail/mocktail.dart';
 class _MockAdapter extends Mock implements HttpClientAdapter {}
 
 ResponseBody _json(int status, Object body) => ResponseBody.fromString(
-      jsonEncode(body),
-      status,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+  jsonEncode(body),
+  status,
+  headers: {
+    Headers.contentTypeHeader: [Headers.jsonContentType],
+  },
+);
 
 void main() {
   setUpAll(() => registerFallbackValue(RequestOptions(path: '/')));
@@ -37,25 +37,31 @@ void main() {
     });
   }
 
-  test('createReport posts client_ref/text/location_id and parses summary',
-      () async {
-    answerWith(201, {
-      'id': 5,
-      'text': 'Leak',
-      'status': 'SUBMITTED',
-      'location_path_snapshot': 'B / Hall',
-      'created_at': '2026-07-17T00:00:00Z',
-    });
-    final summary = await repo.createReport(
-        clientRef: 'ref-1', text: 'Leak', locationId: 3);
-    expect(summary.id, 5);
-    expect(lastRequest.path, '/api/v1/reports');
-    final sent = lastRequest.data;
-    final map = sent is String ? jsonDecode(sent) : sent;
-    expect(map['client_ref'], 'ref-1');
-    expect(map['text'], 'Leak');
-    expect(map['location_id'], 3);
-  });
+  test(
+    'createReport posts client_ref/text/location_id and parses summary',
+    () async {
+      answerWith(201, {
+        'id': 5,
+        'text': 'Leak',
+        'status': 'SUBMITTED',
+        'is_private': false,
+        'location_path_snapshot': 'B / Hall',
+        'created_at': '2026-07-17T00:00:00Z',
+      });
+      final summary = await repo.createReport(
+        clientRef: 'ref-1',
+        text: 'Leak',
+        locationId: 3,
+      );
+      expect(summary.id, 5);
+      expect(lastRequest.path, '/api/v1/reports');
+      final sent = lastRequest.data;
+      final map = sent is String ? jsonDecode(sent) : sent;
+      expect(map['client_ref'], 'ref-1');
+      expect(map['text'], 'Leak');
+      expect(map['location_id'], 3);
+    },
+  );
 
   test('uploadPhoto sends multipart field "photo"', () async {
     answerWith(201, {
@@ -86,34 +92,43 @@ void main() {
   });
 
   // Amendment 13: adapter-level HTTP 200 idempotent create replay (not a fake repo).
-  test('createReport accepts HTTP 200 idempotent replay of same client_ref',
-      () async {
-    var calls = 0;
-    when(() => adapter.fetch(any(), any(), any())).thenAnswer((inv) async {
-      lastRequest = inv.positionalArguments[0] as RequestOptions;
-      calls++;
-      final body = {
-        'id': 5,
-        'text': 'Leak',
-        'status': 'SUBMITTED',
-        'location_path_snapshot': 'B / Hall',
-        'created_at': '2026-07-17T00:00:00Z',
-      };
-      return _json(calls == 1 ? 201 : 200, body);
-    });
-    final first = await repo.createReport(
-        clientRef: 'ref-1', text: 'Leak', locationId: 3);
-    final second = await repo.createReport(
-        clientRef: 'ref-1', text: 'Leak', locationId: 3);
-    expect(first.id, 5);
-    expect(second.id, 5);
-    expect(calls, 2);
-  });
+  test(
+    'createReport accepts HTTP 200 idempotent replay of same client_ref',
+    () async {
+      var calls = 0;
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((inv) async {
+        lastRequest = inv.positionalArguments[0] as RequestOptions;
+        calls++;
+        final body = {
+          'id': 5,
+          'text': 'Leak',
+          'status': 'SUBMITTED',
+          'is_private': false,
+          'location_path_snapshot': 'B / Hall',
+          'created_at': '2026-07-17T00:00:00Z',
+        };
+        return _json(calls == 1 ? 201 : 200, body);
+      });
+      final first = await repo.createReport(
+        clientRef: 'ref-1',
+        text: 'Leak',
+        locationId: 3,
+      );
+      final second = await repo.createReport(
+        clientRef: 'ref-1',
+        text: 'Leak',
+        locationId: 3,
+      );
+      expect(first.id, 5);
+      expect(second.id, 5);
+      expect(calls, 2);
+    },
+  );
 }
 
 String _writeTempJpeg() {
   final file = File(
-      '${Directory.systemTemp.createTempSync('lamto').path}/p.jpg')
-    ..writeAsBytesSync([0xff, 0xd8, 0xff, 0xe0]);
+    '${Directory.systemTemp.createTempSync('lamto').path}/p.jpg',
+  )..writeAsBytesSync([0xff, 0xd8, 0xff, 0xe0]);
   return file.path;
 }

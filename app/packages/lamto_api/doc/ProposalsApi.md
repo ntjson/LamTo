@@ -9,9 +9,9 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**proposalDetail**](ProposalsApi.md#proposaldetail) | **GET** /api/v1/proposals/{id} |
-[**proposalList**](ProposalsApi.md#proposallist) | **GET** /api/v1/proposals |
-[**proposalsRatingCreate**](ProposalsApi.md#proposalsratingcreate) | **POST** /api/v1/proposals/{id}/rating |
+[**proposalDetail**](ProposalsApi.md#proposaldetail) | **GET** /api/v1/proposals/{id} | 
+[**proposalList**](ProposalsApi.md#proposallist) | **GET** /api/v1/proposals | 
+[**proposalsRatingCreate**](ProposalsApi.md#proposalsratingcreate) | **POST** /api/v1/proposals/{id}/rating | 
 
 
 # **proposalDetail**
@@ -28,7 +28,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getProposalsApi();
-final int id = 56; // int |
+final int id = 56; // int | 
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
 
 try {
@@ -43,8 +43,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  |
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **id** | **int**|  | 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
 
 ### Return type
 
@@ -62,7 +62,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **proposalList**
-> BuiltList<Proposal> proposalList(xLamToOccupancy)
+> PaginatedProposalList proposalList(xLamToOccupancy, cursor)
 
 
 
@@ -76,9 +76,10 @@ import 'package:lamto_api/api.dart';
 
 final api = LamtoApi().getProposalsApi();
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
+final String cursor = cursor_example; // String | The pagination cursor value.
 
 try {
-    final response = api.proposalList(xLamToOccupancy);
+    final response = api.proposalList(xLamToOccupancy, cursor);
     print(response);
 } catch on DioException (e) {
     print('Exception when calling ProposalsApi->proposalList: $e\n');
@@ -89,11 +90,12 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
+ **cursor** | **String**| The pagination cursor value. | [optional] 
 
 ### Return type
 
-[**BuiltList&lt;Proposal&gt;**](Proposal.md)
+[**PaginatedProposalList**](PaginatedProposalList.md)
 
 ### Authorization
 
@@ -120,8 +122,8 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getProposalsApi();
-final int id = 56; // int |
-final CaseRatingRequest caseRatingRequest = ; // CaseRatingRequest |
+final int id = 56; // int | 
+final CaseRatingRequest caseRatingRequest = ; // CaseRatingRequest | 
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
 
 try {
@@ -136,9 +138,9 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  |
- **caseRatingRequest** | [**CaseRatingRequest**](CaseRatingRequest.md)|  |
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **id** | **int**|  | 
+ **caseRatingRequest** | [**CaseRatingRequest**](CaseRatingRequest.md)|  | 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
 
 ### Return type
 
@@ -154,3 +156,4 @@ Name | Type | Description  | Notes
  - **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+

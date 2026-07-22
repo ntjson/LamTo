@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **id** | **int** |  | 
 **text** | **String** |  | 
 **status** | [**StatusEnum**](StatusEnum.md) |  | 
+**isPrivate** | **bool** |  | 
 **locationPathSnapshot** | **String** |  | 
 **createdAt** | [**DateTime**](DateTime.md) |  | 
 

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/core/failure.dart';
 import 'package:lamto/features/ledger/ledger_detail_screen.dart';
 import 'package:lamto/features/ledger/ledger_screen.dart';
+import 'package:lamto/features/proposals/proposals_repository.dart';
 import 'package:lamto/features/transparency/fund_chart.dart';
 import 'package:lamto/features/transparency/transparency_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
@@ -50,6 +51,7 @@ LedgerEntryDetail _detail() => LedgerEntryDetail(
     ..integrityStatus = 'VERIFIED'
     ..whatWasFixed = 'Cable secured'
     ..why = 'Worn cable'
+    ..payload = JsonObject({'proposal_id': 7})
     ..approvers = ListBuilder<JsonObject?>([
       JsonObject({'role': 'board', 'name': 'Ông Minh', 'decision': 'APPROVE'}),
       JsonObject({
@@ -137,8 +139,37 @@ class _FakeRepo implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _EmptyProposalsRepository implements ProposalsRepository {
+  @override
+  Future<PaginatedProposalList> listProposals({String? cursor}) async =>
+      PaginatedProposalList((b) => b..results = ListBuilder());
+
+  @override
+  Future<Proposal> fetchProposal(int id) async => Proposal(
+    (b) => b
+      ..id = id
+      ..buildingId = 1
+      ..status = 'PUBLISHED'
+      ..purpose = 'Lift repair proposal'
+      ..proposedAction = 'Repair lift'
+      ..amountVnd = 1000000
+      ..fundCode = 'GENERAL'
+      ..contractorName = 'Lift Co'
+      ..expectedSchedule = 'August'
+      ..versions = ListBuilder()
+      ..progress = ListBuilder()
+      ..canRate = false,
+  );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 Widget _host(Widget child, _FakeRepo repo) => ProviderScope(
-  overrides: [transparencyRepositoryProvider.overrideWithValue(repo)],
+  overrides: [
+    transparencyRepositoryProvider.overrideWithValue(repo),
+    proposalsRepositoryProvider.overrideWithValue(_EmptyProposalsRepository()),
+  ],
   child: MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -148,6 +179,21 @@ Widget _host(Widget child, _FakeRepo repo) => ProviderScope(
 );
 
 void main() {
+  testWidgets('ledger tab switches between ledger and proposals segments', (
+    tester,
+  ) async {
+    final repo = _FakeRepo();
+    await tester.pumpWidget(_host(const Scaffold(body: LedgerScreen()), repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sổ quỹ'), findsOneWidget);
+    expect(find.text('Đề xuất'), findsOneWidget);
+    expect(find.text('Acme Co', skipOffstage: false), findsOneWidget);
+    await tester.tap(find.text('Đề xuất'));
+    await tester.pumpAndSettle();
+    expect(find.text('Acme Co', skipOffstage: false), findsNothing);
+  });
+
   testWidgets('ledger tab shows full fund chart with range selector', (
     tester,
   ) async {
@@ -209,15 +255,21 @@ void main() {
     final repo = _FakeRepo();
     await tester.pumpWidget(_host(const Scaffold(body: LedgerScreen()), repo));
     await tester.pumpAndSettle();
-    expect(find.text('Acme Co'), findsOneWidget);
-    expect(find.textContaining('Đã ký — chưa bật neo'), findsOneWidget);
+    expect(find.text('Acme Co', skipOffstage: false), findsOneWidget);
+    expect(
+      find.textContaining('Đã ký — chưa bật neo', skipOffstage: false),
+      findsOneWidget,
+    );
 
     // Choosing a year re-queries with the filter; empty period shows copy.
     final year = DateTime.now().year;
     await tester.tap(find.text('$year'));
     await tester.pumpAndSettle();
     expect(repo.periods.last, (year, null));
-    expect(find.text('Không có khoản chi nào trong kỳ này.'), findsOneWidget);
+    expect(
+      find.text('Không có khoản chi nào trong kỳ này.', skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -231,6 +283,12 @@ void main() {
 
       expect(find.text('Khoản chi này đã được xác minh'), findsOneWidget);
       expect(find.text('Chuỗi trách nhiệm'), findsOneWidget);
+      expect(find.text('Xem đề xuất'), findsOneWidget);
+      await tester.tap(find.text('Xem đề xuất'));
+      await tester.pumpAndSettle();
+      expect(find.text('Lift repair proposal'), findsOneWidget);
+      Navigator.pop(tester.element(find.text('Lift repair proposal')));
+      await tester.pumpAndSettle();
       expect(find.text('Phản ánh và lý do'), findsNothing);
       expect(find.text('ab12cd34'), findsNothing); // hash hidden until expanded
 

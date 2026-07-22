@@ -15,13 +15,14 @@ import 'reports_repository.dart';
 /// Plain-language status labels (DESIGN.md: color never alone).
 String reportStatusLabel(StatusEnum status, AppLocalizations l10n) =>
     switch (status) {
-      StatusEnum.COMPLETED || StatusEnum.CLOSED => l10n.statusResolved,
+      StatusEnum.SUBMITTED => l10n.statusSubmitted,
+      StatusEnum.IN_REVIEW => l10n.statusInReview,
+      StatusEnum.NEEDS_INFO => l10n.statusNeedsInfo,
       StatusEnum.DECLINED => l10n.statusDeclined,
-      StatusEnum.SUBMITTED ||
-      StatusEnum.IN_REVIEW ||
-      StatusEnum.NEEDS_INFO ||
-      StatusEnum.IN_PROGRESS ||
-      StatusEnum.PROPOSED => l10n.statusOpen,
+      StatusEnum.IN_PROGRESS => l10n.statusInProgress,
+      StatusEnum.PROPOSED => l10n.statusProposed,
+      StatusEnum.COMPLETED => l10n.statusCompleted,
+      StatusEnum.CLOSED => l10n.statusClosed,
       _ => status.name,
     };
 
@@ -32,7 +33,7 @@ bool isActiveReportStatus(StatusEnum status) =>
 
 StatusTone reportStatusTone(StatusEnum status) => switch (status) {
   StatusEnum.COMPLETED || StatusEnum.CLOSED => StatusTone.success,
-  StatusEnum.DECLINED => StatusTone.warning,
+  StatusEnum.DECLINED || StatusEnum.NEEDS_INFO => StatusTone.warning,
   _ => StatusTone.info,
 };
 
@@ -119,31 +120,7 @@ class MyIssuesScreen extends ConsumerWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   title,
-                  for (final report in value)
-                    ListTile(
-                      minTileHeight: 64,
-                      title: Text(
-                        report.text,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        report.locationPathSnapshot,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: StatusChip(
-                        tone: reportStatusTone(report.status),
-                        label: reportStatusLabel(report.status, l10n),
-                      ),
-                      onTap: () => Navigator.push(
-                        context,
-                        adaptivePageRoute(
-                          builder: (_) =>
-                              IssueDetailScreen(reportId: report.id),
-                        ),
-                      ),
-                    ),
+                  for (final report in value) _ReportTile(report: report),
                   if (ref.read(myReportsProvider.notifier).hasMore)
                     LoadMoreButton(
                       label: l10n.issuesLoadMore,
@@ -173,6 +150,43 @@ class MyIssuesScreen extends ConsumerWidget {
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: body,
+    );
+  }
+}
+
+class _ReportTile extends StatelessWidget {
+  const _ReportTile({required this.report});
+
+  final ReportSummary report;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return ListTile(
+      minTileHeight: 64,
+      title: Text(report.text, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Row(
+        children: [
+          Expanded(
+            child: Text(
+              report.locationPathSnapshot,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (report.isPrivate) Chip(label: Text(l10n.privateBadge)),
+        ],
+      ),
+      trailing: StatusChip(
+        tone: reportStatusTone(report.status),
+        label: reportStatusLabel(report.status, l10n),
+      ),
+      onTap: () => Navigator.push(
+        context,
+        adaptivePageRoute(
+          builder: (_) => IssueDetailScreen(reportId: report.id),
+        ),
+      ),
     );
   }
 }

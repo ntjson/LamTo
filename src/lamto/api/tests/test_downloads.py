@@ -2,12 +2,15 @@ import logging
 import tempfile
 import time
 import uuid
+from datetime import timedelta
 from unittest.mock import patch
 from urllib.parse import quote, unquote
 
+from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from knox.models import AuthToken
 
 from lamto.api.downloads import (
@@ -17,7 +20,10 @@ from lamto.api.downloads import (
     sanitize_download_filename,
 )
 from lamto.config.log_filters import DownloadTokenLogFilter, scrub_download_token_in_text
-from lamto.maintenance.models import ReportPhoto
+from lamto.accounts.models import ResidentOccupancy
+from lamto.documents.models import Document
+from lamto.maintenance.cases import publish_progress
+from lamto.maintenance.models import CaseReport, MaintenanceCase, ReportPhoto, TriageDecision
 from lamto.maintenance.reporting import submit_report_idempotent
 from lamto.testing.factories import seed_pilot_world
 
@@ -96,6 +102,33 @@ class DownloadTests(TestCase):
         )
         return ReportPhoto.objects.get(report=self.report).version
 
+    def _work_update_photo(self):
+        manager = self.seed.management_users[0]
+        decision = TriageDecision.objects.create(
+            report=self.report,
+            operator=manager,
+            category="Lift",
+            urgency="HIGH",
+            location=self.seed.location,
+            department="Maintenance",
+            deadline_minutes=1440,
+        )
+        case = MaintenanceCase.objects.create(
+            decision=decision,
+            building=self.seed.building,
+            category="Lift",
+            urgency="HIGH",
+            location=self.seed.location,
+            department="Maintenance",
+            deadline_at=timezone.now() + timedelta(days=1),
+        )
+        CaseReport.objects.create(case=case, report=self.report, grouped_by=manager)
+        version = self.seed.photo(Document.Kind.BEFORE_PHOTO, manager, "before")
+        publish_progress(
+            case, manager, "Inspected lift", "Found worn guide", before_versions=[version]
+        )
+        return version
+
     def test_own_photo_download_url_streams_bytes(self):
         version = self._upload_photo()
         detail = self.client.get(reverse("api:report-detail", kwargs={"pk": self.report.pk}), headers=self._auth())
@@ -109,6 +142,30 @@ class DownloadTests(TestCase):
         cd = got["Content-Disposition"]
         assert 'filename="p.png"' in cd
         assert "filename*=UTF-8''p.png" in cd
+
+    def test_reported_case_work_update_photo_downloads_for_owner(self):
+        version = self._work_update_photo()
+        token = issue_download_token(self.resident.pk, version.pk)
+
+        response = self.client.get(
+            reverse("api:document-download", args=[token]), headers=self._auth()
+        )
+
+        assert response.status_code == 200
+
+    def test_reported_case_work_update_photo_is_denied_to_foreign_resident(self):
+        version = self._work_update_photo()
+        foreign = get_user_model().objects.create_user(
+            email="apidl-foreign@example.com", password="x", display_name="Foreign"
+        )
+        ResidentOccupancy.objects.create(user=foreign, unit=self.seed.unit, active=True)
+        token = issue_download_token(foreign.pk, version.pk)
+
+        response = self.client.get(
+            reverse("api:document-download", args=[token]), headers=self._auth(foreign)
+        )
+
+        assert response.status_code == 404
 
     def test_content_disposition_filename_is_sanitized(self):
         """CR/LF/quotes/path components must not appear raw in Content-Disposition.

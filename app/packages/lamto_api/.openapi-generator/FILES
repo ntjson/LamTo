@@ -16,6 +16,7 @@ doc/FundSeriesPoint.md
 doc/FundSummary.md
 doc/InfoReplyRequest.md
 doc/InfoReplyResult.md
+doc/KindEnum.md
 doc/LedgerApi.md
 doc/LedgerEntryDetail.md
 doc/LedgerEntryList.md
@@ -32,6 +33,7 @@ doc/NotificationsApi.md
 doc/Occupancy.md
 doc/PaginatedLedgerEntryListList.md
 doc/PaginatedNotificationFeedList.md
+doc/PaginatedProposalList.md
 doc/PaginatedReportSummaryList.md
 doc/PatchedNotificationPreferenceUpdateRequest.md
 doc/PlatformEnum.md
@@ -39,7 +41,11 @@ doc/Problem.md
 doc/Proof.md
 doc/ProofEvent.md
 doc/Proposal.md
+doc/ProposalProgress.md
 doc/ProposalRatingResult.md
+doc/ProposalSettlement.md
+doc/ProposalSupportingDocument.md
+doc/ProposalVersion.md
 doc/ProposalsApi.md
 doc/RedactedDocument.md
 doc/ReportCase.md
@@ -48,6 +54,7 @@ doc/ReportDetail.md
 doc/ReportPhoto.md
 doc/ReportSummary.md
 doc/ReportWorkUpdate.md
+doc/ReportWorkUpdatePhoto.md
 doc/ReportsApi.md
 doc/StatusEnum.md
 doc/TokenResponse.md
@@ -82,6 +89,7 @@ lib/src/model/fund_series_point.dart
 lib/src/model/fund_summary.dart
 lib/src/model/info_reply_request.dart
 lib/src/model/info_reply_result.dart
+lib/src/model/kind_enum.dart
 lib/src/model/ledger_entry_detail.dart
 lib/src/model/ledger_entry_list.dart
 lib/src/model/location.dart
@@ -94,6 +102,7 @@ lib/src/model/notification_preference_update_item_request.dart
 lib/src/model/occupancy.dart
 lib/src/model/paginated_ledger_entry_list_list.dart
 lib/src/model/paginated_notification_feed_list.dart
+lib/src/model/paginated_proposal_list.dart
 lib/src/model/paginated_report_summary_list.dart
 lib/src/model/patched_notification_preference_update_request.dart
 lib/src/model/platform_enum.dart
@@ -101,7 +110,11 @@ lib/src/model/problem.dart
 lib/src/model/proof.dart
 lib/src/model/proof_event.dart
 lib/src/model/proposal.dart
+lib/src/model/proposal_progress.dart
 lib/src/model/proposal_rating_result.dart
+lib/src/model/proposal_settlement.dart
+lib/src/model/proposal_supporting_document.dart
+lib/src/model/proposal_version.dart
 lib/src/model/redacted_document.dart
 lib/src/model/report_case.dart
 lib/src/model/report_create_request.dart
@@ -109,6 +122,7 @@ lib/src/model/report_detail.dart
 lib/src/model/report_photo.dart
 lib/src/model/report_summary.dart
 lib/src/model/report_work_update.dart
+lib/src/model/report_work_update_photo.dart
 lib/src/model/status_enum.dart
 lib/src/model/token_response.dart
 lib/src/model/verification.dart
@@ -128,6 +142,7 @@ test/fund_series_test.dart
 test/fund_summary_test.dart
 test/info_reply_request_test.dart
 test/info_reply_result_test.dart
+test/kind_enum_test.dart
 test/ledger_api_test.dart
 test/ledger_entry_detail_test.dart
 test/ledger_entry_list_test.dart
@@ -144,14 +159,19 @@ test/notifications_api_test.dart
 test/occupancy_test.dart
 test/paginated_ledger_entry_list_list_test.dart
 test/paginated_notification_feed_list_test.dart
+test/paginated_proposal_list_test.dart
 test/paginated_report_summary_list_test.dart
 test/patched_notification_preference_update_request_test.dart
 test/platform_enum_test.dart
 test/problem_test.dart
 test/proof_event_test.dart
 test/proof_test.dart
+test/proposal_progress_test.dart
 test/proposal_rating_result_test.dart
+test/proposal_settlement_test.dart
+test/proposal_supporting_document_test.dart
 test/proposal_test.dart
+test/proposal_version_test.dart
 test/proposals_api_test.dart
 test/redacted_document_test.dart
 test/report_case_test.dart
@@ -159,6 +179,7 @@ test/report_create_request_test.dart
 test/report_detail_test.dart
 test/report_photo_test.dart
 test/report_summary_test.dart
+test/report_work_update_photo_test.dart
 test/report_work_update_test.dart
 test/reports_api_test.dart
 test/status_enum_test.dart

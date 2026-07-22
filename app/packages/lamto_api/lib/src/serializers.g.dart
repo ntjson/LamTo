@@ -16,6 +16,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(FundSummary.serializer)
       ..add(InfoReplyRequest.serializer)
       ..add(InfoReplyResult.serializer)
+      ..add(KindEnum.serializer)
       ..add(LedgerEntryDetail.serializer)
       ..add(LedgerEntryList.serializer)
       ..add(Location.serializer)
@@ -28,6 +29,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Occupancy.serializer)
       ..add(PaginatedLedgerEntryListList.serializer)
       ..add(PaginatedNotificationFeedList.serializer)
+      ..add(PaginatedProposalList.serializer)
       ..add(PaginatedReportSummaryList.serializer)
       ..add(PatchedNotificationPreferenceUpdateRequest.serializer)
       ..add(PlatformEnum.serializer)
@@ -35,7 +37,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Proof.serializer)
       ..add(ProofEvent.serializer)
       ..add(Proposal.serializer)
+      ..add(ProposalProgress.serializer)
       ..add(ProposalRatingResult.serializer)
+      ..add(ProposalSettlement.serializer)
+      ..add(ProposalSupportingDocument.serializer)
+      ..add(ProposalVersion.serializer)
       ..add(RedactedDocument.serializer)
       ..add(ReportCase.serializer)
       ..add(ReportCreateRequest.serializer)
@@ -43,6 +49,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ReportPhoto.serializer)
       ..add(ReportSummary.serializer)
       ..add(ReportWorkUpdate.serializer)
+      ..add(ReportWorkUpdatePhoto.serializer)
       ..add(StatusEnum.serializer)
       ..add(TokenResponse.serializer)
       ..add(Verification.serializer)
@@ -70,11 +77,28 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(ProofEvent)]),
           () => ListBuilder<ProofEvent>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Proposal)]),
+          () => ListBuilder<Proposal>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(ProposalSupportingDocument)]),
+          () => ListBuilder<ProposalSupportingDocument>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ProposalVersion)]),
+          () => ListBuilder<ProposalVersion>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ProposalProgress)]),
+          () => ListBuilder<ProposalProgress>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ReportSummary)]),
           () => ListBuilder<ReportSummary>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ReportWorkUpdate)]),
           () => ListBuilder<ReportWorkUpdate>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(ReportWorkUpdatePhoto)]),
+          () => ListBuilder<ReportWorkUpdatePhoto>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType.nullable(JsonObject)]),
@@ -86,12 +110,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(RedactedDocument)]),
           () => ListBuilder<RedactedDocument>())
-      ..addBuilderFactory(
-          const FullType(BuiltMap, const [
-            const FullType(String),
-            const FullType.nullable(JsonObject)
-          ]),
-          () => MapBuilder<String, JsonObject?>())
       ..addBuilderFactory(
           const FullType(BuiltMap, const [
             const FullType(String),

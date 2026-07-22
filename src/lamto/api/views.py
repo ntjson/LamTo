@@ -97,6 +97,7 @@ from lamto.api.services import (
 from lamto.evidence.models import evidence_level
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import Proposal
+from lamto.finance.selectors import resident_proposals
 from lamto.maintenance.ratings import rate_completed_proposal
 from lamto.finance.selectors import (
     FUND_SERIES_RANGE_KEYS,
@@ -538,6 +539,13 @@ class ReportDetailView(APIView):
                 "api:document-download",
                 args=[issue_download_token(request.user.pk, photo["id"])],
             )
+        for case in timeline["cases"]:
+            for update in case["updates"]:
+                for photo in update["photos"]:
+                    photo["download_url"] = reverse(
+                        "api:document-download",
+                        args=[issue_download_token(request.user.pk, photo["id"])],
+                    )
         return Response(ReportDetailSerializer(timeline).data)
 
 
@@ -660,26 +668,38 @@ class CaseRatingView(APIView):
         ).data, status=201)
 
 
-class ProposalListView(APIView):
-    @extend_schema(operation_id="proposal_list", parameters=[OCCUPANCY_HEADER_PARAMETER], responses={200: ProposalSerializer(many=True), **problem_responses(401, 403, 404, 422)})
-    def get(self, request):
-        _occupancy, tenant = resolve_api_occupancy(request)
-        proposals = Proposal.objects.filter(
-            building_id=tenant.building_id
-        ).exclude(status=Proposal.Status.DRAFT).select_related("current_version").order_by("-created_at")
-        return Response(ProposalSerializer(proposals, many=True).data)
+class ProposalCursorPagination(pagination.CursorPagination):
+    page_size = 20
+    ordering = ("-created_at", "-pk")
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="proposal_list",
+        parameters=[OCCUPANCY_HEADER_PARAMETER],
+        responses={
+            200: ProposalSerializer,
+            **problem_responses(401, 403, 404, 422),
+        },
+    )
+)
+class ProposalListView(generics.ListAPIView):
+    serializer_class = ProposalSerializer
+    pagination_class = ProposalCursorPagination
+
+    def get_queryset(self):
+        _occupancy, tenant = resolve_api_occupancy(self.request)
+        return resident_proposals(tenant.building_id, self.request.user)
 
 
 class ProposalDetailView(APIView):
     @extend_schema(operation_id="proposal_detail", parameters=[OCCUPANCY_HEADER_PARAMETER], responses={200: ProposalSerializer, **problem_responses(401, 403, 404, 422)})
     def get(self, request, pk):
         _occupancy, tenant = resolve_api_occupancy(request)
-        proposal = Proposal.objects.filter(pk=pk, building_id=tenant.building_id).exclude(
-            status=Proposal.Status.DRAFT
-        ).select_related("current_version").first()
+        proposal = resident_proposals(tenant.building_id, request.user).filter(pk=pk).first()
         if proposal is None:
             raise exceptions.NotFound("Proposal not found.")
-        return Response(ProposalSerializer(proposal).data)
+        return Response(ProposalSerializer(proposal, context={"request": request}).data)
 
 
 class ProposalRatingView(APIView):

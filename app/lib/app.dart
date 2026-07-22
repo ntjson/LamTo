@@ -111,6 +111,7 @@ class _AppRouterState extends ConsumerState<AppRouter> {
           adaptivePageRoute(builder: (_) => IssueDetailScreen(reportId: id)),
         );
       case DeepLinkLedger(:final id):
+        selectLedgerTab(ref);
         navigator.push(
           adaptivePageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),
         );

@@ -23,6 +23,7 @@ import 'package:lamto_api/src/model/fund_series_point.dart';
 import 'package:lamto_api/src/model/fund_summary.dart';
 import 'package:lamto_api/src/model/info_reply_request.dart';
 import 'package:lamto_api/src/model/info_reply_result.dart';
+import 'package:lamto_api/src/model/kind_enum.dart';
 import 'package:lamto_api/src/model/ledger_entry_detail.dart';
 import 'package:lamto_api/src/model/ledger_entry_list.dart';
 import 'package:lamto_api/src/model/location.dart';
@@ -35,6 +36,7 @@ import 'package:lamto_api/src/model/notification_preference_update_item_request.
 import 'package:lamto_api/src/model/occupancy.dart';
 import 'package:lamto_api/src/model/paginated_ledger_entry_list_list.dart';
 import 'package:lamto_api/src/model/paginated_notification_feed_list.dart';
+import 'package:lamto_api/src/model/paginated_proposal_list.dart';
 import 'package:lamto_api/src/model/paginated_report_summary_list.dart';
 import 'package:lamto_api/src/model/patched_notification_preference_update_request.dart';
 import 'package:lamto_api/src/model/platform_enum.dart';
@@ -42,7 +44,11 @@ import 'package:lamto_api/src/model/problem.dart';
 import 'package:lamto_api/src/model/proof.dart';
 import 'package:lamto_api/src/model/proof_event.dart';
 import 'package:lamto_api/src/model/proposal.dart';
+import 'package:lamto_api/src/model/proposal_progress.dart';
 import 'package:lamto_api/src/model/proposal_rating_result.dart';
+import 'package:lamto_api/src/model/proposal_settlement.dart';
+import 'package:lamto_api/src/model/proposal_supporting_document.dart';
+import 'package:lamto_api/src/model/proposal_version.dart';
 import 'package:lamto_api/src/model/redacted_document.dart';
 import 'package:lamto_api/src/model/report_case.dart';
 import 'package:lamto_api/src/model/report_create_request.dart';
@@ -50,6 +56,7 @@ import 'package:lamto_api/src/model/report_detail.dart';
 import 'package:lamto_api/src/model/report_photo.dart';
 import 'package:lamto_api/src/model/report_summary.dart';
 import 'package:lamto_api/src/model/report_work_update.dart';
+import 'package:lamto_api/src/model/report_work_update_photo.dart';
 import 'package:lamto_api/src/model/status_enum.dart';
 import 'package:lamto_api/src/model/token_response.dart';
 import 'package:lamto_api/src/model/verification.dart';
@@ -66,6 +73,7 @@ part 'serializers.g.dart';
   FundSummary,
   InfoReplyRequest,
   InfoReplyResult,
+  KindEnum,
   LedgerEntryDetail,
   LedgerEntryList,
   Location,
@@ -78,6 +86,7 @@ part 'serializers.g.dart';
   Occupancy,
   PaginatedLedgerEntryListList,
   PaginatedNotificationFeedList,
+  PaginatedProposalList,
   PaginatedReportSummaryList,
   PatchedNotificationPreferenceUpdateRequest,
   PlatformEnum,
@@ -85,7 +94,11 @@ part 'serializers.g.dart';
   Proof,
   ProofEvent,
   Proposal,
+  ProposalProgress,
   ProposalRatingResult,
+  ProposalSettlement,
+  ProposalSupportingDocument,
+  ProposalVersion,
   RedactedDocument,
   ReportCase,
   ReportCreateRequest,
@@ -93,15 +106,12 @@ part 'serializers.g.dart';
   ReportPhoto,
   ReportSummary,
   ReportWorkUpdate,
+  ReportWorkUpdatePhoto,
   StatusEnum,
   TokenResponse,
   Verification,
 ])
 Serializers serializers = (_$serializers.toBuilder()
-      ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(Proposal)]),
-        () => ListBuilder<Proposal>(),
-      )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Location)]),
         () => ListBuilder<Location>(),

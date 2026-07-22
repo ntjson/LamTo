@@ -417,6 +417,20 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: editingLocked ? null : _pickLocation,
           ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.privateToggleTitle),
+            subtitle: Text(l10n.privateToggleSubtitle),
+            value: _draft.isPrivate,
+            onChanged: editingLocked
+                ? null
+                : (value) async {
+                    setState(() {
+                      _draft = _draft.copyWith(isPrivate: value);
+                    });
+                    await _persist();
+                  },
+          ),
           const SizedBox(height: 16),
           Text(l10n.reportPhotosLabel(maxReportPhotos)),
           const SizedBox(height: 8),

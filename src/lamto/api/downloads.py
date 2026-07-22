@@ -16,8 +16,8 @@ from lamto.accounts.tenancy import active_occupancies
 from lamto.config.log_filters import DownloadTokenLogFilter, scrub_download_token_in_text
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.models import SETTLED_STATUSES
-from lamto.finance.models import PublishedLedgerEntry
-from lamto.maintenance.models import ReportPhoto
+from lamto.finance.models import Proposal, ProposalDocument, PublishedLedgerEntry
+from lamto.maintenance.models import ReportPhoto, WorkUpdateEvidence
 
 # Re-export for callers that import scrub helpers from the downloads module.
 __all__ = (
@@ -85,11 +85,31 @@ def resident_can_download(user, version) -> bool:
     documents. Originals of staff documents are unreachable from this path."""
     if version.document.kind == Document.Kind.REPORT_PHOTO:
         return ReportPhoto.objects.filter(version=version, report__reporter=user).exists()
+    if version.document.kind in (Document.Kind.BEFORE_PHOTO, Document.Kind.AFTER_PHOTO):
+        return WorkUpdateEvidence.objects.filter(
+            version=version,
+            update__case__case_reports__report__reporter=user,
+        ).exists()
     if version.variant != DocumentVersion.Variant.REDACTED:
         return False
     building_ids = list(active_occupancies(user).values_list("unit__building_id", flat=True))
     if not building_ids:
         return False
+    if (
+        version.document.kind == Document.Kind.QUOTATION
+        and ProposalDocument.objects.filter(
+            proposal_version__proposal__building_id__in=building_ids,
+            proposal_version__proposal__status__in=[
+                Proposal.Status.PUBLISHED,
+                Proposal.Status.NOT_PROCEEDING,
+                Proposal.Status.IN_PROGRESS,
+                Proposal.Status.COMPLETED,
+                Proposal.Status.CLOSED,
+            ],
+            document_version__redacted_versions=version,
+        ).exists()
+    ):
+        return True
     return (
         PublishedLedgerEntry.objects.filter(
             proposal__building_id__in=building_ids,

@@ -15,6 +15,8 @@ class _$ReportWorkUpdate extends ReportWorkUpdate {
   final String result;
   @override
   final DateTime createdAt;
+  @override
+  final BuiltList<ReportWorkUpdatePhoto> photos;
 
   factory _$ReportWorkUpdate(
           [void Function(ReportWorkUpdateBuilder)? updates]) =>
@@ -24,7 +26,8 @@ class _$ReportWorkUpdate extends ReportWorkUpdate {
       {required this.id,
       required this.cause,
       required this.result,
-      required this.createdAt})
+      required this.createdAt,
+      required this.photos})
       : super._();
   @override
   ReportWorkUpdate rebuild(void Function(ReportWorkUpdateBuilder) updates) =>
@@ -41,7 +44,8 @@ class _$ReportWorkUpdate extends ReportWorkUpdate {
         id == other.id &&
         cause == other.cause &&
         result == other.result &&
-        createdAt == other.createdAt;
+        createdAt == other.createdAt &&
+        photos == other.photos;
   }
 
   @override
@@ -51,6 +55,7 @@ class _$ReportWorkUpdate extends ReportWorkUpdate {
     _$hash = $jc(_$hash, cause.hashCode);
     _$hash = $jc(_$hash, result.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
+    _$hash = $jc(_$hash, photos.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -61,7 +66,8 @@ class _$ReportWorkUpdate extends ReportWorkUpdate {
           ..add('id', id)
           ..add('cause', cause)
           ..add('result', result)
-          ..add('createdAt', createdAt))
+          ..add('createdAt', createdAt)
+          ..add('photos', photos))
         .toString();
   }
 }
@@ -86,6 +92,12 @@ class ReportWorkUpdateBuilder
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
 
+  ListBuilder<ReportWorkUpdatePhoto>? _photos;
+  ListBuilder<ReportWorkUpdatePhoto> get photos =>
+      _$this._photos ??= ListBuilder<ReportWorkUpdatePhoto>();
+  set photos(ListBuilder<ReportWorkUpdatePhoto>? photos) =>
+      _$this._photos = photos;
+
   ReportWorkUpdateBuilder() {
     ReportWorkUpdate._defaults(this);
   }
@@ -97,6 +109,7 @@ class ReportWorkUpdateBuilder
       _cause = $v.cause;
       _result = $v.result;
       _createdAt = $v.createdAt;
+      _photos = $v.photos.toBuilder();
       _$v = null;
     }
     return this;
@@ -116,17 +129,31 @@ class ReportWorkUpdateBuilder
   ReportWorkUpdate build() => _build();
 
   _$ReportWorkUpdate _build() {
-    final _$result = _$v ??
-        _$ReportWorkUpdate._(
-          id: BuiltValueNullFieldError.checkNotNull(
-              id, r'ReportWorkUpdate', 'id'),
-          cause: BuiltValueNullFieldError.checkNotNull(
-              cause, r'ReportWorkUpdate', 'cause'),
-          result: BuiltValueNullFieldError.checkNotNull(
-              result, r'ReportWorkUpdate', 'result'),
-          createdAt: BuiltValueNullFieldError.checkNotNull(
-              createdAt, r'ReportWorkUpdate', 'createdAt'),
-        );
+    _$ReportWorkUpdate _$result;
+    try {
+      _$result = _$v ??
+          _$ReportWorkUpdate._(
+            id: BuiltValueNullFieldError.checkNotNull(
+                id, r'ReportWorkUpdate', 'id'),
+            cause: BuiltValueNullFieldError.checkNotNull(
+                cause, r'ReportWorkUpdate', 'cause'),
+            result: BuiltValueNullFieldError.checkNotNull(
+                result, r'ReportWorkUpdate', 'result'),
+            createdAt: BuiltValueNullFieldError.checkNotNull(
+                createdAt, r'ReportWorkUpdate', 'createdAt'),
+            photos: photos.build(),
+          );
+    } catch (_) {
+      late String _$failedField;
+      try {
+        _$failedField = 'photos';
+        photos.build();
+      } catch (e) {
+        throw BuiltValueNestedFieldError(
+            r'ReportWorkUpdate', _$failedField, e.toString());
+      }
+      rethrow;
+    }
     replace(_$result);
     return _$result;
   }

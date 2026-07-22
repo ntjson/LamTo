@@ -12,7 +12,7 @@ void main() {
       // TODO
     });
 
-    //Future<BuiltList<Proposal>> proposalList({ int xLamToOccupancy }) async
+    //Future<PaginatedProposalList> proposalList({ int xLamToOccupancy, String cursor }) async
     test('test proposalList', () async {
       // TODO
     });

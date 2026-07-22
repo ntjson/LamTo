@@ -18,6 +18,7 @@ void main() {
       locationId: 3,
       locationLabel: 'Tòa A / Thang máy 2',
       photoPaths: ['/tmp/a.jpg'],
+      isPrivate: true,
     );
     await store.write(7, draft);
 
@@ -26,6 +27,7 @@ void main() {
     expect(loaded.text, 'Thang máy kêu to');
     expect(loaded.locationId, 3);
     expect(loaded.photoPaths, ['/tmp/a.jpg']);
+    expect(loaded.isPrivate, isTrue);
     // A different occupancy has no draft.
     expect(await store.read(8), isNull);
 
@@ -34,8 +36,7 @@ void main() {
   });
 
   test('fresh drafts mint distinct clientRefs', () {
-    expect(ReportDraft.fresh().clientRef,
-        isNot(ReportDraft.fresh().clientRef));
+    expect(ReportDraft.fresh().clientRef, isNot(ReportDraft.fresh().clientRef));
   });
 
   test('clearAll removes every occupancy draft (logout privacy)', () async {
@@ -48,18 +49,20 @@ void main() {
     expect(await store.read(2), isNull);
   });
 
-  test('serialized writes preserve last draft under concurrent autosave',
-      () async {
-    SharedPreferences.setMockInitialValues({});
-    final store = ReportDraftStore();
-    final base = ReportDraft.fresh();
-    // Fire writes without awaiting between starts; store must serialize.
-    final f1 = store.write(7, base.copyWith(text: 'one'));
-    final f2 = store.write(7, base.copyWith(text: 'two'));
-    final f3 = store.write(7, base.copyWith(text: 'three'));
-    await Future.wait([f1, f2, f3]);
-    expect((await store.read(7))!.text, 'three');
-  });
+  test(
+    'serialized writes preserve last draft under concurrent autosave',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = ReportDraftStore();
+      final base = ReportDraft.fresh();
+      // Fire writes without awaiting between starts; store must serialize.
+      final f1 = store.write(7, base.copyWith(text: 'one'));
+      final f2 = store.write(7, base.copyWith(text: 'two'));
+      final f3 = store.write(7, base.copyWith(text: 'three'));
+      await Future.wait([f1, f2, f3]);
+      expect((await store.read(7))!.text, 'three');
+    },
+  );
 
   test('write chains are shared across ReportDraftStore instances', () async {
     SharedPreferences.setMockInitialValues({});
@@ -74,32 +77,34 @@ void main() {
     expect((await b.read(7))!.text, 'three');
   });
 
-  test('clearAll on a fresh instance awaits writes from another instance',
-      () async {
-    SharedPreferences.setMockInitialValues({});
-    final writer = ReportDraftStore();
-    // Logout path constructs a new store; it must drain the shared chain.
-    final logoutStore = ReportDraftStore();
-    final base = ReportDraft.fresh();
+  test(
+    'clearAll on a fresh instance awaits writes from another instance',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final writer = ReportDraftStore();
+      // Logout path constructs a new store; it must drain the shared chain.
+      final logoutStore = ReportDraftStore();
+      final base = ReportDraft.fresh();
 
-    final write = writer.write(9, base.copyWith(text: 'should-not-linger'));
-    await logoutStore.clearAll();
-    await write;
+      final write = writer.write(9, base.copyWith(text: 'should-not-linger'));
+      await logoutStore.clearAll();
+      await write;
 
-    expect(await writer.read(9), isNull);
-    expect(await logoutStore.read(9), isNull);
-  });
+      expect(await writer.read(9), isNull);
+      expect(await logoutStore.read(9), isNull);
+    },
+  );
 
   test('writes only under the lamto_report_draft_ privacy prefix', () async {
-    SharedPreferences.setMockInitialValues({
-      'unrelated_key': 'keep-me',
-    });
+    SharedPreferences.setMockInitialValues({'unrelated_key': 'keep-me'});
     final store = ReportDraftStore();
     await store.write(42, ReportDraft.fresh().copyWith(text: 'secret'));
 
     final prefs = await SharedPreferences.getInstance();
-    final draftKeys =
-        prefs.getKeys().where((k) => k.contains('report_draft')).toList();
+    final draftKeys = prefs
+        .getKeys()
+        .where((k) => k.contains('report_draft'))
+        .toList();
     expect(draftKeys, isNotEmpty);
     for (final key in draftKeys) {
       expect(key.startsWith('lamto_report_draft_'), isTrue, reason: key);

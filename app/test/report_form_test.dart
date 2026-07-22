@@ -19,12 +19,14 @@ ReportSummary _summary() => ReportSummary(
     ..id = 42
     ..text = 'Leak'
     ..status = StatusEnum.SUBMITTED
+    ..isPrivate = false
     ..locationPathSnapshot = 'B / Hall'
     ..createdAt = DateTime.utc(2026, 7, 17),
 );
 
 class _FakeRepo implements ReportsRepository {
   final refs = <String>[];
+  final privateValues = <bool>[];
   bool conflict = false;
   Completer<ReportSummary>? createCompleter;
 
@@ -33,8 +35,10 @@ class _FakeRepo implements ReportsRepository {
     required String clientRef,
     required String text,
     required int locationId,
+    bool isPrivate = false,
   }) async {
     refs.add(clientRef);
+    privateValues.add(isPrivate);
     if (conflict) {
       conflict = false;
       // Bubbles through ReportSubmitter (not a DioException) to the screen's
@@ -59,6 +63,9 @@ class _FakeRepo implements ReportsRepository {
     required bool satisfied,
     String comment = '',
   }) => throw UnimplementedError();
+  @override
+  Future<void> replyInfo({required int reportId, required String text}) =>
+      throw UnimplementedError();
   @override
   Future<ReportPhoto> uploadPhoto({
     required int reportId,
@@ -142,6 +149,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.refs.single, draft.clientRef); // draft's stable ref used
     expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
+  });
+
+  testWidgets('submits a private report when the switch is enabled', (
+    tester,
+  ) async {
+    final repo = _FakeRepo();
+    final draft = ReportDraft.fresh().copyWith(
+      text: 'Thang máy kêu to',
+      locationId: 3,
+      locationLabel: 'Tòa A / Thang máy 2',
+    );
+    await _pump(tester, repo, existingDraft: draft);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    await tester.tap(_sendButton);
+    await tester.pumpAndSettle();
+
+    expect(repo.privateValues.single, isTrue);
   });
 
   testWidgets('missing fields blocks submit with doctrine copy', (

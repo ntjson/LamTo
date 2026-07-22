@@ -3,6 +3,8 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:built_collection/built_collection.dart';
+import 'package:lamto_api/src/model/report_work_update_photo.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -15,6 +17,7 @@ part 'report_work_update.g.dart';
 /// * [cause] 
 /// * [result] 
 /// * [createdAt] 
+/// * [photos] 
 @BuiltValue()
 abstract class ReportWorkUpdate implements Built<ReportWorkUpdate, ReportWorkUpdateBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -28,6 +31,9 @@ abstract class ReportWorkUpdate implements Built<ReportWorkUpdate, ReportWorkUpd
 
   @BuiltValueField(wireName: r'created_at')
   DateTime get createdAt;
+
+  @BuiltValueField(wireName: r'photos')
+  BuiltList<ReportWorkUpdatePhoto> get photos;
 
   ReportWorkUpdate._();
 
@@ -71,6 +77,11 @@ class _$ReportWorkUpdateSerializer implements PrimitiveSerializer<ReportWorkUpda
     yield serializers.serialize(
       object.createdAt,
       specifiedType: const FullType(DateTime),
+    );
+    yield r'photos';
+    yield serializers.serialize(
+      object.photos,
+      specifiedType: const FullType(BuiltList, [FullType(ReportWorkUpdatePhoto)]),
     );
   }
 
@@ -122,6 +133,13 @@ class _$ReportWorkUpdateSerializer implements PrimitiveSerializer<ReportWorkUpda
             specifiedType: const FullType(DateTime),
           ) as DateTime;
           result.createdAt = valueDes;
+          break;
+        case r'photos':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(ReportWorkUpdatePhoto)]),
+          ) as BuiltList<ReportWorkUpdatePhoto>;
+          result.photos.replace(valueDes);
           break;
         default:
           unhandled.add(key);

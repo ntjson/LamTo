@@ -185,6 +185,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reportEnableNotifications => 'Nhận thông báo cập nhật';
 
   @override
+  String get privateToggleTitle => 'Yêu cầu riêng tư';
+
+  @override
+  String get privateToggleSubtitle =>
+      'Chỉ bạn và Ban quản lý xem được yêu cầu này. Yêu cầu riêng tư không đưa vào đề xuất cộng đồng.';
+
+  @override
+  String get privateBadge => 'Riêng tư';
+
+  @override
   String get issuesTitle => 'Việc của tôi';
 
   @override
@@ -200,7 +210,28 @@ class AppLocalizationsVi extends AppLocalizations {
   String get statusResolved => 'Đã xử lý';
 
   @override
-  String get statusDeclined => 'Đã từ chối';
+  String get statusSubmitted => 'Đã gửi';
+
+  @override
+  String get statusInReview => 'Đang xem xét';
+
+  @override
+  String get statusNeedsInfo => 'Cần bạn bổ sung thông tin';
+
+  @override
+  String get statusDeclined => 'Không tiếp nhận';
+
+  @override
+  String get statusInProgress => 'Đang xử lý';
+
+  @override
+  String get statusProposed => 'Đã lập đề xuất';
+
+  @override
+  String get statusCompleted => 'Đã hoàn thành';
+
+  @override
+  String get statusClosed => 'Đã đóng';
 
   @override
   String issueDetailTitle(int id) {
@@ -230,6 +261,18 @@ class AppLocalizationsVi extends AppLocalizations {
   String get timelineCompleted => 'Công việc đã hoàn thành';
 
   @override
+  String get progressTitle => 'Tiến độ xử lý';
+
+  @override
+  String get progressEmpty => 'Chưa có cập nhật tiến độ.';
+
+  @override
+  String get progressCompleted => 'Đã hoàn thành công việc';
+
+  @override
+  String get declinedTitle => 'Ban quản lý quyết định không tiếp nhận';
+
+  @override
   String get rateWorkCta => 'Đánh giá công việc';
 
   @override
@@ -249,6 +292,19 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get rateThanks => 'Cảm ơn bạn đã đánh giá.';
+
+  @override
+  String get infoRequestTitle => 'Ban quản lý cần thêm thông tin';
+
+  @override
+  String get infoReplyHint => 'Nhập câu trả lời của bạn…';
+
+  @override
+  String get infoReplySubmit => 'Gửi trả lời';
+
+  @override
+  String get infoReplyPhotosHint =>
+      'Bạn cũng có thể thêm ảnh ở phần ảnh bên dưới.';
 
   @override
   String get workStatusAssigned => 'Đã giao';
@@ -505,4 +561,69 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get fundChartRange12m => '12 tháng';
+
+  @override
+  String get proposalsSegment => 'Đề xuất';
+
+  @override
+  String get ledgerSegment => 'Sổ quỹ';
+
+  @override
+  String get proposalStatusPublished => 'Đã công bố';
+
+  @override
+  String get proposalStatusInProgress => 'Đang thực hiện';
+
+  @override
+  String get proposalStatusNotProceeding => 'Không thực hiện';
+
+  @override
+  String get proposalStatusCompleted => 'Đã hoàn thành';
+
+  @override
+  String get proposalStatusClosed => 'Đã đóng';
+
+  @override
+  String get proposalStatusDraft => 'Bản nháp';
+
+  @override
+  String get proposalProblem => 'Vấn đề hoặc nhu cầu';
+
+  @override
+  String get proposalAction => 'Phương án đề xuất';
+
+  @override
+  String get proposalCost => 'Chi phí dự kiến';
+
+  @override
+  String get proposalFund => 'Nguồn kinh phí';
+
+  @override
+  String get proposalContractor => 'Nhà thầu';
+
+  @override
+  String get proposalSchedule => 'Tiến độ dự kiến';
+
+  @override
+  String get proposalVersions => 'Các phiên bản đã công bố';
+
+  @override
+  String proposalVersion(String number) {
+    return 'Phiên bản $number';
+  }
+
+  @override
+  String get proposalSettlement => 'Quyết toán thanh toán';
+
+  @override
+  String get proposalSettled => 'Đã thanh toán và bên nhận đã xác nhận';
+
+  @override
+  String get proposalUnsettled => 'Chưa quyết toán thanh toán';
+
+  @override
+  String get proposalViewFromLedger => 'Xem đề xuất';
+
+  @override
+  String get proposalRateCta => 'Đánh giá kết quả';
 }

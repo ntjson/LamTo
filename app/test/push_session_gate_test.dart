@@ -9,10 +9,12 @@ import 'package:lamto/core/providers.dart';
 import 'package:lamto/core/token_store.dart';
 import 'package:lamto/features/auth/auth_repository.dart';
 import 'package:lamto/features/ledger/ledger_detail_screen.dart';
+import 'package:lamto/features/ledger/ledger_screen.dart';
 import 'package:lamto/features/notifications/notifications_screen.dart';
 import 'package:lamto/features/push/push_token_source.dart';
 import 'package:lamto/features/reports/issue_detail_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
+import 'package:lamto/features/shell/home_shell.dart';
 import 'package:lamto/features/transparency/transparency_repository.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -219,9 +221,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LedgerDetailScreen), findsNothing);
 
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomeShell)),
+    );
+    container.read(ledgerSegmentProvider.notifier).state = 1;
+
     push.emitOpened({'type': 'ledger', 'id': '99'});
     await tester.pumpAndSettle();
 
     expect(find.byType(LedgerDetailScreen), findsOneWidget);
+    expect(container.read(ledgerSegmentProvider), 0);
   });
 }
