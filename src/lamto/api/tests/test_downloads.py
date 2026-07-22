@@ -275,6 +275,21 @@ class DownloadTests(TestCase):
         resp = self.client.get(reverse("api:document-download", args=[token]), headers=self._auth())
         assert resp.status_code == 404
 
+    def test_fund_contract_is_unreachable_even_inside_the_residents_building(self):
+        """CONTRACT is fund-source evidence: staff-only, and not merely by
+        accident of the reference queries. The allowlist must refuse it before
+        any lookup runs."""
+        from lamto.api.downloads import RESIDENT_DOWNLOADABLE_KINDS, resident_can_download
+        from lamto.documents.models import Document
+
+        resident = self.seed.residents[0]
+        manager = self.seed.management_users[0]
+        _original, contract = self.seed.document_pair(Document.Kind.CONTRACT, manager, "fund-contract")
+
+        self.assertNotIn(Document.Kind.CONTRACT, RESIDENT_DOWNLOADABLE_KINDS)
+        with self.assertNumQueries(0):
+            self.assertIs(resident_can_download(resident, contract), False)
+
 
 class DownloadTokenLogScrubTests(TestCase):
     """Signed download tokens must not appear in formatted log messages (spec 3.6)."""

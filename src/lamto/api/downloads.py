@@ -26,6 +26,7 @@ __all__ = (
     "DownloadTokenLogFilter",
     "content_disposition_inline",
     "issue_download_token",
+    "RESIDENT_DOWNLOADABLE_KINDS",
     "resident_can_download",
     "sanitize_download_filename",
     "scrub_download_token_in_text",
@@ -33,6 +34,19 @@ __all__ = (
 
 DOWNLOAD_SALT = "lamto.api.download"
 DOWNLOAD_MAX_AGE = 300  # spec 3.6: TTL <= 5 minutes
+
+# Fail-closed outer gate. Every kind absent here is unreachable by residents no
+# matter what the reference queries below do, so a bug in one of them cannot
+# leak fund contracts, invoices, or completion reports.
+RESIDENT_DOWNLOADABLE_KINDS = frozenset(
+    {
+        Document.Kind.REPORT_PHOTO,
+        Document.Kind.BEFORE_PHOTO,
+        Document.Kind.AFTER_PHOTO,
+        Document.Kind.QUOTATION,
+        Document.Kind.PAYMENT_PROOF,
+    }
+)
 
 
 def sanitize_download_filename(filename: str | None) -> str:
@@ -81,8 +95,11 @@ def issue_download_token(user_id: int, version_id: int) -> str:
 
 
 def resident_can_download(user, version) -> bool:
-    """True only for the caller's own report photos and redacted published-ledger
-    documents. Originals of staff documents are unreachable from this path."""
+    """True only for the caller's own report photos and the redacted
+    published-ledger documents their building has published. Staff-only kinds
+    are refused by RESIDENT_DOWNLOADABLE_KINDS before any lookup runs."""
+    if version.document.kind not in RESIDENT_DOWNLOADABLE_KINDS:
+        return False
     if version.document.kind == Document.Kind.REPORT_PHOTO:
         return ReportPhoto.objects.filter(version=version, report__reporter=user).exists()
     if version.document.kind in (Document.Kind.BEFORE_PHOTO, Document.Kind.AFTER_PHOTO):
