@@ -11,7 +11,7 @@
 |----------|-------|-------------------------------------------|
 | Normal path (report → published ledger → integrity verification) | ☐ | |
 | Chain paused: work pending anchor; publish blocked then retry same IDs | ☐ | |
-| Payment record confirmed by the same manager | ☐ | |
+| Transfer evidence and payee acknowledgement recorded by the manager | ☐ | |
 | Proposal revision after signature requires a new publication | ☐ | |
 | AI/email outage: report + action inbox authoritative | ☐ | |
 | Cross-building object/file access denials | ☐ | |

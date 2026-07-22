@@ -191,8 +191,8 @@ class ProposalVersionTests(TestCase):
         unsafe_quotation = DocumentVersion.objects.create(
             document=unsafe_document,
             version=1,
-            storage_key="quotation-without-redaction",
-            provider_version_id="quotation-without-redaction",
+            storage_key="quotation-pending-scan",
+            provider_version_id="quotation-pending-scan",
             filename="quotation.pdf",
             content_type="application/pdf",
             byte_size=10,

@@ -96,7 +96,7 @@ def issue_download_token(user_id: int, version_id: int) -> str:
 
 def resident_can_download(user, version) -> bool:
     """True only for the caller's own report photos and the published-ledger
-    published-ledger documents their building has published. Staff-only kinds
+    documents their building has published. Staff-only kinds
     are refused by RESIDENT_DOWNLOADABLE_KINDS before any lookup runs."""
     if version.document.kind not in RESIDENT_DOWNLOADABLE_KINDS:
         return False

@@ -36,7 +36,7 @@ publication → resident ledger → integrity verification.
 | Participant | Responsibility |
 |-------------|----------------|
 | Resident | Report, inspect published ledger |
-| Management user | Triage, create the work order and proposal, start and complete work, record and confirm payment, publish the ledger, and verify hashes and balances |
+| Management user | Triage, create the work order and proposal, start and complete work, record transfer evidence and payee acknowledgement, publish the ledger, and verify hashes and balances |
 
 One Management user performs the whole staff path. Managers meet, review, and
 sign off offline before data entry; the application records the agreed result
@@ -47,11 +47,11 @@ users, but no step requires a second person.
 
 1. Resident submits issue report with photo and location.
 2. A manager confirms triage and creates a **paid** work order.
-3. A manager submits a signed proposal (amount + quotation pair).
+3. A manager submits a signed proposal (amount + quotation document).
 4. A manager starts work (may show **Pending blockchain anchoring** until
    prerequisite outbox events confirm) and completes with cause/result photos.
-5. A manager accepts work and records payment evidence.
-6. The same manager confirms the payment record.
+5. A manager accepts work and records transfer evidence.
+6. The same manager records the payee acknowledgement, settling the proposal.
 7. Confirm chain/outbox events (`confirm_all_chain_events` in tests; worker in live).
 8. A manager signs the publication snapshot; finalize after confirmation.
 9. Resident opens latest ledger entry: actual cost, **Record verified**, and the

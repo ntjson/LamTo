@@ -250,7 +250,7 @@ class DownloadTests(TestCase):
         assert resp.status_code == 404
 
     def test_staff_document_is_unreachable(self):
-        # Forge a token for an original (non-redacted, non-photo) document version;
+        # Forge a token for a staff-only, non-photo document version;
         # resident_can_download must refuse it -> 404.
         import hashlib
 
