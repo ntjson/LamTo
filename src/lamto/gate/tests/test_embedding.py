@@ -19,8 +19,23 @@ def test_get_embedder_loads_the_configured_class(settings):
 
 def test_get_embedder_refuses_to_guess_when_unset(settings):
     settings.GATE_FACE_EMBEDDER = ""
-    with pytest.raises(FaceEmbedderUnavailable):
+    with pytest.raises(FaceEmbedderUnavailable) as caught:
         get_embedder()
+    assert caught.value.__cause__ is None
+
+
+@pytest.mark.parametrize(
+    ("path", "cause_type"),
+    [
+        ("missing.module.Embedder", ModuleNotFoundError),
+        ("datetime.datetime", TypeError),
+    ],
+)
+def test_get_embedder_translates_load_failures(settings, path, cause_type):
+    settings.GATE_FACE_EMBEDDER = path
+    with pytest.raises(FaceEmbedderUnavailable) as caught:
+        get_embedder()
+    assert isinstance(caught.value.__cause__, cause_type)
 
 
 def test_fake_is_deterministic_and_unit_length():

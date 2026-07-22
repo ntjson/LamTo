@@ -22,3 +22,11 @@ Pending commit: `feat(gate): add the face embedder boundary and a deterministic 
 ## Concerns
 
 - The full suite requires a PostgreSQL test role with ADMIN permission on `lamto_service`; this is unrelated to Task 4.
+
+## Reviewer Fix Verification
+
+- Command: `set -a && . /home/nts/src/LamTo/.env && set +a && /home/nts/src/LamTo/.venv/bin/python -m pytest src/lamto/gate/tests/test_embedding.py -v`
+- Result before fix: `2 failed, 5 passed`; import and constructor failures escaped as `ModuleNotFoundError` and `TypeError`.
+- Result after fix: `7 passed in 0.13s`.
+- Command: `git diff --check`
+- Result: passed with no output.

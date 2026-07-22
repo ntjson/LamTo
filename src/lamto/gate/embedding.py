@@ -64,4 +64,9 @@ def get_embedder() -> FaceEmbedder:
         raise FaceEmbedderUnavailable(
             "GATE_FACE_EMBEDDER is not set; refusing to guess a face model."
         )
-    return import_string(path)()
+    try:
+        return import_string(path)()
+    except Exception as exc:
+        raise FaceEmbedderUnavailable(
+            f"Could not load configured face embedder: {path}"
+        ) from exc
