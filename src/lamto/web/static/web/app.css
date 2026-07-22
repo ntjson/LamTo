@@ -27,7 +27,6 @@
   --space-5: 1.5rem;
   --space-6: 2rem;
   --radius: 12px;
-  --nav-height: 4.25rem;
   --touch: 44px;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--color-ink);
@@ -48,11 +47,6 @@ body {
 
 body {
   line-height: 1.5;
-  padding-bottom: calc(var(--nav-height) + var(--space-4));
-}
-
-body.no-bottom-nav {
-  padding-bottom: 0;
 }
 
 p {
@@ -233,14 +227,11 @@ h3 {
 
 .lede,
 .hint,
-.empty,
-.card-meta,
-.eyebrow {
+.empty {
   color: var(--color-muted);
 }
 
-.lede,
-.form-measure {
+.lede {
   max-width: 70ch;
 }
 
@@ -350,72 +341,15 @@ h3 {
   border-radius: 8px;
 }
 
-.proof-list {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-5);
-  padding: 0;
-  list-style: none;
-}
-
-.card-list,
-.plain-list,
 .messages {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.card-list li + li,
-.plain-list li + li {
-  margin-top: var(--space-3);
-}
-
-.card-link {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-3);
-  min-height: var(--touch);
-  transition: border-color 180ms cubic-bezier(0.25, 1, 0.5, 1),
-    background-color 180ms cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.card-link:hover {
-  border-color: var(--color-brand);
-  background: var(--color-bg);
-}
-
-.card-title {
-  margin: var(--space-2) 0;
-  font-weight: 600;
-}
-
-/* Row lead: the next action and its deadline outrank the identifier. */
-.card-action {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  color: var(--color-brand);
-  font-weight: 700;
-}
-
-.card-action + .card-title {
-  margin: var(--space-1) 0 0;
-  font-weight: 400;
-  color: var(--color-ink);
-}
-
-.card-meta {
-  margin: 0;
-  font-size: 0.85rem;
-}
-
-.status {
+/* The one pill vocabulary: semantic status and deadline tone share the shape. */
+.status,
+.deadline-badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -712,8 +646,14 @@ textarea {
   color: var(--color-error);
 }
 
+/* Submitting: the pressed button says so, the rest of the form goes inert. */
 form[aria-busy="true"] {
   cursor: wait;
+}
+
+form[aria-busy="true"] .button {
+  pointer-events: none;
+  opacity: 0.62;
 }
 
 .hash {
@@ -724,43 +664,6 @@ form[aria-busy="true"] {
 
 code {
   overflow-wrap: anywhere;
-}
-
-.bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0;
-  min-height: var(--nav-height);
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  z-index: 20;
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  min-height: var(--touch);
-  text-decoration: none;
-  color: var(--color-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: var(--space-2) var(--space-1);
-}
-
-.nav-item.is-active {
-  color: var(--color-brand);
-}
-
-.nav-icon {
-  font-size: 1.15rem;
-  line-height: 1;
 }
 
 @media (min-width: 720px) {
@@ -784,6 +687,11 @@ code {
     grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 2fr) minmax(8rem, 0.8fr) minmax(10rem, 1fr);
     gap: var(--space-4);
     align-items: center;
+  }
+
+  /* Tabular figures only line up when the column is end-aligned. */
+  .task-amount {
+    text-align: end;
   }
 
   .task-meta {
@@ -830,8 +738,7 @@ code {
 }
 
 
-.finance-nav,
-.form-actions {
+.finance-nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -883,48 +790,10 @@ code {
   min-height: var(--touch);
 }
 
-.filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 var(--space-4);
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--touch);
-  padding: var(--space-1) var(--space-3);
-  border-radius: 999px;
+/* Neutral deadline: no tone until it is soon or overdue. */
+.deadline-badge {
   background: var(--color-surface-muted);
   color: var(--color-ink);
-  text-decoration: none;
-  font-size: 0.85rem;
-}
-
-.chip:hover {
-  background: var(--color-border);
-}
-
-.chip-active,
-.chip-active:hover {
-  background: var(--color-brand);
-  color: var(--color-brand-ink);
-}
-
-.status-chip,
-.deadline-badge {
-  display: inline-block;
-  margin-inline-start: var(--space-2);
-  padding: 0.1rem var(--space-2);
-  border-radius: 8px;
-  background: var(--color-surface-muted);
-  color: var(--color-ink);
-  font-size: 0.85rem;
-}
-
-.deadline-badge {
-  margin-inline-start: 0;
 }
 
 .deadline-badge.deadline-soon {
@@ -1046,24 +915,6 @@ code {
   background: transparent;
 }
 
-/* Border-only review summary — no cards/shadows */
-.review-summary {
-  margin: var(--space-4) 0;
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: transparent;
-  box-shadow: none;
-}
-
-.review-summary-title {
-  margin: 0 0 var(--space-3);
-  font-size: 1rem;
-}
-
-.review-summary-list {
-  margin: 0;
-}
 /* Fund balance chart (staff fund page + action inbox card) */
 .chart-box { position: relative; height: 260px; }
 .chart-box-compact { height: 140px; }

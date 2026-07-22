@@ -78,27 +78,11 @@
 
   <script>
     window.lamtoI18n = {
-      secureRandomUnavailable: "{% filter escapejs %}{% trans 'Secure random generator unavailable; cannot sign evidence.' %}{% endfilter %}",
-      noAccountFrom: "{% filter escapejs %}{% trans 'No account from %(provider)s. Unlock it and connect this site.' %}{% endfilter %}",
-      decisionUpdated: "{% filter escapejs %}{% trans 'Decision updated. Your reason is preserved and ready to sign.' %}{% endfilter %}",
-      actionNotReady: "{% filter escapejs %}{% trans 'This action is not ready. Review the unmet checks above.' %}{% endfilter %}",
-      preparingEvidence: "{% filter escapejs %}{% trans 'Preparing secure evidence…' %}{% endfilter %}",
-      actionNotReadyRefresh: "{% filter escapejs %}{% trans 'This action is not ready to sign. Keep your entries and refresh the page; if it persists, contact an administrator.' %}{% endfilter %}",
-      savingSigned: "{% filter escapejs %}{% trans 'Saving your signed action…' %}{% endfilter %}",
-      checkAndRetry: "{% filter escapejs %}{% trans 'Check the details above and try again.' %}{% endfilter %}",
-      notEnteredYet: "{% filter escapejs %}{% trans 'Not entered yet' %}{% endfilter %}",
-      approveProposal: "{% filter escapejs %}{% trans 'Approve proposal' %}{% endfilter %}",
-      rejectForCorrection: "{% filter escapejs %}{% trans 'Reject for correction' %}{% endfilter %}",
-      signAndApprove: "{% filter escapejs %}{% trans 'Sign and approve proposal' %}{% endfilter %}",
-      signAndReject: "{% filter escapejs %}{% trans 'Sign and reject for correction' %}{% endfilter %}",
-      copy: "{% filter escapejs %}{% trans 'Copy' %}{% endfilter %}",
       copied: "{% filter escapejs %}{% trans 'Copied' %}{% endfilter %}",
-      copyFailed: "{% filter escapejs %}{% trans 'Copy failed' %}{% endfilter %}",
-      copyFailedHint: "{% filter escapejs %}{% trans 'Copy failed. Select the value and copy it manually.' %}{% endfilter %}",
-      metaMask: "MetaMask",
-      brave: "Brave"
+      copyFailed: "{% filter escapejs %}{% trans 'Copy failed. Select the value and copy it manually.' %}{% endfilter %}"
     };
   </script>
+  <script src="{% static 'web/staff.js' %}" defer></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

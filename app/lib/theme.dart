@@ -12,7 +12,9 @@ class LamToColors {
   static const border = Color(0xFFD7DCE8);
   static const success = Color(0xFF0F7A45);
   static const successBg = Color(0xFFE7F6EE);
-  static const warning = Color(0xFF9A6700);
+  // 5.39:1 on warningBg. The lighter 0xFF9A6700 clears AA by 0.02 and
+  // disagreed with the web token; one value, with margin.
+  static const warning = Color(0xFF8A5C00);
   static const warningBg = Color(0xFFFFF6DD);
   static const error = Color(0xFFB42318);
   static const errorBg = Color(0xFFFEF3F2);

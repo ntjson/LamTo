@@ -1,23 +1,120 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize %}
+{% load i18n humanize %}
+{% block title %}{% if list_mode %}{% trans "Settlements" %}{% else %}{% blocktrans with id=settlement.pk %}Settlement #{{ id }}{% endblocktrans %}{% endif %} · LamTo{% endblock %}
 {% block content %}
-<h1>Settlements</h1>
 {% if list_mode %}
-  <h2>Record transfer</h2>
-  {% for proposal in pending %}<p><a href="{% url 'web:settlement-record-transfer' proposal.pk %}">Proposal #{{ proposal.pk }}</a></p>{% empty %}<p>No completed proposals await transfer evidence.</p>{% endfor %}
-  <h2>Recorded settlements</h2>
-  {% for item in settlements %}<p><a href="{% url 'web:settlement-detail' item.pk %}">Settlement #{{ item.pk }}</a> · {{ item.amount_vnd|intcomma }} VND</p>{% empty %}<p>No settlements.</p>{% endfor %}
+<section class="panel" aria-labelledby="settlements-heading">
+  <div class="panel-header">
+    <div>
+      <h1 id="settlements-heading">{% trans "Settlements" %}</h1>
+      <p class="hint">{% trans "Payment evidence for completed proposals, from transfer through payee acknowledgement." %}</p>
+    </div>
+  </div>
+
+  <div class="workflow-section">
+    <h2>{% trans "Awaiting transfer evidence" %}</h2>
+    <ul class="task-list">
+      {% for proposal in pending %}
+      <li>
+        <a class="task-row task-row-simple" href="{% url 'web:settlement-record-transfer' proposal.pk %}">
+          <span class="task-action">{% trans "Record transfer" %}</span>
+          <span class="task-subject">{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}</span>
+          <span class="task-meta"></span>
+        </a>
+      </li>
+      {% empty %}
+      <li class="empty-state">
+        <p>{% trans "No completed proposals await transfer evidence." %}</p>
+        <p class="hint">{% trans "A proposal appears here once its work is accepted." %}</p>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="workflow-section">
+    <h2>{% trans "Recorded settlements" %}</h2>
+    <ul class="task-list">
+      {% for item in settlements %}
+      <li>
+        <a class="task-row task-row-simple" href="{% url 'web:settlement-detail' item.pk %}">
+          <span class="task-subject">{% blocktrans with id=item.pk %}Settlement #{{ id }}{% endblocktrans %}</span>
+          <span class="task-amount">{{ item.amount_vnd|intcomma }} VND</span>
+          <span class="task-meta"></span>
+        </a>
+      </li>
+      {% empty %}
+      <li class="empty-state">
+        <p>{% trans "No settlements recorded yet." %}</p>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
 {% elif transfer_mode %}
-  <h2>Record transfer for proposal #{{ proposal.pk }}</h2>
-  <form method="post">{% csrf_token %}{{ transfer_form.as_p }}<button type="submit">Record transfer</button></form>
+<section class="panel">
+  <p><a class="back-link" href="{% url 'web:settlement-list' %}">{% trans "Back to settlements" %}</a></p>
+  <h1>{% blocktrans with id=proposal.pk %}Record transfer for proposal #{{ id }}{% endblocktrans %}</h1>
+  <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
+    {% csrf_token %}
+    {{ transfer_form.as_p }}
+    <p><button type="submit" class="button button-primary">{% trans "Record transfer" %}</button></p>
+  </form>
+</section>
+
 {% elif ack_mode %}
-  <h2>Record acknowledgement for settlement #{{ settlement.pk }}</h2>
-  <form method="post">{% csrf_token %}{{ ack_form.as_p }}<button type="submit">Record acknowledgement</button></form>
+<section class="panel">
+  <p><a class="back-link" href="{% url 'web:settlement-detail' settlement.pk %}">{% trans "Back to settlement" %}</a></p>
+  <h1>{% blocktrans with id=settlement.pk %}Record acknowledgement for settlement #{{ id }}{% endblocktrans %}</h1>
+  <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
+    {% csrf_token %}
+    {{ ack_form.as_p }}
+    <p><button type="submit" class="button button-primary">{% trans "Record acknowledgement" %}</button></p>
+  </form>
+</section>
+
 {% else %}
-  <p>{{ settlement.payee_name }} · {{ settlement.amount_vnd|intcomma }} VND</p>
-  <p>Transfer: {{ settlement.transfer.filename }}</p>
-  <p>Acknowledgement ({{ settlement.get_ack_kind_display }}): {% if settlement.ack %}{{ settlement.ack.filename }}{% else %}Pending — <a href="{% url 'web:settlement-record-ack' settlement.pk %}">record acknowledgement</a>{% endif %}</p>
-  <p>Status: {% if settlement.settled_at %}Settled{% else %}Awaiting acknowledgement{% endif %}</p>
-  <p>Anchor: {% include "web/staff/_evidence_level.html" with event=settlement.outbox_event %}</p>
+<section class="panel">
+  <p><a class="back-link" href="{% url 'web:settlement-list' %}">{% trans "Back to settlements" %}</a></p>
+  <h1>{% blocktrans with id=settlement.pk %}Settlement #{{ id }}{% endblocktrans %}</h1>
+  <div class="record-layout">
+    <div class="record-summary">
+      <dl class="detail-list detail-list-wide">
+        <div><dt>{% trans "Payee" %}</dt><dd>{{ settlement.payee_name }}</dd></div>
+        <div><dt>{% trans "Amount" %}</dt><dd>{{ settlement.amount_vnd|intcomma }} VND</dd></div>
+        <div><dt>{% trans "Status" %}</dt><dd>
+          {% if settlement.settled_at %}
+          <span class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "Settled" %}</span>
+          {% else %}
+          <span class="status status-warning"><span class="status-icon" aria-hidden="true">●</span> {% trans "Awaiting acknowledgement" %}</span>
+          {% endif %}
+        </dd></div>
+        <div><dt>{% trans "Transfer evidence" %}</dt><dd>{{ settlement.transfer.filename }}</dd></div>
+        <div><dt>{% blocktrans with kind=settlement.get_ack_kind_display %}Acknowledgement ({{ kind }}){% endblocktrans %}</dt><dd>
+          {% if settlement.ack %}{{ settlement.ack.filename }}{% else %}{% trans "Not recorded yet" %}{% endif %}
+        </dd></div>
+      </dl>
+
+      <details class="technical-proof">
+        <summary>{% trans "Technical proof" %}</summary>
+        <dl class="detail-list">
+          <div><dt>{% trans "Anchor" %}</dt><dd>{% include "web/staff/_evidence_level.html" with event=settlement.outbox_event %}</dd></div>
+        </dl>
+      </details>
+    </div>
+
+    <div class="record-action">
+      {% if not settlement.ack %}
+      <div class="workflow-section workflow-primary">
+        <h2>{% trans "Record the payee acknowledgement" %}</h2>
+        <p>{% trans "The transfer is on record. Settlement completes once the payee's acknowledgement is filed." %}</p>
+        <p><a class="button button-primary" href="{% url 'web:settlement-record-ack' settlement.pk %}">{% trans "Record acknowledgement" %}</a></p>
+      </div>
+      {% else %}
+      <p class="empty">{% trans "No action is assigned to this membership. Review the settlement summary and return to the action inbox." %}</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
 {% endif %}
 {% endblock %}
