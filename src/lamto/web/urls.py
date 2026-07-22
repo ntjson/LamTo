@@ -1,7 +1,7 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from lamto.web.views import exports, fund, health, proposals, requests, security, settlements, staff_common
+from lamto.web.views import exports, fund, health, proposals, requests, security, settlements, staff_common, gate
 
 app_name = "web"
 
@@ -38,4 +38,11 @@ urlpatterns = [
     # Ops
     path("s/ops/health/", health.ops_health, name="ops-health"),
     path("s/ops/metrics/", health.pilot_metrics, name="pilot-metrics"),
+    path("s/gate/", gate.gate_queue, name="gate-queue"),
+    path("s/gate/face/<int:pk>/photo/", gate.gate_face_photo, name="gate-face-photo"),
+    path("s/gate/face/<int:pk>/decide/", gate.gate_face_decide, name="gate-face-decide"),
+    path("s/gate/plates/<int:pk>/decide/", gate.gate_plate_decide, name="gate-plate-decide"),
+    path("s/gate/registrations/", gate.gate_registrations, name="gate-registrations"),
+    path("s/gate/devices/", gate.gate_devices, name="gate-devices"),
+    path("s/gate/log/", gate.gate_log, name="gate-log"),
 ]

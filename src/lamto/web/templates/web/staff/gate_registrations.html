@@ -1,0 +1,1 @@
+{% extends "web/staff/shell.html" %}{% block content %}<h1>Gate registrations</h1>{% for x in faces %}<p>{{ x.occupancy.user.display_name }} {{ x.occupancy.unit.label }}</p>{% endfor %}{% for x in plates %}<p>{{ x.plate }}</p>{% endfor %}{% endblock %}

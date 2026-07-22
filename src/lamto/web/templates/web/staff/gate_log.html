@@ -1,0 +1,1 @@
+{% extends "web/staff/shell.html" %}{% block content %}<h1>Gate activity</h1>{% for x in events %}<p>{{ x.normalized_plate_text }}{% if x.matched_occupancy %} {{ x.matched_occupancy.user.display_name }}{% else %} Unrecognized{% endif %}</p>{% endfor %}{% endblock %}

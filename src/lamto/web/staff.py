@@ -57,6 +57,7 @@ def nav_items_for(membership) -> list[dict]:
         {"label": _("Cases"), "url_name": "web:case-list", "active_key": "cases"},
         {"label": _("Finance"), "url_name": "web:proposal-list", "active_key": "finance"},
         {"label": _("Exports"), "url_name": "web:audit-export", "active_key": "exports"},
+        {"label": _("Gate"), "url_name": "web:gate-queue", "active_key": "gate"},
         {"label": _("Ops"), "url_name": "web:ops-health", "active_key": "ops"},
     ]
 
