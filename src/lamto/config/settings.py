@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'lamto.audit',
     'lamto.documents',
     'lamto.finance',
+    'lamto.gate',
     'lamto.evidence',
     'lamto.maintenance',
     'lamto.web',
@@ -314,6 +315,31 @@ PILOT_ALLOW_FIXTURES = os.getenv("PILOT_ALLOW_FIXTURES", "false").lower() in {
     "true",
     "yes",
 }
+
+# --- Gate recognition (docs/superpowers/specs/2026-07-22-gate-recognition-design.md) ---
+# Logs identity; authorizes nothing. No gate capture image is ever stored.
+GATE_EVENT_RETENTION_HOURS = int(os.getenv("GATE_EVENT_RETENTION_HOURS", "24"))
+GATE_ENROLLMENT_PHOTO_TTL_HOURS = int(
+    os.getenv("GATE_ENROLLMENT_PHOTO_TTL_HOURS", "72")
+)
+GATE_CREDENTIAL_ROTATION_GRACE_HOURS = int(
+    os.getenv("GATE_CREDENTIAL_ROTATION_GRACE_HOURS", "24")
+)
+# UNVALIDATED PILOT STARTING POINT — NOT a production default. InsightFace's own
+# clustering tooling defaults to cosine 0.48, so this is deliberately permissive.
+# Calibrate per building before any pilot: manage.py calibrate_gate_threshold.
+GATE_FACE_MATCH_THRESHOLD = float(os.getenv("GATE_FACE_MATCH_THRESHOLD", "0.38"))
+# Image-quality gates. Also unvalidated starting points; calibrated with the threshold.
+GATE_MAX_FACE_UPLOAD_BYTES = int(
+    os.getenv("GATE_MAX_FACE_UPLOAD_BYTES", str(8 * 1024 * 1024))
+)
+GATE_MIN_FACE_PIXELS = int(os.getenv("GATE_MIN_FACE_PIXELS", "80"))
+GATE_MIN_FACE_DET_SCORE = float(os.getenv("GATE_MIN_FACE_DET_SCORE", "0.6"))
+GATE_MIN_FACE_SHARPNESS = float(os.getenv("GATE_MIN_FACE_SHARPNESS", "40"))
+# Dotted path to the FaceEmbedder implementation. Empty until Task 13 lands the
+# production embedder; get_embedder() raises rather than guessing.
+GATE_FACE_EMBEDDER = os.getenv("GATE_FACE_EMBEDDER", "")
+GATE_EMBEDDING_KEY = coalesce_secret(os.getenv("GATE_EMBEDDING_KEY"), SECRET_KEY)
 
 # --- Resident API (spec 3): DRF + knox tokens + OpenAPI schema ---
 REST_FRAMEWORK = {
