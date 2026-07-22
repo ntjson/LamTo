@@ -11,9 +11,9 @@ part 'face_enrollment.g.dart';
 /// FaceEnrollment
 ///
 /// Properties:
-/// * [status]
-/// * [submittedAt]
-/// * [reviewNote]
+/// * [status] 
+/// * [submittedAt] 
+/// * [reviewNote] 
 @BuiltValue()
 abstract class FaceEnrollment implements Built<FaceEnrollment, FaceEnrollmentBuilder> {
   @BuiltValueField(wireName: r'status')
@@ -135,3 +135,4 @@ class _$FaceEnrollmentSerializer implements PrimitiveSerializer<FaceEnrollment> 
     return result.build();
   }
 }
+

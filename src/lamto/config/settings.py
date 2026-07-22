@@ -333,9 +333,13 @@ GATE_FACE_MATCH_THRESHOLD = float(os.getenv("GATE_FACE_MATCH_THRESHOLD", "0.38")
 GATE_MAX_FACE_UPLOAD_BYTES = int(
     os.getenv("GATE_MAX_FACE_UPLOAD_BYTES", str(8 * 1024 * 1024))
 )
+GATE_RECOGNITION_THROTTLE_SECONDS = int(os.getenv("GATE_RECOGNITION_THROTTLE_SECONDS", "1"))
 GATE_MIN_FACE_PIXELS = int(os.getenv("GATE_MIN_FACE_PIXELS", "80"))
 GATE_MIN_FACE_DET_SCORE = float(os.getenv("GATE_MIN_FACE_DET_SCORE", "0.6"))
 GATE_MIN_FACE_SHARPNESS = float(os.getenv("GATE_MIN_FACE_SHARPNESS", "40"))
+GATE_FACE_CALIBRATED = all(name in os.environ for name in (
+    "GATE_FACE_MATCH_THRESHOLD", "GATE_MIN_FACE_DET_SCORE", "GATE_MIN_FACE_SHARPNESS"
+))
 # Dotted path to the FaceEmbedder implementation. Empty until Task 13 lands the
 # production embedder; get_embedder() raises rather than guessing.
 GATE_FACE_EMBEDDER = os.getenv(
@@ -365,6 +369,7 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "COMPONENT_SPLIT_REQUEST": True,
+    "APPEND_COMPONENTS": {"securitySchemes": {"GateDevice": {"type": "apiKey", "in": "header", "name": "Authorization", "description": "GateDevice <credential>"}}},
 }
 
 # Access/error logs must never retain signed download tokens (spec 3.6).

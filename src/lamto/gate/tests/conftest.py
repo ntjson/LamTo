@@ -22,6 +22,7 @@ def gate_storage(settings):
 def use_fake_embedder(settings):
     settings.GATE_FACE_EMBEDDER = FAKE_EMBEDDER_PATH
     settings.GATE_EMBEDDING_KEY = "gate-test-key"
+    settings.GATE_FACE_CALIBRATED = True
     return FAKE_EMBEDDER_PATH
 
 

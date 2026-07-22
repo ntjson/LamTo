@@ -15,6 +15,7 @@ pytestmark = pytest.mark.django_db
 def test_enrol_approve_recognize_and_purge(settings, gate_storage, monkeypatch):
     settings.GATE_FACE_EMBEDDER = 'lamto.gate.tests.fakes.FakeEmbedder'
     settings.GATE_EMBEDDING_KEY = 'e2e-key'
+    settings.GATE_FACE_CALIBRATED = True
     monkeypatch.setattr('lamto.gate.enrollment.scan_with_clamav', lambda f: True)
     building = Building.objects.create(name='E2E')
     unit = Unit.objects.create(building=building, label='12A')

@@ -35,3 +35,10 @@ def test_only_approved_plate_in_building_matches(occupancy):
     plate.status = ReviewStatus.APPROVED
     plate.save(update_fields=["status"])
     assert match_plate(occupancy.unit.building, plate.plate) == plate
+
+
+def test_plate_does_not_match_an_inactive_occupancy(occupancy):
+    plate = VehiclePlate.objects.create(occupancy=occupancy, building=occupancy.unit.building, plate="51F12345", status=ReviewStatus.APPROVED)
+    occupancy.active = False
+    occupancy.save(update_fields=["active"])
+    assert match_plate(occupancy.unit.building, plate.plate) is None

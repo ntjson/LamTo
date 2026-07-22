@@ -20,8 +20,8 @@ def error_rates(scores, threshold):
 def sweep(scores, start, stop, step):
     return [ThresholdRow(round(start + i * step, 4), *error_rates(scores, round(start + i * step, 4)), sum(s >= round(start + i * step, 4) for s in scores.genuine), sum(s >= round(start + i * step, 4) for s in scores.impostor)) for i in range(int(round((stop - start) / step)) + 1)]
 
-def score_pairs(building, probes):
-    enrolled = {r.occupancy_id: unit_vector(open_embedding(r.embedding)) for r in FaceEnrollment.objects.filter(status=ReviewStatus.APPROVED, embedding__isnull=False, occupancy__unit__building=building)}
+def score_pairs(building, probes, *, model_name, model_version):
+    enrolled = {r.occupancy_id: unit_vector(open_embedding(r.embedding)) for r in FaceEnrollment.objects.filter(status=ReviewStatus.APPROVED, embedding__isnull=False, occupancy__unit__building=building, model_name=model_name, model_version=model_version)}
     scores = CalibrationScores()
     for occupancy_id, vector in probes:
         probe = unit_vector(vector)

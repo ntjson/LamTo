@@ -36,26 +36,30 @@ def submit_face_enrollment(occupancy, uploaded_file, scanner=None):
         raise PhotoRejected("Image failed the malware scan.")
     result = get_embedder().embed(data)
     now = timezone.now()
-    with transaction.atomic():
-        enrollment, _ = FaceEnrollment.objects.get_or_create(occupancy=occupancy)
-        previous = PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).first()
-        if previous:
-            delete_pending_photo(previous.storage_key, previous.provider_version_id)
-            previous.delete()
-        enrollment.embedding = seal_embedding(result.vector)
-        enrollment.model_name = result.model_name
-        enrollment.model_version = result.model_version
-        enrollment.status = ReviewStatus.PENDING
-        enrollment.submitted_at = now
-        enrollment.reviewed_by = enrollment.reviewed_at = None
-        enrollment.review_note = ""
-        enrollment.save()
-        key, version_id = store_pending_photo(io.BytesIO(data), content_type)
-        PendingEnrollmentPhoto.objects.create(
-            enrollment=enrollment, storage_key=key, provider_version_id=version_id,
-            content_type=content_type, byte_size=len(data),
-            expires_at=now + timedelta(hours=settings.GATE_ENROLLMENT_PHOTO_TTL_HOURS),
-        )
+    key, version_id = store_pending_photo(io.BytesIO(data), content_type)
+    try:
+        with transaction.atomic():
+            enrollment, _ = FaceEnrollment.objects.get_or_create(occupancy=occupancy)
+            previous = PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).first()
+            if previous:
+                delete_pending_photo(previous.storage_key, previous.provider_version_id)
+                previous.delete()
+            enrollment.embedding = seal_embedding(result.vector)
+            enrollment.model_name = result.model_name
+            enrollment.model_version = result.model_version
+            enrollment.status = ReviewStatus.PENDING
+            enrollment.submitted_at = now
+            enrollment.reviewed_by = enrollment.reviewed_at = None
+            enrollment.review_note = ""
+            enrollment.save()
+            PendingEnrollmentPhoto.objects.create(
+                enrollment=enrollment, storage_key=key, provider_version_id=version_id,
+                content_type=content_type, byte_size=len(data),
+                expires_at=now + timedelta(hours=settings.GATE_ENROLLMENT_PHOTO_TTL_HOURS),
+            )
+    except Exception:
+        delete_pending_photo(key, version_id)
+        raise
     return enrollment
 
 

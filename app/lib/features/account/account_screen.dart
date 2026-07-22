@@ -8,6 +8,7 @@ import '../../l10n/app_localizations.dart';
 import '../auth/session_controller.dart';
 import '../settings/api_base_url_tile.dart';
 import '../transparency/transparency_repository.dart';
+import '../gate/gate_registration_screen.dart';
 
 /// The five resident notification categories (server defaults absent rows to
 /// enabled). Labels resolve through l10n.
@@ -110,6 +111,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ],
             for (final category in residentPreferenceCategories(l10n))
               _prefRow(l10n, category, serverPrefs[category.code]),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GateRegistrationScreen(repository: ref.read(gateRepositoryProvider)))),
+              icon: const Icon(Icons.door_front_door_outlined),
+              label: const Text('Dang ky bien so va khuon mat'),
+            ),
             const SizedBox(height: 24),
             const ApiBaseUrlTile(),
             const SizedBox(height: 24),

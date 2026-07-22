@@ -1,4 +1,5 @@
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -34,3 +35,18 @@ def test_reader_plate_endpoint_returns_unreadable_code(reader):
     )
     assert response.status_code == 422
     assert response.json()["code"] == "gate_plate_unreadable"
+
+
+def test_reader_face_upload_has_a_stable_size_error(reader, settings):
+    settings.GATE_MAX_FACE_UPLOAD_BYTES = 3
+    response = reader.post(reverse("api:gate-recognize-face"), {"photo": SimpleUploadedFile("face.jpg", b"1234", content_type="image/jpeg")}, format="multipart")
+    assert response.status_code == 413
+    assert response.json()["code"] == "gate_face_upload_too_large"
+
+
+def test_successful_recognition_is_throttled_per_device(reader):
+    assert reader.post(reverse("api:gate-recognize-plate"), {"plate": "51F12345"}, format="json").status_code == 200
+    response = reader.post(reverse("api:gate-recognize-plate"), {"plate": "51F12345"}, format="json")
+    assert response.status_code == 429
+    assert response["Content-Type"].startswith("application/problem+json")
+    assert response.json()["code"] == "gate_recognition_throttled"

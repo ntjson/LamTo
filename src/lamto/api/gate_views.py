@@ -1,4 +1,6 @@
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.conf import settings
+from django.core.cache import cache
 from drf_spectacular.utils import extend_schema
 from rest_framework import exceptions, parsers, status
 from rest_framework.response import Response
@@ -75,12 +77,19 @@ def _credential(request):
 def _outcome(o):
     return {"matched": o.matched, "display_name": o.display_name, "unit_label": o.unit_label, "direction": o.direction, "score": o.score}
 
+def _reader(request):
+    credential = _credential(request)
+    if not cache.add(f"gate-recognition:{credential.device_id}", True, timeout=settings.GATE_RECOGNITION_THROTTLE_SECONDS):
+        raise GateRecognitionThrottled()
+    return credential
+
 class GateRecognizeFaceView(APIView):
     authentication_classes = []; permission_classes = []; parser_classes = [parsers.MultiPartParser]
-    @extend_schema(request=FaceRecognizeSerializer, responses=RecognitionOutcomeSerializer)
+    @extend_schema(auth=[{"GateDevice": []}], request=FaceRecognizeSerializer, responses=RecognitionOutcomeSerializer)
     def post(self, request):
         data = FaceRecognizeSerializer(data=request.data); data.is_valid(raise_exception=True)
-        try: return Response(RecognitionOutcomeSerializer(_outcome(recognize_face(_credential(request), data.validated_data["photo"].read()))).data)
+        if data.validated_data["photo"].size > settings.GATE_MAX_FACE_UPLOAD_BYTES: raise GateFaceUploadTooLarge()
+        try: return Response(RecognitionOutcomeSerializer(_outcome(recognize_face(_reader(request), data.validated_data["photo"].read()))).data)
         except NoFaceDetected: raise GateNoFaceDetected()
         except MultipleFacesDetected: raise GateMultipleFaces()
         except FaceTooSmall: raise GateFaceTooSmall()
@@ -90,9 +99,9 @@ class GateRecognizeFaceView(APIView):
 
 class GateRecognizePlateView(APIView):
     authentication_classes = []; permission_classes = []
-    @extend_schema(request=PlateRecognizeSerializer, responses=RecognitionOutcomeSerializer)
+    @extend_schema(auth=[{"GateDevice": []}], request=PlateRecognizeSerializer, responses=RecognitionOutcomeSerializer)
     def post(self, request):
         data = PlateRecognizeSerializer(data=request.data); data.is_valid(raise_exception=True)
-        try: outcome = recognize_plate(_credential(request), data.validated_data["plate"])
+        try: outcome = recognize_plate(_reader(request), data.validated_data["plate"])
         except PlateFormatError: raise GatePlateUnreadable()
         return Response(RecognitionOutcomeSerializer(_outcome(outcome)).data)

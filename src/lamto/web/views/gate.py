@@ -7,6 +7,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from lamto.gate.devices import issue_credential, revoke_credential, rotate_credential
 from lamto.gate.models import FaceEnrollment, GateDevice, GateDeviceCredential, GateEvent, PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
 from lamto.gate.review import approve_face, approve_plate, reject_face, reject_plate, revoke_face, revoke_plate_as_manager, ReviewNotPossible
+from lamto.accounts.security import require_recent_auth
 from lamto.web.staff import require_management_context, staff_context
 
 def _context(request, membership, memberships, **extra):
@@ -61,6 +62,7 @@ def gate_registrations(request):
 def gate_devices(request):
     membership, memberships = require_management_context(request); issued_token = None
     if request.method == "POST":
+        require_recent_auth(request)
         action = request.POST.get("action")
         if action == "create":
             device = GateDevice.objects.create(building=membership.building, label=request.POST.get("label", "").strip(), direction=request.POST.get("direction")); _, issued_token = issue_credential(device, membership)

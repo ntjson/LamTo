@@ -483,6 +483,8 @@ paths:
             schema:
               $ref: '#/components/schemas/FaceRecognizeRequest'
         required: true
+      security:
+      - GateDevice: []
       responses:
         '200':
           content:
@@ -507,6 +509,8 @@ paths:
             schema:
               $ref: '#/components/schemas/PlateRecognizeRequest'
         required: true
+      security:
+      - GateDevice: []
       responses:
         '200':
           content:
@@ -2327,6 +2331,11 @@ components:
       - verified_at
       - verified_by
   securitySchemes:
+    GateDevice:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: GateDevice <credential>
     knoxApiToken:
       type: apiKey
       in: header

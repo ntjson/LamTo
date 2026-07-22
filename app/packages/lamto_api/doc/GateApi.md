@@ -9,13 +9,13 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**gateFaceCreate**](GateApi.md#gatefacecreate) | **POST** /api/v1/gate/face |
-[**gateFaceDestroy**](GateApi.md#gatefacedestroy) | **DELETE** /api/v1/gate/face |
-[**gatePlatesCreate**](GateApi.md#gateplatescreate) | **POST** /api/v1/gate/plates |
-[**gatePlatesDestroy**](GateApi.md#gateplatesdestroy) | **DELETE** /api/v1/gate/plates/{id} |
-[**gateRecognizeFaceCreate**](GateApi.md#gaterecognizefacecreate) | **POST** /api/v1/gate/recognize/face |
-[**gateRecognizePlateCreate**](GateApi.md#gaterecognizeplatecreate) | **POST** /api/v1/gate/recognize/plate |
-[**gateRegistrationsRetrieve**](GateApi.md#gateregistrationsretrieve) | **GET** /api/v1/gate/registrations |
+[**gateFaceCreate**](GateApi.md#gatefacecreate) | **POST** /api/v1/gate/face | 
+[**gateFaceDestroy**](GateApi.md#gatefacedestroy) | **DELETE** /api/v1/gate/face | 
+[**gatePlatesCreate**](GateApi.md#gateplatescreate) | **POST** /api/v1/gate/plates | 
+[**gatePlatesDestroy**](GateApi.md#gateplatesdestroy) | **DELETE** /api/v1/gate/plates/{id} | 
+[**gateRecognizeFaceCreate**](GateApi.md#gaterecognizefacecreate) | **POST** /api/v1/gate/recognize/face | 
+[**gateRecognizePlateCreate**](GateApi.md#gaterecognizeplatecreate) | **POST** /api/v1/gate/recognize/plate | 
+[**gateRegistrationsRetrieve**](GateApi.md#gateregistrationsretrieve) | **GET** /api/v1/gate/registrations | 
 
 
 # **gateFaceCreate**
@@ -32,7 +32,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getGateApi();
-final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile |
+final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile | 
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
 
 try {
@@ -47,8 +47,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **photo** | **MultipartFile**|  |
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **photo** | **MultipartFile**|  | 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
 
 ### Return type
 
@@ -92,7 +92,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
 
 ### Return type
 
@@ -123,7 +123,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getGateApi();
-final PlateCreateRequest plateCreateRequest = ; // PlateCreateRequest |
+final PlateCreateRequest plateCreateRequest = ; // PlateCreateRequest | 
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
 
 try {
@@ -138,8 +138,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **plateCreateRequest** | [**PlateCreateRequest**](PlateCreateRequest.md)|  |
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **plateCreateRequest** | [**PlateCreateRequest**](PlateCreateRequest.md)|  | 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
 
 ### Return type
 
@@ -170,7 +170,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getGateApi();
-final int id = 56; // int |
+final int id = 56; // int | 
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
 
 try {
@@ -184,8 +184,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  |
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **id** | **int**|  | 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
 
 ### Return type
 
@@ -210,9 +210,13 @@ void (empty response body)
 ### Example
 ```dart
 import 'package:lamto_api/api.dart';
+// TODO Configure API key authorization: GateDevice
+//defaultApiClient.getAuthentication<ApiKeyAuth>('GateDevice').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('GateDevice').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getGateApi();
-final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile |
+final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile | 
 
 try {
     final response = api.gateRecognizeFaceCreate(photo);
@@ -226,7 +230,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **photo** | **MultipartFile**|  |
+ **photo** | **MultipartFile**|  | 
 
 ### Return type
 
@@ -234,7 +238,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[GateDevice](../README.md#GateDevice)
 
 ### HTTP request headers
 
@@ -251,9 +255,13 @@ No authorization required
 ### Example
 ```dart
 import 'package:lamto_api/api.dart';
+// TODO Configure API key authorization: GateDevice
+//defaultApiClient.getAuthentication<ApiKeyAuth>('GateDevice').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('GateDevice').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getGateApi();
-final PlateRecognizeRequest plateRecognizeRequest = ; // PlateRecognizeRequest |
+final PlateRecognizeRequest plateRecognizeRequest = ; // PlateRecognizeRequest | 
 
 try {
     final response = api.gateRecognizePlateCreate(plateRecognizeRequest);
@@ -267,7 +275,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **plateRecognizeRequest** | [**PlateRecognizeRequest**](PlateRecognizeRequest.md)|  |
+ **plateRecognizeRequest** | [**PlateRecognizeRequest**](PlateRecognizeRequest.md)|  | 
 
 ### Return type
 
@@ -275,7 +283,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[GateDevice](../README.md#GateDevice)
 
 ### HTTP request headers
 
@@ -312,7 +320,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
 
 ### Return type
 
@@ -328,3 +336,4 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+

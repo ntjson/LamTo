@@ -39,3 +39,14 @@ def test_plate_read_normalizes_and_logs(credential, occupancy):
     event = GateEvent.objects.get(pk=outcome.event_id)
     assert outcome.matched and event.matched_plate == plate
     assert event.normalized_plate_text == "51F12345"
+
+
+def test_face_model_mismatch_and_cross_building_plate_do_not_leak(credential, occupancy, use_fake_embedder):
+    from lamto.accounts.models import Building
+    FaceEnrollment.objects.create(occupancy=occupancy, embedding=seal_embedding(fake_vector("nguyen")), model_name=FAKE_MODEL_NAME, model_version="old", status=ReviewStatus.APPROVED)
+    VehiclePlate.objects.create(occupancy=occupancy, building=occupancy.unit.building, plate="51F12345", status=ReviewStatus.APPROVED)
+    other = Building.objects.create(name="Other")
+    credential.device.building = other
+    credential.device.save(update_fields=["building"])
+    assert not recognize_face(credential, face_bytes("nguyen")).matched
+    assert not recognize_plate(credential, "51F12345").matched

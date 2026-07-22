@@ -14,8 +14,8 @@ part 'gate_registrations.g.dart';
 /// GateRegistrations
 ///
 /// Properties:
-/// * [face]
-/// * [plates]
+/// * [face] 
+/// * [plates] 
 @BuiltValue()
 abstract class GateRegistrations implements Built<GateRegistrations, GateRegistrationsBuilder> {
   @BuiltValueField(wireName: r'face')
@@ -123,3 +123,4 @@ class _$GateRegistrationsSerializer implements PrimitiveSerializer<GateRegistrat
     return result.build();
   }
 }
+

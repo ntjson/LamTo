@@ -1,1 +1,4 @@
-{% extends "web/staff/shell.html" %}{% block content %}<h1>Gate activity</h1>{% for x in events %}<p>{{ x.normalized_plate_text }}{% if x.matched_occupancy %} {{ x.matched_occupancy.user.display_name }}{% else %} Unrecognized{% endif %}</p>{% endfor %}{% endblock %}
+{% extends "web/staff/shell.html" %}
+{% block content %}<h1>Gate activity</h1><p>Rolling 24-hour view</p>
+<table><thead><tr><th>Timestamp</th><th>Direction</th><th>Reader</th><th>Kind</th><th>Identity</th><th>Unit</th><th>Score</th></tr></thead><tbody>{% for x in events %}<tr><td>{{ x.occurred_at }}</td><td>{{ x.get_direction_display }}</td><td>{{ x.device.label }}</td><td>{{ x.get_kind_display }}</td><td>{% if x.matched_occupancy %}{{ x.matched_occupancy.user.display_name }}{% else %}Unrecognized{% endif %}{% if x.normalized_plate_text %} ({{ x.normalized_plate_text }}){% endif %}</td><td>{% if x.matched_occupancy %}{{ x.matched_occupancy.unit.label }}{% endif %}</td><td>{{ x.match_score|default_if_none:"-" }}</td></tr>{% empty %}<tr><td colspan="7">No activity in the rolling window.</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

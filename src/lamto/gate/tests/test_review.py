@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from lamto.accounts.models import Building, ManagementMembership, User
@@ -33,6 +34,15 @@ def test_rejecting_a_face_deletes_the_vector_and_keeps_the_reason(occupancy, man
     assert enrollment.embedding is None
     assert enrollment.review_note == "Face not clearly visible."
     assert not PendingEnrollmentPhoto.objects.exists()
+
+
+def test_photo_delete_failure_rolls_back_review_decision(occupancy, management, use_fake_embedder, gate_storage, clean_scanner):
+    enrollment = _enrol(occupancy, clean_scanner)
+    with patch("lamto.gate.review.delete_pending_photo", side_effect=OSError), pytest.raises(OSError):
+        approve_face(enrollment, management)
+    enrollment.refresh_from_db()
+    assert enrollment.status == ReviewStatus.PENDING
+    assert PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).exists()
 
 
 def test_rejecting_requires_a_reason(occupancy, management, use_fake_embedder, gate_storage, clean_scanner):

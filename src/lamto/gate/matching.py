@@ -44,5 +44,6 @@ def match_face(building, vector, *, model_name: str, model_version: str) -> Face
 
 def match_plate(building, normalized: str):
     return VehiclePlate.objects.filter(
-        building=building, plate=normalized, status=ReviewStatus.APPROVED
+        building=building, plate=normalized, status=ReviewStatus.APPROVED,
+        occupancy__active=True,
     ).select_related("occupancy", "occupancy__unit", "occupancy__user").first()

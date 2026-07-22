@@ -92,6 +92,10 @@ class GatePlateAlreadyRegistered(exceptions.APIException):
     status_code, default_code, default_detail = 409, "gate_plate_already_registered", "This plate is already registered in this building."
 class GateModelUnavailable(exceptions.APIException):
     status_code, default_code, default_detail = 503, "gate_model_unavailable", "The face recognition model is unavailable."
+class GateFaceUploadTooLarge(exceptions.APIException):
+    status_code, default_code, default_detail = 413, "gate_face_upload_too_large", "The face upload exceeds the configured limit."
+class GateRecognitionThrottled(exceptions.APIException):
+    status_code, default_code, default_detail = 429, "gate_recognition_throttled", "This reader is sending recognition requests too quickly."
 class GateDeviceUnauthenticated(exceptions.APIException):
     status_code, default_code, default_detail = 401, "gate_device_unauthenticated", "Invalid gate device credential."
 class GateDeviceRevoked(GateDeviceUnauthenticated):
@@ -111,6 +115,8 @@ _EXCEPTION_CODES = (
     (GatePlateUnreadable, "gate_plate_unreadable"),
     (GatePlateAlreadyRegistered, "gate_plate_already_registered"),
     (GateModelUnavailable, "gate_model_unavailable"),
+    (GateFaceUploadTooLarge, "gate_face_upload_too_large"),
+    (GateRecognitionThrottled, "gate_recognition_throttled"),
     (GateDeviceRevoked, "gate_device_revoked"),
     (GateDeviceExpired, "gate_device_expired"),
     (GateDeviceUnauthenticated, "gate_device_unauthenticated"),

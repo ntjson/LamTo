@@ -2,6 +2,8 @@ import os
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
+from unittest.mock import patch
 
 from lamto.gate.embedding import NoFaceDetected
 from lamto.gate.enrollment import PhotoRejected, PlateAlreadyRegistered, revoke_face_enrollment, revoke_plate, submit_face_enrollment, submit_plate
@@ -64,6 +66,14 @@ def test_revoking_a_face_removes_the_row_and_the_photo(occupancy, use_fake_embed
     revoke_face_enrollment(occupancy)
     assert not FaceEnrollment.objects.exists()
     assert not os.path.exists(os.path.join(gate_storage, key))
+
+
+def test_db_failure_compensates_the_newly_stored_photo(occupancy, use_fake_embedder, gate_storage, clean_scanner):
+    with patch("lamto.gate.enrollment.PendingEnrollmentPhoto.objects.create", side_effect=IntegrityError):
+        with pytest.raises(IntegrityError):
+            submit_face_enrollment(occupancy, _upload(face_bytes("nguyen")), scanner=clean_scanner)
+    assert not any(os.scandir(os.path.join(gate_storage, "gate/pending-enrollment")))
+    assert not FaceEnrollment.objects.exists()
 
 
 def test_submitting_plates_normalizes_and_allows_several(occupancy):

@@ -6,6 +6,7 @@ import '../features/auth/session_controller.dart';
 import '../features/push/push_registrar.dart';
 import '../features/push/push_token_source.dart';
 import '../features/transparency/transparency_repository.dart';
+import '../features/gate/gate_repository.dart';
 import 'api_base_url.dart';
 import 'api_client.dart';
 import 'occupancy.dart';
@@ -47,6 +48,7 @@ final dioProvider = Provider<Dio>((ref) {
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => DioAuthRepository(ref.watch(dioProvider)),
 );
+final gateRepositoryProvider = Provider<GateRepository>((ref) => DioGateRepository(ref.watch(dioProvider)));
 
 final pushTokenSourceProvider =
     Provider<PushTokenSource>((ref) => FirebasePushTokenSource());

@@ -25,10 +25,10 @@ class GateApi {
   const GateApi(this._dio, this._serializers);
 
   /// gateFaceCreate
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [photo]
+  /// * [photo] 
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -39,7 +39,7 @@ class GateApi {
   ///
   /// Returns a [Future] containing a [Response] with a [FaceEnrollment] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<FaceEnrollment>> gateFaceCreate({
+  Future<Response<FaceEnrollment>> gateFaceCreate({ 
     required MultipartFile photo,
     int? xLamToOccupancy,
     CancelToken? cancelToken,
@@ -131,7 +131,7 @@ class GateApi {
   }
 
   /// gateFaceDestroy
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
@@ -144,7 +144,7 @@ class GateApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> gateFaceDestroy({
+  Future<Response<void>> gateFaceDestroy({ 
     int? xLamToOccupancy,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -186,10 +186,10 @@ class GateApi {
   }
 
   /// gatePlatesCreate
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [plateCreateRequest]
+  /// * [plateCreateRequest] 
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -200,7 +200,7 @@ class GateApi {
   ///
   /// Returns a [Future] containing a [Response] with a [VehiclePlate] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<VehiclePlate>> gatePlatesCreate({
+  Future<Response<VehiclePlate>> gatePlatesCreate({ 
     required PlateCreateRequest plateCreateRequest,
     int? xLamToOccupancy,
     CancelToken? cancelToken,
@@ -291,10 +291,10 @@ class GateApi {
   }
 
   /// gatePlatesDestroy
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -305,7 +305,7 @@ class GateApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> gatePlatesDestroy({
+  Future<Response<void>> gatePlatesDestroy({ 
     required int id,
     int? xLamToOccupancy,
     CancelToken? cancelToken,
@@ -348,10 +348,10 @@ class GateApi {
   }
 
   /// gateRecognizeFaceCreate
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [photo]
+  /// * [photo] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -361,7 +361,7 @@ class GateApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RecognitionOutcome] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RecognitionOutcome>> gateRecognizeFaceCreate({
+  Future<Response<RecognitionOutcome>> gateRecognizeFaceCreate({ 
     required MultipartFile photo,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -377,7 +377,14 @@ class GateApi {
         ...?headers,
       },
       extra: <String, dynamic>{
-        'secure': <Map<String, String>>[],
+        'secure': <Map<String, String>>[
+          {
+            'type': 'apiKey',
+            'name': 'GateDevice',
+            'keyName': 'Authorization',
+            'where': 'header',
+          },
+        ],
         ...?extra,
       },
       contentType: 'multipart/form-data',
@@ -444,10 +451,10 @@ class GateApi {
   }
 
   /// gateRecognizePlateCreate
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [plateRecognizeRequest]
+  /// * [plateRecognizeRequest] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -457,7 +464,7 @@ class GateApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RecognitionOutcome] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RecognitionOutcome>> gateRecognizePlateCreate({
+  Future<Response<RecognitionOutcome>> gateRecognizePlateCreate({ 
     required PlateRecognizeRequest plateRecognizeRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -473,7 +480,14 @@ class GateApi {
         ...?headers,
       },
       extra: <String, dynamic>{
-        'secure': <Map<String, String>>[],
+        'secure': <Map<String, String>>[
+          {
+            'type': 'apiKey',
+            'name': 'GateDevice',
+            'keyName': 'Authorization',
+            'where': 'header',
+          },
+        ],
         ...?extra,
       },
       contentType: 'application/json',
@@ -539,7 +553,7 @@ class GateApi {
   }
 
   /// gateRegistrationsRetrieve
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
@@ -552,7 +566,7 @@ class GateApi {
   ///
   /// Returns a [Future] containing a [Response] with a [GateRegistrations] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<GateRegistrations>> gateRegistrationsRetrieve({
+  Future<Response<GateRegistrations>> gateRegistrationsRetrieve({ 
     int? xLamToOccupancy,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

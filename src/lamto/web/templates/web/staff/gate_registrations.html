@@ -1,1 +1,5 @@
-{% extends "web/staff/shell.html" %}{% block content %}<h1>Gate registrations</h1>{% for x in faces %}<p>{{ x.occupancy.user.display_name }} {{ x.occupancy.unit.label }}</p>{% endfor %}{% for x in plates %}<p>{{ x.plate }}</p>{% endfor %}{% endblock %}
+{% extends "web/staff/shell.html" %}
+{% block content %}<h1>Gate registrations</h1>
+<h2>Faces</h2>{% for x in faces %}<p>{{ x.occupancy.user.display_name }}, unit {{ x.occupancy.unit.label }}</p><form method="post" action="{% url 'web:gate-face-decide' x.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'web:gate-registrations' %}"><button name="decision" value="revoke">Revoke face</button></form>{% empty %}<p>No approved faces.</p>{% endfor %}
+<h2>Plates</h2>{% for x in plates %}<p>{{ x.plate }}, {{ x.occupancy.user.display_name }}, unit {{ x.occupancy.unit.label }}</p><form method="post" action="{% url 'web:gate-plate-decide' x.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'web:gate-registrations' %}"><button name="decision" value="revoke">Revoke plate</button></form>{% empty %}<p>No approved plates.</p>{% endfor %}
+{% endblock %}
