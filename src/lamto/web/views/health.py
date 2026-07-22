@@ -19,6 +19,8 @@ from lamto.audit.services import record_audit
 from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import VerificationObservation
+from lamto.gate.models import GatePurgeHeartbeat
+from lamto.gate.retention import PURGE_STALE_AFTER_HOURS, purge_is_stale
 from lamto.maintenance.models import TriageDecision, TriageJob, TriageSuggestion
 from lamto.notifications.models import Device, NotificationDelivery
 from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
@@ -95,6 +97,7 @@ def collect_health_snapshot(building_id: int) -> dict:
     else:
         stale_device_max_inactive_days = max(0, (now - oldest_inactive).days)
     quarantined = QuarantinedUpload.objects.filter(building_id=building_id).count()
+    gate_heartbeat = GatePurgeHeartbeat.objects.order_by("-last_success_at").first()
 
     # A non-empty outbox is normal. Warn only when delivery is aging or failing.
     queue_failed = status_counts.get(
@@ -144,6 +147,11 @@ def collect_health_snapshot(building_id: int) -> dict:
         ),
         "integrity_mismatches": mismatches,
         "generated_at": now.isoformat(),
+        "gate_purge_last_success_at": (
+            gate_heartbeat.last_success_at if gate_heartbeat else None
+        ),
+        "gate_purge_stale": purge_is_stale(now),
+        "gate_purge_stale_after_hours": PURGE_STALE_AFTER_HOURS,
     }
 
 

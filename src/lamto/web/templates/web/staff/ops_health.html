@@ -76,6 +76,17 @@
     </dl>
   </div>
 
+  <div class="workflow-section" id="gate-retention-health">
+    <h2>{% trans "Gate retention purge" %}</h2>
+    {% if health.gate_purge_stale %}
+    <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "Stale" %}</p>
+    <p class="health-detail">{% blocktrans with hours=health.gate_purge_stale_after_hours %}No successful purge in the last {{ hours }} hours. Gate events may be past their retention window.{% endblocktrans %}</p>
+    {% else %}
+    <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "Current" %}</p>
+    <p class="health-detail">{{ health.gate_purge_last_success_at }}</p>
+    {% endif %}
+  </div>
+
   <div class="workflow-section" id="anchoring-health">
     <h2>{% trans "Anchoring" %}</h2>
     {% if not health.last_confirmed_block %}
