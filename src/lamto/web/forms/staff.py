@@ -81,11 +81,13 @@ class ProgressUpdateForm(forms.Form):
         queryset=DocumentVersion.objects.none(),
         widget=forms.SelectMultiple(attrs={"class": "input"}),
         label="Before photos",
+        required=False,
     )
     after_versions = forms.ModelMultipleChoiceField(
         queryset=DocumentVersion.objects.none(),
         widget=forms.SelectMultiple(attrs={"class": "input"}),
         label="After photos",
+        required=False,
     )
 
     def __init__(self, *args, building_id=None, uploader_id=None, **kwargs):
