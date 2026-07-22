@@ -11,6 +11,7 @@ publication → resident ledger → integrity verification.
 - Non-production or controlled pilot environment only.
 - `PILOT_ALLOW_FIXTURES=1` only when loading seed data; production must keep it false.
 - PostgreSQL migrated; private object storage reachable; manager MFA enrolled.
+- Gate face threshold and sharpness are explicitly set from a committed reader-capture calibration report. If FMR=0 and FNMR<=5% cannot both be met, run plate recognition only. See `docs/ops/gate-threshold-calibration.md`.
 - Optional: Besu/outbox worker for live chain confirmation. If chain is paused or
   unavailable, a local signature still permits work start with
   **Pending blockchain anchoring**; publication waits for confirmed evidence.
