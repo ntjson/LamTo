@@ -11,7 +11,7 @@
 |----------|-------|-------------------------------------------|
 | Normal path (report → published ledger → integrity verification) | ☐ | |
 | Chain paused: work pending anchor; publish blocked then retry same IDs | ☐ | |
-| Payment self-verify denied; publisher dual-control denials | ☐ | |
+| Payment record confirmed by the same manager | ☐ | |
 | Proposal revision after signature requires a new publication | ☐ | |
 | AI/email outage: report + action inbox authoritative | ☐ | |
 | Cross-building object/file access denials | ☐ | |
@@ -38,7 +38,6 @@
 | Participant | Name | Signature | Date |
 |-------------|------|-----------|------|
 | Management participant | | | |
-| Second Management participant (maker-checker) | | | |
 | Participating resident, or a person chosen by participating residents | | | |
 
 ## Attestations
