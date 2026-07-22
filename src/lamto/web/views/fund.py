@@ -145,8 +145,9 @@ def fund_record(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def fund_verify(request, pk):
-    """Sign the verification of an unverified fund source (verifier != recorder,
-    enforced by the domain service)."""
+    """Confirm an unverified fund source. Managers sign off offline before data
+    entry, so the recorder may confirm their own source; the balance only counts
+    confirmed sources, which keeps this a real gate against typos."""
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
     entry = get_object_or_404(

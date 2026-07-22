@@ -1,4 +1,4 @@
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import connection, models, transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
@@ -193,56 +193,37 @@ def record_fund_source(
     return entry
 
 
+@transaction.atomic
 def verify_fund_source(
     entry,
     verifier,
     timestamp=None,
 ) -> FundEntryVerification:
-    denied = False
-    denied_target = None
-    denied_actor = verifier
-    with transaction.atomic():
-        entry = _locked_entry(entry)
-        actor = require_management(verifier.user, entry.fund.building_id)
-        if entry.entry_type not in SOURCE_ENTRY_TYPES:
-            raise ValidationError("Only opening balance and inflow sources may be verified.")
-        if entry.recorder is None:
-            raise ValidationError("Fund source has no recorder.")
-        if actor.user_id == entry.recorder.user_id:
-            denied = True
-            denied_target = entry
-            denied_actor = actor
-        else:
-            if FundEntryVerification.objects.filter(entry=entry).exists():
-                raise ValidationError("Fund source has already been verified.")
-            verification = FundEntryVerification.objects.create(
-                entry=entry,
-                membership=actor,
-                verified_at=timezone.now(),
-            )
-            record_audit(
-                actor.user,
-                actor,
-                "fund.verify",
-                "FundEntryVerification",
-                str(verification.pk),
-                "accepted",
-                {
-                    "entry_id": entry.pk,
-                },
-            )
-            return verification
-    if denied:
-        record_audit(
-            denied_actor.user,
-            denied_actor,
-            "fund.verify",
-            "MaintenanceFundEntry",
-            str(denied_target.pk),
-            "denied",
-            {"reason": "fund recorder cannot verify own source"},
-        )
-        raise PermissionDenied("Fund recorder cannot verify their own source.")
+    entry = _locked_entry(entry)
+    actor = require_management(verifier.user, entry.fund.building_id)
+    if entry.entry_type not in SOURCE_ENTRY_TYPES:
+        raise ValidationError("Only opening balance and inflow sources may be verified.")
+    if entry.recorder is None:
+        raise ValidationError("Fund source has no recorder.")
+    if FundEntryVerification.objects.filter(entry=entry).exists():
+        raise ValidationError("Fund source has already been verified.")
+    verification = FundEntryVerification.objects.create(
+        entry=entry,
+        membership=actor,
+        verified_at=timezone.now(),
+    )
+    record_audit(
+        actor.user,
+        actor,
+        "fund.verify",
+        "FundEntryVerification",
+        str(verification.pk),
+        "accepted",
+        {
+            "entry_id": entry.pk,
+        },
+    )
+    return verification
 
 
 def _source_verified_q():

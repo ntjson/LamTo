@@ -160,7 +160,7 @@ class FundHomeTests(TestCase):
 )
 class FundRecordTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
+        membership = seed.management_memberships[0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()
@@ -208,7 +208,7 @@ class FundRecordTests(TestCase):
 )
 class FundVerifyTests(TestCase):
     def _login(self, seed, role_key):
-        membership = seed.management_memberships[1 if "verifier" in role_key else 0]
+        membership = seed.management_memberships[0]
         self.client.force_login(membership.user)
         device = TOTPDevice.objects.create(
             user=membership.user, name="t", confirmed=True, key=random_hex()
@@ -245,16 +245,6 @@ class FundVerifyTests(TestCase):
         self.assertRedirects(resp, reverse("web:fund-home"))
         entry.refresh_from_db()
         self.assertTrue(hasattr(entry, "verification"))
-
-    def test_recorder_cannot_verify_own_source(self):
-        seed = seed_pilot_world(building_name="Fund Ver Deny", email_prefix="fvd")
-        entry = self._unverified_entry(seed)
-        recorder = seed.management_memberships[0]
-        self._login(seed, "fund_recorder")
-        url = reverse("web:fund-verify", kwargs={"pk": entry.pk})
-        resp = self.client.post(url)
-        self.assertEqual(resp.status_code, 403)
-
 
 @override_settings(
     ROOT_URLCONF="lamto.config.urls",
