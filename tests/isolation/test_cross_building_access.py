@@ -14,9 +14,11 @@ Completeness:
 
 import tempfile
 import time
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from django.urls import reverse
 from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -33,6 +35,7 @@ from lamto.finance.models import (
     Proposal,
     PublishedLedgerEntry,
 )
+from lamto.gate.models import FaceEnrollment, PendingEnrollmentPhoto, VehiclePlate
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
 from lamto.notifications.models import NotificationDelivery
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
@@ -53,6 +56,9 @@ STAFF_CASES = {
     "web:settlement-record-ack": ("settlement_pk", "POST"),
     "web:settlement-detail": ("settlement_pk", "GET"),
     "web:fund-verify": ("fund_entry_pk", "POST"),
+    "web:gate-face-photo": ("face_pk", "GET"),
+    "web:gate-face-decide": ("face_pk", "POST"),
+    "web:gate-plate-decide": ("plate_pk", "POST"),
 }
 
 RESIDENT_CASES = {}
@@ -98,6 +104,7 @@ API_TENANT_LIST = {
     "api:fund-series": "GET",
     "api:locations": "GET",
     "api:notifications": "GET",
+    "api:gate-registrations": "GET",
 }
 
 # Tenant-scoped object access by primary key.
@@ -111,16 +118,21 @@ API_TENANT_OBJECT = {
     "api:report-info-reply": ("report_pk", "POST", 404),
     "api:case-rating": ("case_pk", "POST", 404),
     "api:notification-read": ("notification_pk", "POST", 404),
+    "api:gate-plate-detail": ("plate_pk", "DELETE", 404),
 }
 
 # Ownership-scoped lists/writes (the caller's own rows; never building-tenant).
 API_OWNERSHIP_LIST = {
     "api:reports": "GET mine + POST create",
+    "api:gate-plates": "POST plate for current occupancy",
+    "api:gate-face": "POST/DELETE face for current occupancy",
 }
 
 # Explicitly non-tenant / non-walked routes (none in Phase 0).
 API_EXEMPT = {
     "api:document-download": "signed-token download; authorization re-runs at redemption (see test_downloads)",
+    "api:gate-recognize-face": "gate-device credential is building-scoped",
+    "api:gate-recognize-plate": "gate-device credential is building-scoped",
 }
 
 # Back-compat aliases used by walk helpers (brief Step 1 names).
@@ -197,6 +209,23 @@ class CrossBuildingAccessTests(TestCase):
             subject="B notice", body=B_LEAK_MARKER,
         )
         cls.b["notification_pk"] = b_notice.pk
+        b_occupancy = ResidentOccupancy.objects.get(
+            user=cls.seed_b.residents[0], active=True
+        )
+        face = FaceEnrollment.objects.create(occupancy=b_occupancy, embedding=b"sealed")
+        PendingEnrollmentPhoto.objects.create(
+            enrollment=face,
+            storage_key="isolation/building-b-face.jpg",
+            content_type="image/jpeg",
+            byte_size=1,
+            expires_at=timezone.now() + timedelta(days=1),
+        )
+        plate = VehiclePlate.objects.create(
+            occupancy=b_occupancy,
+            building=b_building,
+            plate="51B12345",
+        )
+        cls.b.update(face_pk=face.pk, plate_pk=plate.pk)
 
     def _management_login(self):
         membership = self.seed_a.management_memberships[0]
@@ -267,10 +296,10 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_five_areas_and_non_manager_is_denied(self):
+    def test_management_has_six_areas_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
-            "inbox", "cases", "finance", "exports", "ops"
+            "inbox", "cases", "finance", "exports", "gate", "ops"
         ]
         self._management_login()
         assert self.client.get(reverse("web:case-list")).status_code == 200
@@ -327,7 +356,9 @@ class CrossBuildingAccessTests(TestCase):
             with self.subTest(route=route):
                 url = reverse(route, args=[self.b[pk_attr]])
                 response = (
-                    self.client.post(url, {}, headers=auth)
+                    self.client.delete(url, headers=auth)
+                    if method == "DELETE"
+                    else self.client.post(url, {}, headers=auth)
                     if method == "POST"
                     else self.client.get(url, headers=auth)
                 )
@@ -360,7 +391,9 @@ class CrossBuildingAccessTests(TestCase):
                 url = reverse(route, args=[self.b[pk_attr]])
                 headers = {**auth, "x-lamto-occupancy": str(b_occupancy.pk)}
                 response = (
-                    self.client.post(url, {}, headers=headers)
+                    self.client.delete(url, headers=headers)
+                    if method == "DELETE"
+                    else self.client.post(url, {}, headers=headers)
                     if method == "POST"
                     else self.client.get(url, headers=headers)
                 )

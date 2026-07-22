@@ -11,9 +11,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CaseRatingResult.serializer)
       ..add(Device.serializer)
       ..add(DeviceRegisterRequest.serializer)
+      ..add(FaceEnrollment.serializer)
       ..add(FundSeries.serializer)
       ..add(FundSeriesPoint.serializer)
       ..add(FundSummary.serializer)
+      ..add(GateRegistrations.serializer)
       ..add(InfoReplyRequest.serializer)
       ..add(InfoReplyResult.serializer)
       ..add(KindEnum.serializer)
@@ -33,6 +35,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PaginatedProposalList.serializer)
       ..add(PaginatedReportSummaryList.serializer)
       ..add(PatchedNotificationPreferenceUpdateRequest.serializer)
+      ..add(PlateCreateRequest.serializer)
+      ..add(PlateRecognizeRequest.serializer)
       ..add(PlatformEnum.serializer)
       ..add(Problem.serializer)
       ..add(Proof.serializer)
@@ -43,6 +47,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ProposalSettlement.serializer)
       ..add(ProposalSupportingDocument.serializer)
       ..add(ProposalVersion.serializer)
+      ..add(RecognitionOutcome.serializer)
       ..add(ReportCase.serializer)
       ..add(ReportCreateRequest.serializer)
       ..add(ReportDetail.serializer)
@@ -52,6 +57,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ReportWorkUpdatePhoto.serializer)
       ..add(StatusEnum.serializer)
       ..add(TokenResponse.serializer)
+      ..add(VehiclePlate.serializer)
       ..add(Verification.serializer)
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(FundSeriesPoint)]),
@@ -99,6 +105,9 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(
               BuiltList, const [const FullType(ReportWorkUpdatePhoto)]),
           () => ListBuilder<ReportWorkUpdatePhoto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(VehiclePlate)]),
+          () => ListBuilder<VehiclePlate>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType.nullable(JsonObject)]),

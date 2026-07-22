@@ -1,10 +1,11 @@
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from drf_spectacular.utils import extend_schema
 from rest_framework import exceptions, parsers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .gate_serializers import *
-from .occupancy import resolve_api_occupancy
+from .occupancy import OCCUPANCY_HEADER_PARAMETER, resolve_api_occupancy
 from .problems import *
 from lamto.accounts.security import client_ip
 from lamto.gate.devices import authenticate_device, token_from_header, GateAuthenticationFailed, GateCredentialExpired, GateCredentialRevoked
@@ -22,11 +23,13 @@ def _face(f):
     return None if f is None else {"status": f.status, "submitted_at": f.submitted_at, "review_note": f.review_note}
 
 class GateRegistrationsView(APIView):
+    @extend_schema(parameters=[OCCUPANCY_HEADER_PARAMETER], responses=GateRegistrationsSerializer)
     def get(self, request):
         occupancy, _ = resolve_api_occupancy(request)
         return Response(GateRegistrationsSerializer({"face": _face(FaceEnrollment.objects.filter(occupancy=occupancy).first()), "plates": [_plate(p) for p in VehiclePlate.objects.filter(occupancy=occupancy).order_by("plate")] }).data)
 
 class GatePlateListCreateView(APIView):
+    @extend_schema(parameters=[OCCUPANCY_HEADER_PARAMETER], request=PlateCreateSerializer, responses={201: VehiclePlateSerializer})
     def post(self, request):
         occupancy, _ = resolve_api_occupancy(request)
         data = PlateCreateSerializer(data=request.data); data.is_valid(raise_exception=True)
@@ -36,6 +39,7 @@ class GatePlateListCreateView(APIView):
         return Response(VehiclePlateSerializer(_plate(plate)).data, status=201)
 
 class GatePlateDetailView(APIView):
+    @extend_schema(parameters=[OCCUPANCY_HEADER_PARAMETER], request=None, responses={204: None})
     def delete(self, request, pk):
         occupancy, _ = resolve_api_occupancy(request)
         if not VehiclePlate.objects.filter(pk=pk, occupancy=occupancy).exists(): raise exceptions.NotFound()
@@ -44,6 +48,7 @@ class GatePlateDetailView(APIView):
 
 class GateFaceView(APIView):
     parser_classes = [parsers.MultiPartParser]
+    @extend_schema(parameters=[OCCUPANCY_HEADER_PARAMETER], request=FaceUploadSerializer, responses={202: FaceEnrollmentSerializer})
     def post(self, request):
         occupancy, _ = resolve_api_occupancy(request)
         data = FaceUploadSerializer(data=request.data); data.is_valid(raise_exception=True)
@@ -56,6 +61,7 @@ class GateFaceView(APIView):
         except FaceQualityError: raise GateFaceUnusable()
         except FaceEmbedderUnavailable: raise GateModelUnavailable()
         return Response(FaceEnrollmentSerializer(_face(enrollment)).data, status=202)
+    @extend_schema(parameters=[OCCUPANCY_HEADER_PARAMETER], request=None, responses={204: None})
     def delete(self, request):
         occupancy, _ = resolve_api_occupancy(request); revoke_face_enrollment(occupancy); return Response(status=204)
 
@@ -71,6 +77,7 @@ def _outcome(o):
 
 class GateRecognizeFaceView(APIView):
     authentication_classes = []; permission_classes = []; parser_classes = [parsers.MultiPartParser]
+    @extend_schema(request=FaceRecognizeSerializer, responses=RecognitionOutcomeSerializer)
     def post(self, request):
         data = FaceRecognizeSerializer(data=request.data); data.is_valid(raise_exception=True)
         try: return Response(RecognitionOutcomeSerializer(_outcome(recognize_face(_credential(request), data.validated_data["photo"].read()))).data)
@@ -83,6 +90,7 @@ class GateRecognizeFaceView(APIView):
 
 class GateRecognizePlateView(APIView):
     authentication_classes = []; permission_classes = []
+    @extend_schema(request=PlateRecognizeSerializer, responses=RecognitionOutcomeSerializer)
     def post(self, request):
         data = PlateRecognizeSerializer(data=request.data); data.is_valid(raise_exception=True)
         try: outcome = recognize_plate(_credential(request), data.validated_data["plate"])

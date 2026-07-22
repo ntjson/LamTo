@@ -36,7 +36,7 @@ class ManagementShellTests(TestCase):
     def test_management_user_sees_all_six_areas(self):
         self.assertEqual(
             [str(item["label"]) for item in nav_items_for(self.membership)],
-            ["Inbox", "Cases", "Finance", "Exports", "Ops"],
+            ["Inbox", "Cases", "Finance", "Exports", "Gate", "Ops"],
         )
         self.assertEqual(
             [str(item["label"]) for item in finance_nav_items_for(self.membership)],

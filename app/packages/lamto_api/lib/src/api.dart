@@ -14,6 +14,7 @@ import 'package:lamto_api/src/api/cases_api.dart';
 import 'package:lamto_api/src/api/devices_api.dart';
 import 'package:lamto_api/src/api/documents_api.dart';
 import 'package:lamto_api/src/api/fund_api.dart';
+import 'package:lamto_api/src/api/gate_api.dart';
 import 'package:lamto_api/src/api/ledger_api.dart';
 import 'package:lamto_api/src/api/locations_api.dart';
 import 'package:lamto_api/src/api/me_api.dart';
@@ -103,6 +104,12 @@ class LamtoApi {
   /// by doing that all interceptors will not be executed
   FundApi getFundApi() {
     return FundApi(dio, serializers);
+  }
+
+  /// Get GateApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  GateApi getGateApi() {
+    return GateApi(dio, serializers);
   }
 
   /// Get LedgerApi instance, base route and serializer can be overridden by a given but be careful,
