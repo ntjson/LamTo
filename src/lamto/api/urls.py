@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from lamto.api import views
+from lamto.api import views, gate_views
 
 app_name = "api"
 
@@ -42,4 +42,10 @@ urlpatterns = [
         name="device-delete",
     ),
     path("documents/<str:token>", views.DocumentDownloadView.as_view(), name="document-download"),
+    path("gate/registrations", gate_views.GateRegistrationsView.as_view(), name="gate-registrations"),
+    path("gate/plates", gate_views.GatePlateListCreateView.as_view(), name="gate-plates"),
+    path("gate/plates/<int:pk>", gate_views.GatePlateDetailView.as_view(), name="gate-plate-detail"),
+    path("gate/face", gate_views.GateFaceView.as_view(), name="gate-face"),
+    path("gate/recognize/face", gate_views.GateRecognizeFaceView.as_view(), name="gate-recognize-face"),
+    path("gate/recognize/plate", gate_views.GateRecognizePlateView.as_view(), name="gate-recognize-plate"),
 ]

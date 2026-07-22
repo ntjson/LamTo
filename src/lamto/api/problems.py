@@ -26,11 +26,13 @@ _PROBLEM_DESCRIPTIONS = {
     ),
     403: "Permission denied (code=permission_denied).",
     404: "Resource not found (code=not_found).",
-    409: "client_ref reused with different content (code=client_ref_conflict).",
+    409: "client_ref conflict or gate plate already registered (code=gate_plate_already_registered).",
     422: (
         "Occupancy selection required "
-        "(code=occupancy_selection_required); send X-LamTo-Occupancy."
+        "(code=occupancy_selection_required); send X-LamTo-Occupancy, or gate input was unusable."
     ),
+    202: "Accepted for manager review (gate face enrolment).",
+    503: "A dependency is unavailable (code=gate_model_unavailable).",
     429: "Too many authentication attempts (code=throttled).",
 }
 
@@ -72,8 +74,46 @@ class ClientRefConflict(exceptions.APIException):
     default_code = "client_ref_conflict"
 
 
+class GateNoFaceDetected(exceptions.APIException):
+    status_code, default_code, default_detail = 422, "gate_no_face_detected", "No face was detected in the image."
+class GateMultipleFaces(exceptions.APIException):
+    status_code, default_code, default_detail = 422, "gate_multiple_faces", "More than one face was detected in the image."
+class GateFaceTooSmall(exceptions.APIException):
+    status_code, default_code, default_detail = 422, "gate_face_too_small", "The face in the image is too small."
+class GateFaceTooBlurry(exceptions.APIException):
+    status_code, default_code, default_detail = 422, "gate_face_too_blurry", "The face in the image is too blurry."
+class GateFaceUnusable(exceptions.APIException):
+    status_code, default_code, default_detail = 422, "gate_face_unusable", "The image cannot be used for enrolment."
+class GatePhotoRejected(exceptions.APIException):
+    status_code, default_code, default_detail = 400, "gate_photo_rejected", "The upload was rejected before processing."
+class GatePlateUnreadable(exceptions.APIException):
+    status_code, default_code, default_detail = 422, "gate_plate_unreadable", "The plate text could not be read."
+class GatePlateAlreadyRegistered(exceptions.APIException):
+    status_code, default_code, default_detail = 409, "gate_plate_already_registered", "This plate is already registered in this building."
+class GateModelUnavailable(exceptions.APIException):
+    status_code, default_code, default_detail = 503, "gate_model_unavailable", "The face recognition model is unavailable."
+class GateDeviceUnauthenticated(exceptions.APIException):
+    status_code, default_code, default_detail = 401, "gate_device_unauthenticated", "Invalid gate device credential."
+class GateDeviceRevoked(GateDeviceUnauthenticated):
+    default_code, default_detail = "gate_device_revoked", "This reader's credential was revoked."
+class GateDeviceExpired(GateDeviceUnauthenticated):
+    default_code, default_detail = "gate_device_expired", "This reader's credential has expired."
+
+
 # Most specific classes first: the first isinstance() match wins.
 _EXCEPTION_CODES = (
+    (GateNoFaceDetected, "gate_no_face_detected"),
+    (GateMultipleFaces, "gate_multiple_faces"),
+    (GateFaceTooSmall, "gate_face_too_small"),
+    (GateFaceTooBlurry, "gate_face_too_blurry"),
+    (GateFaceUnusable, "gate_face_unusable"),
+    (GatePhotoRejected, "gate_photo_rejected"),
+    (GatePlateUnreadable, "gate_plate_unreadable"),
+    (GatePlateAlreadyRegistered, "gate_plate_already_registered"),
+    (GateModelUnavailable, "gate_model_unavailable"),
+    (GateDeviceRevoked, "gate_device_revoked"),
+    (GateDeviceExpired, "gate_device_expired"),
+    (GateDeviceUnauthenticated, "gate_device_unauthenticated"),
     (OccupancySelectionRequired, "occupancy_selection_required"),
     (ClientRefConflict, "client_ref_conflict"),
     (exceptions.NotAuthenticated, "not_authenticated"),
