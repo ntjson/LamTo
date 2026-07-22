@@ -5,7 +5,7 @@ class GateRegistrationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Vehicles & face')),
-    body: const ListView(children: [
+    body: ListView(children: const [
       ListTile(title: Text('Vehicles')),
       ListTile(title: Text('Face'), subtitle: Text('Your review photo is deleted after review.')),
     ]),
