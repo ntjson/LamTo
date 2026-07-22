@@ -150,7 +150,6 @@ class ReportPhotoUploadTests(TestCase):
         v2 = DocumentVersion.objects.create(
             document=doc,
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             filename="dup.png",
             content_type="image/png",
             byte_size=len(_PNG),

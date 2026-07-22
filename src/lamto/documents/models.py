@@ -33,16 +33,11 @@ class Document(InsertOnlyModel):
 
 
 class DocumentVersion(InsertOnlyModel):
-    class Variant(models.TextChoices):
-        ORIGINAL = "ORIGINAL", "Original"
-        REDACTED = "REDACTED", "Redacted"
-
     class ScanStatus(models.TextChoices):
         CLEAN = "CLEAN", "Clean"
 
     document = models.ForeignKey(Document, on_delete=models.PROTECT, related_name="versions")
     version = models.PositiveIntegerField()
-    variant = models.CharField(max_length=16, choices=Variant.choices)
     storage_key = models.CharField(max_length=512, unique=True)
     provider_version_id = models.CharField(max_length=512)
     filename = models.CharField(max_length=255)
@@ -51,9 +46,6 @@ class DocumentVersion(InsertOnlyModel):
     sha256 = models.CharField(max_length=64)
     scan_status = models.CharField(max_length=16, choices=ScanStatus.choices, default=ScanStatus.CLEAN)
     uploader = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    redacts = models.ForeignKey(
-        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="redacted_versions"
-    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -190,7 +190,6 @@ class DownloadTests(TestCase):
         version = DocumentVersion.objects.create(
             document=doc,
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             filename=hostile,
             content_type="image/png",
             byte_size=len(data),
@@ -261,7 +260,6 @@ class DownloadTests(TestCase):
         original = DocumentVersion.objects.create(
             document=doc,
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             filename="inv.pdf",
             content_type="application/pdf",
             byte_size=3,

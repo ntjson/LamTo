@@ -15,7 +15,6 @@ from lamto.documents.models import Document, DocumentVersion, QuarantinedUpload
 from lamto.documents.services import (
     DocumentStorageError,
     _store,
-    add_redacted_copy,
     create_document_version,
 )
 
@@ -37,62 +36,43 @@ class DocumentVersionTests(TestCase):
         ManagementMembership.objects.create(user=uploader, building=building)
         return uploader, building
 
-    def test_original_and_redacted_bytes_get_distinct_immutable_hashes(self):
+    def test_a_document_accumulates_versions_and_hashes_are_immutable(self):
+        """One upload creates one version — but a document is not capped at one.
+        A genuine later revision still inserts version 2."""
         uploader, building = self.make_operator_and_building()
         document = Document.objects.create(building=building, kind=Document.Kind.QUOTATION)
-        original_bytes = b"%PDF-1.7\\nprivate-original"
-        redacted_bytes = b"%PDF-1.7\\nresident-copy"
-        original = create_document_version(
+        first_bytes = b"%PDF-1.7\\nfirst-quotation"
+        second_bytes = b"%PDF-1.7\\ncorrected-quotation"
+
+        first = create_document_version(
             document,
-            SimpleUploadedFile("quote.pdf", original_bytes, content_type="application/pdf"),
-            DocumentVersion.Variant.ORIGINAL,
+            SimpleUploadedFile("quote.pdf", first_bytes, content_type="application/pdf"),
             uploader,
             scanner=lambda _: True,
         )
-        redacted = add_redacted_copy(
-            original,
-            SimpleUploadedFile("quote-redacted.pdf", redacted_bytes, content_type="application/pdf"),
+        second = create_document_version(
+            document,
+            SimpleUploadedFile("quote-v2.pdf", second_bytes, content_type="application/pdf"),
             uploader,
             scanner=lambda _: True,
         )
 
-        self.assertEqual(original.sha256, hashlib.sha256(original_bytes).hexdigest())
-        self.assertNotEqual(original.sha256, redacted.sha256)
-        self.assertEqual(redacted.redacts_id, original.id)
-        self.assertNotEqual(original.storage_key, redacted.storage_key)
-        self.assertEqual(original.provider_version_id, original.storage_key)
-        original.sha256 = "0" * 64
+        self.assertEqual(first.version, 1)
+        self.assertEqual(second.version, 2)
+        self.assertEqual(first.sha256, hashlib.sha256(first_bytes).hexdigest())
+        self.assertNotEqual(first.sha256, second.sha256)
+        self.assertNotEqual(first.storage_key, second.storage_key)
+        self.assertEqual(first.provider_version_id, first.storage_key)
+
+        first.sha256 = "0" * 64
         with self.assertRaises(ValueError):
-            original.save()
-
-    def test_redacted_copy_rejects_identical_bytes_before_persistence(self):
-        uploader, building = self.make_operator_and_building()
-        document = Document.objects.create(building=building, kind=Document.Kind.QUOTATION)
-        payload = b"%PDF-1.7\\nprivate-original"
-        original = create_document_version(
-            document,
-            SimpleUploadedFile("quote.pdf", payload, content_type="application/pdf"),
-            DocumentVersion.Variant.ORIGINAL,
-            uploader,
-            scanner=lambda _: True,
-        )
-
-        with self.assertRaisesRegex(ValueError, "must differ"):
-            add_redacted_copy(
-                original,
-                SimpleUploadedFile("quote-redacted.pdf", payload, content_type="application/pdf"),
-                uploader,
-                scanner=lambda _: True,
-            )
-
-        self.assertEqual(DocumentVersion.objects.count(), 1)
+            first.save()
 
     def test_database_trigger_rejects_version_update_and_delete(self):
         uploader, building = self.make_operator_and_building()
         version = create_document_version(
             Document.objects.create(building=building, kind=Document.Kind.QUOTATION),
             SimpleUploadedFile("quote.pdf", b"%PDF-1.7\\nprivate", content_type="application/pdf"),
-            DocumentVersion.Variant.ORIGINAL,
             uploader,
             scanner=lambda _: True,
         )

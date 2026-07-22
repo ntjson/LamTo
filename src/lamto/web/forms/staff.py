@@ -95,7 +95,6 @@ class ProgressUpdateForm(forms.Form):
         base = DocumentVersion.objects.filter(
             document__building_id=building_id,
             uploader_id=uploader_id,
-            variant=DocumentVersion.Variant.ORIGINAL,
             scan_status=DocumentVersion.ScanStatus.CLEAN,
         )
         self.fields["before_versions"].queryset = base.filter(

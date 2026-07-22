@@ -38,7 +38,6 @@ class DocumentAccessTests(TestCase):
         return create_document_version(
             Document.objects.create(building=building, kind=Document.Kind.QUOTATION),
             SimpleUploadedFile("quote.pdf", payload, content_type="application/pdf"),
-            DocumentVersion.Variant.ORIGINAL,
             uploader,
             scanner=lambda _: True,
         )
@@ -109,7 +108,6 @@ class DocumentAccessTests(TestCase):
                 building=membership.building, kind=Document.Kind.QUOTATION
             ),
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             storage_key="documents/immutable-key",
             provider_version_id="provider-version-42",
             filename="quote.pdf",
@@ -136,7 +134,6 @@ class DocumentAccessTests(TestCase):
                 building=membership.building, kind=Document.Kind.QUOTATION
             ),
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             storage_key="documents/missing-version-id",
             provider_version_id="",
             filename="quote.pdf",

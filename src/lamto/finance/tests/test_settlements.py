@@ -23,7 +23,7 @@ class SettlementTests(TestCase):
 
     def document(self, kind, tag):
         doc = Document.objects.create(building=self.building, kind=kind)
-        return DocumentVersion.objects.create(document=doc, version=1, variant="ORIGINAL", storage_key=f"{tag}-o", provider_version_id=f"{tag}-o", filename="o.pdf", content_type="application/pdf", byte_size=1, sha256=secrets.token_hex(32), uploader=self.manager)
+        return DocumentVersion.objects.create(document=doc, version=1, storage_key=f"{tag}-o", provider_version_id=f"{tag}-o", filename="o.pdf", content_type="application/pdf", byte_size=1, sha256=secrets.token_hex(32), uploader=self.manager)
 
     def completed(self):
         proposal = create_standalone_proposal(self.building, self.membership)

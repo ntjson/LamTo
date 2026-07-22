@@ -66,7 +66,6 @@ def submit_report(resident, unit, text, location, photo_versions, client_ref=Non
             uploader_id=resident.pk,
             document__building_id=unit.building_id,
             document__kind=Document.Kind.REPORT_PHOTO,
-            variant=DocumentVersion.Variant.ORIGINAL,
             scan_status=DocumentVersion.ScanStatus.CLEAN,
         )
     )

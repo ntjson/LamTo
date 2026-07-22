@@ -45,7 +45,6 @@ class QuarantineTests(TestCase):
             create_document_version(
                 self.document,
                 SimpleUploadedFile("quote.txt", b"not-a-pdf", content_type="text/plain"),
-                DocumentVersion.Variant.ORIGINAL,
                 self.uploader,
                 scanner=lambda _: True,
             )
@@ -61,7 +60,6 @@ class QuarantineTests(TestCase):
             create_document_version(
                 self.document,
                 SimpleUploadedFile("quote.pdf", b"%PDF-1.7\\ntoo-large", content_type="application/pdf"),
-                DocumentVersion.Variant.ORIGINAL,
                 self.uploader,
                 scanner=lambda _: True,
             )
@@ -74,7 +72,6 @@ class QuarantineTests(TestCase):
             create_document_version(
                 photo,
                 SimpleUploadedFile("photo.png", b"\\x89PNG\\r\\n\\x1a\\nbroken", content_type="image/png"),
-                DocumentVersion.Variant.ORIGINAL,
                 self.uploader,
                 scanner=lambda _: True,
             )
@@ -88,7 +85,6 @@ class QuarantineTests(TestCase):
                 create_document_version(
                     self.document,
                     SimpleUploadedFile("quote.pdf", payload, content_type="application/pdf"),
-                    DocumentVersion.Variant.ORIGINAL,
                     self.uploader,
                     scanner=scanner,
                 )
@@ -104,7 +100,6 @@ class QuarantineTests(TestCase):
             create_document_version(
                 self.document,
                 SimpleUploadedFile("quote.pdf", b"%PDF-1.7\\nmalware", content_type="application/pdf"),
-                DocumentVersion.Variant.ORIGINAL,
                 self.uploader,
                 scanner=lambda _: False,
             )
@@ -121,7 +116,6 @@ class QuarantineTests(TestCase):
             create_document_version(
                 self.document,
                 SimpleUploadedFile("quote.pdf", b"%PDF-1.7\\nmalware", content_type="application/pdf"),
-                DocumentVersion.Variant.ORIGINAL,
                 self.uploader,
                 scanner=lambda _: False,
             )

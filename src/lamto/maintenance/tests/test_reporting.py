@@ -121,7 +121,6 @@ class ReportSubmissionTests(TestCase):
                 building=other_building, kind=Document.Kind.REPORT_PHOTO
             ),
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             storage_key="report-photo-other-building",
             provider_version_id="version-1",
             filename="photo.jpg",
@@ -148,7 +147,6 @@ class ReportSubmissionTests(TestCase):
                 building=unit.building, kind=Document.Kind.REPORT_PHOTO
             ),
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             storage_key="report-photo-other-resident",
             provider_version_id="version-1",
             filename="photo.jpg",
@@ -170,7 +168,6 @@ class ReportSubmissionTests(TestCase):
                 building=unit.building, kind=Document.Kind.REPORT_PHOTO
             ),
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             storage_key="report-photo-owned",
             provider_version_id="version-1",
             filename="photo.jpg",

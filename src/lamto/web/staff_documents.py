@@ -53,7 +53,6 @@ def upload_document(building, kind, uploader, file):
             version = create_document_version(
                 document,
                 file,
-                DocumentVersion.Variant.ORIGINAL,
                 uploader,
                 scan_with_clamav,
             )

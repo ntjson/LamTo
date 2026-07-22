@@ -37,7 +37,7 @@ def _evidence_versions(versions, kind, building_id, uploader):
         raise ValidationError("Progress requires distinct evidence versions.")
     valid = list(DocumentVersion.objects.select_for_update().select_related("document").filter(
         pk__in=ids, document__building_id=building_id, document__kind=kind,
-        variant=DocumentVersion.Variant.ORIGINAL, scan_status=DocumentVersion.ScanStatus.CLEAN,
+        scan_status=DocumentVersion.ScanStatus.CLEAN,
         uploader=uploader,
     ))
     if len(valid) != len(ids) or any(not v.content_type.lower().startswith("image/") for v in valid):

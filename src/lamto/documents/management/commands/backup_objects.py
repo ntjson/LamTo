@@ -69,7 +69,6 @@ class Command(BaseCommand):
             entry.update(
                 {
                     "document_version_id": version.pk,
-                    "variant": version.variant,
                     "filename": version.filename,
                 }
             )

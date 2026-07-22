@@ -100,7 +100,6 @@ def document(building, kind, uploader, tag: str):
     return DocumentVersion.objects.create(
         document=Document.objects.create(building=building, kind=kind),
         version=1,
-        variant=DocumentVersion.Variant.ORIGINAL,
         storage_key=key,
         provider_version_id=key,
         filename=f"{tag}.pdf",
@@ -118,7 +117,6 @@ def photo(building, kind, uploader, tag: str):
     return DocumentVersion.objects.create(
         document=Document.objects.create(building=building, kind=kind),
         version=1,
-        variant=DocumentVersion.Variant.ORIGINAL,
         storage_key=key,
         provider_version_id=key,
         filename=f"{tag}.jpg",

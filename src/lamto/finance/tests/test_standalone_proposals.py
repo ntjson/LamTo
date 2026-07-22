@@ -32,7 +32,7 @@ class StandaloneProposalTests(TestCase):
         key = secrets.token_hex(8)
         document = Document.objects.create(building=self.building, kind=Document.Kind.QUOTATION)
         return DocumentVersion.objects.create(
-            document=document, version=1, variant=DocumentVersion.Variant.ORIGINAL,
+            document=document, version=1,
             storage_key=f"o-{key}", provider_version_id=f"o-{key}", filename="q.pdf",
             content_type="application/pdf", byte_size=1, sha256="1" * 64, uploader=self.manager,
         )

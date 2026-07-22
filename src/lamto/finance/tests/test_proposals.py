@@ -66,7 +66,6 @@ class ProposalVersionTests(TestCase):
         quotation = DocumentVersion.objects.create(
             document=document,
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             storage_key="quotation-original",
             provider_version_id="quotation-original",
             filename="quotation.pdf",
@@ -192,7 +191,6 @@ class ProposalVersionTests(TestCase):
         unsafe_quotation = DocumentVersion.objects.create(
             document=unsafe_document,
             version=1,
-            variant=DocumentVersion.Variant.ORIGINAL,
             storage_key="quotation-without-redaction",
             provider_version_id="quotation-without-redaction",
             filename="quotation.pdf",

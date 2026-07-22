@@ -75,7 +75,6 @@ def create_resident_report_photo(resident, building, uploaded_file, scanner) -> 
     return create_document_version(
         document,
         uploaded_file,
-        DocumentVersion.Variant.ORIGINAL,
         resident,
         scanner,
         allow_resident_occupancy=True,
@@ -207,7 +206,7 @@ def quarantine_upload(uploaded_file, uploader, reason) -> QuarantinedUpload:
     return quarantined
 
 
-def create_document_version(document, uploaded_file, variant, uploader, scanner, *, _redacts=None, allow_resident_occupancy=False) -> DocumentVersion:
+def create_document_version(document, uploaded_file, uploader, scanner, *, allow_resident_occupancy=False) -> DocumentVersion:
     try:
         membership = require_management(uploader, document.building_id)
     except PermissionDenied:
@@ -217,7 +216,6 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
         if not (
             allow_resident_occupancy
             and document.kind == Document.Kind.REPORT_PHOTO
-            and variant == DocumentVersion.Variant.ORIGINAL
         ):
             raise PermissionDenied("Document uploader does not belong to this building.")
         occupancy = _occupancy_for(uploader, document.building)
@@ -313,7 +311,6 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
             version = DocumentVersion.objects.create(
                 document=locked_document,
                 version=next_version,
-                variant=variant,
                 storage_key=storage_key,
                 provider_version_id=provider_version_id,
                 filename=metadata["filename"],
@@ -321,7 +318,6 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
                 byte_size=metadata["byte_size"],
                 sha256=digest.hexdigest(),
                 uploader=uploader,
-                redacts=_redacts,
             )
     if membership is None and occupancy is not None:
         record_audit(
@@ -336,26 +332,6 @@ def create_document_version(document, uploaded_file, variant, uploader, scanner,
     else:
         _audit(uploader, membership, "document.upload", version.pk, "allowed")
     return version
-
-
-def add_redacted_copy(original, uploaded_file, uploader, scanner) -> DocumentVersion:
-    if original.variant != DocumentVersion.Variant.ORIGINAL:
-        raise ValueError("Only an original version can be redacted.")
-    digest = hashlib.sha256()
-    for chunk in uploaded_file.chunks():
-        digest.update(chunk)
-    if digest.hexdigest() == original.sha256:
-        raise ValueError("Redacted bytes must differ from the original.")
-    uploaded_file.seek(0)
-    redacted = create_document_version(
-        original.document,
-        uploaded_file,
-        DocumentVersion.Variant.REDACTED,
-        uploader,
-        scanner,
-        _redacts=original,
-    )
-    return redacted
 
 
 def purge_expired_quarantine(now=None):
