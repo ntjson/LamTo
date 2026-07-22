@@ -11,7 +11,7 @@ part 'plate_recognize_request.g.dart';
 /// PlateRecognizeRequest
 ///
 /// Properties:
-/// * [plate] 
+/// * [plate]
 @BuiltValue()
 abstract class PlateRecognizeRequest implements Built<PlateRecognizeRequest, PlateRecognizeRequestBuilder> {
   @BuiltValueField(wireName: r'plate')
@@ -103,4 +103,3 @@ class _$PlateRecognizeRequestSerializer implements PrimitiveSerializer<PlateReco
     return result.build();
   }
 }
-

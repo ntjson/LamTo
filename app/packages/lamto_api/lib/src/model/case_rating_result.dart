@@ -11,9 +11,9 @@ part 'case_rating_result.g.dart';
 /// CaseRatingResult
 ///
 /// Properties:
-/// * [id] 
-/// * [caseId] 
-/// * [satisfied] 
+/// * [id]
+/// * [caseId]
+/// * [satisfied]
 @BuiltValue()
 abstract class CaseRatingResult implements Built<CaseRatingResult, CaseRatingResultBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -135,4 +135,3 @@ class _$CaseRatingResultSerializer implements PrimitiveSerializer<CaseRatingResu
     return result.build();
   }
 }
-

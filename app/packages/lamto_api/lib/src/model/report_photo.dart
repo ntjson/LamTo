@@ -11,10 +11,10 @@ part 'report_photo.g.dart';
 /// ReportPhoto
 ///
 /// Properties:
-/// * [id] 
-/// * [filename] 
-/// * [sha256] 
-/// * [downloadUrl] 
+/// * [id]
+/// * [filename]
+/// * [sha256]
+/// * [downloadUrl]
 @BuiltValue()
 abstract class ReportPhoto implements Built<ReportPhoto, ReportPhotoBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -151,4 +151,3 @@ class _$ReportPhotoSerializer implements PrimitiveSerializer<ReportPhoto> {
     return result.build();
   }
 }
-

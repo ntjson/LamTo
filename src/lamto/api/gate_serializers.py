@@ -36,6 +36,11 @@ class RecognitionOutcomeSerializer(serializers.Serializer):
     score = serializers.FloatField(allow_null=True)
 
 
+class GateDeviceSerializer(serializers.Serializer):
+    label = serializers.CharField()
+    direction = serializers.ChoiceField(choices=["ENTRY", "EXIT"])
+
+
 class PlateRecognizeSerializer(serializers.Serializer):
     plate = serializers.CharField(max_length=64)
 

@@ -11,7 +11,7 @@ part 'info_reply_request.g.dart';
 /// InfoReplyRequest
 ///
 /// Properties:
-/// * [text] 
+/// * [text]
 @BuiltValue()
 abstract class InfoReplyRequest implements Built<InfoReplyRequest, InfoReplyRequestBuilder> {
   @BuiltValueField(wireName: r'text')
@@ -103,4 +103,3 @@ class _$InfoReplyRequestSerializer implements PrimitiveSerializer<InfoReplyReque
     return result.build();
   }
 }
-

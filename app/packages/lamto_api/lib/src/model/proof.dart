@@ -14,12 +14,12 @@ part 'proof.g.dart';
 /// Proof
 ///
 /// Properties:
-/// * [evidenceLevel] 
-/// * [anchoringBackend] 
-/// * [payloadHash] 
-/// * [events] 
-/// * [proposalVersion] 
-/// * [settlement] 
+/// * [evidenceLevel]
+/// * [anchoringBackend]
+/// * [payloadHash]
+/// * [events]
+/// * [proposalVersion]
+/// * [settlement]
 @BuiltValue()
 abstract class Proof implements Built<Proof, ProofBuilder> {
   @BuiltValueField(wireName: r'evidence_level')
@@ -188,4 +188,3 @@ class _$ProofSerializer implements PrimitiveSerializer<Proof> {
     return result.build();
   }
 }
-

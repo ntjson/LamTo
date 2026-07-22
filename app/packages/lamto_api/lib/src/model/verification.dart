@@ -11,9 +11,9 @@ part 'verification.g.dart';
 /// Verification
 ///
 /// Properties:
-/// * [decision] 
-/// * [verifiedBy] 
-/// * [verifiedAt] 
+/// * [decision]
+/// * [verifiedBy]
+/// * [verifiedAt]
 @BuiltValue()
 abstract class Verification implements Built<Verification, VerificationBuilder> {
   @BuiltValueField(wireName: r'decision')
@@ -135,4 +135,3 @@ class _$VerificationSerializer implements PrimitiveSerializer<Verification> {
     return result.build();
   }
 }
-

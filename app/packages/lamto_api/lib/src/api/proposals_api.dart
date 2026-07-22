@@ -24,10 +24,10 @@ class ProposalsApi {
   const ProposalsApi(this._dio, this._serializers);
 
   /// proposalDetail
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -38,7 +38,7 @@ class ProposalsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Proposal] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Proposal>> proposalDetail({ 
+  Future<Response<Proposal>> proposalDetail({
     required int id,
     int? xLamToOccupancy,
     CancelToken? cancelToken,
@@ -109,7 +109,7 @@ class ProposalsApi {
   }
 
   /// proposalList
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
@@ -123,7 +123,7 @@ class ProposalsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaginatedProposalList] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaginatedProposalList>> proposalList({ 
+  Future<Response<PaginatedProposalList>> proposalList({
     int? xLamToOccupancy,
     String? cursor,
     CancelToken? cancelToken,
@@ -199,11 +199,11 @@ class ProposalsApi {
   }
 
   /// proposalsRatingCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
-  /// * [caseRatingRequest] 
+  /// * [id]
+  /// * [caseRatingRequest]
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -214,7 +214,7 @@ class ProposalsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ProposalRatingResult] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ProposalRatingResult>> proposalsRatingCreate({ 
+  Future<Response<ProposalRatingResult>> proposalsRatingCreate({
     required int id,
     required CaseRatingRequest caseRatingRequest,
     int? xLamToOccupancy,

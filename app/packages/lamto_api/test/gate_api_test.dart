@@ -7,6 +7,11 @@ void main() {
   final instance = LamtoApi().getGateApi();
 
   group(GateApi, () {
+    //Future<GateDevice> gateDeviceRetrieve() async
+    test('test gateDeviceRetrieve', () async {
+      // TODO
+    });
+
     //Future<FaceEnrollment> gateFaceCreate(MultipartFile photo, { int xLamToOccupancy }) async
     test('test gateFaceCreate', () async {
       // TODO

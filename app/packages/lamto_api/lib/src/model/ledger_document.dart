@@ -11,10 +11,10 @@ part 'ledger_document.g.dart';
 /// LedgerDocument
 ///
 /// Properties:
-/// * [label] 
-/// * [filename] 
-/// * [sha256] 
-/// * [downloadUrl] 
+/// * [label]
+/// * [filename]
+/// * [sha256]
+/// * [downloadUrl]
 @BuiltValue()
 abstract class LedgerDocument implements Built<LedgerDocument, LedgerDocumentBuilder> {
   @BuiltValueField(wireName: r'label')
@@ -151,4 +151,3 @@ class _$LedgerDocumentSerializer implements PrimitiveSerializer<LedgerDocument> 
     return result.build();
   }
 }
-

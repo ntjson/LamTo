@@ -83,6 +83,14 @@ def _reader(request):
         raise GateRecognitionThrottled()
     return credential
 
+
+class GateDeviceView(APIView):
+    authentication_classes = []; permission_classes = []
+    @extend_schema(auth=[{"GateDevice": []}], responses=GateDeviceSerializer)
+    def get(self, request):
+        device = _credential(request).device
+        return Response(GateDeviceSerializer({"label": device.label, "direction": device.direction}).data)
+
 class GateRecognizeFaceView(APIView):
     authentication_classes = []; permission_classes = []; parser_classes = [parsers.MultiPartParser]
     @extend_schema(auth=[{"GateDevice": []}], request=FaceRecognizeSerializer, responses=RecognitionOutcomeSerializer)

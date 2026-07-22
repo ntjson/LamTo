@@ -11,11 +11,11 @@ part 'proposal_settlement.g.dart';
 /// ProposalSettlement
 ///
 /// Properties:
-/// * [amountVnd] 
-/// * [payeeName] 
-/// * [transferRecordedAt] 
-/// * [acknowledgedAt] 
-/// * [settledAt] 
+/// * [amountVnd]
+/// * [payeeName]
+/// * [transferRecordedAt]
+/// * [acknowledgedAt]
+/// * [settledAt]
 @BuiltValue()
 abstract class ProposalSettlement implements Built<ProposalSettlement, ProposalSettlementBuilder> {
   @BuiltValueField(wireName: r'amount_vnd')
@@ -169,4 +169,3 @@ class _$ProposalSettlementSerializer implements PrimitiveSerializer<ProposalSett
     return result.build();
   }
 }
-

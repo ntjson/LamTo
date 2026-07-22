@@ -11,10 +11,10 @@ part 'fund_series_point.g.dart';
 /// FundSeriesPoint
 ///
 /// Properties:
-/// * [periodStart] 
-/// * [inflowsVnd] 
+/// * [periodStart]
+/// * [inflowsVnd]
 /// * [outflowsVnd] - Outflow-type amounts are stored negative; this is <= 0.
-/// * [balanceVnd] 
+/// * [balanceVnd]
 @BuiltValue()
 abstract class FundSeriesPoint implements Built<FundSeriesPoint, FundSeriesPointBuilder> {
   @BuiltValueField(wireName: r'period_start')
@@ -152,4 +152,3 @@ class _$FundSeriesPointSerializer implements PrimitiveSerializer<FundSeriesPoint
     return result.build();
   }
 }
-

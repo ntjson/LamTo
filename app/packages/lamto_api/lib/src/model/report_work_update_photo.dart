@@ -12,10 +12,10 @@ part 'report_work_update_photo.g.dart';
 /// ReportWorkUpdatePhoto
 ///
 /// Properties:
-/// * [id] 
-/// * [filename] 
-/// * [kind] 
-/// * [downloadUrl] 
+/// * [id]
+/// * [filename]
+/// * [kind]
+/// * [downloadUrl]
 @BuiltValue()
 abstract class ReportWorkUpdatePhoto implements Built<ReportWorkUpdatePhoto, ReportWorkUpdatePhotoBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -153,4 +153,3 @@ class _$ReportWorkUpdatePhotoSerializer implements PrimitiveSerializer<ReportWor
     return result.build();
   }
 }
-

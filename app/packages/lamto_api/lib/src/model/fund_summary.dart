@@ -11,10 +11,10 @@ part 'fund_summary.g.dart';
 /// FundSummary
 ///
 /// Properties:
-/// * [balanceVnd] 
-/// * [periodDays] 
-/// * [periodInflowsVnd] 
-/// * [periodOutflowsVnd] 
+/// * [balanceVnd]
+/// * [periodDays]
+/// * [periodInflowsVnd]
+/// * [periodOutflowsVnd]
 @BuiltValue()
 abstract class FundSummary implements Built<FundSummary, FundSummaryBuilder> {
   @BuiltValueField(wireName: r'balance_vnd')
@@ -151,4 +151,3 @@ class _$FundSummarySerializer implements PrimitiveSerializer<FundSummary> {
     return result.build();
   }
 }
-

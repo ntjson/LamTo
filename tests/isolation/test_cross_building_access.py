@@ -131,6 +131,7 @@ API_OWNERSHIP_LIST = {
 # Explicitly non-tenant / non-walked routes (none in Phase 0).
 API_EXEMPT = {
     "api:document-download": "signed-token download; authorization re-runs at redemption (see test_downloads)",
+    "api:gate-device": "gate-device credential is building-scoped",
     "api:gate-recognize-face": "gate-device credential is building-scoped",
     "api:gate-recognize-plate": "gate-device credential is building-scoped",
 }

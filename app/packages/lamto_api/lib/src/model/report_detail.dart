@@ -16,19 +16,19 @@ part 'report_detail.g.dart';
 /// ReportDetail
 ///
 /// Properties:
-/// * [id] 
-/// * [text] 
-/// * [status] 
-/// * [declinedReason] 
-/// * [isPrivate] 
-/// * [openInfoRequest] 
-/// * [locationPathSnapshot] 
-/// * [unitLabel] 
-/// * [createdAt] 
-/// * [triageStatus] 
-/// * [category] 
-/// * [photos] 
-/// * [cases] 
+/// * [id]
+/// * [text]
+/// * [status]
+/// * [declinedReason]
+/// * [isPrivate]
+/// * [openInfoRequest]
+/// * [locationPathSnapshot]
+/// * [unitLabel]
+/// * [createdAt]
+/// * [triageStatus]
+/// * [category]
+/// * [photos]
+/// * [cases]
 @BuiltValue()
 abstract class ReportDetail implements Built<ReportDetail, ReportDetailBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -305,4 +305,3 @@ class _$ReportDetailSerializer implements PrimitiveSerializer<ReportDetail> {
     return result.build();
   }
 }
-

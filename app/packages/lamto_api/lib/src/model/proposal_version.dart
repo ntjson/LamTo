@@ -13,10 +13,10 @@ part 'proposal_version.g.dart';
 /// ProposalVersion
 ///
 /// Properties:
-/// * [number] 
-/// * [publishedAt] 
-/// * [evidenceLevel] 
-/// * [supportingDocuments] 
+/// * [number]
+/// * [publishedAt]
+/// * [evidenceLevel]
+/// * [supportingDocuments]
 @BuiltValue()
 abstract class ProposalVersion implements Built<ProposalVersion, ProposalVersionBuilder> {
   @BuiltValueField(wireName: r'number')
@@ -153,4 +153,3 @@ class _$ProposalVersionSerializer implements PrimitiveSerializer<ProposalVersion
     return result.build();
   }
 }
-

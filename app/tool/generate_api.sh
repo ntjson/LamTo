@@ -32,6 +32,5 @@ else
 fi
 
 ( cd "$OUT" && dart pub get && dart run build_runner build --delete-conflicting-outputs )
-sed -i 's/[[:space:]]\+$//' \
-  "$OUT/doc/LedgerEntryDetail.md" \
-  "$OUT/lib/src/model/ledger_entry_detail.dart"
+shopt -s globstar nullglob
+perl -0pi -e 's/[ \t]+$//mg; s/\n+\z/\n/' "$OUT"/**/*.dart "$OUT"/**/*.md

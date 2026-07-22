@@ -13,9 +13,9 @@ part 'paginated_ledger_entry_list_list.g.dart';
 /// PaginatedLedgerEntryListList
 ///
 /// Properties:
-/// * [next] 
-/// * [previous] 
-/// * [results] 
+/// * [next]
+/// * [previous]
+/// * [results]
 @BuiltValue()
 abstract class PaginatedLedgerEntryListList implements Built<PaginatedLedgerEntryListList, PaginatedLedgerEntryListListBuilder> {
   @BuiltValueField(wireName: r'next')
@@ -143,4 +143,3 @@ class _$PaginatedLedgerEntryListListSerializer implements PrimitiveSerializer<Pa
     return result.build();
   }
 }
-

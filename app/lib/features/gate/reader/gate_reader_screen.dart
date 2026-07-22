@@ -30,13 +30,11 @@ class GateReaderScreen extends StatefulWidget {
     super.key,
     required this.repositoryFor,
     required this.camera,
-    required this.direction,
     this.store,
     this.ocr = extractPlate,
   });
   final ReaderApi Function(String) repositoryFor;
   final ReaderCamera camera;
-  final String direction;
   final ReaderCredentialStore? store;
   final Future<String?> Function(String) ocr;
   @override
@@ -46,6 +44,7 @@ class GateReaderScreen extends StatefulWidget {
 class _GateReaderScreenState extends State<GateReaderScreen> {
   final credential = TextEditingController();
   String? token;
+  String? direction;
   ReaderResult? result;
   String? message;
   bool busy = false;
@@ -55,7 +54,7 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
   void initState() {
     super.initState();
     store.read().then((value) {
-      if (mounted) setState(() => token = value);
+      if (value != null) _activate(value, persist: false);
     });
   }
 
@@ -104,6 +103,30 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
     }
   }
 
+  Future<void> _activate(String value, {bool persist = true}) async {
+    try {
+      final device = await widget.repositoryFor(value).getDevice();
+      if (persist) {
+        await store.write(value);
+      }
+      if (mounted) {
+        setState(() {
+          token = value;
+          direction = device.direction;
+          message = null;
+        });
+      }
+    } on DioException catch (error) {
+      if (mounted) {
+        setState(() => message = readerError(error));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => message = 'Mat ket noi. Khong the kich hoat dau doc.');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Dau doc cong')),
@@ -123,14 +146,12 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
                     onPressed: () async {
                       final value = credential.text.trim();
                       if (value.isNotEmpty) {
-                        await store.write(value);
-                        if (mounted) {
-                          setState(() => token = value);
-                        }
+                        await _activate(value);
                       }
                     },
                     child: const Text('Kich hoat dau doc'),
                   ),
+                  if (message != null) Text(message!),
                 ],
               ),
             ),
@@ -144,9 +165,7 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
                     widget.camera.preview,
                     Align(
                       alignment: Alignment.topCenter,
-                      child: SafeArea(
-                        child: Chip(label: Text(widget.direction)),
-                      ),
+                      child: SafeArea(child: Chip(label: Text(direction!))),
                     ),
                   ],
                 ),

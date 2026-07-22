@@ -9,11 +9,16 @@ import 'package:lamto/features/gate/reader/reader_credential_store.dart';
 import 'package:lamto/features/gate/reader/reader_repository.dart';
 
 class FakeReader implements ReaderApi {
-  FakeReader({this.matched = true, this.error});
+  FakeReader({this.matched = true, this.error, this.deviceDirection = 'ENTRY'});
   final bool matched;
   final Object? error;
+  final String deviceDirection;
   String? plate;
   String? facePath;
+  @override
+  Future<ReaderDevice> getDevice() async =>
+      ReaderDevice.fromJson({'label': 'North', 'direction': deviceDirection});
+
   @override
   Future<ReaderResult> recognizeFace(String path) async {
     facePath = path;
@@ -77,12 +82,11 @@ void main() {
         home: GateReaderScreen(
           repositoryFor: (_) => FakeReader(),
           camera: FakeCamera('/tmp/unused'),
-          direction: 'ENTRY',
           store: store,
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), ' secret ');
     await tester.tap(find.text('Kich hoat dau doc'));
     await tester.pump();
@@ -106,13 +110,12 @@ void main() {
         home: GateReaderScreen(
           repositoryFor: (_) => reader,
           camera: camera,
-          direction: 'ENTRY',
           store: MemoryStore('token'),
           ocr: (_) async => '51F12345',
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Quet bien so'));
     await tester.pumpAndSettle();
     expect(reader.plate, '51F12345');
@@ -134,12 +137,11 @@ void main() {
         home: GateReaderScreen(
           repositoryFor: (_) => reader,
           camera: camera,
-          direction: 'EXIT',
           store: MemoryStore('token'),
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Quet khuon mat'));
     await tester.pumpAndSettle();
     expect(find.textContaining('khong duoc luu'), findsOneWidget);
@@ -155,12 +157,11 @@ void main() {
         home: GateReaderScreen(
           repositoryFor: (_) => FakeReader(matched: false),
           camera: FakeCamera(file.path),
-          direction: 'EXIT',
           store: MemoryStore('token'),
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Quet khuon mat'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Khong nhan dien duoc'), findsOneWidget);
@@ -181,6 +182,21 @@ void main() {
       codes.map((code) => readerError(_problem(code))).toSet(),
       hasLength(codes.length),
     );
+  });
+
+  testWidgets('reader displays authenticated server direction', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GateReaderScreen(
+          repositoryFor: (_) => FakeReader(deviceDirection: 'EXIT'),
+          camera: FakeCamera('/tmp/unused'),
+          store: MemoryStore('token'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('EXIT'), findsOneWidget);
+    expect(find.text('ENTRY'), findsNothing);
   });
 }
 

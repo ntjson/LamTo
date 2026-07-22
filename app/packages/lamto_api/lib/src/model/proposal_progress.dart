@@ -11,10 +11,10 @@ part 'proposal_progress.g.dart';
 /// ProposalProgress
 ///
 /// Properties:
-/// * [id] 
-/// * [cause] 
-/// * [result] 
-/// * [createdAt] 
+/// * [id]
+/// * [cause]
+/// * [result]
+/// * [createdAt]
 @BuiltValue()
 abstract class ProposalProgress implements Built<ProposalProgress, ProposalProgressBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -151,4 +151,3 @@ class _$ProposalProgressSerializer implements PrimitiveSerializer<ProposalProgre
     return result.build();
   }
 }
-

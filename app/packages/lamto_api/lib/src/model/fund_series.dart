@@ -13,8 +13,8 @@ part 'fund_series.g.dart';
 /// FundSeries
 ///
 /// Properties:
-/// * [range] 
-/// * [points] 
+/// * [range]
+/// * [points]
 @BuiltValue()
 abstract class FundSeries implements Built<FundSeries, FundSeriesBuilder> {
   @BuiltValueField(wireName: r'range')
@@ -121,4 +121,3 @@ class _$FundSeriesSerializer implements PrimitiveSerializer<FundSeries> {
     return result.build();
   }
 }
-

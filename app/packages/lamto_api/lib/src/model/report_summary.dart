@@ -12,12 +12,12 @@ part 'report_summary.g.dart';
 /// ReportSummary
 ///
 /// Properties:
-/// * [id] 
-/// * [text] 
-/// * [status] 
-/// * [isPrivate] 
-/// * [locationPathSnapshot] 
-/// * [createdAt] 
+/// * [id]
+/// * [text]
+/// * [status]
+/// * [isPrivate]
+/// * [locationPathSnapshot]
+/// * [createdAt]
 @BuiltValue()
 abstract class ReportSummary implements Built<ReportSummary, ReportSummaryBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -185,4 +185,3 @@ class _$ReportSummarySerializer implements PrimitiveSerializer<ReportSummary> {
     return result.build();
   }
 }
-

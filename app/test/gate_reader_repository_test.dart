@@ -15,13 +15,16 @@ void main() {
           handler.resolve(
             Response(
               requestOptions: options,
-              data: {'matched': false, 'direction': 'ENTRY'},
+              data: options.path.endsWith('/device')
+                  ? {'label': 'North', 'direction': 'EXIT'}
+                  : {'matched': false, 'direction': 'ENTRY'},
             ),
           );
         },
       ),
     );
     final repository = ReaderRepository(dio, 'secret');
+    final device = await repository.getDevice();
     await repository.recognizePlate('51F12345');
     final file = File('${Directory.systemTemp.path}/gate-reader-repository.jpg')
       ..writeAsBytesSync([1]);
@@ -33,7 +36,9 @@ void main() {
       ),
       isTrue,
     );
-    expect(requests.first.data, {'plate': '51F12345'});
+    expect(requests[1].data, {'plate': '51F12345'});
+    expect(requests.first.path, '/api/v1/gate/device');
+    expect(device.direction, 'EXIT');
     expect(requests.last.data, isA<FormData>());
   });
 }

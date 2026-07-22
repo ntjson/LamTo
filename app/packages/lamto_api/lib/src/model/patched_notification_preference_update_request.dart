@@ -13,7 +13,7 @@ part 'patched_notification_preference_update_request.g.dart';
 /// PatchedNotificationPreferenceUpdateRequest
 ///
 /// Properties:
-/// * [preferences] 
+/// * [preferences]
 @BuiltValue()
 abstract class PatchedNotificationPreferenceUpdateRequest implements Built<PatchedNotificationPreferenceUpdateRequest, PatchedNotificationPreferenceUpdateRequestBuilder> {
   @BuiltValueField(wireName: r'preferences')
@@ -107,4 +107,3 @@ class _$PatchedNotificationPreferenceUpdateRequestSerializer implements Primitiv
     return result.build();
   }
 }
-

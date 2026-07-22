@@ -22,13 +22,13 @@ class LedgerApi {
   const LedgerApi(this._dio, this._serializers);
 
   /// ledgerList
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cursor] - The pagination cursor value.
-  /// * [month] 
-  /// * [year] 
+  /// * [month]
+  /// * [year]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -38,7 +38,7 @@ class LedgerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaginatedLedgerEntryListList] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaginatedLedgerEntryListList>> ledgerList({ 
+  Future<Response<PaginatedLedgerEntryListList>> ledgerList({
     int? xLamToOccupancy,
     String? cursor,
     int? month,
@@ -118,10 +118,10 @@ class LedgerApi {
   }
 
   /// ledgerRetrieve
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -132,7 +132,7 @@ class LedgerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [LedgerEntryDetail] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<LedgerEntryDetail>> ledgerRetrieve({ 
+  Future<Response<LedgerEntryDetail>> ledgerRetrieve({
     required int id,
     int? xLamToOccupancy,
     CancelToken? cancelToken,

@@ -2,7 +2,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 
-from .models import PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
+from .models import FaceEnrollment, PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
 from .photos import queue_photo_deletion
 
 
@@ -27,11 +27,14 @@ def _drop_photo(enrollment):
 
 def approve_face(enrollment, membership):
     _assert_manages(membership, enrollment.occupancy.unit.building_id)
-    if enrollment.status != ReviewStatus.PENDING:
-        raise ReviewNotPossible("Only a pending enrolment can be approved.")
-    if not PendingEnrollmentPhoto.objects.filter(enrollment=enrollment).exists():
-        raise ReviewNotPossible("The review photo has expired; the resident must resubmit.")
     with transaction.atomic():
+        enrollment = FaceEnrollment.objects.select_for_update().get(pk=enrollment.pk)
+        if enrollment.status != ReviewStatus.PENDING:
+            raise ReviewNotPossible("Only a pending enrolment can be approved.")
+        if enrollment.embedding is None:
+            raise ReviewNotPossible("The face embedding is missing; the resident must resubmit.")
+        if not PendingEnrollmentPhoto.objects.select_for_update().filter(enrollment=enrollment).exists():
+            raise ReviewNotPossible("The review photo has expired; the resident must resubmit.")
         enrollment.status = ReviewStatus.APPROVED
         enrollment.reviewed_by = membership.user
         enrollment.reviewed_at = timezone.now()

@@ -9,9 +9,9 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**authLoginCreate**](AuthApi.md#authlogincreate) | **POST** /api/v1/auth/login | 
-[**authLogoutAllCreate**](AuthApi.md#authlogoutallcreate) | **POST** /api/v1/auth/logout-all | 
-[**authLogoutCreate**](AuthApi.md#authlogoutcreate) | **POST** /api/v1/auth/logout | 
+[**authLoginCreate**](AuthApi.md#authlogincreate) | **POST** /api/v1/auth/login |
+[**authLogoutAllCreate**](AuthApi.md#authlogoutallcreate) | **POST** /api/v1/auth/logout-all |
+[**authLogoutCreate**](AuthApi.md#authlogoutcreate) | **POST** /api/v1/auth/logout |
 
 
 # **authLoginCreate**
@@ -24,7 +24,7 @@ Method | HTTP request | Description
 import 'package:lamto_api/api.dart';
 
 final api = LamtoApi().getAuthApi();
-final LoginRequest loginRequest = ; // LoginRequest | 
+final LoginRequest loginRequest = ; // LoginRequest |
 
 try {
     final response = api.authLoginCreate(loginRequest);
@@ -38,7 +38,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **loginRequest** | [**LoginRequest**](LoginRequest.md)|  | 
+ **loginRequest** | [**LoginRequest**](LoginRequest.md)|  |
 
 ### Return type
 
@@ -112,7 +112,7 @@ import 'package:lamto_api/api.dart';
 
 final api = LamtoApi().getAuthApi();
 final String xInstallId = xInstallId_example; // String | Stable per-install client id. When present on logout, deactivates that install's FCM Device so push stops for the install. Also accepted as JSON body field install_id.
-final LogoutInstallIdRequest logoutInstallIdRequest = ; // LogoutInstallIdRequest | 
+final LogoutInstallIdRequest logoutInstallIdRequest = ; // LogoutInstallIdRequest |
 
 try {
     api.authLogoutCreate(xInstallId, logoutInstallIdRequest);
@@ -125,8 +125,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xInstallId** | **String**| Stable per-install client id. When present on logout, deactivates that install's FCM Device so push stops for the install. Also accepted as JSON body field install_id. | [optional] 
- **logoutInstallIdRequest** | [**LogoutInstallIdRequest**](LogoutInstallIdRequest.md)|  | [optional] 
+ **xInstallId** | **String**| Stable per-install client id. When present on logout, deactivates that install's FCM Device so push stops for the install. Also accepted as JSON body field install_id. | [optional]
+ **logoutInstallIdRequest** | [**LogoutInstallIdRequest**](LogoutInstallIdRequest.md)|  | [optional]
 
 ### Return type
 
@@ -142,4 +142,3 @@ void (empty response body)
  - **Accept**: application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

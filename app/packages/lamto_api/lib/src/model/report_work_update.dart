@@ -13,11 +13,11 @@ part 'report_work_update.g.dart';
 /// ReportWorkUpdate
 ///
 /// Properties:
-/// * [id] 
-/// * [cause] 
-/// * [result] 
-/// * [createdAt] 
-/// * [photos] 
+/// * [id]
+/// * [cause]
+/// * [result]
+/// * [createdAt]
+/// * [photos]
 @BuiltValue()
 abstract class ReportWorkUpdate implements Built<ReportWorkUpdate, ReportWorkUpdateBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -169,4 +169,3 @@ class _$ReportWorkUpdateSerializer implements PrimitiveSerializer<ReportWorkUpda
     return result.build();
   }
 }
-

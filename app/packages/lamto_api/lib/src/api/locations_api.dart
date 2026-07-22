@@ -21,7 +21,7 @@ class LocationsApi {
   const LocationsApi(this._dio, this._serializers);
 
   /// locationsRetrieve
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
@@ -34,7 +34,7 @@ class LocationsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BuiltList<Location>] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BuiltList<Location>>> locationsRetrieve({ 
+  Future<Response<BuiltList<Location>>> locationsRetrieve({
     int? xLamToOccupancy,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

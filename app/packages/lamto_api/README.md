@@ -48,7 +48,7 @@ import 'package:lamto_api/lamto_api.dart';
 
 
 final api = LamtoApi().getAuthApi();
-final LoginRequest loginRequest = ; // LoginRequest | 
+final LoginRequest loginRequest = ; // LoginRequest |
 
 try {
     final response = await api.authLoginCreate(loginRequest);
@@ -65,37 +65,38 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
-[*AuthApi*](doc/AuthApi.md) | [**authLoginCreate**](doc/AuthApi.md#authlogincreate) | **POST** /api/v1/auth/login | 
-[*AuthApi*](doc/AuthApi.md) | [**authLogoutAllCreate**](doc/AuthApi.md#authlogoutallcreate) | **POST** /api/v1/auth/logout-all | 
-[*AuthApi*](doc/AuthApi.md) | [**authLogoutCreate**](doc/AuthApi.md#authlogoutcreate) | **POST** /api/v1/auth/logout | 
-[*CasesApi*](doc/CasesApi.md) | [**casesRatingCreate**](doc/CasesApi.md#casesratingcreate) | **POST** /api/v1/cases/{id}/rating | 
-[*DevicesApi*](doc/DevicesApi.md) | [**devicesCreate**](doc/DevicesApi.md#devicescreate) | **POST** /api/v1/devices | 
-[*DevicesApi*](doc/DevicesApi.md) | [**devicesDestroy**](doc/DevicesApi.md#devicesdestroy) | **DELETE** /api/v1/devices/{install_id} | 
-[*DocumentsApi*](doc/DocumentsApi.md) | [**documentsRetrieve**](doc/DocumentsApi.md#documentsretrieve) | **GET** /api/v1/documents/{token} | 
-[*FundApi*](doc/FundApi.md) | [**fundSeriesRetrieve**](doc/FundApi.md#fundseriesretrieve) | **GET** /api/v1/fund/series | 
-[*FundApi*](doc/FundApi.md) | [**fundSummaryRetrieve**](doc/FundApi.md#fundsummaryretrieve) | **GET** /api/v1/fund/summary | 
-[*GateApi*](doc/GateApi.md) | [**gateFaceCreate**](doc/GateApi.md#gatefacecreate) | **POST** /api/v1/gate/face | 
-[*GateApi*](doc/GateApi.md) | [**gateFaceDestroy**](doc/GateApi.md#gatefacedestroy) | **DELETE** /api/v1/gate/face | 
-[*GateApi*](doc/GateApi.md) | [**gatePlatesCreate**](doc/GateApi.md#gateplatescreate) | **POST** /api/v1/gate/plates | 
-[*GateApi*](doc/GateApi.md) | [**gatePlatesDestroy**](doc/GateApi.md#gateplatesdestroy) | **DELETE** /api/v1/gate/plates/{id} | 
-[*GateApi*](doc/GateApi.md) | [**gateRecognizeFaceCreate**](doc/GateApi.md#gaterecognizefacecreate) | **POST** /api/v1/gate/recognize/face | 
-[*GateApi*](doc/GateApi.md) | [**gateRecognizePlateCreate**](doc/GateApi.md#gaterecognizeplatecreate) | **POST** /api/v1/gate/recognize/plate | 
-[*GateApi*](doc/GateApi.md) | [**gateRegistrationsRetrieve**](doc/GateApi.md#gateregistrationsretrieve) | **GET** /api/v1/gate/registrations | 
-[*LedgerApi*](doc/LedgerApi.md) | [**ledgerList**](doc/LedgerApi.md#ledgerlist) | **GET** /api/v1/ledger | 
-[*LedgerApi*](doc/LedgerApi.md) | [**ledgerRetrieve**](doc/LedgerApi.md#ledgerretrieve) | **GET** /api/v1/ledger/{id} | 
-[*LocationsApi*](doc/LocationsApi.md) | [**locationsRetrieve**](doc/LocationsApi.md#locationsretrieve) | **GET** /api/v1/locations | 
-[*MeApi*](doc/MeApi.md) | [**meNotificationPreferencesPartialUpdate**](doc/MeApi.md#menotificationpreferencespartialupdate) | **PATCH** /api/v1/me/notification-preferences | 
-[*MeApi*](doc/MeApi.md) | [**meRetrieve**](doc/MeApi.md#meretrieve) | **GET** /api/v1/me | 
-[*NotificationsApi*](doc/NotificationsApi.md) | [**notificationsList**](doc/NotificationsApi.md#notificationslist) | **GET** /api/v1/notifications | 
-[*NotificationsApi*](doc/NotificationsApi.md) | [**notificationsReadCreate**](doc/NotificationsApi.md#notificationsreadcreate) | **POST** /api/v1/notifications/{id}/read | 
-[*ProposalsApi*](doc/ProposalsApi.md) | [**proposalDetail**](doc/ProposalsApi.md#proposaldetail) | **GET** /api/v1/proposals/{id} | 
-[*ProposalsApi*](doc/ProposalsApi.md) | [**proposalList**](doc/ProposalsApi.md#proposallist) | **GET** /api/v1/proposals | 
-[*ProposalsApi*](doc/ProposalsApi.md) | [**proposalsRatingCreate**](doc/ProposalsApi.md#proposalsratingcreate) | **POST** /api/v1/proposals/{id}/rating | 
-[*ReportsApi*](doc/ReportsApi.md) | [**reportsCreate**](doc/ReportsApi.md#reportscreate) | **POST** /api/v1/reports | 
-[*ReportsApi*](doc/ReportsApi.md) | [**reportsInfoReplyCreate**](doc/ReportsApi.md#reportsinforeplycreate) | **POST** /api/v1/reports/{id}/info-reply | 
-[*ReportsApi*](doc/ReportsApi.md) | [**reportsList**](doc/ReportsApi.md#reportslist) | **GET** /api/v1/reports | 
-[*ReportsApi*](doc/ReportsApi.md) | [**reportsPhotosCreate**](doc/ReportsApi.md#reportsphotoscreate) | **POST** /api/v1/reports/{id}/photos | 
-[*ReportsApi*](doc/ReportsApi.md) | [**reportsRetrieve**](doc/ReportsApi.md#reportsretrieve) | **GET** /api/v1/reports/{id} | 
+[*AuthApi*](doc/AuthApi.md) | [**authLoginCreate**](doc/AuthApi.md#authlogincreate) | **POST** /api/v1/auth/login |
+[*AuthApi*](doc/AuthApi.md) | [**authLogoutAllCreate**](doc/AuthApi.md#authlogoutallcreate) | **POST** /api/v1/auth/logout-all |
+[*AuthApi*](doc/AuthApi.md) | [**authLogoutCreate**](doc/AuthApi.md#authlogoutcreate) | **POST** /api/v1/auth/logout |
+[*CasesApi*](doc/CasesApi.md) | [**casesRatingCreate**](doc/CasesApi.md#casesratingcreate) | **POST** /api/v1/cases/{id}/rating |
+[*DevicesApi*](doc/DevicesApi.md) | [**devicesCreate**](doc/DevicesApi.md#devicescreate) | **POST** /api/v1/devices |
+[*DevicesApi*](doc/DevicesApi.md) | [**devicesDestroy**](doc/DevicesApi.md#devicesdestroy) | **DELETE** /api/v1/devices/{install_id} |
+[*DocumentsApi*](doc/DocumentsApi.md) | [**documentsRetrieve**](doc/DocumentsApi.md#documentsretrieve) | **GET** /api/v1/documents/{token} |
+[*FundApi*](doc/FundApi.md) | [**fundSeriesRetrieve**](doc/FundApi.md#fundseriesretrieve) | **GET** /api/v1/fund/series |
+[*FundApi*](doc/FundApi.md) | [**fundSummaryRetrieve**](doc/FundApi.md#fundsummaryretrieve) | **GET** /api/v1/fund/summary |
+[*GateApi*](doc/GateApi.md) | [**gateDeviceRetrieve**](doc/GateApi.md#gatedeviceretrieve) | **GET** /api/v1/gate/device |
+[*GateApi*](doc/GateApi.md) | [**gateFaceCreate**](doc/GateApi.md#gatefacecreate) | **POST** /api/v1/gate/face |
+[*GateApi*](doc/GateApi.md) | [**gateFaceDestroy**](doc/GateApi.md#gatefacedestroy) | **DELETE** /api/v1/gate/face |
+[*GateApi*](doc/GateApi.md) | [**gatePlatesCreate**](doc/GateApi.md#gateplatescreate) | **POST** /api/v1/gate/plates |
+[*GateApi*](doc/GateApi.md) | [**gatePlatesDestroy**](doc/GateApi.md#gateplatesdestroy) | **DELETE** /api/v1/gate/plates/{id} |
+[*GateApi*](doc/GateApi.md) | [**gateRecognizeFaceCreate**](doc/GateApi.md#gaterecognizefacecreate) | **POST** /api/v1/gate/recognize/face |
+[*GateApi*](doc/GateApi.md) | [**gateRecognizePlateCreate**](doc/GateApi.md#gaterecognizeplatecreate) | **POST** /api/v1/gate/recognize/plate |
+[*GateApi*](doc/GateApi.md) | [**gateRegistrationsRetrieve**](doc/GateApi.md#gateregistrationsretrieve) | **GET** /api/v1/gate/registrations |
+[*LedgerApi*](doc/LedgerApi.md) | [**ledgerList**](doc/LedgerApi.md#ledgerlist) | **GET** /api/v1/ledger |
+[*LedgerApi*](doc/LedgerApi.md) | [**ledgerRetrieve**](doc/LedgerApi.md#ledgerretrieve) | **GET** /api/v1/ledger/{id} |
+[*LocationsApi*](doc/LocationsApi.md) | [**locationsRetrieve**](doc/LocationsApi.md#locationsretrieve) | **GET** /api/v1/locations |
+[*MeApi*](doc/MeApi.md) | [**meNotificationPreferencesPartialUpdate**](doc/MeApi.md#menotificationpreferencespartialupdate) | **PATCH** /api/v1/me/notification-preferences |
+[*MeApi*](doc/MeApi.md) | [**meRetrieve**](doc/MeApi.md#meretrieve) | **GET** /api/v1/me |
+[*NotificationsApi*](doc/NotificationsApi.md) | [**notificationsList**](doc/NotificationsApi.md#notificationslist) | **GET** /api/v1/notifications |
+[*NotificationsApi*](doc/NotificationsApi.md) | [**notificationsReadCreate**](doc/NotificationsApi.md#notificationsreadcreate) | **POST** /api/v1/notifications/{id}/read |
+[*ProposalsApi*](doc/ProposalsApi.md) | [**proposalDetail**](doc/ProposalsApi.md#proposaldetail) | **GET** /api/v1/proposals/{id} |
+[*ProposalsApi*](doc/ProposalsApi.md) | [**proposalList**](doc/ProposalsApi.md#proposallist) | **GET** /api/v1/proposals |
+[*ProposalsApi*](doc/ProposalsApi.md) | [**proposalsRatingCreate**](doc/ProposalsApi.md#proposalsratingcreate) | **POST** /api/v1/proposals/{id}/rating |
+[*ReportsApi*](doc/ReportsApi.md) | [**reportsCreate**](doc/ReportsApi.md#reportscreate) | **POST** /api/v1/reports |
+[*ReportsApi*](doc/ReportsApi.md) | [**reportsInfoReplyCreate**](doc/ReportsApi.md#reportsinforeplycreate) | **POST** /api/v1/reports/{id}/info-reply |
+[*ReportsApi*](doc/ReportsApi.md) | [**reportsList**](doc/ReportsApi.md#reportslist) | **GET** /api/v1/reports |
+[*ReportsApi*](doc/ReportsApi.md) | [**reportsPhotosCreate**](doc/ReportsApi.md#reportsphotoscreate) | **POST** /api/v1/reports/{id}/photos |
+[*ReportsApi*](doc/ReportsApi.md) | [**reportsRetrieve**](doc/ReportsApi.md#reportsretrieve) | **GET** /api/v1/reports/{id} |
 
 
 ## Documentation For Models
@@ -104,10 +105,12 @@ Class | Method | HTTP request | Description
  - [CaseRatingResult](doc/CaseRatingResult.md)
  - [Device](doc/Device.md)
  - [DeviceRegisterRequest](doc/DeviceRegisterRequest.md)
+ - [DirectionEnum](doc/DirectionEnum.md)
  - [FaceEnrollment](doc/FaceEnrollment.md)
  - [FundSeries](doc/FundSeries.md)
  - [FundSeriesPoint](doc/FundSeriesPoint.md)
  - [FundSummary](doc/FundSummary.md)
+ - [GateDevice](doc/GateDevice.md)
  - [GateRegistrations](doc/GateRegistrations.md)
  - [InfoReplyRequest](doc/InfoReplyRequest.md)
  - [InfoReplyResult](doc/InfoReplyResult.md)
@@ -172,6 +175,3 @@ Authentication schemes defined for the API:
 
 
 ## Author
-
-
-

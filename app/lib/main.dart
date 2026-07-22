@@ -27,10 +27,6 @@ Future<void> main() async {
     MaterialApp(
       home: GateReaderScreen(
         camera: CameraReader(controller),
-        direction: const String.fromEnvironment(
-          'GATE_DIRECTION',
-          defaultValue: 'ENTRY',
-        ),
         repositoryFor: (credential) => ReaderRepository(dio, credential),
       ),
     ),

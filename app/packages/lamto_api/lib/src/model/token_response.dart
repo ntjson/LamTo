@@ -11,8 +11,8 @@ part 'token_response.g.dart';
 /// TokenResponse
 ///
 /// Properties:
-/// * [token] 
-/// * [expiry] 
+/// * [token]
+/// * [expiry]
 @BuiltValue()
 abstract class TokenResponse implements Built<TokenResponse, TokenResponseBuilder> {
   @BuiltValueField(wireName: r'token')
@@ -119,4 +119,3 @@ class _$TokenResponseSerializer implements PrimitiveSerializer<TokenResponse> {
     return result.build();
   }
 }
-

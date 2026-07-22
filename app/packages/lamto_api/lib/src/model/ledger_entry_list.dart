@@ -11,12 +11,12 @@ part 'ledger_entry_list.g.dart';
 /// LedgerEntryList
 ///
 /// Properties:
-/// * [id] 
-/// * [contractorName] 
-/// * [actualCostVnd] 
-/// * [publishedAt] 
-/// * [integrityStatus] 
-/// * [evidenceLevel] 
+/// * [id]
+/// * [contractorName]
+/// * [actualCostVnd]
+/// * [publishedAt]
+/// * [integrityStatus]
+/// * [evidenceLevel]
 @BuiltValue()
 abstract class LedgerEntryList implements Built<LedgerEntryList, LedgerEntryListBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -183,4 +183,3 @@ class _$LedgerEntryListSerializer implements PrimitiveSerializer<LedgerEntryList
     return result.build();
   }
 }
-

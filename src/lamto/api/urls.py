@@ -46,6 +46,7 @@ urlpatterns = [
     path("gate/plates", gate_views.GatePlateListCreateView.as_view(), name="gate-plates"),
     path("gate/plates/<int:pk>", gate_views.GatePlateDetailView.as_view(), name="gate-plate-detail"),
     path("gate/face", gate_views.GateFaceView.as_view(), name="gate-face"),
+    path("gate/device", gate_views.GateDeviceView.as_view(), name="gate-device"),
     path("gate/recognize/face", gate_views.GateRecognizeFaceView.as_view(), name="gate-recognize-face"),
     path("gate/recognize/plate", gate_views.GateRecognizePlateView.as_view(), name="gate-recognize-plate"),
 ]

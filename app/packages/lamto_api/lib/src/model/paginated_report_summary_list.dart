@@ -13,9 +13,9 @@ part 'paginated_report_summary_list.g.dart';
 /// PaginatedReportSummaryList
 ///
 /// Properties:
-/// * [next] 
-/// * [previous] 
-/// * [results] 
+/// * [next]
+/// * [previous]
+/// * [results]
 @BuiltValue()
 abstract class PaginatedReportSummaryList implements Built<PaginatedReportSummaryList, PaginatedReportSummaryListBuilder> {
   @BuiltValueField(wireName: r'next')
@@ -143,4 +143,3 @@ class _$PaginatedReportSummaryListSerializer implements PrimitiveSerializer<Pagi
     return result.build();
   }
 }
-

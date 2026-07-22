@@ -11,10 +11,10 @@ part 'proposal_supporting_document.g.dart';
 /// ProposalSupportingDocument
 ///
 /// Properties:
-/// * [id] 
-/// * [filename] 
-/// * [sha256] 
-/// * [downloadUrl] 
+/// * [id]
+/// * [filename]
+/// * [sha256]
+/// * [downloadUrl]
 @BuiltValue()
 abstract class ProposalSupportingDocument implements Built<ProposalSupportingDocument, ProposalSupportingDocumentBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -151,4 +151,3 @@ class _$ProposalSupportingDocumentSerializer implements PrimitiveSerializer<Prop
     return result.build();
   }
 }
-

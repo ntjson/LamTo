@@ -12,8 +12,8 @@ part 'info_reply_result.g.dart';
 /// InfoReplyResult
 ///
 /// Properties:
-/// * [reportId] 
-/// * [status] 
+/// * [reportId]
+/// * [status]
 @BuiltValue()
 abstract class InfoReplyResult implements Built<InfoReplyResult, InfoReplyResultBuilder> {
   @BuiltValueField(wireName: r'report_id')
@@ -121,4 +121,3 @@ class _$InfoReplyResultSerializer implements PrimitiveSerializer<InfoReplyResult
     return result.build();
   }
 }
-

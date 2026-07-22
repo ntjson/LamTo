@@ -12,7 +12,7 @@ part 'login_request.g.dart';
 ///
 /// Properties:
 /// * [identifier] - Email or Vietnamese phone number.
-/// * [password] 
+/// * [password]
 @BuiltValue()
 abstract class LoginRequest implements Built<LoginRequest, LoginRequestBuilder> {
   /// Email or Vietnamese phone number.
@@ -120,4 +120,3 @@ class _$LoginRequestSerializer implements PrimitiveSerializer<LoginRequest> {
     return result.build();
   }
 }
-

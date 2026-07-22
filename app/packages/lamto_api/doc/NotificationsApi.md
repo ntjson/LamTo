@@ -9,8 +9,8 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**notificationsList**](NotificationsApi.md#notificationslist) | **GET** /api/v1/notifications | 
-[**notificationsReadCreate**](NotificationsApi.md#notificationsreadcreate) | **POST** /api/v1/notifications/{id}/read | 
+[**notificationsList**](NotificationsApi.md#notificationslist) | **GET** /api/v1/notifications |
+[**notificationsReadCreate**](NotificationsApi.md#notificationsreadcreate) | **POST** /api/v1/notifications/{id}/read |
 
 
 # **notificationsList**
@@ -42,8 +42,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
- **cursor** | **String**| The pagination cursor value. | [optional] 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **cursor** | **String**| The pagination cursor value. | [optional]
 
 ### Return type
 
@@ -74,7 +74,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getNotificationsApi();
-final int id = 56; // int | 
+final int id = 56; // int |
 
 try {
     api.notificationsReadCreate(id);
@@ -87,7 +87,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  | 
+ **id** | **int**|  |
 
 ### Return type
 
@@ -103,4 +103,3 @@ void (empty response body)
  - **Accept**: application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

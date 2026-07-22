@@ -27,10 +27,12 @@ export 'package:lamto_api/src/model/case_rating_request.dart';
 export 'package:lamto_api/src/model/case_rating_result.dart';
 export 'package:lamto_api/src/model/device.dart';
 export 'package:lamto_api/src/model/device_register_request.dart';
+export 'package:lamto_api/src/model/direction_enum.dart';
 export 'package:lamto_api/src/model/face_enrollment.dart';
 export 'package:lamto_api/src/model/fund_series.dart';
 export 'package:lamto_api/src/model/fund_series_point.dart';
 export 'package:lamto_api/src/model/fund_summary.dart';
+export 'package:lamto_api/src/model/gate_device.dart';
 export 'package:lamto_api/src/model/gate_registrations.dart';
 export 'package:lamto_api/src/model/info_reply_request.dart';
 export 'package:lamto_api/src/model/info_reply_result.dart';
@@ -75,4 +77,3 @@ export 'package:lamto_api/src/model/status_enum.dart';
 export 'package:lamto_api/src/model/token_response.dart';
 export 'package:lamto_api/src/model/vehicle_plate.dart';
 export 'package:lamto_api/src/model/verification.dart';
-

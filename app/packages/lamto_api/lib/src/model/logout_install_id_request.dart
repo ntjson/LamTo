@@ -106,4 +106,3 @@ class _$LogoutInstallIdRequestSerializer implements PrimitiveSerializer<LogoutIn
     return result.build();
   }
 }
-

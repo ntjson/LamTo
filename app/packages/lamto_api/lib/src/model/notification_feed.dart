@@ -11,13 +11,13 @@ part 'notification_feed.g.dart';
 /// NotificationFeed
 ///
 /// Properties:
-/// * [id] 
-/// * [eventCode] 
+/// * [id]
+/// * [eventCode]
 /// * [eventKey] - Deep-link reference '{code}:{entity}:{id}' (spec 6.3/7.4). Entity ids are resident-visible resources the API re-authorizes on fetch. Authorization-neutral and non-sensitive: codes/entity/ids only — no PII, bodies, or tokens.
-/// * [subject] 
-/// * [body] 
-/// * [createdAt] 
-/// * [readAt] 
+/// * [subject]
+/// * [body]
+/// * [createdAt]
+/// * [readAt]
 @BuiltValue()
 abstract class NotificationFeed implements Built<NotificationFeed, NotificationFeedBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -201,4 +201,3 @@ class _$NotificationFeedSerializer implements PrimitiveSerializer<NotificationFe
     return result.build();
   }
 }
-

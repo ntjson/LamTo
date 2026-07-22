@@ -14,11 +14,11 @@ part 'me.g.dart';
 /// Me
 ///
 /// Properties:
-/// * [displayName] 
-/// * [email] 
-/// * [phone] 
-/// * [occupancies] 
-/// * [notificationPreferences] 
+/// * [displayName]
+/// * [email]
+/// * [phone]
+/// * [occupancies]
+/// * [notificationPreferences]
 @BuiltValue()
 abstract class Me implements Built<Me, MeBuilder> {
   @BuiltValueField(wireName: r'display_name')
@@ -171,4 +171,3 @@ class _$MeSerializer implements PrimitiveSerializer<Me> {
     return result.build();
   }
 }
-

@@ -9,8 +9,8 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**meNotificationPreferencesPartialUpdate**](MeApi.md#menotificationpreferencespartialupdate) | **PATCH** /api/v1/me/notification-preferences | 
-[**meRetrieve**](MeApi.md#meretrieve) | **GET** /api/v1/me | 
+[**meNotificationPreferencesPartialUpdate**](MeApi.md#menotificationpreferencespartialupdate) | **PATCH** /api/v1/me/notification-preferences |
+[**meRetrieve**](MeApi.md#meretrieve) | **GET** /api/v1/me |
 
 
 # **meNotificationPreferencesPartialUpdate**
@@ -29,7 +29,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getMeApi();
-final PatchedNotificationPreferenceUpdateRequest patchedNotificationPreferenceUpdateRequest = ; // PatchedNotificationPreferenceUpdateRequest | 
+final PatchedNotificationPreferenceUpdateRequest patchedNotificationPreferenceUpdateRequest = ; // PatchedNotificationPreferenceUpdateRequest |
 
 try {
     final response = api.meNotificationPreferencesPartialUpdate(patchedNotificationPreferenceUpdateRequest);
@@ -43,7 +43,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **patchedNotificationPreferenceUpdateRequest** | [**PatchedNotificationPreferenceUpdateRequest**](PatchedNotificationPreferenceUpdateRequest.md)|  | [optional] 
+ **patchedNotificationPreferenceUpdateRequest** | [**PatchedNotificationPreferenceUpdateRequest**](PatchedNotificationPreferenceUpdateRequest.md)|  | [optional]
 
 ### Return type
 
@@ -100,4 +100,3 @@ This endpoint does not need any parameter.
  - **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

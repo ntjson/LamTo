@@ -13,9 +13,9 @@ part 'paginated_proposal_list.g.dart';
 /// PaginatedProposalList
 ///
 /// Properties:
-/// * [next] 
-/// * [previous] 
-/// * [results] 
+/// * [next]
+/// * [previous]
+/// * [results]
 @BuiltValue()
 abstract class PaginatedProposalList implements Built<PaginatedProposalList, PaginatedProposalListBuilder> {
   @BuiltValueField(wireName: r'next')
@@ -143,4 +143,3 @@ class _$PaginatedProposalListSerializer implements PrimitiveSerializer<Paginated
     return result.build();
   }
 }
-

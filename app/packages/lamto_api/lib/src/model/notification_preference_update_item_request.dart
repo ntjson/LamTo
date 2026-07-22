@@ -11,9 +11,9 @@ part 'notification_preference_update_item_request.g.dart';
 /// One preference row for PATCH /me/notification-preferences.
 ///
 /// Properties:
-/// * [eventCode] 
-/// * [emailEnabled] 
-/// * [pushEnabled] 
+/// * [eventCode]
+/// * [emailEnabled]
+/// * [pushEnabled]
 @BuiltValue()
 abstract class NotificationPreferenceUpdateItemRequest implements Built<NotificationPreferenceUpdateItemRequest, NotificationPreferenceUpdateItemRequestBuilder> {
   @BuiltValueField(wireName: r'event_code')
@@ -139,4 +139,3 @@ class _$NotificationPreferenceUpdateItemRequestSerializer implements PrimitiveSe
     return result.build();
   }
 }
-

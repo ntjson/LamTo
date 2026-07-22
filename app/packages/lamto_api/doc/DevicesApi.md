@@ -9,8 +9,8 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**devicesCreate**](DevicesApi.md#devicescreate) | **POST** /api/v1/devices | 
-[**devicesDestroy**](DevicesApi.md#devicesdestroy) | **DELETE** /api/v1/devices/{install_id} | 
+[**devicesCreate**](DevicesApi.md#devicescreate) | **POST** /api/v1/devices |
+[**devicesDestroy**](DevicesApi.md#devicesdestroy) | **DELETE** /api/v1/devices/{install_id} |
 
 
 # **devicesCreate**
@@ -27,7 +27,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getDevicesApi();
-final DeviceRegisterRequest deviceRegisterRequest = ; // DeviceRegisterRequest | 
+final DeviceRegisterRequest deviceRegisterRequest = ; // DeviceRegisterRequest |
 
 try {
     final response = api.devicesCreate(deviceRegisterRequest);
@@ -41,7 +41,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **deviceRegisterRequest** | [**DeviceRegisterRequest**](DeviceRegisterRequest.md)|  | 
+ **deviceRegisterRequest** | [**DeviceRegisterRequest**](DeviceRegisterRequest.md)|  |
 
 ### Return type
 
@@ -72,7 +72,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getDevicesApi();
-final String installId = installId_example; // String | 
+final String installId = installId_example; // String |
 
 try {
     api.devicesDestroy(installId);
@@ -85,7 +85,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **installId** | **String**|  | 
+ **installId** | **String**|  |
 
 ### Return type
 
@@ -101,4 +101,3 @@ void (empty response body)
  - **Accept**: application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

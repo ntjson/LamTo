@@ -13,9 +13,9 @@ part 'device_register_request.g.dart';
 ///
 /// Properties:
 /// * [installId] - Stable per-install client UUID (spec 7.2).
-/// * [fcmToken] 
-/// * [platform] 
-/// * [appVersion] 
+/// * [fcmToken]
+/// * [platform]
+/// * [appVersion]
 @BuiltValue()
 abstract class DeviceRegisterRequest implements Built<DeviceRegisterRequest, DeviceRegisterRequestBuilder> {
   /// Stable per-install client UUID (spec 7.2).
@@ -157,4 +157,3 @@ class _$DeviceRegisterRequestSerializer implements PrimitiveSerializer<DeviceReg
     return result.build();
   }
 }
-

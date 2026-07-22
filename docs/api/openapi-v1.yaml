@@ -370,6 +370,20 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Occupancy selection required (code=occupancy_selection_required);
             send X-LamTo-Occupancy, or gate input was unusable.
+  /api/v1/gate/device:
+    get:
+      operationId: gate_device_retrieve
+      tags:
+      - gate
+      security:
+      - GateDevice: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateDevice'
+          description: ''
   /api/v1/gate/face:
     post:
       operationId: gate_face_create
@@ -1360,6 +1374,14 @@ components:
       - fcm_token
       - install_id
       - platform
+    DirectionEnum:
+      enum:
+      - ENTRY
+      - EXIT
+      type: string
+      description: |-
+        * `ENTRY` - ENTRY
+        * `EXIT` - EXIT
     FaceEnrollment:
       type: object
       properties:
@@ -1436,6 +1458,16 @@ components:
       - period_days
       - period_inflows_vnd
       - period_outflows_vnd
+    GateDevice:
+      type: object
+      properties:
+        label:
+          type: string
+        direction:
+          $ref: '#/components/schemas/DirectionEnum'
+      required:
+      - direction
+      - label
     GateRegistrations:
       type: object
       properties:

@@ -321,4 +321,3 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
     return result.build();
   }
 }
-

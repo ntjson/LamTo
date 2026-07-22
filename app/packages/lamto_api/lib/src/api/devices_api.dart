@@ -22,10 +22,10 @@ class DevicesApi {
   const DevicesApi(this._dio, this._serializers);
 
   /// devicesCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [deviceRegisterRequest] 
+  /// * [deviceRegisterRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -35,7 +35,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Device] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Device>> devicesCreate({ 
+  Future<Response<Device>> devicesCreate({
     required DeviceRegisterRequest deviceRegisterRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -124,10 +124,10 @@ class DevicesApi {
   }
 
   /// devicesDestroy
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [installId] 
+  /// * [installId]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -137,7 +137,7 @@ class DevicesApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> devicesDestroy({ 
+  Future<Response<void>> devicesDestroy({
     required String installId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

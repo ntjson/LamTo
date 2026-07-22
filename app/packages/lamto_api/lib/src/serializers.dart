@@ -18,10 +18,12 @@ import 'package:lamto_api/src/model/case_rating_request.dart';
 import 'package:lamto_api/src/model/case_rating_result.dart';
 import 'package:lamto_api/src/model/device.dart';
 import 'package:lamto_api/src/model/device_register_request.dart';
+import 'package:lamto_api/src/model/direction_enum.dart';
 import 'package:lamto_api/src/model/face_enrollment.dart';
 import 'package:lamto_api/src/model/fund_series.dart';
 import 'package:lamto_api/src/model/fund_series_point.dart';
 import 'package:lamto_api/src/model/fund_summary.dart';
+import 'package:lamto_api/src/model/gate_device.dart';
 import 'package:lamto_api/src/model/gate_registrations.dart';
 import 'package:lamto_api/src/model/info_reply_request.dart';
 import 'package:lamto_api/src/model/info_reply_result.dart';
@@ -74,10 +76,12 @@ part 'serializers.g.dart';
   CaseRatingResult,
   Device,
   DeviceRegisterRequest,
+  DirectionEnum,
   FaceEnrollment,
   FundSeries,
   FundSeriesPoint,
   FundSummary,
+  GateDevice,
   GateRegistrations,
   InfoReplyRequest,
   InfoReplyResult,

@@ -26,7 +26,7 @@ class MeApi {
   /// PATCH resident email/push preferences per event code (Flutter Account).
   ///
   /// Parameters:
-  /// * [patchedNotificationPreferenceUpdateRequest] 
+  /// * [patchedNotificationPreferenceUpdateRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -36,7 +36,7 @@ class MeApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BuiltList<NotificationPreference>] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BuiltList<NotificationPreference>>> meNotificationPreferencesPartialUpdate({ 
+  Future<Response<BuiltList<NotificationPreference>>> meNotificationPreferencesPartialUpdate({
     PatchedNotificationPreferenceUpdateRequest? patchedNotificationPreferenceUpdateRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -125,7 +125,7 @@ class MeApi {
   }
 
   /// meRetrieve
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -137,7 +137,7 @@ class MeApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Me] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Me>> meRetrieve({ 
+  Future<Response<Me>> meRetrieve({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,

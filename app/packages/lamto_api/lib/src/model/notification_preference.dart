@@ -11,9 +11,9 @@ part 'notification_preference.g.dart';
 /// NotificationPreference
 ///
 /// Properties:
-/// * [eventCode] 
-/// * [emailEnabled] 
-/// * [pushEnabled] 
+/// * [eventCode]
+/// * [emailEnabled]
+/// * [pushEnabled]
 @BuiltValue()
 abstract class NotificationPreference implements Built<NotificationPreference, NotificationPreferenceBuilder> {
   @BuiltValueField(wireName: r'event_code')
@@ -135,4 +135,3 @@ class _$NotificationPreferenceSerializer implements PrimitiveSerializer<Notifica
     return result.build();
   }
 }
-

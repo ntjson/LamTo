@@ -9,7 +9,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**documentsRetrieve**](DocumentsApi.md#documentsretrieve) | **GET** /api/v1/documents/{token} | 
+[**documentsRetrieve**](DocumentsApi.md#documentsretrieve) | **GET** /api/v1/documents/{token} |
 
 
 # **documentsRetrieve**
@@ -26,7 +26,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getDocumentsApi();
-final String token = token_example; // String | 
+final String token = token_example; // String |
 
 try {
     final response = api.documentsRetrieve(token);
@@ -40,7 +40,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **token** | **String**|  | 
+ **token** | **String**|  |
 
 ### Return type
 
@@ -56,4 +56,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

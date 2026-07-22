@@ -21,7 +21,7 @@ class NotificationsApi {
   const NotificationsApi(this._dio, this._serializers);
 
   /// notificationsList
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
@@ -35,7 +35,7 @@ class NotificationsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaginatedNotificationFeedList] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaginatedNotificationFeedList>> notificationsList({ 
+  Future<Response<PaginatedNotificationFeedList>> notificationsList({
     int? xLamToOccupancy,
     String? cursor,
     CancelToken? cancelToken,
@@ -111,10 +111,10 @@ class NotificationsApi {
   }
 
   /// notificationsReadCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -124,7 +124,7 @@ class NotificationsApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> notificationsReadCreate({ 
+  Future<Response<void>> notificationsReadCreate({
     required int id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

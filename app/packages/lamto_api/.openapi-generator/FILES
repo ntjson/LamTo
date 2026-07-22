@@ -9,6 +9,7 @@ doc/CasesApi.md
 doc/Device.md
 doc/DeviceRegisterRequest.md
 doc/DevicesApi.md
+doc/DirectionEnum.md
 doc/DocumentsApi.md
 doc/FaceEnrollment.md
 doc/FundApi.md
@@ -16,6 +17,7 @@ doc/FundSeries.md
 doc/FundSeriesPoint.md
 doc/FundSummary.md
 doc/GateApi.md
+doc/GateDevice.md
 doc/GateRegistrations.md
 doc/InfoReplyRequest.md
 doc/InfoReplyResult.md
@@ -92,10 +94,12 @@ lib/src/model/case_rating_result.dart
 lib/src/model/date.dart
 lib/src/model/device.dart
 lib/src/model/device_register_request.dart
+lib/src/model/direction_enum.dart
 lib/src/model/face_enrollment.dart
 lib/src/model/fund_series.dart
 lib/src/model/fund_series_point.dart
 lib/src/model/fund_summary.dart
+lib/src/model/gate_device.dart
 lib/src/model/gate_registrations.dart
 lib/src/model/info_reply_request.dart
 lib/src/model/info_reply_result.dart
@@ -149,6 +153,7 @@ test/cases_api_test.dart
 test/device_register_request_test.dart
 test/device_test.dart
 test/devices_api_test.dart
+test/direction_enum_test.dart
 test/documents_api_test.dart
 test/face_enrollment_test.dart
 test/fund_api_test.dart
@@ -156,6 +161,7 @@ test/fund_series_point_test.dart
 test/fund_series_test.dart
 test/fund_summary_test.dart
 test/gate_api_test.dart
+test/gate_device_test.dart
 test/gate_registrations_test.dart
 test/info_reply_request_test.dart
 test/info_reply_result_test.dart

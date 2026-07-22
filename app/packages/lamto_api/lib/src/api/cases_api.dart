@@ -22,11 +22,11 @@ class CasesApi {
   const CasesApi(this._dio, this._serializers);
 
   /// casesRatingCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
-  /// * [caseRatingRequest] 
+  /// * [id]
+  /// * [caseRatingRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -36,7 +36,7 @@ class CasesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CaseRatingResult] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<CaseRatingResult>> casesRatingCreate({ 
+  Future<Response<CaseRatingResult>> casesRatingCreate({
     required int id,
     required CaseRatingRequest caseRatingRequest,
     CancelToken? cancelToken,

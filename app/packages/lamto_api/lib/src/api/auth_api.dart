@@ -22,10 +22,10 @@ class AuthApi {
   const AuthApi(this._dio, this._serializers);
 
   /// authLoginCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [loginRequest] 
+  /// * [loginRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -35,7 +35,7 @@ class AuthApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TokenResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TokenResponse>> authLoginCreate({ 
+  Future<Response<TokenResponse>> authLoginCreate({
     required LoginRequest loginRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -129,7 +129,7 @@ class AuthApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> authLogoutAllCreate({ 
+  Future<Response<void>> authLogoutAllCreate({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -169,11 +169,11 @@ class AuthApi {
   }
 
   /// authLogoutCreate
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xInstallId] - Stable per-install client id. When present on logout, deactivates that install's FCM Device so push stops for the install. Also accepted as JSON body field install_id.
-  /// * [logoutInstallIdRequest] 
+  /// * [logoutInstallIdRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -183,7 +183,7 @@ class AuthApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> authLogoutCreate({ 
+  Future<Response<void>> authLogoutCreate({
     String? xInstallId,
     LogoutInstallIdRequest? logoutInstallIdRequest,
     CancelToken? cancelToken,

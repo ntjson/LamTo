@@ -11,9 +11,9 @@ part 'proposal_rating_result.g.dart';
 /// ProposalRatingResult
 ///
 /// Properties:
-/// * [id] 
-/// * [proposalId] 
-/// * [satisfied] 
+/// * [id]
+/// * [proposalId]
+/// * [satisfied]
 @BuiltValue()
 abstract class ProposalRatingResult implements Built<ProposalRatingResult, ProposalRatingResultBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -135,4 +135,3 @@ class _$ProposalRatingResultSerializer implements PrimitiveSerializer<ProposalRa
     return result.build();
   }
 }
-

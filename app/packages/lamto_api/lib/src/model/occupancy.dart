@@ -11,9 +11,9 @@ part 'occupancy.g.dart';
 /// Occupancy
 ///
 /// Properties:
-/// * [id] 
-/// * [unitLabel] 
-/// * [buildingName] 
+/// * [id]
+/// * [unitLabel]
+/// * [buildingName]
 @BuiltValue()
 abstract class Occupancy implements Built<Occupancy, OccupancyBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -135,4 +135,3 @@ class _$OccupancySerializer implements PrimitiveSerializer<Occupancy> {
     return result.build();
   }
 }
-

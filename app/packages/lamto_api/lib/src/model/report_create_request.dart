@@ -12,8 +12,8 @@ part 'report_create_request.g.dart';
 ///
 /// Properties:
 /// * [clientRef] - Client-generated UUID, unique per user (spec 3.5).
-/// * [text] 
-/// * [isPrivate] 
+/// * [text]
+/// * [isPrivate]
 /// * [locationId] - Active BuildingLocation id in the resolved occupancy building.
 @BuiltValue()
 abstract class ReportCreateRequest implements Built<ReportCreateRequest, ReportCreateRequestBuilder> {
@@ -156,4 +156,3 @@ class _$ReportCreateRequestSerializer implements PrimitiveSerializer<ReportCreat
     return result.build();
   }
 }
-

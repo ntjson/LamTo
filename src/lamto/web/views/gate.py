@@ -26,7 +26,10 @@ def gate_face_photo(request, pk):
     photo = get_object_or_404(PendingEnrollmentPhoto, enrollment_id=pk, enrollment__occupancy__unit__building=membership.building)
     try: handle = storages["private"].open(photo.storage_key, "rb")
     except (FileNotFoundError, OSError) as error: raise Http404 from error
-    return FileResponse(handle, content_type=photo.content_type)
+    response = FileResponse(handle, content_type=photo.content_type)
+    response["Cache-Control"] = "private, no-store"
+    response["Pragma"] = "no-cache"
+    return response
 
 @require_http_methods(["POST"])
 def gate_face_decide(request, pk):
@@ -65,7 +68,12 @@ def gate_devices(request):
         require_recent_auth(request)
         action = request.POST.get("action")
         if action == "create":
-            device = GateDevice.objects.create(building=membership.building, label=request.POST.get("label", "").strip(), direction=request.POST.get("direction")); _, issued_token = issue_credential(device, membership)
+            label = request.POST.get("label", "").strip()
+            direction = request.POST.get("direction")
+            if not label or direction not in GateDevice.Direction.values:
+                messages.error(request, "Enter a reader label and select a valid direction.")
+            else:
+                device = GateDevice.objects.create(building=membership.building, label=label, direction=direction); _, issued_token = issue_credential(device, membership)
         elif action == "rotate": _, issued_token = rotate_credential(get_object_or_404(GateDevice, pk=request.POST.get("device"), building=membership.building), membership)
         elif action == "revoke": revoke_credential(get_object_or_404(GateDeviceCredential, pk=request.POST.get("credential"), device__building=membership.building), membership)
     return render(request, "web/staff/gate_devices.html", _context(request, membership, memberships, devices=GateDevice.objects.filter(building=membership.building).prefetch_related("credentials"), directions=GateDevice.Direction.choices, issued_token=issued_token))

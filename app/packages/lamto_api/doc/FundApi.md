@@ -9,8 +9,8 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**fundSeriesRetrieve**](FundApi.md#fundseriesretrieve) | **GET** /api/v1/fund/series | 
-[**fundSummaryRetrieve**](FundApi.md#fundsummaryretrieve) | **GET** /api/v1/fund/summary | 
+[**fundSeriesRetrieve**](FundApi.md#fundseriesretrieve) | **GET** /api/v1/fund/series |
+[**fundSummaryRetrieve**](FundApi.md#fundsummaryretrieve) | **GET** /api/v1/fund/summary |
 
 
 # **fundSeriesRetrieve**
@@ -42,8 +42,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
- **range** | **String**| Chart range: 30d, 6m, or 12m. Defaults to 6m. | [optional] 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
+ **range** | **String**| Chart range: 30d, 6m, or 12m. Defaults to 6m. | [optional]
 
 ### Return type
 
@@ -88,7 +88,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
 
 ### Return type
 
@@ -104,4 +104,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

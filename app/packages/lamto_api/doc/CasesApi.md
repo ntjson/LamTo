@@ -9,7 +9,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**casesRatingCreate**](CasesApi.md#casesratingcreate) | **POST** /api/v1/cases/{id}/rating | 
+[**casesRatingCreate**](CasesApi.md#casesratingcreate) | **POST** /api/v1/cases/{id}/rating |
 
 
 # **casesRatingCreate**
@@ -26,8 +26,8 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getCasesApi();
-final int id = 56; // int | 
-final CaseRatingRequest caseRatingRequest = ; // CaseRatingRequest | 
+final int id = 56; // int |
+final CaseRatingRequest caseRatingRequest = ; // CaseRatingRequest |
 
 try {
     final response = api.casesRatingCreate(id, caseRatingRequest);
@@ -41,8 +41,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  | 
- **caseRatingRequest** | [**CaseRatingRequest**](CaseRatingRequest.md)|  | 
+ **id** | **int**|  |
+ **caseRatingRequest** | [**CaseRatingRequest**](CaseRatingRequest.md)|  |
 
 ### Return type
 
@@ -58,4 +58,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

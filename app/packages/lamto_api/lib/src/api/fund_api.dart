@@ -22,7 +22,7 @@ class FundApi {
   const FundApi(this._dio, this._serializers);
 
   /// fundSeriesRetrieve
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
@@ -36,7 +36,7 @@ class FundApi {
   ///
   /// Returns a [Future] containing a [Response] with a [FundSeries] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<FundSeries>> fundSeriesRetrieve({ 
+  Future<Response<FundSeries>> fundSeriesRetrieve({
     int? xLamToOccupancy,
     String? range,
     CancelToken? cancelToken,
@@ -112,7 +112,7 @@ class FundApi {
   }
 
   /// fundSummaryRetrieve
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
@@ -125,7 +125,7 @@ class FundApi {
   ///
   /// Returns a [Future] containing a [Response] with a [FundSummary] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<FundSummary>> fundSummaryRetrieve({ 
+  Future<Response<FundSummary>> fundSummaryRetrieve({
     int? xLamToOccupancy,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

@@ -11,11 +11,11 @@ part 'proof_event.g.dart';
 /// ProofEvent
 ///
 /// Properties:
-/// * [eventId] 
-/// * [eventType] 
-/// * [status] 
-/// * [evidenceLevel] 
-/// * [transactionHash] 
+/// * [eventId]
+/// * [eventType]
+/// * [status]
+/// * [evidenceLevel]
+/// * [transactionHash]
 @BuiltValue()
 abstract class ProofEvent implements Built<ProofEvent, ProofEventBuilder> {
   @BuiltValueField(wireName: r'event_id')
@@ -167,4 +167,3 @@ class _$ProofEventSerializer implements PrimitiveSerializer<ProofEvent> {
     return result.build();
   }
 }
-

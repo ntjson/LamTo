@@ -9,11 +9,11 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**reportsCreate**](ReportsApi.md#reportscreate) | **POST** /api/v1/reports | 
-[**reportsInfoReplyCreate**](ReportsApi.md#reportsinforeplycreate) | **POST** /api/v1/reports/{id}/info-reply | 
-[**reportsList**](ReportsApi.md#reportslist) | **GET** /api/v1/reports | 
-[**reportsPhotosCreate**](ReportsApi.md#reportsphotoscreate) | **POST** /api/v1/reports/{id}/photos | 
-[**reportsRetrieve**](ReportsApi.md#reportsretrieve) | **GET** /api/v1/reports/{id} | 
+[**reportsCreate**](ReportsApi.md#reportscreate) | **POST** /api/v1/reports |
+[**reportsInfoReplyCreate**](ReportsApi.md#reportsinforeplycreate) | **POST** /api/v1/reports/{id}/info-reply |
+[**reportsList**](ReportsApi.md#reportslist) | **GET** /api/v1/reports |
+[**reportsPhotosCreate**](ReportsApi.md#reportsphotoscreate) | **POST** /api/v1/reports/{id}/photos |
+[**reportsRetrieve**](ReportsApi.md#reportsretrieve) | **GET** /api/v1/reports/{id} |
 
 
 # **reportsCreate**
@@ -30,7 +30,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getReportsApi();
-final ReportCreateRequest reportCreateRequest = ; // ReportCreateRequest | 
+final ReportCreateRequest reportCreateRequest = ; // ReportCreateRequest |
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
 
 try {
@@ -45,8 +45,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **reportCreateRequest** | [**ReportCreateRequest**](ReportCreateRequest.md)|  | 
- **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional] 
+ **reportCreateRequest** | [**ReportCreateRequest**](ReportCreateRequest.md)|  |
+ **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
 
 ### Return type
 
@@ -77,8 +77,8 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getReportsApi();
-final int id = 56; // int | 
-final InfoReplyRequest infoReplyRequest = ; // InfoReplyRequest | 
+final int id = 56; // int |
+final InfoReplyRequest infoReplyRequest = ; // InfoReplyRequest |
 
 try {
     final response = api.reportsInfoReplyCreate(id, infoReplyRequest);
@@ -92,8 +92,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  | 
- **infoReplyRequest** | [**InfoReplyRequest**](InfoReplyRequest.md)|  | 
+ **id** | **int**|  |
+ **infoReplyRequest** | [**InfoReplyRequest**](InfoReplyRequest.md)|  |
 
 ### Return type
 
@@ -138,7 +138,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **cursor** | **String**| The pagination cursor value. | [optional] 
+ **cursor** | **String**| The pagination cursor value. | [optional]
 
 ### Return type
 
@@ -169,7 +169,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getReportsApi();
-final int id = 56; // int | 
+final int id = 56; // int |
 final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile | JPEG/PNG image; scanned by ClamAV before storage.
 
 try {
@@ -184,8 +184,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  | 
- **photo** | **MultipartFile**| JPEG/PNG image; scanned by ClamAV before storage. | 
+ **id** | **int**|  |
+ **photo** | **MultipartFile**| JPEG/PNG image; scanned by ClamAV before storage. |
 
 ### Return type
 
@@ -216,7 +216,7 @@ import 'package:lamto_api/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('knoxApiToken').apiKeyPrefix = 'Bearer';
 
 final api = LamtoApi().getReportsApi();
-final int id = 56; // int | 
+final int id = 56; // int |
 
 try {
     final response = api.reportsRetrieve(id);
@@ -230,7 +230,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**|  | 
+ **id** | **int**|  |
 
 ### Return type
 
@@ -246,4 +246,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

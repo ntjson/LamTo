@@ -11,11 +11,11 @@ part 'vehicle_plate.g.dart';
 /// VehiclePlate
 ///
 /// Properties:
-/// * [id] 
-/// * [plate] 
-/// * [status] 
-/// * [submittedAt] 
-/// * [reviewNote] 
+/// * [id]
+/// * [plate]
+/// * [status]
+/// * [submittedAt]
+/// * [reviewNote]
 @BuiltValue()
 abstract class VehiclePlate implements Built<VehiclePlate, VehiclePlateBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -167,4 +167,3 @@ class _$VehiclePlateSerializer implements PrimitiveSerializer<VehiclePlate> {
     return result.build();
   }
 }
-

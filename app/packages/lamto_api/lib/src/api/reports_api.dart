@@ -27,10 +27,10 @@ class ReportsApi {
   const ReportsApi(this._dio, this._serializers);
 
   /// reportsCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [reportCreateRequest] 
+  /// * [reportCreateRequest]
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -41,7 +41,7 @@ class ReportsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ReportSummary] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ReportSummary>> reportsCreate({ 
+  Future<Response<ReportSummary>> reportsCreate({
     required ReportCreateRequest reportCreateRequest,
     int? xLamToOccupancy,
     CancelToken? cancelToken,
@@ -132,11 +132,11 @@ class ReportsApi {
   }
 
   /// reportsInfoReplyCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
-  /// * [infoReplyRequest] 
+  /// * [id]
+  /// * [infoReplyRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -146,7 +146,7 @@ class ReportsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [InfoReplyResult] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<InfoReplyResult>> reportsInfoReplyCreate({ 
+  Future<Response<InfoReplyResult>> reportsInfoReplyCreate({
     required int id,
     required InfoReplyRequest infoReplyRequest,
     CancelToken? cancelToken,
@@ -236,7 +236,7 @@ class ReportsApi {
   }
 
   /// reportsList
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cursor] - The pagination cursor value.
@@ -249,7 +249,7 @@ class ReportsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaginatedReportSummaryList] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaginatedReportSummaryList>> reportsList({ 
+  Future<Response<PaginatedReportSummaryList>> reportsList({
     String? cursor,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -323,10 +323,10 @@ class ReportsApi {
   }
 
   /// reportsPhotosCreate
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [photo] - JPEG/PNG image; scanned by ClamAV before storage.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -337,7 +337,7 @@ class ReportsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ReportPhoto] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ReportPhoto>> reportsPhotosCreate({ 
+  Future<Response<ReportPhoto>> reportsPhotosCreate({
     required int id,
     required MultipartFile photo,
     CancelToken? cancelToken,
@@ -428,10 +428,10 @@ class ReportsApi {
   }
 
   /// reportsRetrieve
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -441,7 +441,7 @@ class ReportsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ReportDetail] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ReportDetail>> reportsRetrieve({ 
+  Future<Response<ReportDetail>> reportsRetrieve({
     required int id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

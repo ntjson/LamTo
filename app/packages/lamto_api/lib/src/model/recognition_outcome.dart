@@ -11,11 +11,11 @@ part 'recognition_outcome.g.dart';
 /// RecognitionOutcome
 ///
 /// Properties:
-/// * [matched] 
-/// * [displayName] 
-/// * [unitLabel] 
-/// * [direction] 
-/// * [score] 
+/// * [matched]
+/// * [displayName]
+/// * [unitLabel]
+/// * [direction]
+/// * [score]
 @BuiltValue()
 abstract class RecognitionOutcome implements Built<RecognitionOutcome, RecognitionOutcomeBuilder> {
   @BuiltValueField(wireName: r'matched')
@@ -168,4 +168,3 @@ class _$RecognitionOutcomeSerializer implements PrimitiveSerializer<RecognitionO
     return result.build();
   }
 }
-

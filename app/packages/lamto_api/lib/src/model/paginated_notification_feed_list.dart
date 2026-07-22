@@ -13,9 +13,9 @@ part 'paginated_notification_feed_list.g.dart';
 /// PaginatedNotificationFeedList
 ///
 /// Properties:
-/// * [next] 
-/// * [previous] 
-/// * [results] 
+/// * [next]
+/// * [previous]
+/// * [results]
 @BuiltValue()
 abstract class PaginatedNotificationFeedList implements Built<PaginatedNotificationFeedList, PaginatedNotificationFeedListBuilder> {
   @BuiltValueField(wireName: r'next')
@@ -143,4 +143,3 @@ class _$PaginatedNotificationFeedListSerializer implements PrimitiveSerializer<P
     return result.build();
   }
 }
-

@@ -13,15 +13,15 @@ part 'report_case.g.dart';
 /// ReportCase
 ///
 /// Properties:
-/// * [id] 
-/// * [category] 
-/// * [urgency] 
-/// * [deadlineAt] 
-/// * [active] 
-/// * [completedAt] 
-/// * [closedAt] 
-/// * [updates] 
-/// * [canRate] 
+/// * [id]
+/// * [category]
+/// * [urgency]
+/// * [deadlineAt]
+/// * [active]
+/// * [completedAt]
+/// * [closedAt]
+/// * [updates]
+/// * [canRate]
 @BuiltValue()
 abstract class ReportCase implements Built<ReportCase, ReportCaseBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -235,4 +235,3 @@ class _$ReportCaseSerializer implements PrimitiveSerializer<ReportCase> {
     return result.build();
   }
 }
-

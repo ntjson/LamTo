@@ -15,7 +15,16 @@ class ReaderResult {
   final num? score;
 }
 
+class ReaderDevice {
+  ReaderDevice.fromJson(Map data)
+    : label = '${data['label'] ?? ''}',
+      direction = '${data['direction'] ?? ''}';
+  final String label;
+  final String direction;
+}
+
 abstract class ReaderApi {
+  Future<ReaderDevice> getDevice();
   Future<ReaderResult> recognizePlate(String plate);
   Future<ReaderResult> recognizeFace(String path);
 }
@@ -26,6 +35,10 @@ class ReaderRepository implements ReaderApi {
   final String credential;
   Options get _options =>
       Options(headers: {'Authorization': 'GateDevice $credential'});
+  @override
+  Future<ReaderDevice> getDevice() async => ReaderDevice.fromJson(
+    (await dio.get(GateApiPaths.device, options: _options)).data as Map,
+  );
   @override
   Future<ReaderResult> recognizePlate(String plate) async =>
       ReaderResult.fromJson(

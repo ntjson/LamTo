@@ -21,10 +21,10 @@ class DocumentsApi {
   const DocumentsApi(this._dio, this._serializers);
 
   /// documentsRetrieve
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [token] 
+  /// * [token]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -34,7 +34,7 @@ class DocumentsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Uint8List] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Uint8List>> documentsRetrieve({ 
+  Future<Response<Uint8List>> documentsRetrieve({
     required String token,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

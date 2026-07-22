@@ -11,9 +11,9 @@ part 'device.g.dart';
 /// Device
 ///
 /// Properties:
-/// * [installId] 
-/// * [platform] 
-/// * [active] 
+/// * [installId]
+/// * [platform]
+/// * [active]
 @BuiltValue()
 abstract class Device implements Built<Device, DeviceBuilder> {
   @BuiltValueField(wireName: r'install_id')
@@ -135,4 +135,3 @@ class _$DeviceSerializer implements PrimitiveSerializer<Device> {
     return result.build();
   }
 }
-

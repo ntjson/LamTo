@@ -11,7 +11,7 @@ part 'plate_create_request.g.dart';
 /// PlateCreateRequest
 ///
 /// Properties:
-/// * [plate] 
+/// * [plate]
 @BuiltValue()
 abstract class PlateCreateRequest implements Built<PlateCreateRequest, PlateCreateRequestBuilder> {
   @BuiltValueField(wireName: r'plate')
@@ -103,4 +103,3 @@ class _$PlateCreateRequestSerializer implements PrimitiveSerializer<PlateCreateR
     return result.build();
   }
 }
-
