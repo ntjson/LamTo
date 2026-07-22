@@ -463,7 +463,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerCorrections => 'Corrections';
 
   @override
-  String get ledgerDocuments => 'Redacted documents';
+  String get ledgerDocuments => 'Documents';
 
   @override
   String get ledgerDocumentOpen => 'Preview or download';

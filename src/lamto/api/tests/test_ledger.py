@@ -113,7 +113,7 @@ class LedgerApiTests(TestCase):
             "id", "contractor_name", "actual_cost_vnd", "published_at",
             "proposed_amount_vnd", "integrity_status", "what_was_fixed", "why",
             "payload", "verification", "approvers", "corrections",
-            "redacted_documents", "proof",
+            "documents", "proof",
         }
         assert body["approvers"] == []
         assert body["corrections"] == []
@@ -138,8 +138,8 @@ class LedgerApiTests(TestCase):
         }
         assert "report_id" in body["payload"]
         assert body["verification"] is None
-        assert body["redacted_documents"], "redacted document hashes must be exposed"
-        for doc in body["redacted_documents"]:
+        assert body["documents"], "document hashes must be exposed"
+        for doc in body["documents"]:
             assert set(doc) == {"label", "filename", "sha256", "download_url"}
             assert len(doc["sha256"]) == 64
             assert doc["download_url"]
@@ -217,4 +217,4 @@ class LedgerApiTests(TestCase):
         assert body["why"] == "Peeling paint"
         assert body["proof"]["proposal_version"]["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
         assert body["proof"]["settlement"]["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
-        assert self.client.get(body["redacted_documents"][0]["download_url"], headers=auth).status_code == 200
+        assert self.client.get(body["documents"][0]["download_url"], headers=auth).status_code == 200

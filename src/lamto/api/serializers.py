@@ -131,7 +131,7 @@ class VerificationSerializer(serializers.Serializer):
     verified_at = serializers.DateTimeField()
 
 
-class RedactedDocumentSerializer(serializers.Serializer):
+class LedgerDocumentSerializer(serializers.Serializer):
     label = serializers.CharField()
     filename = serializers.CharField()
     sha256 = serializers.CharField()
@@ -175,7 +175,7 @@ class LedgerEntryDetailSerializer(serializers.Serializer):
     # Compatibility-only fields retained for the shipped Flutter contract.
     approvers = serializers.ListField(child=serializers.JSONField())
     corrections = serializers.ListField(child=serializers.JSONField())
-    redacted_documents = RedactedDocumentSerializer(many=True)
+    documents = LedgerDocumentSerializer(many=True)
     proof = ProofSerializer()
 
 

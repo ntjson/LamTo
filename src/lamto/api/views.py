@@ -383,7 +383,7 @@ class LedgerDetailView(APIView):
             ),
             "approvers": [],
             "corrections": [],
-            "redacted_documents": [
+            "documents": [
                 {
                     **doc,
                     "download_url": reverse(

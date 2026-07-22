@@ -159,11 +159,11 @@ class LedgerDetailScreen extends ConsumerWidget {
                   '${l10n.ledgerAmount}: ${formatVnd(entry.actualCostVnd)}\n'
                   '${l10n.ledgerContractor}: ${entry.contractorName}\n'
                   '${l10n.ledgerPublishedOn(date)}',
-              child: entry.redactedDocuments.isEmpty
+              child: entry.documents.isEmpty
                   ? null
                   : Column(
                       children: [
-                        for (final doc in entry.redactedDocuments)
+                        for (final doc in entry.documents)
                           _DocumentTile(document: doc),
                       ],
                     ),
@@ -278,7 +278,7 @@ class _ChainStep extends StatelessWidget {
 
 class _DocumentTile extends ConsumerStatefulWidget {
   const _DocumentTile({required this.document});
-  final RedactedDocument document;
+  final LedgerDocument document;
 
   @override
   ConsumerState<_DocumentTile> createState() => _DocumentTileState();

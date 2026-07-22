@@ -5,9 +5,9 @@
 // ignore_for_file: unused_element
 import 'package:lamto_api/src/model/verification.dart';
 import 'package:built_collection/built_collection.dart';
-import 'package:lamto_api/src/model/redacted_document.dart';
 import 'package:lamto_api/src/model/proof.dart';
 import 'package:built_value/json_object.dart';
+import 'package:lamto_api/src/model/ledger_document.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -16,20 +16,20 @@ part 'ledger_entry_detail.g.dart';
 /// LedgerEntryDetail
 ///
 /// Properties:
-/// * [id] 
-/// * [contractorName] 
-/// * [actualCostVnd] 
-/// * [publishedAt] 
-/// * [proposedAmountVnd] 
-/// * [integrityStatus] 
+/// * [id]
+/// * [contractorName]
+/// * [actualCostVnd]
+/// * [publishedAt]
+/// * [proposedAmountVnd]
+/// * [integrityStatus]
 /// * [whatWasFixed] - Resident-visible narrative of work completed.
 /// * [why] - Resident-visible rationale (cause or purpose).
-/// * [payload] 
-/// * [verification] 
-/// * [approvers] 
-/// * [corrections] 
-/// * [redactedDocuments] 
-/// * [proof] 
+/// * [payload]
+/// * [verification]
+/// * [approvers]
+/// * [corrections]
+/// * [documents]
+/// * [proof]
 @BuiltValue()
 abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntryDetailBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -70,8 +70,8 @@ abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntry
   @BuiltValueField(wireName: r'corrections')
   BuiltList<JsonObject?> get corrections;
 
-  @BuiltValueField(wireName: r'redacted_documents')
-  BuiltList<RedactedDocument> get redactedDocuments;
+  @BuiltValueField(wireName: r'documents')
+  BuiltList<LedgerDocument> get documents;
 
   @BuiltValueField(wireName: r'proof')
   Proof get proof;
@@ -159,10 +159,10 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
       object.corrections,
       specifiedType: const FullType(BuiltList, [FullType.nullable(JsonObject)]),
     );
-    yield r'redacted_documents';
+    yield r'documents';
     yield serializers.serialize(
-      object.redactedDocuments,
-      specifiedType: const FullType(BuiltList, [FullType(RedactedDocument)]),
+      object.documents,
+      specifiedType: const FullType(BuiltList, [FullType(LedgerDocument)]),
     );
     yield r'proof';
     yield serializers.serialize(
@@ -279,12 +279,12 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
           ) as BuiltList<JsonObject?>;
           result.corrections.replace(valueDes);
           break;
-        case r'redacted_documents':
+        case r'documents':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(RedactedDocument)]),
-          ) as BuiltList<RedactedDocument>;
-          result.redactedDocuments.replace(valueDes);
+            specifiedType: const FullType(BuiltList, [FullType(LedgerDocument)]),
+          ) as BuiltList<LedgerDocument>;
+          result.documents.replace(valueDes);
           break;
         case r'proof':
           final valueDes = serializers.deserialize(

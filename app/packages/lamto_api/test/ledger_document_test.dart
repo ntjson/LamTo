@@ -1,12 +1,12 @@
 import 'package:test/test.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-// tests for RedactedDocument
+// tests for LedgerDocument
 void main() {
-  final instance = RedactedDocumentBuilder();
+  final instance = LedgerDocumentBuilder();
   // TODO add properties to the builder and call build()
 
-  group(RedactedDocument, () {
+  group(LedgerDocument, () {
     // String label
     test('to test the property `label`', () async {
       // TODO

@@ -1262,6 +1262,22 @@ components:
       description: |-
         * `BEFORE` - Before
         * `AFTER` - After
+    LedgerDocument:
+      type: object
+      properties:
+        label:
+          type: string
+        filename:
+          type: string
+        sha256:
+          type: string
+        download_url:
+          type: string
+      required:
+      - download_url
+      - filename
+      - label
+      - sha256
     LedgerEntryDetail:
       type: object
       properties:
@@ -1296,10 +1312,10 @@ components:
         corrections:
           type: array
           items: {}
-        redacted_documents:
+        documents:
           type: array
           items:
-            $ref: '#/components/schemas/RedactedDocument'
+            $ref: '#/components/schemas/LedgerDocument'
         proof:
           $ref: '#/components/schemas/Proof'
       required:
@@ -1307,13 +1323,13 @@ components:
       - approvers
       - contractor_name
       - corrections
+      - documents
       - id
       - integrity_status
       - payload
       - proof
       - proposed_amount_vnd
       - published_at
-      - redacted_documents
       - verification
       - what_was_fixed
       - why
@@ -1798,22 +1814,6 @@ components:
       - number
       - published_at
       - supporting_documents
-    RedactedDocument:
-      type: object
-      properties:
-        label:
-          type: string
-        filename:
-          type: string
-        sha256:
-          type: string
-        download_url:
-          type: string
-      required:
-      - download_url
-      - filename
-      - label
-      - sha256
     ReportCase:
       type: object
       properties:

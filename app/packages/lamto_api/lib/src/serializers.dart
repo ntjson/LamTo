@@ -24,6 +24,7 @@ import 'package:lamto_api/src/model/fund_summary.dart';
 import 'package:lamto_api/src/model/info_reply_request.dart';
 import 'package:lamto_api/src/model/info_reply_result.dart';
 import 'package:lamto_api/src/model/kind_enum.dart';
+import 'package:lamto_api/src/model/ledger_document.dart';
 import 'package:lamto_api/src/model/ledger_entry_detail.dart';
 import 'package:lamto_api/src/model/ledger_entry_list.dart';
 import 'package:lamto_api/src/model/location.dart';
@@ -49,7 +50,6 @@ import 'package:lamto_api/src/model/proposal_rating_result.dart';
 import 'package:lamto_api/src/model/proposal_settlement.dart';
 import 'package:lamto_api/src/model/proposal_supporting_document.dart';
 import 'package:lamto_api/src/model/proposal_version.dart';
-import 'package:lamto_api/src/model/redacted_document.dart';
 import 'package:lamto_api/src/model/report_case.dart';
 import 'package:lamto_api/src/model/report_create_request.dart';
 import 'package:lamto_api/src/model/report_detail.dart';
@@ -74,6 +74,7 @@ part 'serializers.g.dart';
   InfoReplyRequest,
   InfoReplyResult,
   KindEnum,
+  LedgerDocument,
   LedgerEntryDetail,
   LedgerEntryList,
   Location,
@@ -99,7 +100,6 @@ part 'serializers.g.dart';
   ProposalSettlement,
   ProposalSupportingDocument,
   ProposalVersion,
-  RedactedDocument,
   ReportCase,
   ReportCreateRequest,
   ReportDetail,

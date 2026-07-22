@@ -35,7 +35,7 @@ Proposal _proposal({
             ProposalSupportingDocument(
               (d) => d
                 ..id = 11
-                ..filename = 'quotation-redacted.pdf'
+                ..filename = 'quotation.pdf'
                 ..sha256 = List.filled(64, 'a').join()
                 ..downloadUrl = '/api/v1/documents/token',
             ),
@@ -163,7 +163,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text('quotation-redacted.pdf', skipOffstage: false),
+      find.text('quotation.pdf', skipOffstage: false),
       findsOneWidget,
     );
     expect(find.text('Paid and acknowledged by the payee'), findsOneWidget);

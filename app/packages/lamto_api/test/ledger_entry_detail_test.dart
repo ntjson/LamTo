@@ -69,8 +69,8 @@ void main() {
       // TODO
     });
 
-    // BuiltList<RedactedDocument> redactedDocuments
-    test('to test the property `redactedDocuments`', () async {
+    // BuiltList<LedgerDocument> documents
+    test('to test the property `documents`', () async {
       // TODO
     });
 

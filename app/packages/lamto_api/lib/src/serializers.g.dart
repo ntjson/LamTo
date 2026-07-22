@@ -17,6 +17,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(InfoReplyRequest.serializer)
       ..add(InfoReplyResult.serializer)
       ..add(KindEnum.serializer)
+      ..add(LedgerDocument.serializer)
       ..add(LedgerEntryDetail.serializer)
       ..add(LedgerEntryList.serializer)
       ..add(Location.serializer)
@@ -42,7 +43,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ProposalSettlement.serializer)
       ..add(ProposalSupportingDocument.serializer)
       ..add(ProposalVersion.serializer)
-      ..add(RedactedDocument.serializer)
       ..add(ReportCase.serializer)
       ..add(ReportCreateRequest.serializer)
       ..add(ReportDetail.serializer)
@@ -108,8 +108,8 @@ Serializers _$serializers = (Serializers().toBuilder()
               BuiltList, const [const FullType.nullable(JsonObject)]),
           () => ListBuilder<JsonObject?>())
       ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(RedactedDocument)]),
-          () => ListBuilder<RedactedDocument>())
+          const FullType(BuiltList, const [const FullType(LedgerDocument)]),
+          () => ListBuilder<LedgerDocument>())
       ..addBuilderFactory(
           const FullType(BuiltMap, const [
             const FullType(String),

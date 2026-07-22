@@ -18,6 +18,7 @@ doc/InfoReplyRequest.md
 doc/InfoReplyResult.md
 doc/KindEnum.md
 doc/LedgerApi.md
+doc/LedgerDocument.md
 doc/LedgerEntryDetail.md
 doc/LedgerEntryList.md
 doc/Location.md
@@ -47,7 +48,6 @@ doc/ProposalSettlement.md
 doc/ProposalSupportingDocument.md
 doc/ProposalVersion.md
 doc/ProposalsApi.md
-doc/RedactedDocument.md
 doc/ReportCase.md
 doc/ReportCreateRequest.md
 doc/ReportDetail.md
@@ -90,6 +90,7 @@ lib/src/model/fund_summary.dart
 lib/src/model/info_reply_request.dart
 lib/src/model/info_reply_result.dart
 lib/src/model/kind_enum.dart
+lib/src/model/ledger_document.dart
 lib/src/model/ledger_entry_detail.dart
 lib/src/model/ledger_entry_list.dart
 lib/src/model/location.dart
@@ -115,7 +116,6 @@ lib/src/model/proposal_rating_result.dart
 lib/src/model/proposal_settlement.dart
 lib/src/model/proposal_supporting_document.dart
 lib/src/model/proposal_version.dart
-lib/src/model/redacted_document.dart
 lib/src/model/report_case.dart
 lib/src/model/report_create_request.dart
 lib/src/model/report_detail.dart
@@ -144,6 +144,7 @@ test/info_reply_request_test.dart
 test/info_reply_result_test.dart
 test/kind_enum_test.dart
 test/ledger_api_test.dart
+test/ledger_document_test.dart
 test/ledger_entry_detail_test.dart
 test/ledger_entry_list_test.dart
 test/location_test.dart
@@ -173,7 +174,6 @@ test/proposal_supporting_document_test.dart
 test/proposal_test.dart
 test/proposal_version_test.dart
 test/proposals_api_test.dart
-test/redacted_document_test.dart
 test/report_case_test.dart
 test/report_create_request_test.dart
 test/report_detail_test.dart

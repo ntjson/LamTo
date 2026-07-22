@@ -1,12 +1,12 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'redacted_document.dart';
+part of 'ledger_document.dart';
 
 // **************************************************************************
 // BuiltValueGenerator
 // **************************************************************************
 
-class _$RedactedDocument extends RedactedDocument {
+class _$LedgerDocument extends LedgerDocument {
   @override
   final String label;
   @override
@@ -16,28 +16,26 @@ class _$RedactedDocument extends RedactedDocument {
   @override
   final String downloadUrl;
 
-  factory _$RedactedDocument(
-          [void Function(RedactedDocumentBuilder)? updates]) =>
-      (RedactedDocumentBuilder()..update(updates))._build();
+  factory _$LedgerDocument([void Function(LedgerDocumentBuilder)? updates]) =>
+      (LedgerDocumentBuilder()..update(updates))._build();
 
-  _$RedactedDocument._(
+  _$LedgerDocument._(
       {required this.label,
       required this.filename,
       required this.sha256,
       required this.downloadUrl})
       : super._();
   @override
-  RedactedDocument rebuild(void Function(RedactedDocumentBuilder) updates) =>
+  LedgerDocument rebuild(void Function(LedgerDocumentBuilder) updates) =>
       (toBuilder()..update(updates)).build();
 
   @override
-  RedactedDocumentBuilder toBuilder() =>
-      RedactedDocumentBuilder()..replace(this);
+  LedgerDocumentBuilder toBuilder() => LedgerDocumentBuilder()..replace(this);
 
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is RedactedDocument &&
+    return other is LedgerDocument &&
         label == other.label &&
         filename == other.filename &&
         sha256 == other.sha256 &&
@@ -57,7 +55,7 @@ class _$RedactedDocument extends RedactedDocument {
 
   @override
   String toString() {
-    return (newBuiltValueToStringHelper(r'RedactedDocument')
+    return (newBuiltValueToStringHelper(r'LedgerDocument')
           ..add('label', label)
           ..add('filename', filename)
           ..add('sha256', sha256)
@@ -66,9 +64,9 @@ class _$RedactedDocument extends RedactedDocument {
   }
 }
 
-class RedactedDocumentBuilder
-    implements Builder<RedactedDocument, RedactedDocumentBuilder> {
-  _$RedactedDocument? _$v;
+class LedgerDocumentBuilder
+    implements Builder<LedgerDocument, LedgerDocumentBuilder> {
+  _$LedgerDocument? _$v;
 
   String? _label;
   String? get label => _$this._label;
@@ -86,11 +84,11 @@ class RedactedDocumentBuilder
   String? get downloadUrl => _$this._downloadUrl;
   set downloadUrl(String? downloadUrl) => _$this._downloadUrl = downloadUrl;
 
-  RedactedDocumentBuilder() {
-    RedactedDocument._defaults(this);
+  LedgerDocumentBuilder() {
+    LedgerDocument._defaults(this);
   }
 
-  RedactedDocumentBuilder get _$this {
+  LedgerDocumentBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
       _label = $v.label;
@@ -103,29 +101,29 @@ class RedactedDocumentBuilder
   }
 
   @override
-  void replace(RedactedDocument other) {
-    _$v = other as _$RedactedDocument;
+  void replace(LedgerDocument other) {
+    _$v = other as _$LedgerDocument;
   }
 
   @override
-  void update(void Function(RedactedDocumentBuilder)? updates) {
+  void update(void Function(LedgerDocumentBuilder)? updates) {
     if (updates != null) updates(this);
   }
 
   @override
-  RedactedDocument build() => _build();
+  LedgerDocument build() => _build();
 
-  _$RedactedDocument _build() {
+  _$LedgerDocument _build() {
     final _$result = _$v ??
-        _$RedactedDocument._(
+        _$LedgerDocument._(
           label: BuiltValueNullFieldError.checkNotNull(
-              label, r'RedactedDocument', 'label'),
+              label, r'LedgerDocument', 'label'),
           filename: BuiltValueNullFieldError.checkNotNull(
-              filename, r'RedactedDocument', 'filename'),
+              filename, r'LedgerDocument', 'filename'),
           sha256: BuiltValueNullFieldError.checkNotNull(
-              sha256, r'RedactedDocument', 'sha256'),
+              sha256, r'LedgerDocument', 'sha256'),
           downloadUrl: BuiltValueNullFieldError.checkNotNull(
-              downloadUrl, r'RedactedDocument', 'downloadUrl'),
+              downloadUrl, r'LedgerDocument', 'downloadUrl'),
         );
     replace(_$result);
     return _$result;

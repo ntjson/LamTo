@@ -148,7 +148,7 @@
   "ledgerChainPayment": "Payment evidence",
   "ledgerChainVerification": "Independent verification",
   "ledgerCorrections": "Corrections",
-  "ledgerDocuments": "Redacted documents",
+  "ledgerDocuments": "Documents",
   "ledgerDocumentOpen": "Preview or download",
   "ledgerDocumentOffline": "You are offline. The document was not downloaded. Reconnect and try again.",
   "ledgerDocumentUnauthorized": "You are not authorized to open this document. No file was downloaded.",

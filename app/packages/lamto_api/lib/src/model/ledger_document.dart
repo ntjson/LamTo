@@ -6,9 +6,9 @@
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'redacted_document.g.dart';
+part 'ledger_document.g.dart';
 
-/// RedactedDocument
+/// LedgerDocument
 ///
 /// Properties:
 /// * [label] 
@@ -16,7 +16,7 @@ part 'redacted_document.g.dart';
 /// * [sha256] 
 /// * [downloadUrl] 
 @BuiltValue()
-abstract class RedactedDocument implements Built<RedactedDocument, RedactedDocumentBuilder> {
+abstract class LedgerDocument implements Built<LedgerDocument, LedgerDocumentBuilder> {
   @BuiltValueField(wireName: r'label')
   String get label;
 
@@ -29,27 +29,27 @@ abstract class RedactedDocument implements Built<RedactedDocument, RedactedDocum
   @BuiltValueField(wireName: r'download_url')
   String get downloadUrl;
 
-  RedactedDocument._();
+  LedgerDocument._();
 
-  factory RedactedDocument([void updates(RedactedDocumentBuilder b)]) = _$RedactedDocument;
+  factory LedgerDocument([void updates(LedgerDocumentBuilder b)]) = _$LedgerDocument;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(RedactedDocumentBuilder b) => b;
+  static void _defaults(LedgerDocumentBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RedactedDocument> get serializer => _$RedactedDocumentSerializer();
+  static Serializer<LedgerDocument> get serializer => _$LedgerDocumentSerializer();
 }
 
-class _$RedactedDocumentSerializer implements PrimitiveSerializer<RedactedDocument> {
+class _$LedgerDocumentSerializer implements PrimitiveSerializer<LedgerDocument> {
   @override
-  final Iterable<Type> types = const [RedactedDocument, _$RedactedDocument];
+  final Iterable<Type> types = const [LedgerDocument, _$LedgerDocument];
 
   @override
-  final String wireName = r'RedactedDocument';
+  final String wireName = r'LedgerDocument';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    RedactedDocument object, {
+    LedgerDocument object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'label';
@@ -77,7 +77,7 @@ class _$RedactedDocumentSerializer implements PrimitiveSerializer<RedactedDocume
   @override
   Object serialize(
     Serializers serializers,
-    RedactedDocument object, {
+    LedgerDocument object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -88,7 +88,7 @@ class _$RedactedDocumentSerializer implements PrimitiveSerializer<RedactedDocume
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required RedactedDocumentBuilder result,
+    required LedgerDocumentBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -132,12 +132,12 @@ class _$RedactedDocumentSerializer implements PrimitiveSerializer<RedactedDocume
   }
 
   @override
-  RedactedDocument deserialize(
+  LedgerDocument deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = RedactedDocumentBuilder();
+    final result = LedgerDocumentBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

@@ -1,4 +1,4 @@
-# lamto_api.model.RedactedDocument
+# lamto_api.model.LedgerDocument
 
 ## Load the model package
 ```dart

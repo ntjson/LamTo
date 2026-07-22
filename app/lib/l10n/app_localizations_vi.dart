@@ -464,7 +464,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get ledgerCorrections => 'Điều chỉnh';
 
   @override
-  String get ledgerDocuments => 'Tài liệu (đã che thông tin)';
+  String get ledgerDocuments => 'Tài liệu';
 
   @override
   String get ledgerDocumentOpen => 'Xem hoặc tải xuống';

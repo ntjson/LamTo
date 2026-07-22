@@ -149,7 +149,7 @@
   "ledgerChainPayment": "Chứng từ thanh toán",
   "ledgerChainVerification": "Xác minh độc lập",
   "ledgerCorrections": "Điều chỉnh",
-  "ledgerDocuments": "Tài liệu (đã che thông tin)",
+  "ledgerDocuments": "Tài liệu",
   "ledgerDocumentOpen": "Xem hoặc tải xuống",
   "ledgerDocumentOffline": "Bạn đang ngoại tuyến. Tài liệu chưa được tải. Kết nối mạng rồi thử lại.",
   "ledgerDocumentUnauthorized": "Bạn không có quyền mở tài liệu này. Tệp chưa được tải xuống.",

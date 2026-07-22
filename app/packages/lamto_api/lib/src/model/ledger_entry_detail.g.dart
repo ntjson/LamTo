@@ -32,7 +32,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
   @override
   final BuiltList<JsonObject?> corrections;
   @override
-  final BuiltList<RedactedDocument> redactedDocuments;
+  final BuiltList<LedgerDocument> documents;
   @override
   final Proof proof;
 
@@ -53,7 +53,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
       this.verification,
       required this.approvers,
       required this.corrections,
-      required this.redactedDocuments,
+      required this.documents,
       required this.proof})
       : super._();
   @override
@@ -80,7 +80,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
         verification == other.verification &&
         approvers == other.approvers &&
         corrections == other.corrections &&
-        redactedDocuments == other.redactedDocuments &&
+        documents == other.documents &&
         proof == other.proof;
   }
 
@@ -99,7 +99,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
     _$hash = $jc(_$hash, verification.hashCode);
     _$hash = $jc(_$hash, approvers.hashCode);
     _$hash = $jc(_$hash, corrections.hashCode);
-    _$hash = $jc(_$hash, redactedDocuments.hashCode);
+    _$hash = $jc(_$hash, documents.hashCode);
     _$hash = $jc(_$hash, proof.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -120,7 +120,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
           ..add('verification', verification)
           ..add('approvers', approvers)
           ..add('corrections', corrections)
-          ..add('redactedDocuments', redactedDocuments)
+          ..add('documents', documents)
           ..add('proof', proof))
         .toString();
   }
@@ -188,11 +188,11 @@ class LedgerEntryDetailBuilder
   set corrections(ListBuilder<JsonObject?>? corrections) =>
       _$this._corrections = corrections;
 
-  ListBuilder<RedactedDocument>? _redactedDocuments;
-  ListBuilder<RedactedDocument> get redactedDocuments =>
-      _$this._redactedDocuments ??= ListBuilder<RedactedDocument>();
-  set redactedDocuments(ListBuilder<RedactedDocument>? redactedDocuments) =>
-      _$this._redactedDocuments = redactedDocuments;
+  ListBuilder<LedgerDocument>? _documents;
+  ListBuilder<LedgerDocument> get documents =>
+      _$this._documents ??= ListBuilder<LedgerDocument>();
+  set documents(ListBuilder<LedgerDocument>? documents) =>
+      _$this._documents = documents;
 
   ProofBuilder? _proof;
   ProofBuilder get proof => _$this._proof ??= ProofBuilder();
@@ -217,7 +217,7 @@ class LedgerEntryDetailBuilder
       _verification = $v.verification?.toBuilder();
       _approvers = $v.approvers.toBuilder();
       _corrections = $v.corrections.toBuilder();
-      _redactedDocuments = $v.redactedDocuments.toBuilder();
+      _documents = $v.documents.toBuilder();
       _proof = $v.proof.toBuilder();
       _$v = null;
     }
@@ -261,7 +261,7 @@ class LedgerEntryDetailBuilder
             verification: _verification?.build(),
             approvers: approvers.build(),
             corrections: corrections.build(),
-            redactedDocuments: redactedDocuments.build(),
+            documents: documents.build(),
             proof: proof.build(),
           );
     } catch (_) {
@@ -273,8 +273,8 @@ class LedgerEntryDetailBuilder
         approvers.build();
         _$failedField = 'corrections';
         corrections.build();
-        _$failedField = 'redactedDocuments';
-        redactedDocuments.build();
+        _$failedField = 'documents';
+        documents.build();
         _$failedField = 'proof';
         proof.build();
       } catch (e) {

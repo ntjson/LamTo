@@ -66,10 +66,10 @@ LedgerEntryDetail _detail() => LedgerEntryDetail(
         ..verifiedBy = 'Bà Lan'
         ..verifiedAt = DateTime.utc(2026, 7, 9),
     ).toBuilder()
-    ..redactedDocuments = ListBuilder<RedactedDocument>([
-      RedactedDocument(
+    ..documents = ListBuilder<LedgerDocument>([
+      LedgerDocument(
         (d) => d
-          ..label = 'Hóa đơn đã che thông tin'
+          ..label = 'Hóa đơn'
           ..filename = 'hoa-don.pdf'
           ..sha256 = 'doc-hash'
           ..downloadUrl = '/api/v1/documents/test-token',
@@ -326,14 +326,14 @@ void main() {
     await tester.tap(find.text('Chuỗi trách nhiệm'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Hóa đơn đã che thông tin'),
+      find.text('Hóa đơn'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.ensureVisible(find.text('Hóa đơn đã che thông tin'));
+    await tester.ensureVisible(find.text('Hóa đơn'));
     await tester.pumpAndSettle();
     expect(find.text('Xem hoặc tải xuống'), findsOneWidget);
-    await tester.tap(find.text('Hóa đơn đã che thông tin'));
+    await tester.tap(find.text('Hóa đơn'));
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 

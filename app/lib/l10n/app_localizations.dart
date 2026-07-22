@@ -935,7 +935,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerDocuments.
   ///
   /// In en, this message translates to:
-  /// **'Redacted documents'**
+  /// **'Documents'**
   String get ledgerDocuments;
 
   /// No description provided for @ledgerDocumentOpen.
