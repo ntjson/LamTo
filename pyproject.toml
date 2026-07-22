@@ -13,6 +13,7 @@ dependencies = [
   "django-storages[s3]>=1.14,<2",
   "boto3>=1.35,<2",
   "Pillow>=11,<13",
+  "numpy>=2,<3",
   "argon2-cffi>=23,<26",
   "web3>=7,<8",
   "eth-account>=0.13,<1",
