@@ -1,10 +1,14 @@
 """Read selectors for resident-owned maintenance records (spec 2.3, layer 2)."""
 
+from django.db.models import Prefetch
+
 from lamto.maintenance.models import (
     BuildingLocation,
     CaseReport,
     CompletionRating,
     IssueReport,
+    WorkUpdate,
+    WorkUpdateEvidence,
 )
 
 
@@ -35,13 +39,24 @@ def resident_report_timeline(report):
         )
     )
     cases = []
+    updates = Prefetch(
+        "case__updates",
+        queryset=WorkUpdate.objects.order_by("pk").prefetch_related(
+            Prefetch(
+                "evidence_links",
+                queryset=WorkUpdateEvidence.objects.select_related("version").order_by("pk"),
+                to_attr="timeline_evidence_links",
+            )
+        ),
+        to_attr="timeline_updates",
+    )
     for link in CaseReport.objects.filter(report=report).select_related("case").prefetch_related(
-        "case__updates__evidence_links__version"
+        updates
     ).order_by("case_id"):
         case = link.case
-        updates = []
-        for update in case.updates.all().order_by("pk"):
-            updates.append(
+        timeline_updates = []
+        for update in case.timeline_updates:
+            timeline_updates.append(
                 {
                     "id": update.pk,
                     "cause": update.cause,
@@ -53,7 +68,7 @@ def resident_report_timeline(report):
                             "filename": link.version.filename,
                             "kind": link.kind,
                         }
-                        for link in update.evidence_links.all()
+                        for link in update.timeline_evidence_links
                     ],
                 }
             )
@@ -66,7 +81,7 @@ def resident_report_timeline(report):
                 "active": case.active,
                 "completed_at": case.completed_at,
                 "closed_at": case.closed_at,
-                "updates": updates,
+                "updates": timeline_updates,
                 "can_rate": case.completed_at is not None and case.pk not in rated_ids,
             }
         )
