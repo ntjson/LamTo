@@ -134,7 +134,7 @@ class ManagementWorkspaceTests(TestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, IssueReport.Status.NEEDS_INFO)
         report.info_requests.update(resolved_at=timezone.now())
-        self.client.post(url, {"action": "decline", "reason": "Already repaired"})
+        self.client.post(url, {"action": "decline", "reason": "Already repaired", "confirm": "on"})
         report.refresh_from_db()
         self.assertEqual(report.status, IssueReport.Status.DECLINED)
         self.assertEqual(report.declined_reason, "Already repaired")

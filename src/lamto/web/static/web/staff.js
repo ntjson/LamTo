@@ -44,4 +44,8 @@
       }
     );
   });
+  // Announce form validation errors to assistive technology.
+  document.querySelectorAll("ul.errorlist").forEach(function (el) {
+    el.setAttribute("role", "alert");
+  });
 })();

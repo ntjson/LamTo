@@ -50,6 +50,7 @@ class CaseWorkTests(TestCase):
         self.assertEqual(report.status, IssueReport.Status.IN_PROGRESS)
         publish_progress(case, self.manager, "Opened wall", "Found burst pipe")
         self.assertEqual(case.updates.count(), 1)
+        self.assertEqual(case.updates.first().author, self.manager)
         complete_case_work(case, self.manager, "Replaced pipe", "Water restored")
         case.refresh_from_db(); report.refresh_from_db()
         self.assertIsNotNone(case.completed_at)

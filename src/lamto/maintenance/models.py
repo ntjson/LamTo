@@ -233,6 +233,10 @@ class AppendOnlyModel(models.Model):
 class WorkUpdate(AppendOnlyModel):
     case = models.ForeignKey(MaintenanceCase, null=True, blank=True, on_delete=models.PROTECT, related_name="updates")
     proposal = models.ForeignKey("finance.Proposal", null=True, blank=True, on_delete=models.PROTECT, related_name="updates")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.PROTECT, related_name="work_updates",
+    )
     cause = models.TextField()
     result = models.TextField()
     evidence = models.ManyToManyField(DocumentVersion, through="WorkUpdateEvidence", related_name="work_updates")

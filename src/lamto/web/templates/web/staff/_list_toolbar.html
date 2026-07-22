@@ -4,7 +4,7 @@
     <input id="record-search" name="q" value="{{ list_meta.query }}" placeholder="{{ search_placeholder|default:_('ID, category, or name…') }}">
   </label>
   {% if filters %}
-  <label for="record-filter">{% trans "Workflow" %}
+  <label for="record-filter">{% trans "Urgency" %}
     <select id="record-filter" name="{{ filter_param|default:'status' }}">
       <option value="">{% trans "All" %}</option>
       {% for f in filters %}

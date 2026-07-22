@@ -19,6 +19,9 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = []
 
+    def __str__(self):
+        return self.display_name or self.email
+
     def save(self, *args, **kwargs):
         # Keep User.phone in the same canonical form login accepts.
         if self.phone:

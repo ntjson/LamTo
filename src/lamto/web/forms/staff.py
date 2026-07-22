@@ -43,16 +43,34 @@ class ConfirmTriageForm(forms.Form):
         label="Management queue",
         widget=forms.TextInput(attrs={"class": "input"}),
     )
-    deadline_minutes = forms.IntegerField(
-        min_value=1, widget=forms.NumberInput(attrs={"class": "input"})
+    deadline_minutes = forms.TypedChoiceField(
+        choices=[
+            (60, "1 hour"),
+            (240, "4 hours"),
+            (480, "8 hours"),
+            (1440, "1 day"),
+            (2880, "2 days"),
+            (4320, "3 days"),
+            (10080, "1 week"),
+        ],
+        coerce=int,
+        widget=forms.Select(attrs={"class": "input"}),
+        label="Deadline",
     )
 
-    def __init__(self, *args, building_id=None, **kwargs):
+    def __init__(self, *args, building_id=None, extra_deadline_minutes=None, **kwargs):
         super().__init__(*args, **kwargs)
         if building_id is not None:
             self.fields["location"].queryset = BuildingLocation.objects.filter(
                 building_id=building_id, active=True
             ).order_by("name")
+        if extra_deadline_minutes is not None:
+            choices = list(self.fields["deadline_minutes"].choices)
+            if not any(int(v) == extra_deadline_minutes for v, _ in choices):
+                self.fields["deadline_minutes"].choices = [
+                    (extra_deadline_minutes, f"{extra_deadline_minutes} minutes"),
+                    *choices,
+                ]
 
     def save(self, report, operator):
         return confirm_triage(
@@ -72,6 +90,10 @@ class InfoRequestForm(forms.Form):
 
 class DeclineReportForm(forms.Form):
     reason = forms.CharField(widget=forms.Textarea, label="Reason shown to the resident")
+    confirm = forms.BooleanField(
+        required=True,
+        label="I understand this decline will be sent to the resident and cannot be undone.",
+    )
 
 
 class ProgressUpdateForm(forms.Form):

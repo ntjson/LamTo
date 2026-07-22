@@ -51,7 +51,7 @@ def _append_update(case, manager, cause, result, before_versions, after_versions
     building_id = case.building_id if case else proposal.building_id
     before = _evidence_versions(before_versions, Document.Kind.BEFORE_PHOTO, building_id, manager)
     after = _evidence_versions(after_versions, Document.Kind.AFTER_PHOTO, building_id, manager)
-    update = WorkUpdate.objects.create(case=case, proposal=proposal, cause=cause.strip(), result=result.strip())
+    update = WorkUpdate.objects.create(case=case, proposal=proposal, author=manager, cause=cause.strip(), result=result.strip())
     WorkUpdateEvidence.objects.bulk_create([
         *[WorkUpdateEvidence(update=update, version=v, kind=WorkUpdateEvidence.Kind.BEFORE) for v in before],
         *[WorkUpdateEvidence(update=update, version=v, kind=WorkUpdateEvidence.Kind.AFTER) for v in after],

@@ -173,7 +173,7 @@ def action_inbox(request):
             secondary_filter_param="kind",
             secondary_filter_label="Task type",
             search_label="Search tasks",
-            search_placeholder="Case, work order, payment…",
+            search_placeholder="Case, work, payment…",
             pagination_label="Action inbox pages",
         ),
     )

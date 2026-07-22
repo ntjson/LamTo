@@ -9,6 +9,7 @@
   --color-brand-active: #202864;
   --color-brand-ink: #ffffff;
   --color-border: #d7dce8;
+  --color-control-border: #8a8fa8;
   --color-focus: #0b57d0;
   --color-focus-on-dark: #ffffff;
   --color-success: #0f7a45;
@@ -343,8 +344,9 @@ h3 {
 
 .messages {
   list-style: none;
-  margin: 0;
-  padding: 0;
+  width: min(42rem, 100%);
+  margin: var(--space-3) auto 0;
+  padding: 0 var(--space-4);
 }
 
 /* The one pill vocabulary: semantic status and deadline tone share the shape. */
@@ -536,6 +538,10 @@ button.button:disabled {
   background: var(--color-bg);
 }
 
+.task-row:focus-visible {
+  background: var(--color-bg);
+}
+
 .task-action {
   color: var(--color-ink);
   font-weight: 700;
@@ -591,7 +597,7 @@ textarea {
   width: 100%;
   min-height: var(--touch);
   padding: 0.65rem 0.75rem;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-control-border);
   border-radius: 10px;
   font: inherit;
   background: var(--color-surface);
@@ -615,17 +621,17 @@ textarea {
 }
 
 .field-error,
-.form-errors {
+.form-errors,
+.errorlist {
   color: var(--color-error);
   background: var(--color-error-bg);
   border-radius: 8px;
   padding: var(--space-2) var(--space-3);
 }
 
-.messages {
-  width: min(42rem, 100%);
-  margin: var(--space-3) auto 0;
-  padding: 0 var(--space-4);
+.errorlist {
+  list-style: none;
+  margin: 0 0 var(--space-3);
 }
 
 .stack-form .messages {
@@ -804,6 +810,11 @@ code {
 .deadline-badge.deadline-overdue {
   background: var(--color-error-bg);
   color: var(--color-error);
+}
+
+.deadline-badge.deadline-neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
 }
 
 .sr-only {

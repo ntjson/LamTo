@@ -3,7 +3,7 @@
 <nav class="accountability-chain" aria-label="{% trans 'Accountability chain' %}">
   <ol class="accountability-stages">
     {% for stage in accountability_stages %}
-    <li class="accountability-stage accountability-stage-{{ stage.state }}"{% if stage.state == "current" or stage.state == "blocked" or stage.state == "pending" %} aria-current="step"{% endif %}>
+    <li class="accountability-stage accountability-stage-{{ stage.state }}"{% if stage.state == "current" %} aria-current="step"{% endif %}>
       <span class="accountability-stage-label">{{ stage.label }}</span>
       <span class="accountability-stage-state">{{ stage.state_label|default:stage.state }}</span>
     </li>

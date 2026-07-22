@@ -1,28 +1,18 @@
-"""Management workspace: triage, cases, work orders, proposals."""
+"""Management workspace: triage, cases, proposals."""
 
 import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.text import Truncator
 from django.views.decorators.http import require_GET, require_http_methods
 
-from lamto.accounts.security import require_recent_auth
 from lamto.audit.services import record_audit
-from lamto.documents.models import Document, DocumentVersion
-from lamto.evidence.canonical import payload_hash
-from lamto.evidence.models import EvidenceType
-from lamto.finance.models import (
-    Proposal,
-    PublishedLedgerEntry,
-)
-from lamto.finance.proposals import (
-    ZERO_HASH,
-    build_proposal_evidence_payload,
-    create_proposal,
-    spending_proposal_cases,
-)
+from lamto.finance.proposals import spending_proposal_cases
+from lamto.maintenance.ai import URGENCIES
 from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion
 from lamto.maintenance.cases import (
     TERMINAL_STATUSES, complete_case_work, decline_report, publish_progress,
@@ -32,15 +22,30 @@ from lamto.web.forms.staff import (
     ConfirmTriageForm,
     DeclineReportForm,
     InfoRequestForm,
-    CreateProposalForm,
     ProgressUpdateForm,
 )
 from lamto.web.staff import require_management_context, staff_context
 from lamto.web.views.staff_common import (
     accountability_chain_for,
+    deadline_tone,
     prepare_record_list,
 )
-from lamto.web.staff_documents import new_event_id
+
+
+def _triage_initial_from_suggestion(suggestion):
+    """Prefill the four text/choice fields from the AI suggestion.
+
+    ``location`` is a BuildingLocation FK and the suggestion only carries
+    interpreted text, so it is left for the manager to pick.
+    """
+    if suggestion is None:
+        return None
+    return {
+        "category": suggestion.category,
+        "urgency": suggestion.urgency,
+        "department": suggestion.department,
+        "deadline_minutes": suggestion.deadline_minutes,
+    }
 
 
 @login_required
@@ -48,27 +53,28 @@ from lamto.web.staff_documents import new_event_id
 def case_list(request):
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
-    # Active cases filter by urgency (same ?status= chip pattern as work list).
-    from lamto.maintenance.ai import URGENCIES
-
     status = request.GET.get("status") or ""
     urgency_groups = {"routine": ("LOW", "MEDIUM"), "urgent": ("HIGH",)}
     valid_status = status in URGENCIES
     active_group = status if status in urgency_groups else next(
         (group for group, values in urgency_groups.items() if status in values), ""
     )
-    from django.db.models import Count
 
+    report_qs = IssueReport.objects.filter(
+        unit__building_id=building_id,
+        status__in=[
+            IssueReport.Status.SUBMITTED,
+            IssueReport.Status.IN_REVIEW,
+            IssueReport.Status.NEEDS_INFO,
+        ],
+    )
+    if status in urgency_groups:
+        report_qs = report_qs.filter(triage_job__suggestion__urgency__in=urgency_groups[status])
+    elif valid_status:
+        report_qs = report_qs.filter(triage_job__suggestion__urgency=status)
     report_list = prepare_record_list(
         request,
-        IssueReport.objects.filter(
-            unit__building_id=building_id,
-            status__in=[
-                IssueReport.Status.SUBMITTED,
-                IssueReport.Status.IN_REVIEW,
-                IssueReport.Status.NEEDS_INFO,
-            ],
-        ),
+        report_qs,
         search_fields=("text", "location_path_snapshot"),
         sorts=(("", "Newest first", ("-created_at",)),),
         page_param="rpage",
@@ -96,12 +102,11 @@ def case_list(request):
         "MEDIUM": "Medium",
         "HIGH": "High",
     }
-    from lamto.web.views.staff_common import deadline_tone
 
     report_items = [
         {
             "url": f"/s/reports/{r.pk}/",
-            "title": r.text,
+            "title": Truncator(r.text).chars(120),
             "status": r.get_status_display(),
             "deadline": None,
             "deadline_tone": "neutral",
@@ -117,7 +122,7 @@ def case_list(request):
             "deadline": c.deadline_at,
             "deadline_tone": deadline_tone(c.deadline_at),
             "next_action": (
-                "Create work order" if c.work_count == 0 else "Follow work in progress"
+                "Start work" if c.work_count == 0 else "Follow work in progress"
             ),
         }
         for c in case_list["page"].object_list
@@ -159,7 +164,13 @@ def report_detail(request, pk):
     if link is not None:
         return redirect("web:case-detail", pk=link.case_id)
 
-    form = ConfirmTriageForm(request.POST or None, building_id=building_id)
+    suggestion = TriageSuggestion.objects.filter(job__report=report).first()
+    form = ConfirmTriageForm(
+        request.POST or None,
+        building_id=building_id,
+        initial=_triage_initial_from_suggestion(suggestion),
+        extra_deadline_minutes=suggestion.deadline_minutes if suggestion else None,
+    )
     info_form = InfoRequestForm(request.POST or None)
     decline_form = DeclineReportForm(request.POST or None)
     if request.method == "POST":
@@ -185,14 +196,14 @@ def report_detail(request, pk):
                     )
                     messages.success(
                         request,
-                        "Triage confirmed. Create a work order to assign the repair.",
+                        "Triage confirmed. Start work to assign the repair.",
                     )
                     return redirect("web:case-detail", pk=case.pk)
         elif action == "request_info" and info_form.is_valid():
             try:
                 request_information(report, request.user, info_form.cleaned_data["message"])
             except ValidationError as error:
-                messages.error(request, "; ".join(error.messages))
+                messages.error(request, "Information request was not sent. " + "; ".join(error.messages) + " The report was not changed — review the message and try again.")
             else:
                 messages.success(request, "Information requested.")
             return redirect("web:staff-report-detail", pk=report.pk)
@@ -200,7 +211,7 @@ def report_detail(request, pk):
             try:
                 decline_report(report, request.user, decline_form.cleaned_data["reason"])
             except ValidationError as error:
-                messages.error(request, "; ".join(error.messages))
+                messages.error(request, "Request was not declined. " + "; ".join(error.messages) + " The report was not changed — review the reason and try again.")
             else:
                 messages.success(request, "Request declined.")
             return redirect("web:staff-report-detail", pk=report.pk)
@@ -224,7 +235,12 @@ def report_detail(request, pk):
             decline_form=decline_form,
             terminal=report.status in TERMINAL_STATUSES,
             open_info_request=report.info_requests.filter(resolved_at__isnull=True).first(),
-            suggestion=TriageSuggestion.objects.filter(job__report=report).first(),
+            suggestion=suggestion,
+            suggestion_raw_json=(
+                json.dumps(suggestion.raw_response, indent=2, ensure_ascii=False)
+                if suggestion else None
+            ),
+            accountability_stages=accountability_chain_for(report),
         ),
     )
 
@@ -245,7 +261,7 @@ def case_detail(request, pk):
             try:
                 start_case_work(case, request.user)
             except (ValidationError, PermissionDenied) as error:
-                messages.error(request, "; ".join(getattr(error, "messages", [str(error)])))
+                messages.error(request, "Work was not started. " + "; ".join(getattr(error, "messages", [str(error)])) + " The case was not changed — try again.")
             else:
                 messages.success(request, "Case work started.")
             return redirect("web:case-detail", pk=case.pk)
@@ -291,5 +307,6 @@ def case_detail(request, pk):
             ),
             list_mode=False,
             mode="case",
+            accountability_stages=accountability_chain_for(case),
         ),
     )

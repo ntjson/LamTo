@@ -1,4 +1,4 @@
-"""Management workspace: triage, cases, work orders, proposals."""
+"""Management workspace: triage, cases, proposals."""
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
