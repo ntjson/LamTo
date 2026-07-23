@@ -6,6 +6,7 @@ from lamto.config.worker import (
     CycleResult,
     ProcessorResult,
     process_notifications_batch,
+    process_registration_expiry_batch,
     run_worker_cycle,
 )
 
@@ -37,6 +38,25 @@ class WorkerCycleTests(TestCase):
         res = process_notifications_batch(limit=5)
         self.assertTrue(res.ok)
         self.assertEqual(res.name, "notifications")
+
+    @patch("lamto.accounts.registration.expire_registration_requests", return_value=3)
+    def test_registration_expiry_processor(self, expire):
+        result = process_registration_expiry_batch(limit=7)
+
+        expire.assert_called_once_with(limit=7)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.name, "registration_expiry")
+        self.assertEqual(result.count, 3)
+
+    @patch(
+        "lamto.accounts.registration.expire_registration_requests",
+        side_effect=RuntimeError("database unavailable"),
+    )
+    def test_registration_expiry_failure_is_a_processor_result(self, expire):
+        result = process_registration_expiry_batch()
+
+        self.assertFalse(result.ok)
+        self.assertIn("database unavailable", result.detail)
 
     def test_cycle_runs_all_named_processors(self):
         calls = []

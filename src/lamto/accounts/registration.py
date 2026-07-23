@@ -8,8 +8,11 @@ from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from lamto.audit.services import record_audit
+
 from .backends import normalize_phone
-from .models import RegistrationRequest, Unit, User
+from .models import RegistrationRequest, ResidentOccupancy, Unit, User
+from .services import require_management
 
 
 class RegistrationConflict(Exception):
@@ -32,11 +35,26 @@ def status_token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _expire_stale_requests():
-    RegistrationRequest.objects.filter(
-        status=RegistrationRequest.Status.PENDING,
-        expires_at__lte=timezone.now(),
-    ).update(status=RegistrationRequest.Status.EXPIRED)
+def expire_registration_requests(*, limit=100, now=None) -> int:
+    now = now or timezone.now()
+    with transaction.atomic():
+        requests = list(
+            RegistrationRequest.objects.select_for_update(skip_locked=True)
+            .filter(
+                status=RegistrationRequest.Status.PENDING,
+                expires_at__lte=now,
+            )
+            .order_by("expires_at")[:limit]
+        )
+        for request in requests:
+            request.status = RegistrationRequest.Status.EXPIRED
+            request.password_hash = ""
+            request.decided_at = now
+            request.updated_at = now
+        RegistrationRequest.objects.bulk_update(
+            requests, ["status", "password_hash", "decided_at", "updated_at"]
+        )
+    return len(requests)
 
 
 @transaction.atomic
@@ -53,7 +71,7 @@ def submit_registration(*, full_name, phone, email, password, building_id, unit_
         raise RegistrationConflict("Registration cannot be submitted")
     phone = "+84" + user_phone[1:]
 
-    _expire_stale_requests()
+    expire_registration_requests()
     duplicate = User.objects.filter(phone=user_phone)
     pending = RegistrationRequest.objects.filter(
         status=RegistrationRequest.Status.PENDING, phone=phone
@@ -90,10 +108,100 @@ def get_registration_status(status_token):
     request = RegistrationRequest.objects.get(
         status_token_digest=status_token_digest(status_token)
     )
-    if (
-        request.status == RegistrationRequest.Status.PENDING
-        and request.expires_at <= timezone.now()
-    ):
-        request.status = RegistrationRequest.Status.EXPIRED
-        request.save(update_fields=["status", "updated_at"])
+    if request.status == RegistrationRequest.Status.PENDING:
+        expire_registration_requests()
+        request.refresh_from_db()
     return request
+
+
+def approve_registration(*, request_id, actor):
+    try:
+        with transaction.atomic():
+            request = (
+                RegistrationRequest.objects.select_for_update()
+                .select_related("building", "unit")
+                .get(pk=request_id)
+            )
+            membership = require_management(actor, request.building_id)
+            if request.status != RegistrationRequest.Status.PENDING:
+                raise RegistrationConflict()
+
+            user = User(
+                display_name=request.full_name,
+                phone=request.phone,
+                email=request.email,
+                is_active=True,
+            )
+            user.password = request.password_hash
+            user.save()
+            ResidentOccupancy.objects.create(user=user, unit=request.unit, active=True)
+            now = timezone.now()
+            request.status = RegistrationRequest.Status.APPROVED
+            request.password_hash = ""
+            request.decided_by = actor
+            request.decided_at = now
+            request.save(
+                update_fields=[
+                    "status",
+                    "password_hash",
+                    "decided_by",
+                    "decided_at",
+                    "updated_at",
+                ]
+            )
+            record_audit(
+                actor,
+                membership,
+                "registration.approved",
+                "RegistrationRequest",
+                str(request.pk),
+                "accepted",
+                {"building_id": request.building_id, "unit_id": request.unit_id},
+            )
+            return user
+    except IntegrityError as error:
+        raise RegistrationConflict() from error
+
+
+@transaction.atomic
+def reject_registration(*, request_id, actor, reason):
+    reason = reason.strip()
+    if not reason:
+        raise ValueError("Rejection reason is required")
+    request = (
+        RegistrationRequest.objects.select_for_update()
+        .select_related("building", "unit")
+        .get(pk=request_id)
+    )
+    membership = require_management(actor, request.building_id)
+    if request.status != RegistrationRequest.Status.PENDING:
+        raise RegistrationConflict()
+
+    request.status = RegistrationRequest.Status.REJECTED
+    request.password_hash = ""
+    request.rejection_reason = reason
+    request.decided_by = actor
+    request.decided_at = timezone.now()
+    request.save(
+        update_fields=[
+            "status",
+            "password_hash",
+            "rejection_reason",
+            "decided_by",
+            "decided_at",
+            "updated_at",
+        ]
+    )
+    record_audit(
+        actor,
+        membership,
+        "registration.rejected",
+        "RegistrationRequest",
+        str(request.pk),
+        "accepted",
+        {
+            "building_id": request.building_id,
+            "unit_id": request.unit_id,
+            "reason": reason,
+        },
+    )

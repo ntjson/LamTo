@@ -164,6 +164,18 @@ def process_stale_devices_batch(*, days: int = 180) -> ProcessorResult:
         return ProcessorResult(name=name, ok=False, detail=str(exc))
 
 
+def process_registration_expiry_batch(*, limit: int = 100) -> ProcessorResult:
+    name = "registration_expiry"
+    try:
+        from lamto.accounts.registration import expire_registration_requests
+
+        count = expire_registration_requests(limit=limit)
+        return ProcessorResult(name=name, ok=True, count=count, detail=f"expired={count}")
+    except Exception as exc:
+        logger.exception("worker processor %s failed", name)
+        return ProcessorResult(name=name, ok=False, detail=str(exc))
+
+
 PROCESSORS = (
     process_triage_batch,
     process_blockchain_outbox_batch,
@@ -171,6 +183,7 @@ PROCESSORS = (
     process_deadline_risk_batch,
     process_notifications_batch,
     process_stale_devices_batch,
+    process_registration_expiry_batch,
 )
 
 
