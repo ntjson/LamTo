@@ -1,0 +1,135 @@
+from django.core.exceptions import PermissionDenied
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import exceptions, serializers, status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from lamto.accounts.backends import normalize_phone
+from lamto.accounts.models import Building, RegistrationRequest, Unit
+from lamto.accounts.registration import (
+    RegistrationConflict,
+    get_registration_status,
+    submit_registration,
+)
+from lamto.accounts.security import assert_not_throttled, client_ip, record_auth_failure
+from lamto.api.problems import RegistrationConflictProblem, problem_responses
+from lamto.api.registration_serializers import (
+    RegistrationBuildingSerializer,
+    RegistrationCreateSerializer,
+    RegistrationStatusSerializer,
+    RegistrationSubmissionSerializer,
+)
+
+
+STATUS_TOKEN_HEADER = OpenApiParameter(
+    name="X-Registration-Status-Token",
+    type=OpenApiTypes.STR,
+    location=OpenApiParameter.HEADER,
+    required=True,
+)
+
+
+class PublicRegistrationView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+
+class RegistrationOptionsView(PublicRegistrationView):
+    @extend_schema(
+        operation_id="registration_options",
+        tags=["registration"],
+        responses={200: RegistrationBuildingSerializer(many=True)},
+    )
+    def get(self, request):
+        buildings = Building.objects.prefetch_related("unit_set").order_by("id")
+        data = [
+            {
+                "id": building.id,
+                "name": building.name,
+                "units": [
+                    {"id": unit.id, "label": unit.label}
+                    for unit in building.unit_set.all().order_by("id")
+                ],
+            }
+            for building in buildings
+        ]
+        return Response(RegistrationBuildingSerializer(data, many=True).data)
+
+
+class RegistrationCreateView(PublicRegistrationView):
+    @extend_schema(
+        operation_id="registration_create",
+        tags=["registration"],
+        request=RegistrationCreateSerializer,
+        responses={
+            201: RegistrationSubmissionSerializer,
+            **problem_responses(400, 409, 429),
+        },
+    )
+    def post(self, request):
+        serializer = RegistrationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        phone_key = f"registration-phone:{normalize_phone(data['phone'])}"
+        ip = client_ip(request)
+        try:
+            assert_not_throttled(phone_key, None)
+            assert_not_throttled("registration-ip", ip)
+        except PermissionDenied:
+            raise exceptions.Throttled(
+                detail="Too many registration attempts. Try again later."
+            )
+        record_auth_failure(phone_key, None, kind="registration")
+        record_auth_failure("registration-ip", ip, kind="registration")
+
+        if not Unit.objects.filter(
+            pk=data["unit_id"], building_id=data["building_id"]
+        ).exists():
+            raise serializers.ValidationError(
+                {"unit_id": "Unit does not belong to the selected building."}
+            )
+        try:
+            submission = submit_registration(**data)
+        except RegistrationConflict:
+            raise RegistrationConflictProblem()
+        output = {
+            "status": submission.request.status,
+            "status_token": submission.status_token,
+            "phone": submission.request.phone,
+        }
+        return Response(
+            RegistrationSubmissionSerializer(output).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RegistrationStatusView(PublicRegistrationView):
+    @extend_schema(
+        operation_id="registration_status",
+        tags=["registration"],
+        parameters=[STATUS_TOKEN_HEADER],
+        responses={200: RegistrationStatusSerializer, **problem_responses(400, 404)},
+    )
+    def get(self, request):
+        token = request.headers.get("X-Registration-Status-Token")
+        if not token:
+            raise serializers.ValidationError(
+                {"X-Registration-Status-Token": "This header is required."}
+            )
+        try:
+            registration = get_registration_status(token)
+        except RegistrationRequest.DoesNotExist:
+            raise exceptions.NotFound()
+        data = {
+            "status": registration.status,
+            "phone": registration.phone,
+            "building": registration.building.name,
+            "unit": registration.unit.label,
+        }
+        if registration.status == RegistrationRequest.Status.REJECTED:
+            data["rejection_reason"] = registration.rejection_reason
+        response = Response(RegistrationStatusSerializer(data).data)
+        response["Cache-Control"] = "private, no-store"
+        return response

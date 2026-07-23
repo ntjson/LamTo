@@ -25,7 +25,7 @@ abstract class Me implements Built<Me, MeBuilder> {
   String get displayName;
 
   @BuiltValueField(wireName: r'email')
-  String get email;
+  String? get email;
 
   @BuiltValueField(wireName: r'phone')
   String? get phone;
@@ -65,9 +65,9 @@ class _$MeSerializer implements PrimitiveSerializer<Me> {
       specifiedType: const FullType(String),
     );
     yield r'email';
-    yield serializers.serialize(
+    yield object.email == null ? null : serializers.serialize(
       object.email,
-      specifiedType: const FullType(String),
+      specifiedType: const FullType.nullable(String),
     );
     yield r'phone';
     yield object.phone == null ? null : serializers.serialize(
@@ -117,8 +117,9 @@ class _$MeSerializer implements PrimitiveSerializer<Me> {
         case r'email':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.email = valueDes;
           break;
         case r'phone':

@@ -369,6 +369,10 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "StatusEnum": "lamto.maintenance.models.IssueReport.Status",
+        "RegistrationStatusEnum": "lamto.accounts.models.RegistrationRequest.Status",
+    },
     "APPEND_COMPONENTS": {"securitySchemes": {"GateDevice": {"type": "apiKey", "in": "header", "name": "Authorization", "description": "GateDevice <credential>"}}},
 }
 

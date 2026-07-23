@@ -1063,6 +1063,98 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Resource not found (code=not_found).
+  /api/v1/registration-requests:
+    post:
+      operationId: registration_create
+      tags:
+      - registration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegistrationCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegistrationCreateRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSubmission'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: A request conflicts with existing state.
+        '429':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Too many authentication attempts (code=throttled).
+  /api/v1/registration-requests/status:
+    get:
+      operationId: registration_status
+      parameters:
+      - in: header
+        name: X-Registration-Status-Token
+        schema:
+          type: string
+        required: true
+      tags:
+      - registration
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationStatus'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
+  /api/v1/registration/options:
+    get:
+      operationId: registration_options
+      tags:
+      - registration
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegistrationBuilding'
+          description: ''
   /api/v1/reports:
     get:
       operationId: reports_list
@@ -1153,7 +1245,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: client_ref conflict or gate plate already registered (code=gate_plate_already_registered).
+          description: A request conflicts with existing state.
         '422':
           content:
             application/problem+json:
@@ -1648,6 +1740,7 @@ components:
         email:
           type: string
           format: email
+          nullable: true
         phone:
           type: string
           nullable: true
@@ -2099,6 +2192,105 @@ components:
       - matched
       - score
       - unit_label
+    RegistrationBuilding:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistrationUnit'
+      required:
+      - id
+      - name
+      - units
+    RegistrationCreateRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 32
+        email:
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        building_id:
+          type: integer
+        unit_id:
+          type: integer
+      required:
+      - building_id
+      - full_name
+      - password
+      - phone
+      - unit_id
+    RegistrationStatus:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/RegistrationStatusEnum'
+        phone:
+          type: string
+        building:
+          type: string
+        unit:
+          type: string
+        rejection_reason:
+          type: string
+      required:
+      - building
+      - phone
+      - status
+      - unit
+    RegistrationStatusEnum:
+      enum:
+      - PENDING
+      - APPROVED
+      - REJECTED
+      - EXPIRED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `APPROVED` - Approved
+        * `REJECTED` - Rejected
+        * `EXPIRED` - Expired
+    RegistrationSubmission:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/RegistrationStatusEnum'
+        status_token:
+          type: string
+        phone:
+          type: string
+      required:
+      - phone
+      - status
+      - status_token
+    RegistrationUnit:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+      required:
+      - id
+      - label
     ReportCase:
       type: object
       properties:

@@ -50,6 +50,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ProposalSupportingDocument.serializer)
       ..add(ProposalVersion.serializer)
       ..add(RecognitionOutcome.serializer)
+      ..add(RegistrationBuilding.serializer)
+      ..add(RegistrationCreateRequest.serializer)
+      ..add(RegistrationCreateRequestEmail.serializer)
+      ..add(RegistrationStatus.serializer)
+      ..add(RegistrationStatusEnum.serializer)
+      ..add(RegistrationSubmission.serializer)
+      ..add(RegistrationUnit.serializer)
       ..add(ReportCase.serializer)
       ..add(ReportCreateRequest.serializer)
       ..add(ReportDetail.serializer)
@@ -97,6 +104,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ProposalProgress)]),
           () => ListBuilder<ProposalProgress>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(RegistrationUnit)]),
+          () => ListBuilder<RegistrationUnit>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ReportSummary)]),
           () => ListBuilder<ReportSummary>())

@@ -57,6 +57,13 @@ import 'package:lamto_api/src/model/proposal_settlement.dart';
 import 'package:lamto_api/src/model/proposal_supporting_document.dart';
 import 'package:lamto_api/src/model/proposal_version.dart';
 import 'package:lamto_api/src/model/recognition_outcome.dart';
+import 'package:lamto_api/src/model/registration_building.dart';
+import 'package:lamto_api/src/model/registration_create_request.dart';
+import 'package:lamto_api/src/model/registration_create_request_email.dart';
+import 'package:lamto_api/src/model/registration_status.dart';
+import 'package:lamto_api/src/model/registration_status_enum.dart';
+import 'package:lamto_api/src/model/registration_submission.dart';
+import 'package:lamto_api/src/model/registration_unit.dart';
 import 'package:lamto_api/src/model/report_case.dart';
 import 'package:lamto_api/src/model/report_create_request.dart';
 import 'package:lamto_api/src/model/report_detail.dart';
@@ -115,6 +122,13 @@ part 'serializers.g.dart';
   ProposalSupportingDocument,
   ProposalVersion,
   RecognitionOutcome,
+  RegistrationBuilding,
+  RegistrationCreateRequest,
+  RegistrationCreateRequestEmail,
+  RegistrationStatus,
+  RegistrationStatusEnum,
+  RegistrationSubmission,
+  RegistrationUnit,
   ReportCase,
   ReportCreateRequest,
   ReportDetail,
@@ -128,6 +142,10 @@ part 'serializers.g.dart';
   Verification,
 ])
 Serializers serializers = (_$serializers.toBuilder()
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RegistrationBuilding)]),
+        () => ListBuilder<RegistrationBuilding>(),
+      )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Location)]),
         () => ListBuilder<Location>(),

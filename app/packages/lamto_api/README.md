@@ -92,6 +92,9 @@ Class | Method | HTTP request | Description
 [*ProposalsApi*](doc/ProposalsApi.md) | [**proposalDetail**](doc/ProposalsApi.md#proposaldetail) | **GET** /api/v1/proposals/{id} |
 [*ProposalsApi*](doc/ProposalsApi.md) | [**proposalList**](doc/ProposalsApi.md#proposallist) | **GET** /api/v1/proposals |
 [*ProposalsApi*](doc/ProposalsApi.md) | [**proposalsRatingCreate**](doc/ProposalsApi.md#proposalsratingcreate) | **POST** /api/v1/proposals/{id}/rating |
+[*RegistrationApi*](doc/RegistrationApi.md) | [**registrationCreate**](doc/RegistrationApi.md#registrationcreate) | **POST** /api/v1/registration-requests |
+[*RegistrationApi*](doc/RegistrationApi.md) | [**registrationOptions**](doc/RegistrationApi.md#registrationoptions) | **GET** /api/v1/registration/options |
+[*RegistrationApi*](doc/RegistrationApi.md) | [**registrationStatus**](doc/RegistrationApi.md#registrationstatus) | **GET** /api/v1/registration-requests/status |
 [*ReportsApi*](doc/ReportsApi.md) | [**reportsCreate**](doc/ReportsApi.md#reportscreate) | **POST** /api/v1/reports |
 [*ReportsApi*](doc/ReportsApi.md) | [**reportsInfoReplyCreate**](doc/ReportsApi.md#reportsinforeplycreate) | **POST** /api/v1/reports/{id}/info-reply |
 [*ReportsApi*](doc/ReportsApi.md) | [**reportsList**](doc/ReportsApi.md#reportslist) | **GET** /api/v1/reports |
@@ -144,6 +147,13 @@ Class | Method | HTTP request | Description
  - [ProposalSupportingDocument](doc/ProposalSupportingDocument.md)
  - [ProposalVersion](doc/ProposalVersion.md)
  - [RecognitionOutcome](doc/RecognitionOutcome.md)
+ - [RegistrationBuilding](doc/RegistrationBuilding.md)
+ - [RegistrationCreateRequest](doc/RegistrationCreateRequest.md)
+ - [RegistrationCreateRequestEmail](doc/RegistrationCreateRequestEmail.md)
+ - [RegistrationStatus](doc/RegistrationStatus.md)
+ - [RegistrationStatusEnum](doc/RegistrationStatusEnum.md)
+ - [RegistrationSubmission](doc/RegistrationSubmission.md)
+ - [RegistrationUnit](doc/RegistrationUnit.md)
  - [ReportCase](doc/ReportCase.md)
  - [ReportCreateRequest](doc/ReportCreateRequest.md)
  - [ReportDetail](doc/ReportDetail.md)

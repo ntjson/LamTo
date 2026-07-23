@@ -10,7 +10,7 @@ class _$Me extends Me {
   @override
   final String displayName;
   @override
-  final String email;
+  final String? email;
   @override
   final String? phone;
   @override
@@ -23,7 +23,7 @@ class _$Me extends Me {
 
   _$Me._(
       {required this.displayName,
-      required this.email,
+      this.email,
       this.phone,
       required this.occupancies,
       required this.notificationPreferences})
@@ -135,7 +135,7 @@ class MeBuilder implements Builder<Me, MeBuilder> {
           _$Me._(
             displayName: BuiltValueNullFieldError.checkNotNull(
                 displayName, r'Me', 'displayName'),
-            email: BuiltValueNullFieldError.checkNotNull(email, r'Me', 'email'),
+            email: email,
             phone: phone,
             occupancies: occupancies.build(),
             notificationPreferences: notificationPreferences.build(),

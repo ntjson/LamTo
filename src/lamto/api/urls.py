@@ -2,11 +2,26 @@
 
 from django.urls import path
 
-from lamto.api import views, gate_views
+from lamto.api import gate_views, registration_views, views
 
 app_name = "api"
 
 urlpatterns = [
+    path(
+        "registration/options",
+        registration_views.RegistrationOptionsView.as_view(),
+        name="registration-options",
+    ),
+    path(
+        "registration-requests",
+        registration_views.RegistrationCreateView.as_view(),
+        name="registration-create",
+    ),
+    path(
+        "registration-requests/status",
+        registration_views.RegistrationStatusView.as_view(),
+        name="registration-status",
+    ),
     path("auth/login", views.LoginView.as_view(), name="auth-login"),
     path("auth/logout", views.LogoutView.as_view(), name="auth-logout"),
     path("auth/logout-all", views.LogoutAllView.as_view(), name="auth-logout-all"),

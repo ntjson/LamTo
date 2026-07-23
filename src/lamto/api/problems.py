@@ -26,7 +26,7 @@ _PROBLEM_DESCRIPTIONS = {
     ),
     403: "Permission denied (code=permission_denied).",
     404: "Resource not found (code=not_found).",
-    409: "client_ref conflict or gate plate already registered (code=gate_plate_already_registered).",
+    409: "A request conflicts with existing state.",
     422: (
         "Occupancy selection required "
         "(code=occupancy_selection_required); send X-LamTo-Occupancy, or gate input was unusable."
@@ -72,6 +72,12 @@ class ClientRefConflict(exceptions.APIException):
     status_code = 409
     default_detail = "client_ref reused with different content."
     default_code = "client_ref_conflict"
+
+
+class RegistrationConflictProblem(exceptions.APIException):
+    status_code = 409
+    default_detail = "Registration cannot be submitted."
+    default_code = "registration_conflict"
 
 
 class GateNoFaceDetected(exceptions.APIException):
@@ -121,6 +127,7 @@ _EXCEPTION_CODES = (
     (GateDeviceExpired, "gate_device_expired"),
     (GateDeviceUnauthenticated, "gate_device_unauthenticated"),
     (OccupancySelectionRequired, "occupancy_selection_required"),
+    (RegistrationConflictProblem, "registration_conflict"),
     (ClientRefConflict, "client_ref_conflict"),
     (exceptions.NotAuthenticated, "not_authenticated"),
     (exceptions.AuthenticationFailed, "authentication_failed"),
