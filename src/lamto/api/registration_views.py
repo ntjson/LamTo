@@ -13,7 +13,7 @@ from lamto.accounts.registration import (
     get_registration_status,
     submit_registration,
 )
-from lamto.accounts.security import assert_not_throttled, client_ip, record_auth_failure
+from lamto.accounts.security import record_registration_attempt
 from lamto.api.problems import RegistrationConflictProblem, problem_responses
 from lamto.api.registration_serializers import (
     RegistrationBuildingSerializer,
@@ -69,14 +69,13 @@ class RegistrationCreateView(PublicRegistrationView):
         },
     )
     def post(self, request):
-        ip = client_ip(request)
+        ip = (request.META.get("REMOTE_ADDR") or "").strip()
         try:
-            assert_not_throttled("registration-ip", ip)
+            record_registration_attempt("registration-ip", ip)
         except PermissionDenied:
             raise exceptions.Throttled(
                 detail="Too many registration attempts. Try again later."
             )
-        record_auth_failure("registration-ip", ip, kind="registration")
 
         raw_data = request.data
         raw_phone = raw_data.get("phone") if hasattr(raw_data, "get") else None
@@ -84,12 +83,11 @@ class RegistrationCreateView(PublicRegistrationView):
         if normalized_phone is not None:
             phone_key = f"registration-phone:{normalized_phone}"
             try:
-                assert_not_throttled(phone_key, None)
+                record_registration_attempt(phone_key, None)
             except PermissionDenied:
                 raise exceptions.Throttled(
                     detail="Too many registration attempts. Try again later."
                 )
-            record_auth_failure(phone_key, None, kind="registration")
 
         serializer = RegistrationCreateSerializer(data=raw_data)
         serializer.is_valid(raise_exception=True)

@@ -1,4 +1,5 @@
 import time
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
@@ -95,6 +96,25 @@ def test_detail_returns_404_for_another_building(client):
         ).status_code
         == 404
     )
+
+
+@pytest.mark.parametrize("decision", ["approve", "reject"])
+def test_cross_building_decision_returns_404_before_service(client, decision):
+    membership, _unit = setup_building("Tower A", "manager-a@example.test")
+    _other_membership, other_unit = setup_building("Tower B", "manager-b@example.test")
+    request = registration(other_unit)
+    authenticate(client, membership.user)
+    data = {"reason": "No"} if decision == "reject" else {}
+
+    with patch(
+        f"lamto.web.registration_views.{decision}_registration"
+    ) as service:
+        response = client.post(
+            reverse(f"web:staff-registration-{decision}", args=[request.pk]), data
+        )
+
+    assert response.status_code == 404
+    service.assert_not_called()
 
 
 @pytest.mark.parametrize("decision", ["approve", "reject"])

@@ -64,9 +64,7 @@ STAFF_CASES = {
     "web:staff-registration-approve": ("registration_pk", "POST"),
     "web:staff-registration-reject": ("registration_pk", "POST"),
 }
-STAFF_FORBIDDEN_CASES = {
-    "web:staff-registration-approve",
-}
+STAFF_FORBIDDEN_CASES = set()
 
 RESIDENT_CASES = {}
 

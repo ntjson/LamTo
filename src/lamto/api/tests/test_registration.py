@@ -1,7 +1,10 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import pytest
+from django.db import connection
+from django.test import TransactionTestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -257,3 +260,57 @@ def test_malformed_json_attempts_are_throttled_by_ip(api_client):
     )
 
     assert response.status_code == 429
+
+
+def test_registration_throttle_ignores_untrusted_forwarded_for(api_client, unit):
+    for attempt in range(5):
+        response = api_client.post(
+            reverse("api:registration-create"),
+            payload(unit, phone=f"09012345{attempt:02d}", unit_id=999999),
+            format="json",
+            REMOTE_ADDR="203.0.113.30",
+            HTTP_X_FORWARDED_FOR=f"198.51.100.{attempt}",
+        )
+        assert response.status_code == 400
+
+    response = api_client.post(
+        reverse("api:registration-create"),
+        payload(unit, phone="0901234599", unit_id=999999),
+        format="json",
+        REMOTE_ADDR="203.0.113.30",
+        HTTP_X_FORWARDED_FOR="198.51.100.99",
+    )
+    assert response.status_code == 429
+
+
+class RegistrationThrottleRaceTests(TransactionTestCase):
+    def _fixture_teardown(self):
+        pass
+
+    def tearDown(self):
+        AuthThrottleBucket.objects.all().delete()
+        Unit.objects.all().delete()
+        Building.objects.all().delete()
+
+    def test_concurrent_attempts_cannot_exceed_limit(self):
+        unit = Unit.objects.create(
+            building=Building.objects.create(name="Race tower"), label="101"
+        )
+
+        def attempt(index):
+            connection.close()
+            try:
+                return APIClient().post(
+                    reverse("api:registration-create"),
+                    payload(unit, unit_id=999999),
+                    format="json",
+                    REMOTE_ADDR=f"203.0.113.{index}",
+                ).status_code
+            finally:
+                connection.close()
+
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            statuses = list(pool.map(attempt, range(10)))
+
+        assert statuses.count(400) == 5
+        assert statuses.count(429) == 5

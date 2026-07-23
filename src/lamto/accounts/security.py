@@ -90,6 +90,34 @@ def record_auth_failure(account: str, ip: str | None, *, kind: str = "login") ->
 
 
 @transaction.atomic
+def record_registration_attempt(account: str, ip: str | None) -> AuthThrottleBucket:
+    """Atomically admit and record one public registration attempt."""
+    digest = throttle_digest(account, ip)
+    bucket, _ = AuthThrottleBucket.objects.select_for_update().get_or_create(
+        key_digest=digest,
+        defaults={"failure_count": 0, "window_started_at": _now()},
+    )
+    now = _now()
+    if bucket.locked_until and bucket.locked_until > now:
+        raise PermissionDenied("Too many registration attempts. Try again later.")
+    if (
+        bucket.window_started_at is None
+        or (now - bucket.window_started_at).total_seconds() > THROTTLE_WINDOW_SECONDS
+    ):
+        bucket.failure_count = 1
+        bucket.window_started_at = now
+        bucket.locked_until = None
+    else:
+        bucket.failure_count = (bucket.failure_count or 0) + 1
+    if bucket.failure_count >= THROTTLE_MAX_FAILURES:
+        bucket.locked_until = now + timedelta(seconds=THROTTLE_WINDOW_SECONDS)
+    bucket.save(
+        update_fields=["failure_count", "window_started_at", "locked_until", "updated_at"]
+    )
+    return bucket
+
+
+@transaction.atomic
 def reset_auth_throttle(account: str, ip: str | None) -> None:
     digest = throttle_digest(account, ip)
     bucket = (

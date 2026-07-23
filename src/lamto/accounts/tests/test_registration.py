@@ -108,6 +108,25 @@ def test_rejection_requires_reason_and_clears_secret(unit, manager):
     }
 
 
+@pytest.mark.parametrize("decision", ["approve", "reject"])
+def test_decision_expires_request_at_boundary(unit, manager, decision):
+    request = submit(unit).request
+    now = timezone.now()
+    RegistrationRequest.objects.filter(pk=request.pk).update(expires_at=now)
+
+    with patch("lamto.accounts.registration.timezone.now", return_value=now):
+        with pytest.raises(RegistrationConflict):
+            if decision == "approve":
+                approve_registration(request_id=request.pk, actor=manager)
+            else:
+                reject_registration(request_id=request.pk, actor=manager, reason="No")
+
+    request.refresh_from_db()
+    assert request.status == RegistrationRequest.Status.EXPIRED
+    assert request.password_hash == ""
+    assert request.decided_at == now
+
+
 def test_second_decision_conflicts(unit, manager):
     request = submit(unit).request
     reject_registration(request_id=request.id, actor=manager, reason="Duplicate")
@@ -342,6 +361,31 @@ def test_stale_pending_request_does_not_block_later_submission(unit):
     assert first.status == RegistrationRequest.Status.EXPIRED
     assert first.password_hash == ""
     assert first.decided_at is not None
+
+
+def test_matching_stale_request_expires_beyond_cleanup_batch(unit):
+    first = submit(unit).request
+    now = timezone.now()
+    RegistrationRequest.objects.filter(pk=first.pk).update(expires_at=now)
+    RegistrationRequest.objects.bulk_create(
+        [
+            RegistrationRequest(
+                full_name=f"Older {index}",
+                phone=f"+848{index:08d}",
+                building=unit.building,
+                unit=unit,
+                password_hash="hashed",
+                status_token_digest=f"{index:064x}",
+                expires_at=now - timedelta(days=1),
+            )
+            for index in range(100)
+        ]
+    )
+
+    assert submit(unit).request.pk != first.pk
+    first.refresh_from_db()
+    assert first.status == RegistrationRequest.Status.EXPIRED
+    assert first.password_hash == ""
 
 
 @pytest.mark.parametrize("existing", ["phone", "email"])
