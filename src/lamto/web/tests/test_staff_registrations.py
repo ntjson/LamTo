@@ -10,11 +10,14 @@ from lamto.accounts.models import (
     Building,
     ManagementMembership,
     RegistrationRequest,
+    ResidentOccupancy,
     Unit,
     User,
 )
 from lamto.accounts.registration import submit_registration
 from lamto.accounts.security import RECENT_REAUTH_KEY
+from lamto.audit.models import AuditEvent
+from lamto.web.action_inbox import action_items_for
 
 
 pytestmark = pytest.mark.django_db
@@ -158,3 +161,113 @@ def test_detail_does_not_render_secrets(client):
 
     assert request.password_hash.encode() not in response.content
     assert request.status_token_digest.encode() not in response.content
+
+
+def test_public_registration_can_be_approved_end_to_end(client):
+    membership, unit = setup_building("Tower A", "manager-a@example.test")
+    other_membership, _ = setup_building("Tower B", "manager-b@example.test")
+    password = "correct horse battery staple"
+
+    submitted = client.post(
+        reverse("api:registration-create"),
+        {
+            "full_name": "Resident Journey",
+            "phone": "090 123 4567",
+            "email": "journey@example.test",
+            "password": password,
+            "building_id": unit.building_id,
+            "unit_id": unit.pk,
+        },
+        content_type="application/json",
+    )
+    assert submitted.status_code == 201
+    status_token = submitted.json()["status_token"]
+    request = RegistrationRequest.objects.get()
+
+    authenticate(client, membership.user)
+    queue = client.get(reverse("web:staff-registration-list"))
+    inbox = client.get(reverse("web:action-inbox"))
+    assert request in queue.context["registrations"]
+    assert request.full_name.encode() in inbox.content
+    assert not any(
+        item.target_id == str(request.pk) for item in action_items_for(other_membership)
+    )
+
+    approved = client.post(
+        reverse("web:staff-registration-approve", args=[request.pk])
+    )
+    assert approved.status_code == 302
+    status = client.get(
+        reverse("api:registration-status"),
+        HTTP_X_REGISTRATION_STATUS_TOKEN=status_token,
+    )
+    assert status.json()["status"] == "APPROVED"
+    login = client.post(
+        reverse("api:auth-login"),
+        {"identifier": "0901234567", "password": password},
+        content_type="application/json",
+    )
+    assert login.status_code == 200
+
+    request.refresh_from_db()
+    resident = User.objects.get(phone="0901234567")
+    assert ResidentOccupancy.objects.filter(
+        user=resident, unit=unit, active=True
+    ).count() == 1
+    assert request.password_hash == ""
+    assert AuditEvent.objects.filter(
+        action="registration.approved",
+        actor=membership.user,
+        target_id=str(request.pk),
+        result="accepted",
+    ).exists()
+
+
+def test_rejected_public_registration_exposes_reason_and_allows_resubmission(client):
+    membership, unit = setup_building("Tower A", "manager-a@example.test")
+    submitted = client.post(
+        reverse("api:registration-create"),
+        {
+            "full_name": "Rejected Resident",
+            "phone": "090 123 4567",
+            "email": "",
+            "password": "correct horse battery staple",
+            "building_id": unit.building_id,
+            "unit_id": unit.pk,
+        },
+        content_type="application/json",
+    )
+    assert submitted.status_code == 201
+    request = RegistrationRequest.objects.get()
+
+    authenticate(client, membership.user)
+    rejected = client.post(
+        reverse("web:staff-registration-reject", args=[request.pk]),
+        {"reason": "Lease could not be verified"},
+    )
+    assert rejected.status_code == 302
+    status = client.get(
+        reverse("api:registration-status"),
+        HTTP_X_REGISTRATION_STATUS_TOKEN=submitted.json()["status_token"],
+    )
+    assert status.json()["rejection_reason"] == "Lease could not be verified"
+
+    request.refresh_from_db()
+    assert request.password_hash == ""
+    assert AuditEvent.objects.filter(
+        action="registration.rejected", target_id=str(request.pk), result="accepted"
+    ).exists()
+    resubmitted = client.post(
+        reverse("api:registration-create"),
+        {
+            "full_name": "Rejected Resident",
+            "phone": "+84 90 123 4567",
+            "email": "",
+            "password": "new correct horse battery staple",
+            "building_id": unit.building_id,
+            "unit_id": unit.pk,
+        },
+        content_type="application/json",
+    )
+    assert resubmitted.status_code == 201
+    assert RegistrationRequest.objects.filter(phone="+84901234567").count() == 2

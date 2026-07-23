@@ -26,6 +26,7 @@ from django_otp.util import random_hex
 from knox.models import AuthToken
 
 from lamto.accounts.models import ResidentOccupancy
+from lamto.accounts.registration import submit_registration
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.fund import fund_balance
@@ -59,6 +60,12 @@ STAFF_CASES = {
     "web:gate-face-photo": ("face_pk", "GET"),
     "web:gate-face-decide": ("face_pk", "POST"),
     "web:gate-plate-decide": ("plate_pk", "POST"),
+    "web:staff-registration-detail": ("registration_pk", "GET"),
+    "web:staff-registration-approve": ("registration_pk", "POST"),
+    "web:staff-registration-reject": ("registration_pk", "POST"),
+}
+STAFF_FORBIDDEN_CASES = {
+    "web:staff-registration-approve",
 }
 
 RESIDENT_CASES = {}
@@ -84,6 +91,9 @@ LIST_ROUTES = [
 # Public unauthenticated auth surface (login).
 API_PUBLIC_AUTH = {
     "api:auth-login": "POST login (phone/email → knox token)",
+    "api:registration-options": "GET public building/unit options",
+    "api:registration-create": "POST public registration request",
+    "api:registration-status": "GET status by registration secret",
 }
 
 # Authenticated but user-scoped, not building-tenant.
@@ -227,6 +237,14 @@ class CrossBuildingAccessTests(TestCase):
             plate="51B12345",
         )
         cls.b.update(face_pk=face.pk, plate_pk=plate.pk)
+        cls.b["registration_pk"] = submit_registration(
+            full_name="Isolation Resident B",
+            phone="0901234567",
+            email="isolation-registration-b@example.test",
+            password="correct horse battery staple",
+            building_id=b_building.pk,
+            unit_id=b_occupancy.unit_id,
+        ).request.pk
 
     def _management_login(self):
         membership = self.seed_a.management_memberships[0]
@@ -297,10 +315,10 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_six_areas_and_non_manager_is_denied(self):
+    def test_management_has_seven_areas_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
-            "inbox", "cases", "finance", "exports", "gate", "ops"
+            "inbox", "cases", "finance", "exports", "gate", "registrations", "ops"
         ]
         self._management_login()
         assert self.client.get(reverse("web:case-list")).status_code == 200
@@ -327,10 +345,10 @@ class CrossBuildingAccessTests(TestCase):
                 response = (
                     self.client.post(url, {}) if method == "POST" else self.client.get(url)
                 )
-                # Design §2.3: pure cross-tenant object access is 404 (not 403).
-                # Managers may use the route inside their own building, so the
-                # only failure mode is wrong tenant.
-                assert response.status_code == 404, (route, response.status_code)
+                # Object lookups hide other tenants with 404; service-layer
+                # authorization may reject them with 403 before mutation.
+                expected = 403 if route in STAFF_FORBIDDEN_CASES else 404
+                assert response.status_code == expected, (route, response.status_code)
                 if hasattr(response, "content"):
                     assert B_LEAK_MARKER.encode() not in response.content
                 self.client.logout()
