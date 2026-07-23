@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 
 from django.contrib.auth.base_user import BaseUserManager
@@ -19,7 +19,7 @@ class RegistrationConflict(Exception):
 @dataclass(frozen=True)
 class RegistrationSubmission:
     request: RegistrationRequest
-    status_token: str
+    status_token: str = field(repr=False)
 
 
 _DUPLICATE_CONSTRAINTS = {
@@ -41,19 +41,20 @@ def _expire_stale_requests():
 
 @transaction.atomic
 def submit_registration(*, full_name, phone, email, password, building_id, unit_id):
-    phone = normalize_phone(phone)
+    user_phone = normalize_phone(phone)
     email = (
         BaseUserManager.normalize_email(email.strip()).casefold()
         if email and email.strip()
         else None
     )
-    if phone is None or not Unit.objects.filter(
+    if user_phone is None or not Unit.objects.filter(
         pk=unit_id, building_id=building_id
     ).exists():
         raise RegistrationConflict("Registration cannot be submitted")
+    phone = "+84" + user_phone[1:]
 
     _expire_stale_requests()
-    duplicate = User.objects.filter(phone=phone)
+    duplicate = User.objects.filter(phone=user_phone)
     pending = RegistrationRequest.objects.filter(
         status=RegistrationRequest.Status.PENDING, phone=phone
     )

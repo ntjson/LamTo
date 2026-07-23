@@ -4,7 +4,7 @@ from datetime import timedelta
 import pytest
 from django.contrib import admin
 from django.contrib.auth.hashers import check_password
-from django.db import IntegrityError
+from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
 from lamto.accounts.models import Building, RegistrationRequest, Unit, User
@@ -39,7 +39,7 @@ def test_submit_registration_hashes_secrets_and_normalizes_values(unit):
     request = submission.request
 
     assert request.full_name == "Nguyễn Văn An"
-    assert request.phone == "0901234567"
+    assert request.phone == "+84901234567"
     assert request.email == "an@example.com"
     assert request.status_token_digest == hashlib.sha256(
         submission.status_token.encode()
@@ -55,11 +55,34 @@ def test_submit_registration_accepts_phone_only_resident(unit):
     assert submit(unit, email=" ").request.email is None
 
 
+def test_submission_repr_does_not_expose_status_token(unit):
+    submission = submit(unit)
+
+    assert submission.status_token not in repr(submission)
+
+
 def test_unit_must_belong_to_building(unit):
     other_building = Building.objects.create(name="Tower B")
 
     with pytest.raises(RegistrationConflict):
         submit(unit, building_id=other_building.id)
+
+
+def test_composite_fk_rejects_direct_cross_building_write(unit):
+    other_building = Building.objects.create(name="Tower B")
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        RegistrationRequest.objects.create(
+            full_name="Nguyễn Văn An",
+            phone="+84901234567",
+            building=other_building,
+            unit=unit,
+            password_hash="hashed",
+            status_token_digest="a" * 64,
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        with connection.cursor() as cursor:
+            cursor.execute("SET CONSTRAINTS registration_unit_building_fk IMMEDIATE")
 
 
 @pytest.mark.parametrize("field,value", [("phone", "0901234567"), ("email", "AN@EXAMPLE.COM")])
@@ -125,3 +148,10 @@ def test_admin_does_not_expose_secret_hashes():
 
     assert "password_hash" in model_admin.readonly_fields
     assert "status_token_digest" in model_admin.readonly_fields
+
+
+def test_model_has_no_plaintext_secret_fields():
+    field_names = {field.name for field in RegistrationRequest._meta.fields}
+
+    assert "password" not in field_names
+    assert "status_token" not in field_names
