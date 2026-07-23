@@ -1,0 +1,14 @@
+{% extends "web/staff/shell.html" %}
+{% load i18n %}
+{% block title %}{% trans "Registrations" %} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>{% trans "Pending registrations" %}</h1>
+  <p class="hint">{% blocktrans with building=membership.building.name %}Resident requests for {{ building }}.{% endblocktrans %}</p>
+  <ul class="task-list">
+    {% for registration in registrations %}
+    <li><a class="task-row" href="{% url 'web:staff-registration-detail' registration.pk %}"><span class="task-action">{{ registration.full_name }}</span><span class="task-subject">{{ registration.unit.label }} · {{ registration.phone }}</span></a></li>
+    {% empty %}<li>{% trans "No registrations are waiting for review." %}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

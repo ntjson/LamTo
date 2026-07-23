@@ -13,7 +13,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from lamto.accounts.models import ManagementMembership
+from lamto.accounts.models import ManagementMembership, RegistrationRequest
 from lamto.documents.models import QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent, SETTLED_STATUSES
 from lamto.finance.models import (
@@ -80,6 +80,7 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
     items.extend(_integrity_mismatch_items(building_id))
     items.extend(_failed_outbox_items(building_id))
     items.extend(_quarantined_upload_items(building_id, membership))
+    items.extend(_registration_items(building_id))
 
     # Deduplicate by (kind, target_type, target_id)
     seen = set()
@@ -91,6 +92,26 @@ def action_items_for(membership: ManagementMembership) -> list[ActionItem]:
         seen.add(key)
         unique.append(item)
     return unique
+
+
+def _registration_items(building_id: int) -> list[ActionItem]:
+    return [
+        ActionItem(
+            kind="registration",
+            title=request.full_name,
+            summary=f"{request.unit.label} · {request.phone}",
+            target_type="RegistrationRequest",
+            target_id=str(request.id),
+            url=reverse("web:staff-registration-detail", args=[request.id]),
+            priority=40,
+        )
+        for request in RegistrationRequest.objects.filter(
+            building_id=building_id,
+            status=RegistrationRequest.Status.PENDING,
+        )
+        .select_related("unit")
+        .order_by("created_at")
+    ]
 
 
 def _manual_triage_items(building_id: int) -> list[ActionItem]:

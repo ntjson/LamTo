@@ -1,0 +1,26 @@
+{% extends "web/staff/shell.html" %}
+{% load i18n %}
+{% block title %}{{ registration.full_name }} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <p><a class="back-link" href="{% url 'web:staff-registration-list' %}">{% trans "Back to registrations" %}</a></p>
+  <h1>{{ registration.full_name }}</h1>
+  <dl class="detail-list detail-list-wide">
+    <div><dt>{% trans "Phone" %}</dt><dd>{{ registration.phone }}</dd></div>
+    {% if registration.email %}<div><dt>{% trans "Email" %}</dt><dd>{{ registration.email }}</dd></div>{% endif %}
+    <div><dt>{% trans "Building" %}</dt><dd>{{ registration.building.name }}</dd></div>
+    <div><dt>{% trans "Unit" %}</dt><dd>{{ registration.unit.label }}</dd></div>
+    <div><dt>{% trans "Submitted" %}</dt><dd>{{ registration.created_at }}</dd></div>
+    <div><dt>{% trans "Status" %}</dt><dd>{{ registration.get_status_display }}</dd></div>
+  </dl>
+  {% if registration.status == "PENDING" %}
+  <form method="post" action="{% url 'web:staff-registration-approve' registration.pk %}">{% csrf_token %}<button type="submit" class="button">{% trans "Approve" %}</button></form>
+  <form method="post" action="{% url 'web:staff-registration-reject' registration.pk %}">
+    {% csrf_token %}
+    <label for="rejection-reason">{% trans "Rejection reason" %}</label>
+    <textarea id="rejection-reason" name="reason" required></textarea>
+    <button type="submit" class="button button-secondary">{% trans "Reject" %}</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

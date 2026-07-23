@@ -1,0 +1,160 @@
+import time
+
+import pytest
+from django.urls import reverse
+from django_otp import DEVICE_ID_SESSION_KEY
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.util import random_hex
+
+from lamto.accounts.models import (
+    Building,
+    ManagementMembership,
+    RegistrationRequest,
+    Unit,
+    User,
+)
+from lamto.accounts.registration import submit_registration
+from lamto.accounts.security import RECENT_REAUTH_KEY
+
+
+pytestmark = pytest.mark.django_db
+
+
+def authenticate(client, user):
+    client.force_login(user)
+    device = TOTPDevice.objects.create(
+        user=user, name="test", confirmed=True, key=random_hex()
+    )
+    session = client.session
+    session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+    session[RECENT_REAUTH_KEY] = time.time()
+    session.save()
+
+
+def setup_building(name, email):
+    building = Building.objects.create(name=name)
+    unit = Unit.objects.create(building=building, label="101")
+    manager = User.objects.create_user(email=email, password="secret")
+    membership = ManagementMembership.objects.create(user=manager, building=building)
+    return membership, unit
+
+
+def registration(
+    unit,
+    *,
+    phone="0901234567",
+    email="resident@example.test",
+    name="Resident One",
+):
+    return submit_registration(
+        full_name=name,
+        phone=phone,
+        email=email,
+        password="correct horse battery staple",
+        building_id=unit.building_id,
+        unit_id=unit.pk,
+    ).request
+
+
+def test_list_contains_only_pending_requests_for_active_building(client):
+    membership, unit = setup_building("Tower A", "manager-a@example.test")
+    other_membership, other_unit = setup_building("Tower B", "manager-b@example.test")
+    pending = registration(unit)
+    decided = registration(
+        unit,
+        phone="0901234568",
+        email="decided@example.test",
+        name="Decided",
+    )
+    decided.status = RegistrationRequest.Status.REJECTED
+    decided.save(update_fields=["status"])
+    other = registration(other_unit, phone="0901234569", email="other@example.test", name="Other")
+    authenticate(client, membership.user)
+
+    response = client.get(reverse("web:staff-registration-list"))
+
+    assert response.status_code == 200
+    assert list(response.context["registrations"]) == [pending]
+    assert pending.full_name.encode() in response.content
+    assert decided.full_name.encode() not in response.content
+    assert other.full_name.encode() not in response.content
+    assert other_membership.building_id != membership.building_id
+
+
+def test_detail_returns_404_for_another_building(client):
+    membership, _unit = setup_building("Tower A", "manager-a@example.test")
+    _other_membership, other_unit = setup_building("Tower B", "manager-b@example.test")
+    request = registration(other_unit)
+    authenticate(client, membership.user)
+
+    assert (
+        client.get(
+            reverse("web:staff-registration-detail", args=[request.pk])
+        ).status_code
+        == 404
+    )
+
+
+@pytest.mark.parametrize("decision", ["approve", "reject"])
+def test_any_active_management_member_can_decide(client, decision):
+    membership, unit = setup_building("Tower A", "manager-a@example.test")
+    second = User.objects.create_user(email="manager-2@example.test", password="secret")
+    ManagementMembership.objects.create(user=second, building=membership.building)
+    request = registration(unit)
+    authenticate(client, second)
+    data = {"reason": "Not eligible"} if decision == "reject" else {}
+
+    response = client.post(
+        reverse(f"web:staff-registration-{decision}", args=[request.pk]), data
+    )
+
+    request.refresh_from_db()
+    expected = (
+        RegistrationRequest.Status.APPROVED
+        if decision == "approve"
+        else RegistrationRequest.Status.REJECTED
+    )
+    assert request.status == expected
+    assert response.url == reverse("web:staff-registration-list")
+
+
+def test_reject_requires_non_blank_reason(client):
+    membership, unit = setup_building("Tower A", "manager-a@example.test")
+    request = registration(unit)
+    authenticate(client, membership.user)
+
+    response = client.post(
+        reverse("web:staff-registration-reject", args=[request.pk]), {"reason": "   "}
+    )
+
+    request.refresh_from_db()
+    assert response.status_code == 200
+    assert b"Rejection reason is required" in response.content
+    assert request.status == RegistrationRequest.Status.PENDING
+
+
+def test_duplicate_approval_is_safe(client):
+    membership, unit = setup_building("Tower A", "manager-a@example.test")
+    request = registration(unit)
+    authenticate(client, membership.user)
+    url = reverse("web:staff-registration-approve", args=[request.pk])
+
+    client.post(url)
+    response = client.post(url, follow=True)
+
+    assert User.objects.filter(phone="0901234567").count() == 1
+    assert b"already been decided" in response.content
+    assert response.redirect_chain[-1][0] == reverse(
+        "web:staff-registration-detail", args=[request.pk]
+    )
+
+
+def test_detail_does_not_render_secrets(client):
+    membership, unit = setup_building("Tower A", "manager-a@example.test")
+    request = registration(unit)
+    authenticate(client, membership.user)
+
+    response = client.get(reverse("web:staff-registration-detail", args=[request.pk]))
+
+    assert request.password_hash.encode() not in response.content
+    assert request.status_token_digest.encode() not in response.content

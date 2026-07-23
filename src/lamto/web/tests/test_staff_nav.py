@@ -33,11 +33,18 @@ class ManagementShellTests(TestCase):
         session[RECENT_REAUTH_KEY] = time.time()
         session.save()
 
-    def test_management_user_sees_all_six_areas(self):
-        self.assertEqual(
-            [str(item["label"]) for item in nav_items_for(self.membership)],
-            ["Inbox", "Cases", "Finance", "Exports", "Gate", "Ops"],
-        )
+    def test_management_user_sees_staff_areas(self):
+        labels = [str(item["label"]) for item in nav_items_for(self.membership)]
+        for label in (
+            "Inbox",
+            "Cases",
+            "Finance",
+            "Exports",
+            "Gate",
+            "Ops",
+            "Registrations",
+        ):
+            self.assertIn(label, labels)
         self.assertEqual(
             [str(item["label"]) for item in finance_nav_items_for(self.membership)],
             ["Proposals", "Settlements", "Fund"],
