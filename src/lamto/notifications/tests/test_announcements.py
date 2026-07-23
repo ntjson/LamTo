@@ -111,6 +111,8 @@ class AnnouncementTests(TestCase):
         event = AuditEvent.objects.get(action="announcement.published")
         assert event.actor == self.manager
         assert event.membership == self.membership
+        assert event.membership.building == self.building
+        assert event.result == "accepted"
         assert event.target_type == "Announcement"
         assert event.target_id == str(announcement.id)
         assert event.metadata == {
