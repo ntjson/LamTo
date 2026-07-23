@@ -1,5 +1,41 @@
 from django.conf import settings
+from django.core.validators import MaxLengthValidator
 from django.db import models
+
+from lamto.accounts.models import Building
+
+
+class Announcement(models.Model):
+    class State(models.TextChoices):
+        PUBLISHED = "PUBLISHED", "Published"
+        WITHDRAWN = "WITHDRAWN", "Withdrawn"
+
+    building = models.ForeignKey(
+        Building,
+        on_delete=models.PROTECT,
+        related_name="announcements",
+    )
+    title = models.CharField(max_length=160)
+    body = models.TextField(max_length=2000, validators=[MaxLengthValidator(2000)])
+    revision = models.PositiveIntegerField(default=1)
+    state = models.CharField(
+        max_length=16,
+        choices=State.choices,
+        default=State.PUBLISHED,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_announcements",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="updated_announcements",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
 
 
 class NotificationPreference(models.Model):
@@ -117,4 +153,3 @@ class Device(models.Model):
         indexes = [
             models.Index(fields=["user", "active"], name="device_user_active_idx")
         ]
-
