@@ -1,5 +1,6 @@
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from lamto.accounts.models import (
     Building,
@@ -9,8 +10,18 @@ from lamto.accounts.models import (
     User,
 )
 from lamto.audit.models import AuditEvent
-from lamto.notifications.announcements import publish_announcement
-from lamto.notifications.models import Announcement, NotificationDelivery
+from lamto.notifications.announcements import (
+    AnnouncementConflict,
+    edit_announcement,
+    publish_announcement,
+    withdraw_announcement,
+)
+from lamto.notifications.models import (
+    Announcement,
+    Device,
+    NotificationDelivery,
+    NotificationPreference,
+)
 from lamto.notifications.services import process_due_notifications
 
 
@@ -121,3 +132,175 @@ class AnnouncementTests(TestCase):
         }
         assert "title" not in event.metadata
         assert "body" not in event.metadata
+
+    @override_settings(PUSH_ENABLED=True)
+    def test_publish_push_is_preference_gated_and_never_emails(self):
+        enabled = User.objects.create_user(
+            email="enabled@example.test", password="pw", display_name="Enabled"
+        )
+        disabled = User.objects.create_user(
+            email="disabled@example.test", password="pw", display_name="Disabled"
+        )
+        for index, resident in enumerate((enabled, disabled), 1):
+            ResidentOccupancy.objects.create(user=resident, unit=self.unit)
+            Device.objects.create(
+                user=resident,
+                install_id=f"install-{index}",
+                fcm_token=f"token-{index}",
+                platform=Device.Platform.ANDROID,
+                last_seen_at=timezone.now(),
+            )
+        NotificationPreference.objects.create(
+            user=disabled,
+            event_code="building.announcement",
+            email_enabled=True,
+            push_enabled=False,
+        )
+
+        announcement = publish_announcement(
+            self.manager, self.building.id, "Private title", "Private body"
+        )
+
+        assert NotificationDelivery.objects.filter(
+            channel=NotificationDelivery.Channel.IN_APP
+        ).count() == 2
+        push = NotificationDelivery.objects.get(
+            recipient=enabled, channel=NotificationDelivery.Channel.PUSH
+        )
+        assert push.event_key.endswith(
+            f"announcement:{announcement.id}:revision:1:published"
+        )
+        assert not NotificationDelivery.objects.filter(
+            recipient=disabled, channel=NotificationDelivery.Channel.PUSH
+        ).exists()
+        assert not NotificationDelivery.objects.filter(
+            channel=NotificationDelivery.Channel.EMAIL
+        ).exists()
+
+    @override_settings(PUSH_ENABLED=True)
+    def test_edit_and_withdraw_are_revision_locked_and_terminal(self):
+        resident = User.objects.create_user(
+            email="resident-lifecycle@example.test",
+            password="pw",
+            display_name="Resident",
+        )
+        ResidentOccupancy.objects.create(user=resident, unit=self.unit)
+        Device.objects.create(
+            user=resident,
+            install_id="lifecycle-install",
+            fcm_token="lifecycle-token",
+            platform=Device.Platform.ANDROID,
+            last_seen_at=timezone.now(),
+        )
+        announcement = publish_announcement(
+            self.manager, self.building.id, "Original", "Original body"
+        )
+        process_due_notifications(limit=10)
+        inbox = NotificationDelivery.objects.get(
+            recipient=resident, channel=NotificationDelivery.Channel.IN_APP
+        )
+        inbox.read_at = timezone.now()
+        inbox.save(update_fields=["read_at"])
+
+        newcomer = User.objects.create_user(
+            email="newcomer@example.test", password="pw", display_name="Newcomer"
+        )
+        ResidentOccupancy.objects.create(user=newcomer, unit=self.unit)
+        Device.objects.create(
+            user=newcomer,
+            install_id="newcomer-install",
+            fcm_token="newcomer-token",
+            platform=Device.Platform.IOS,
+            last_seen_at=timezone.now(),
+        )
+
+        edited = edit_announcement(
+            self.manager,
+            announcement.id,
+            expected_revision=1,
+            title="Updated",
+            body="Updated body",
+        )
+        assert edited.revision == 2
+        assert edited.updated_by == self.manager
+        inbox_rows = NotificationDelivery.objects.filter(
+            channel=NotificationDelivery.Channel.IN_APP,
+            event_key=f"building.announcement:announcement:{announcement.id}",
+        )
+        assert inbox_rows.count() == 2
+        assert not inbox_rows.exclude(
+            subject="Updated",
+            body="Updated body",
+            read_at=None,
+            status=NotificationDelivery.Status.AVAILABLE,
+        ).exists()
+        assert NotificationDelivery.objects.filter(
+            channel=NotificationDelivery.Channel.PUSH,
+            event_key__endswith=f"announcement:{announcement.id}:revision:2:updated",
+        ).count() == 2
+
+        with self.assertRaises(AnnouncementConflict):
+            edit_announcement(
+                self.manager,
+                announcement.id,
+                expected_revision=1,
+                title="Duplicate",
+                body="Duplicate body",
+            )
+        assert NotificationDelivery.objects.filter(
+            channel=NotificationDelivery.Channel.PUSH,
+            event_key__contains=f"announcement:{announcement.id}:revision:2:updated",
+        ).count() == 2
+
+        withdrawn = withdraw_announcement(
+            self.manager, announcement.id, expected_revision=2
+        )
+        assert withdrawn.revision == 3
+        assert withdrawn.state == Announcement.State.WITHDRAWN
+        assert withdrawn.withdrawn_at is not None
+        assert not inbox_rows.exists()
+        assert NotificationDelivery.objects.filter(
+            channel=NotificationDelivery.Channel.PUSH,
+            event_key__endswith=f"announcement:{announcement.id}:revision:3:withdrawn",
+        ).count() == 2
+        assert AuditEvent.objects.filter(action="announcement.updated").count() == 1
+        assert AuditEvent.objects.filter(action="announcement.withdrawn").count() == 1
+
+        with self.assertRaises(AnnouncementConflict):
+            edit_announcement(
+                self.manager,
+                announcement.id,
+                expected_revision=3,
+                title="Too late",
+                body="Too late",
+            )
+        with self.assertRaises(AnnouncementConflict):
+            withdraw_announcement(
+                self.manager, announcement.id, expected_revision=3
+            )
+
+    def test_manager_from_another_building_cannot_mutate_announcement(self):
+        other_manager = User.objects.create_user(
+            email="other-manager@example.test",
+            password="pw",
+            display_name="Other manager",
+        )
+        ManagementMembership.objects.create(
+            user=other_manager, building=self.other_building
+        )
+        announcement = publish_announcement(
+            self.manager, self.building.id, "Original", "Original body"
+        )
+
+        with self.assertRaises(PermissionDenied):
+            edit_announcement(
+                other_manager,
+                announcement.id,
+                expected_revision=1,
+                title="Unauthorized",
+                body="Unauthorized",
+            )
+        with self.assertRaises(PermissionDenied):
+            withdraw_announcement(
+                other_manager, announcement.id, expected_revision=1
+            )

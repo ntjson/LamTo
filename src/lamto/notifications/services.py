@@ -30,6 +30,7 @@ EVENT_PUBLICATION = "ledger.publication"
 EVENT_INTEGRITY_MISMATCH = "integrity.mismatch"
 EVENT_QUARANTINED_UPLOAD = "document.quarantined"
 EVENT_OUTBOX_FAILED = "outbox.failed"
+EVENT_ANNOUNCEMENT = "building.announcement"
 
 # In-app notices for these codes cannot be disabled.
 REQUIRED_IN_APP_EVENT_CODES = frozenset(
@@ -50,6 +51,7 @@ REQUIRED_IN_APP_EVENT_CODES = frozenset(
 )
 
 PREFERENCE_EVENT_CHOICES = (
+    (EVENT_ANNOUNCEMENT, "Building announcements"),
     (EVENT_REPORT_RECEIPT, "Report receipt"),
     (EVENT_TRIAGE_STATUS, "Triage / case status"),
     (EVENT_WORK_COMPLETED, "Work completed (rate prompt)"),
@@ -67,6 +69,7 @@ RESIDENT_PUSH_EVENT_CODES = frozenset(
         EVENT_TRIAGE_STATUS,
         EVENT_WORK_COMPLETED,
         EVENT_PUBLICATION,
+        EVENT_ANNOUNCEMENT,
     }
 )
 

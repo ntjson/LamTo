@@ -16,6 +16,20 @@ PUSH_COPY = {
     "ledger.publication": ("Khoản chi mới được công bố", "Có khoản chi mới trong sổ quỹ tòa nhà."),
 }
 _DEFAULT_COPY = ("Thông báo mới", "Bạn có một thông báo mới.")
+_ANNOUNCEMENT_COPY = {
+    "published": (
+        "Thông báo mới từ ban quản lý",
+        "Mở ứng dụng để xem nội dung.",
+    ),
+    "updated": (
+        "Thông báo của ban quản lý đã được cập nhật",
+        "Mở ứng dụng để xem nội dung mới.",
+    ),
+    "withdrawn": (
+        "Thông báo của ban quản lý đã được thu hồi",
+        "Mở ứng dụng để kiểm tra.",
+    ),
+}
 
 # Allowlisted entity segment (from event_key) -> app deep-link route type.
 DEEP_LINK_TYPES = {
@@ -103,7 +117,12 @@ def _event_code_from_key(event_key: str) -> str:
 def build_push_payload(delivery):
     """Generic Vietnamese title/body + allowlisted deep link + delivery id (spec 7.4)."""
     code = delivery.event_code or _event_code_from_key(delivery.event_key)
-    title, body = PUSH_COPY.get(code, _DEFAULT_COPY)
+    if code == "building.announcement":
+        title, body = _ANNOUNCEMENT_COPY.get(
+            delivery.event_key.rsplit(":", 1)[-1], _DEFAULT_COPY
+        )
+    else:
+        title, body = PUSH_COPY.get(code, _DEFAULT_COPY)
     entity, entity_id = _parse_reference(delivery.event_key)
     link_type = DEEP_LINK_TYPES.get(entity, "notifications")
     data = {"type": link_type, "id": entity_id or "", "delivery_id": str(delivery.pk)}
