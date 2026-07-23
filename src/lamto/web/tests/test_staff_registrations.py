@@ -17,7 +17,6 @@ from lamto.accounts.models import (
 from lamto.accounts.registration import submit_registration
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.audit.models import AuditEvent
-from lamto.web.action_inbox import action_items_for
 
 
 pytestmark = pytest.mark.django_db
@@ -189,10 +188,17 @@ def test_public_registration_can_be_approved_end_to_end(client):
     inbox = client.get(reverse("web:action-inbox"))
     assert request in queue.context["registrations"]
     assert request.full_name.encode() in inbox.content
+
+    authenticate(client, other_membership.user)
+    other_queue = client.get(reverse("web:staff-registration-list"))
+    other_inbox = client.get(reverse("web:action-inbox"))
+    assert request not in other_queue.context["registrations"]
     assert not any(
-        item.target_id == str(request.pk) for item in action_items_for(other_membership)
+        item.target_id == str(request.pk)
+        for item in other_inbox.context["action_page"].object_list
     )
 
+    authenticate(client, membership.user)
     approved = client.post(
         reverse("web:staff-registration-approve", args=[request.pk])
     )
@@ -250,12 +256,16 @@ def test_rejected_public_registration_exposes_reason_and_allows_resubmission(cli
         reverse("api:registration-status"),
         HTTP_X_REGISTRATION_STATUS_TOKEN=submitted.json()["status_token"],
     )
+    assert status.json()["status"] == "REJECTED"
     assert status.json()["rejection_reason"] == "Lease could not be verified"
 
     request.refresh_from_db()
     assert request.password_hash == ""
     assert AuditEvent.objects.filter(
-        action="registration.rejected", target_id=str(request.pk), result="accepted"
+        action="registration.rejected",
+        actor=membership.user,
+        target_id=str(request.pk),
+        result="accepted",
     ).exists()
     resubmitted = client.post(
         reverse("api:registration-create"),
