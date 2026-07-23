@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/auth_repository.dart';
+import '../features/auth/registration_repository.dart';
+import '../features/auth/registration_status_store.dart';
 import '../features/auth/session_controller.dart';
 import '../features/push/push_registrar.dart';
 import '../features/push/push_token_source.dart';
@@ -16,6 +18,12 @@ import 'token_store.dart';
 export 'api_base_url.dart';
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
+final registrationTokenStoreProvider = Provider<TokenStore>(
+  (ref) => TokenStore(key: 'lamto_registration_status'),
+);
+final registrationStatusStoreProvider = Provider<RegistrationStatusStore>(
+  (ref) => RegistrationStatusStore(ref.watch(registrationTokenStoreProvider)),
+);
 final occupancyHolderProvider =
     Provider<OccupancyHolder>((ref) => OccupancyHolder());
 final occupancyStoreProvider = Provider<OccupancyStore>((ref) => OccupancyStore());
@@ -47,6 +55,9 @@ final dioProvider = Provider<Dio>((ref) {
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => DioAuthRepository(ref.watch(dioProvider)),
+);
+final registrationRepositoryProvider = Provider<RegistrationRepository>(
+  (ref) => RegistrationRepository(ref.watch(dioProvider)),
 );
 final gateRepositoryProvider = Provider<GateRepository>((ref) => DioGateRepository(ref.watch(dioProvider)));
 

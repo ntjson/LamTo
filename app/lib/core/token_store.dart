@@ -5,25 +5,31 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Production: platform keystore via [FlutterSecureStorage].
 /// Integration / headless CI: [TokenStore.memory] avoids libsecret/keyring.
 class TokenStore {
-  TokenStore([FlutterSecureStorage? storage])
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions.defaultOptions,
-              iOptions: IOSOptions(
-                accessibility: KeychainAccessibility.first_unlock,
-              ),
+  TokenStore({
+    FlutterSecureStorage? storage,
+    this._key = 'lamto_auth_token',
+  })
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions.defaultOptions,
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock,
             ),
-        _memory = null;
+          ),
+      _memory = null;
 
   /// In-memory token for `integration_test` and headless Linux CI.
   /// Production apps must use the default constructor (secure storage).
-  TokenStore.memory()
-      : _storage = null,
-        _memory = <String, String>{};
+  TokenStore.memory({
+    this._key = 'lamto_auth_token',
+    Map<String, String>? memory,
+  }) : _storage = null,
+       _memory = memory ?? <String, String>{};
 
   final FlutterSecureStorage? _storage;
+  final String _key;
   final Map<String, String>? _memory;
-  static const _key = 'lamto_auth_token';
 
   Future<String?> read() async {
     final mem = _memory;
