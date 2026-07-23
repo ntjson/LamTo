@@ -3,6 +3,8 @@ from django.contrib.auth.base_user import BaseUserManager
 
 class UserManager(BaseUserManager):
     def create_user(self, email=None, password=None, **fields):
+        if not email and (fields.get("is_staff") or fields.get("is_superuser")):
+            raise ValueError("Staff users require an email address")
         if not email and not fields.get("phone"):
             raise ValueError("An email or phone number is required")
         user = self.model(
