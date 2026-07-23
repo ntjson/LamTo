@@ -42,3 +42,15 @@
 
 - `check_api_generated.sh` cannot pass before committing an intentional generated change because it treats staged changes as stale; post-commit verification is required.
 - The generator reports its existing Node shell-argument deprecation and removed build-runner option warnings; generation still exits successfully.
+
+### Review Follow-Up
+
+- RED isolation regression: after temporarily removing `recipient=user` from `resident_feed`, `set -a && . /home/nts/src/LamTo/.env && set +a && PYTHONPATH=/home/nts/src/LamTo/.worktrees/building-announcements/src POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner /home/nts/src/LamTo/.venv/bin/pytest src/lamto/api/tests/test_notifications.py::NotificationFeedTests::test_feed_filters_remain_tenant_and_user_scoped -q` -> 1 failed because the same-building neighbor delivery was exposed. The production selector was restored unchanged.
+- GREEN isolation regression: the same focused command -> 1 passed.
+- Backend API: `set -a && . /home/nts/src/LamTo/.env && set +a && PYTHONPATH=/home/nts/src/LamTo/.worktrees/building-announcements/src POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner /home/nts/src/LamTo/.venv/bin/pytest src/lamto/api/tests/test_notifications.py -q` -> 8 passed.
+- OpenAPI: `set -a && . /home/nts/src/LamTo/.env && set +a && PYTHONPATH=/home/nts/src/LamTo/.worktrees/building-announcements/src POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner /home/nts/src/LamTo/.venv/bin/pytest src/lamto/api/tests/test_openapi.py -q` -> 7 passed.
+- Generated drift: `cd app && ./tool/check_api_generated.sh` -> exit 0, `OK: generated API client matches the committed schema.`
+- Flutter: `cd app && flutter test test/notifications_screen_test.dart` -> 1 passed.
+- Diff validation: `git diff --check` -> exit 0; temporary `src/lamto/notifications/services.py` mutation and generated-client drift were absent.
+- Test-fix commit: `292b7c6 test: strengthen notification filter isolation`.
+- Remaining concerns: generator emitted its existing Node shell-argument deprecation and removed build-runner option warnings; no output drift resulted.
