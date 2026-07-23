@@ -16,7 +16,7 @@ class MeViewTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
         cls.resident = User.objects.create_user(
-            email="me-resident@example.com",
+            email=None,
             password="resident-pass-123",
             display_name="Me Resident",
             phone="0987654321",
@@ -46,7 +46,7 @@ class MeViewTests(TestCase):
         assert response.status_code == 200, response.content
         body = response.json()
         assert body["display_name"] == "Me Resident"
-        assert body["email"] == "me-resident@example.com"
+        assert body["email"] is None
         assert body["phone"] == "0987654321"
         occupancies = {o["id"]: o for o in body["occupancies"]}
         assert set(occupancies) == {self.occupancy_a.pk, self.occupancy_b.pk}

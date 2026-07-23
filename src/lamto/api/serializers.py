@@ -95,7 +95,7 @@ class LogoutInstallIdSerializer(serializers.Serializer):
 
 class MeSerializer(serializers.Serializer):
     display_name = serializers.CharField()
-    email = serializers.EmailField()
+    email = serializers.EmailField(allow_null=True)
     phone = serializers.CharField(allow_null=True)
     occupancies = OccupancySerializer(many=True)
     notification_preferences = NotificationPreferenceSerializer(many=True)
