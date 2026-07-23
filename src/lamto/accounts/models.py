@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -67,6 +68,51 @@ class ManagementMembership(models.Model):
             models.UniqueConstraint(
                 fields=["user", "building"], name="management_membership_once"
             )
+        ]
+
+
+class RegistrationRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
+        EXPIRED = "EXPIRED", "Expired"
+
+    full_name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=32)
+    email = models.EmailField(null=True, blank=True)
+    building = models.ForeignKey(Building, on_delete=models.PROTECT)
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT)
+    password_hash = models.CharField(max_length=256, blank=True)
+    status_token_digest = models.CharField(max_length=64, unique=True)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.PENDING
+    )
+    rejection_reason = models.TextField(blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="decided_registration_requests",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["phone"],
+                condition=models.Q(status="PENDING"),
+                name="unique_pending_registration_phone",
+            ),
+            models.UniqueConstraint(
+                fields=["email"],
+                condition=models.Q(status="PENDING", email__isnull=False),
+                name="unique_pending_registration_email",
+            ),
         ]
 
 
