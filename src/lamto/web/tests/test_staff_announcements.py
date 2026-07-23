@@ -212,13 +212,14 @@ def test_announcement_management_to_resident_api_lifecycle(client):
     assert NotificationDelivery.objects.filter(
         channel=NotificationDelivery.Channel.IN_APP, event_key=in_app_key
     ).count() == 2
-    assert NotificationDelivery.objects.filter(
+    published_push = NotificationDelivery.objects.get(
         channel=NotificationDelivery.Channel.PUSH,
         event_key__endswith=f"announcement:{announcement.pk}:revision:1:published",
-    ).values_list("recipient_id", flat=True).get() == enabled.pk
-    assert not NotificationDelivery.objects.filter(
-        channel=NotificationDelivery.Channel.EMAIL
-    ).exists()
+    )
+    assert published_push.recipient_id == enabled.pk
+    push_title, push_body, _data = build_push_payload(published_push)
+    assert announcement.title not in push_title + push_body
+    assert announcement.body not in push_title + push_body
 
     process_due_notifications(limit=10)
     api_client = Client()
@@ -259,10 +260,18 @@ def test_announcement_management_to_resident_api_lifecycle(client):
     )
     assert inbox.count() == 3
     assert not inbox.exclude(subject="Updated", body="Updated body", read_at=None).exists()
-    assert NotificationDelivery.objects.filter(
+    updated_pushes = NotificationDelivery.objects.filter(
         channel=NotificationDelivery.Channel.PUSH,
         event_key__endswith=f"announcement:{announcement.pk}:revision:2:updated",
-    ).count() == 2
+    )
+    assert set(updated_pushes.values_list("recipient_id", flat=True)) == {
+        enabled.pk,
+        newcomer.pk,
+    }
+    for updated_push in updated_pushes:
+        push_title, push_body, _data = build_push_payload(updated_push)
+        assert "Updated" not in push_title + push_body
+        assert "Updated body" not in push_title + push_body
 
     withdraw_url = reverse("web:staff-announcement-withdraw", args=[announcement.pk])
     stale = client.post(withdraw_url, {"expected_revision": 1}, follow=True)
@@ -285,6 +294,10 @@ def test_announcement_management_to_resident_api_lifecycle(client):
     push_title, push_body, _data = build_push_payload(withdrawn_push)
     assert announcement.title not in push_title + push_body
     assert announcement.body not in push_title + push_body
+    assert not NotificationDelivery.objects.filter(
+        event_code="building.announcement",
+        channel=NotificationDelivery.Channel.EMAIL,
+    ).exists()
     assert announcement in client.get(
         reverse("web:staff-announcement-list")
     ).context["announcements"]
