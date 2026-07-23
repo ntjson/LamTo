@@ -1,6 +1,13 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
+from lamto.web.announcement_views import (
+    announcement_create,
+    announcement_detail,
+    announcement_edit,
+    announcement_list,
+    announcement_withdraw,
+)
 from lamto.web.registration_views import (
     registration_approve,
     registration_detail,
@@ -32,6 +39,23 @@ urlpatterns = [
     path("s/", staff_common.staff_home, name="staff-home"),
     path("s/inbox/", staff_common.action_inbox, name="action-inbox"),
     path("s/building/", staff_common.switch_building, name="switch-building"),
+    path("s/announcements/", announcement_list, name="staff-announcement-list"),
+    path("s/announcements/create/", announcement_create, name="staff-announcement-create"),
+    path(
+        "s/announcements/<int:announcement_id>/",
+        announcement_detail,
+        name="staff-announcement-detail",
+    ),
+    path(
+        "s/announcements/<int:announcement_id>/edit/",
+        announcement_edit,
+        name="staff-announcement-edit",
+    ),
+    path(
+        "s/announcements/<int:announcement_id>/withdraw/",
+        announcement_withdraw,
+        name="staff-announcement-withdraw",
+    ),
     path("s/registrations/", registration_list, name="staff-registration-list"),
     path(
         "s/registrations/<int:request_id>/",

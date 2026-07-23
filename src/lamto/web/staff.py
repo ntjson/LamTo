@@ -63,6 +63,11 @@ def nav_items_for(membership) -> list[dict]:
             "url_name": "web:staff-registration-list",
             "active_key": "registrations",
         },
+        {
+            "label": _("Announcements"),
+            "url_name": "web:staff-announcement-list",
+            "active_key": "announcements",
+        },
         {"label": _("Ops"), "url_name": "web:ops-health", "active_key": "ops"},
     ]
 

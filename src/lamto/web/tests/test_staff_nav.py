@@ -43,6 +43,7 @@ class ManagementShellTests(TestCase):
             "Gate",
             "Ops",
             "Registrations",
+            "Announcements",
         ):
             self.assertIn(label, labels)
         self.assertEqual(

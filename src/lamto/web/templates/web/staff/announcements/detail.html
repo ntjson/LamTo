@@ -1,0 +1,33 @@
+{% extends "web/staff/shell.html" %}
+{% load i18n %}
+{% block title %}{{ announcement.title }} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <p><a class="back-link" href="{% url 'web:staff-announcement-list' %}">{% trans "Back to announcements" %}</a></p>
+  <h1>{{ announcement.title }}</h1>
+  <p>{{ announcement.body|linebreaksbr }}</p>
+  <dl class="detail-list detail-list-wide">
+    <div><dt>{% trans "State" %}</dt><dd>{{ announcement.get_state_display }}</dd></div>
+    <div><dt>{% trans "Revision" %}</dt><dd>{{ announcement.revision }}</dd></div>
+    <div><dt>{% trans "Created" %}</dt><dd>{{ announcement.created_by }} · {{ announcement.created_at }}</dd></div>
+    <div><dt>{% trans "Updated" %}</dt><dd>{{ announcement.updated_by }} · {{ announcement.updated_at }}</dd></div>
+  </dl>
+  {% if announcement.state == "PUBLISHED" %}
+    {% if form %}
+    <h2>{% trans "Edit announcement" %}</h2>
+    <form method="post" action="{% url 'web:staff-announcement-edit' announcement.pk %}">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="button">{% trans "Save announcement" %}</button>
+    </form>
+    {% else %}
+    <p><a class="button" href="{% url 'web:staff-announcement-edit' announcement.pk %}">{% trans "Edit announcement" %}</a></p>
+    {% endif %}
+    <form method="post" action="{% url 'web:staff-announcement-withdraw' announcement.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="expected_revision" value="{{ announcement.revision }}">
+      <button type="submit" class="button button-secondary">{% trans "Withdraw announcement" %}</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

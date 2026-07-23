@@ -1,0 +1,161 @@
+import time
+
+import pytest
+from django.urls import reverse
+from django_otp import DEVICE_ID_SESSION_KEY
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.util import random_hex
+
+from lamto.accounts.models import Building, ManagementMembership, User
+from lamto.accounts.security import RECENT_REAUTH_KEY
+from lamto.notifications.announcements import edit_announcement, publish_announcement
+from lamto.notifications.models import Announcement, NotificationDelivery
+
+
+pytestmark = pytest.mark.django_db
+
+
+def setup_manager(client, name="Tower A", email="manager@example.test"):
+    building = Building.objects.create(name=name)
+    manager = User.objects.create_user(email=email, password="secret")
+    ManagementMembership.objects.create(user=manager, building=building)
+    client.force_login(manager)
+    device = TOTPDevice.objects.create(
+        user=manager, name="test", confirmed=True, key=random_hex()
+    )
+    session = client.session
+    session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+    session[RECENT_REAUTH_KEY] = time.time()
+    session.save()
+    return building, manager
+
+
+def test_history_is_building_scoped_newest_first_with_audit_fields(client):
+    building, manager = setup_manager(client)
+    older = publish_announcement(manager, building.pk, "Older", "First")
+    newer = publish_announcement(manager, building.pk, "Newer", "Second")
+    newer.state = Announcement.State.WITHDRAWN
+    newer.revision = 2
+    newer.save()
+    other_building = Building.objects.create(name="Tower B")
+    ManagementMembership.objects.create(user=manager, building=other_building)
+    publish_announcement(manager, other_building.pk, "Other", "Hidden")
+
+    response = client.get(reverse("web:staff-announcement-list"))
+
+    assert list(response.context["announcements"]) == [newer, older]
+    for value in ("Withdrawn", "Published", "Revision 2", manager.email):
+        assert value.encode() in response.content
+    assert b"Other" not in response.content
+    assert older.created_at.strftime("%Y").encode() in response.content
+
+
+def test_publish_strips_whitespace_and_enforces_limits(client):
+    building, _manager = setup_manager(client)
+
+    response = client.post(
+        reverse("web:staff-announcement-create"),
+        {"title": "  Water notice  ", "body": "  Starts tonight.  "},
+    )
+
+    announcement = Announcement.objects.get()
+    assert response.status_code == 302
+    assert announcement.building == building
+    assert (announcement.title, announcement.body) == (
+        "Water notice",
+        "Starts tonight.",
+    )
+
+    response = client.post(
+        reverse("web:staff-announcement-create"),
+        {"title": "x" * 161, "body": "y" * 2001},
+    )
+    assert response.status_code == 200
+    assert Announcement.objects.count() == 1
+    assert response.context["form"].errors.keys() == {"title", "body"}
+
+
+@pytest.mark.parametrize("data", [{"title": " ", "body": "Body"}, {"title": "Title", "body": " "}])
+def test_blank_publish_redisplays_errors_without_side_effects(client, data):
+    setup_manager(client)
+
+    response = client.post(reverse("web:staff-announcement-create"), data)
+
+    assert response.status_code == 200
+    assert response.context["form"].errors
+    assert not Announcement.objects.exists()
+    assert not NotificationDelivery.objects.exists()
+
+
+@pytest.mark.parametrize("route", ["detail", "edit", "withdraw"])
+def test_cross_building_announcement_routes_return_404(client, route):
+    _building, manager = setup_manager(client)
+    other = Building.objects.create(name="Tower B")
+    ManagementMembership.objects.create(user=manager, building=other)
+    announcement = publish_announcement(manager, other.pk, "Other", "Hidden")
+    url = reverse(f"web:staff-announcement-{route}", args=[announcement.pk])
+
+    response = client.post(url, {"expected_revision": 1}) if route == "withdraw" else client.get(url)
+
+    assert response.status_code == 404
+
+
+def test_stale_edit_reports_conflict_and_preserves_newer_content(client):
+    building, manager = setup_manager(client)
+    announcement = publish_announcement(manager, building.pk, "Original", "Body")
+    edit_url = reverse("web:staff-announcement-edit", args=[announcement.pk])
+    assert client.get(edit_url).context["form"]["expected_revision"].value() == 1
+    edit_announcement(
+        manager,
+        announcement.pk,
+        expected_revision=1,
+        title="Newer",
+        body="Current body",
+    )
+
+    response = client.post(
+        edit_url,
+        {"title": "Stale", "body": "Old body", "expected_revision": 1},
+        follow=True,
+    )
+
+    announcement.refresh_from_db()
+    assert (announcement.title, announcement.body, announcement.revision) == (
+        "Newer",
+        "Current body",
+        2,
+    )
+    assert b"changed since you opened it" in response.content
+
+
+def test_withdraw_requires_post_and_csrf(client):
+    building, manager = setup_manager(client)
+    announcement = publish_announcement(manager, building.pk, "Notice", "Body")
+    url = reverse("web:staff-announcement-withdraw", args=[announcement.pk])
+
+    assert client.get(url).status_code == 405
+    announcement.refresh_from_db()
+    assert announcement.state == Announcement.State.PUBLISHED
+
+    client.handler.enforce_csrf_checks = True
+    assert client.post(url, {"expected_revision": 1}).status_code == 403
+    announcement.refresh_from_db()
+    assert announcement.state == Announcement.State.PUBLISHED
+
+
+def test_withdrawn_detail_has_no_actions_and_remains_in_history(client):
+    building, manager = setup_manager(client)
+    announcement = publish_announcement(manager, building.pk, "Notice", "Body")
+    response = client.post(
+        reverse("web:staff-announcement-withdraw", args=[announcement.pk]),
+        {"expected_revision": 1},
+    )
+    announcement.refresh_from_db()
+
+    assert response.status_code == 302
+    assert announcement.state == Announcement.State.WITHDRAWN
+    detail = client.get(reverse("web:staff-announcement-detail", args=[announcement.pk]))
+    assert b"Edit announcement" not in detail.content
+    assert b"Withdraw announcement" not in detail.content
+    history = client.get(reverse("web:staff-announcement-list"))
+    assert announcement in history.context["announcements"]
