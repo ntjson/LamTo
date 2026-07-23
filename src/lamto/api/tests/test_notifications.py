@@ -126,24 +126,48 @@ class NotificationFeedTests(TestCase):
         assert "unread" in resp.json()["errors"]
 
     def test_feed_filters_remain_tenant_and_user_scoped(self):
+        from django.contrib.auth import get_user_model
+        from lamto.accounts.models import ResidentOccupancy
+
+        neighbor = get_user_model().objects.create_user(
+            email="apin-neighbor@example.com", password="x", display_name="Neighbor"
+        )
+        ResidentOccupancy.objects.create(user=neighbor, unit=self.seed.unit, active=True)
+        neighbor_delivery = NotificationDelivery.objects.create(
+            recipient=neighbor, building=self.seed.building,
+            channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
+            event_key="building.announcement:neighbor:1", event_code="building.announcement",
+            subject="Neighbor", body="Neighbor",
+        )
         foreign = seed_pilot_world(
             building_name="API Notif Foreign", email_prefix="apinforeign", create_sample_report=False
         )
-        NotificationDelivery.objects.create(
+        foreign_delivery = NotificationDelivery.objects.create(
             recipient=foreign.residents[0], building=foreign.building,
             channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
             event_key="building.announcement:foreign:1", event_code="building.announcement",
             subject="Foreign", body="Foreign",
         )
 
-        resp = self.client.get(
-            reverse("api:notifications"),
-            {"event_code": "building.announcement", "unread": "true"},
-            headers=self._occ(),
-        )
+        responses = [
+            self.client.get(
+                reverse("api:notifications"),
+                query,
+                headers=self._occ(),
+            )
+            for query in (
+                {"event_code": "building.announcement"},
+                {"unread": "true"},
+                {"event_code": "building.announcement", "unread": "true"},
+            )
+        ]
 
-        assert resp.status_code == 200
-        assert resp.json()["results"] == []
+        excluded_ids = {neighbor_delivery.pk, foreign_delivery.pk}
+        assert all(response.status_code == 200 for response in responses)
+        assert all(
+            excluded_ids.isdisjoint(row["id"] for row in response.json()["results"])
+            for response in responses
+        )
 
     def test_feed_exposes_event_key_for_deep_links(self):
         resp = self.client.get(reverse("api:notifications"), headers=self._occ())
