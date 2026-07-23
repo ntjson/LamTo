@@ -42,7 +42,7 @@ Final commands and results:
 
 - Compact 320px layout at 2x text scaling passes without overflow; the highlight uses wrapping platform text roles and a native 64dp list target.
 - The single tonal `Card.filled` highlight does not introduce a card stack or a new component vocabulary.
-- Theme color roles, `AlertDialog`, `ListTile`, and `Switch.adaptive` preserve dark-mode and Material/Cupertino behavior.
+- Theme color roles, adaptive Material/Cupertino dialogs, `ListTile`, and `Switch.adaptive` preserve dark-mode and platform behavior.
 - Full body content scrolls in the dialog; no fixed text sizes or raw colors were added.
 
 ## Commit
@@ -52,3 +52,23 @@ Final commands and results:
 ## Concerns
 
 None. Dependency tooling reported newer incompatible package versions, but focused tests and analysis were clean.
+
+## Review Fix
+
+- Inbox reads now invalidate both `latestAnnouncementProvider` and `notificationsProvider`, so an active Home provider immediately advances to the next unread announcement.
+- `showNotificationDialog` now uses `CupertinoAlertDialog` on iOS and `AlertDialog` elsewhere, preserving scrollable full content, localized close copy, system typography, and `Future<void>` completion.
+
+Red commands and results:
+
+- `cd app && flutter test test/notifications_screen_test.dart`: failed with the active latest provider still showing `Thông báo mới nhất` and no `CupertinoAlertDialog` on iOS.
+- `cd app && flutter test test/notifications_screen_test.dart --plain-name "inbox read progresses an active latest announcement provider"`: failed with `Thông báo mới nhất` still present after returning Home.
+- `cd app && flutter test test/notifications_screen_test.dart --plain-name "announcement opens full content dialog and remains in inbox"`: failed because Material `AlertDialog.scrollable` was `false`.
+
+Final commands and results:
+
+- `cd app && flutter test test/notifications_screen_test.dart`: 4 tests passed.
+- `cd app && flutter test test/announcement_home_test.dart test/home_screen_test.dart test/notifications_screen_test.dart test/account_screen_test.dart`: 21 tests passed.
+- `cd app && flutter analyze`: no issues found.
+- `git diff --check`: passed with no output.
+
+Review-fix commit: this commit, `fix: keep announcement state and dialogs adaptive`.

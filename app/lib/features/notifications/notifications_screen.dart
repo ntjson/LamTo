@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
@@ -74,19 +76,37 @@ final notificationsProvider =
 Future<void> showNotificationDialog(
   BuildContext context,
   NotificationFeed notice,
-) => showDialog<void>(
-  context: context,
-  builder: (context) => AlertDialog(
-    title: Text(notice.subject),
-    content: SingleChildScrollView(child: Text(notice.body)),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+) {
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    return showCupertinoDialog<void>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(notice.subject),
+        content: Text(notice.body),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+          ),
+        ],
       ),
-    ],
-  ),
-);
+    );
+  }
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      scrollable: true,
+      title: Text(notice.subject),
+      content: Text(notice.body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+        ),
+      ],
+    ),
+  );
+}
 
 final latestAnnouncementProvider =
     FutureProvider.autoDispose<NotificationFeed?>((ref) async {
@@ -179,6 +199,8 @@ class NotificationsScreen extends ConsumerWidget {
     NotificationFeed notice,
   ) async {
     await controller.markRead(notice);
+    ref.invalidate(latestAnnouncementProvider);
+    ref.invalidate(notificationsProvider);
     if (!context.mounted) return;
     switch (parseEventKey(notice.eventKey)) {
       case DeepLinkReport(:final id):
