@@ -23,11 +23,13 @@ class _FakeRepo implements TransparencyRepository {
   final read = <int>[];
 
   @override
-  Future<PaginatedNotificationFeedList> listNotifications(
-          {String? cursor}) async =>
-      PaginatedNotificationFeedList(
-        (b) => b..results = ListBuilder<NotificationFeed>([_notice(9)]),
-      );
+  Future<PaginatedNotificationFeedList> listNotifications({
+    String? cursor,
+    String? eventCode,
+    bool? unread,
+  }) async => PaginatedNotificationFeedList(
+    (b) => b..results = ListBuilder<NotificationFeed>([_notice(9)]),
+  );
 
   @override
   Future<void> markNotificationRead(int id) async => read.add(id);
@@ -41,18 +43,21 @@ class _FakeRepo implements TransparencyRepository {
 }
 
 void main() {
-  testWidgets('lists notices; tap marks read and deep-links to ledger detail',
-      (tester) async {
+  testWidgets('lists notices; tap marks read and deep-links to ledger detail', (
+    tester,
+  ) async {
     final repo = _FakeRepo();
-    await tester.pumpWidget(ProviderScope(
-      overrides: [transparencyRepositoryProvider.overrideWithValue(repo)],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('vi'),
-        home: const NotificationsScreen(),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [transparencyRepositoryProvider.overrideWithValue(repo)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const NotificationsScreen(),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text('Khoản chi mới'), findsOneWidget);
 

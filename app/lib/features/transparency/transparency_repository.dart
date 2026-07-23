@@ -30,7 +30,11 @@ abstract class TransparencyRepository {
   });
   Future<LedgerEntryDetail> fetchLedgerEntry(int id);
   Future<Uint8List> fetchDocument(String downloadUrl);
-  Future<PaginatedNotificationFeedList> listNotifications({String? cursor});
+  Future<PaginatedNotificationFeedList> listNotifications({
+    String? cursor,
+    String? eventCode,
+    bool? unread,
+  });
   Future<void> markNotificationRead(int id);
   Future<Device> registerDevice({
     required String installId,
@@ -109,8 +113,14 @@ class DioTransparencyRepository implements TransparencyRepository {
   @override
   Future<PaginatedNotificationFeedList> listNotifications({
     String? cursor,
+    String? eventCode,
+    bool? unread,
   }) async {
-    final res = await _notifications.notificationsList(cursor: cursor);
+    final res = await _notifications.notificationsList(
+      cursor: cursor,
+      eventCode: eventCode,
+      unread: unread,
+    );
     return res.data!;
   }
 

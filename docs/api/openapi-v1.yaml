@@ -820,6 +820,16 @@ paths:
         description: The pagination cursor value.
         schema:
           type: string
+      - in: query
+        name: event_code
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+      - in: query
+        name: unread
+        schema:
+          type: boolean
       tags:
       - notifications
       security:

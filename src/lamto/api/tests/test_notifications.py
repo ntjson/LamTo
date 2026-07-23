@@ -2,6 +2,7 @@ import tempfile
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from knox.models import AuthToken
 
 from lamto.notifications.models import NotificationDelivery
@@ -48,12 +49,109 @@ class NotificationFeedTests(TestCase):
         self.delivery.refresh_from_db()
         assert self.delivery.read_at is not None
 
+    def test_feed_filters_by_event_code(self):
+        NotificationDelivery.objects.create(
+            recipient=self.resident, building=self.seed.building,
+            channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
+            event_key="building.announcement:x:1", event_code="building.announcement",
+            subject="Announcement", body="News",
+        )
+
+        resp = self.client.get(
+            reverse("api:notifications"),
+            {"event_code": "building.announcement"},
+            headers=self._occ(),
+        )
+
+        assert resp.status_code == 200
+        assert [row["event_code"] for row in resp.json()["results"]] == ["building.announcement"]
+
+    def test_feed_filters_by_read_state(self):
+        self.delivery.read_at = timezone.now()
+        self.delivery.save(update_fields=["read_at"])
+        unread = NotificationDelivery.objects.create(
+            recipient=self.resident, building=self.seed.building,
+            channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
+            event_key="ledger.publication:x:2", event_code="ledger.publication",
+            subject="Unread", body="Unread",
+        )
+
+        unread_resp = self.client.get(
+            reverse("api:notifications"), {"unread": "true"}, headers=self._occ()
+        )
+        read_resp = self.client.get(
+            reverse("api:notifications"), {"unread": "false"}, headers=self._occ()
+        )
+
+        assert [row["id"] for row in unread_resp.json()["results"]] == [unread.pk]
+        assert [row["id"] for row in read_resp.json()["results"]] == [self.delivery.pk]
+
+    def test_feed_filters_compose_with_cursor_pagination(self):
+        self.delivery.delete()
+        for number in range(21):
+            NotificationDelivery.objects.create(
+                recipient=self.resident, building=self.seed.building,
+                channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
+                event_key=f"building.announcement:x:{number}", event_code="building.announcement",
+                subject=f"Announcement {number}", body="News",
+            )
+        NotificationDelivery.objects.create(
+            recipient=self.resident, building=self.seed.building,
+            channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
+            event_key="ledger.publication:x:noise", event_code="ledger.publication",
+            subject="Noise", body="Noise",
+        )
+
+        first = self.client.get(
+            reverse("api:notifications"),
+            {"event_code": "building.announcement", "unread": "true"},
+            headers=self._occ(),
+        )
+        second = self.client.get(first.json()["next"], headers=self._occ())
+
+        assert len(first.json()["results"]) == 20
+        assert len(second.json()["results"]) == 1
+        assert all(
+            row["event_code"] == "building.announcement" and row["read_at"] is None
+            for row in first.json()["results"] + second.json()["results"]
+        )
+
+    def test_feed_rejects_invalid_unread_boolean(self):
+        resp = self.client.get(
+            reverse("api:notifications"), {"unread": "sometimes"}, headers=self._occ()
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "validation_failed"
+        assert "unread" in resp.json()["errors"]
+
+    def test_feed_filters_remain_tenant_and_user_scoped(self):
+        foreign = seed_pilot_world(
+            building_name="API Notif Foreign", email_prefix="apinforeign", create_sample_report=False
+        )
+        NotificationDelivery.objects.create(
+            recipient=foreign.residents[0], building=foreign.building,
+            channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
+            event_key="building.announcement:foreign:1", event_code="building.announcement",
+            subject="Foreign", body="Foreign",
+        )
+
+        resp = self.client.get(
+            reverse("api:notifications"),
+            {"event_code": "building.announcement", "unread": "true"},
+            headers=self._occ(),
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["results"] == []
+
     def test_feed_exposes_event_key_for_deep_links(self):
         resp = self.client.get(reverse("api:notifications"), headers=self._occ())
         assert resp.status_code == 200
         row = resp.json()["results"][0]
         # Opaque deep-link reference only — not subject/body free text (A8).
         assert row["event_key"] == "ledger.publication:x:1"
+        assert row["event_code"] == "ledger.publication"
         assert row["event_key"] == self.delivery.event_key
         assert self.delivery.subject not in row["event_key"]
         assert self.delivery.body not in row["event_key"]

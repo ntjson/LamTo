@@ -14,7 +14,7 @@ Method | HTTP request | Description
 
 
 # **notificationsList**
-> PaginatedNotificationFeedList notificationsList(xLamToOccupancy, cursor)
+> PaginatedNotificationFeedList notificationsList(xLamToOccupancy, cursor, eventCode, unread)
 
 
 
@@ -29,9 +29,11 @@ import 'package:lamto_api/api.dart';
 final api = LamtoApi().getNotificationsApi();
 final int xLamToOccupancy = 56; // int | Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
 final String cursor = cursor_example; // String | The pagination cursor value.
+final String eventCode = eventCode_example; // String |
+final bool unread = true; // bool |
 
 try {
-    final response = api.notificationsList(xLamToOccupancy, cursor);
+    final response = api.notificationsList(xLamToOccupancy, cursor, eventCode, unread);
     print(response);
 } catch on DioException (e) {
     print('Exception when calling NotificationsApi->notificationsList: $e\n');
@@ -44,6 +46,8 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **xLamToOccupancy** | **int**| Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404. | [optional]
  **cursor** | **String**| The pagination cursor value. | [optional]
+ **eventCode** | **String**|  | [optional]
+ **unread** | **bool**|  | [optional]
 
 ### Return type
 

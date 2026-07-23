@@ -1,19 +1,44 @@
 ## Task 4 Report
 
-- Status: implemented public registration options, submission, and token status APIs.
-- Security: generic 409 conflict, phone/IP attempts recorded before validation/service submission, exact status header, private no-store status responses, and safe explicit serializers.
-- Contract: regenerated OpenAPI and Dart `RegistrationApi` with all three operations and stable registration status enum naming.
-- TDD: endpoint tests failed first on missing routes, then passed after implementation.
-- Checks: `17 passed` across focused registration and OpenAPI tests; schema validation passed with `--fail-on-warn`; `git diff --check` passed.
-- Concern: the shared venv does not contain `ruff`; no Ruff check was available.
+### Files
 
-## High/Medium Review Fixes
+- `src/lamto/api/serializers.py`
+- `src/lamto/api/views.py`
+- `src/lamto/api/tests/test_notifications.py`
+- `docs/api/openapi-v1.yaml`
+- `app/packages/lamto_api/doc/NotificationsApi.md`
+- `app/packages/lamto_api/lib/src/api/notifications_api.dart`
+- `app/packages/lamto_api/test/notifications_api_test.dart`
+- `app/lib/features/transparency/transparency_repository.dart`
+- `app/test/notifications_screen_test.dart`
 
-- Added red/green regressions for malformed JSON IP throttling, normalized-phone throttling before serializer validation, and no-store headers on missing/invalid status tokens.
-- Moved IP attempt recording before body parsing and usable normalized-phone recording before serializer validation.
-- Applied `private, no-store` from the status view's `finalize_response`, covering success and problem responses.
-- Made registration email an optional plain OpenAPI string that accepts blank while retaining server-side email validation; generated Dart now exposes `String?` directly.
-- Added deterministic generation post-processing that removes password and status token from built_value `toString()` output without changing wire serialization.
-- Focused API/OpenAPI result: `22 passed`.
-- Generated Dart package result: `265 passed`.
-- Schema generation passed validation with `--fail-on-warn`; `git diff --check` passed.
+### Commands And Results
+
+- RED: `set -a && . /home/nts/src/LamTo/.env && set +a && PYTHONPATH=/home/nts/src/LamTo/.worktrees/building-announcements/src POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner /home/nts/src/LamTo/.venv/bin/pytest src/lamto/api/tests/test_notifications.py -q` -> 5 failed, 3 passed because filters were ignored.
+- GREEN: same notification command -> 8 passed.
+- Schema: `set -a && . /home/nts/src/LamTo/.env && set +a && PYTHONPATH=/home/nts/src/LamTo/.worktrees/building-announcements/src POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner /home/nts/src/LamTo/.venv/bin/python manage.py spectacular --file docs/api/openapi-v1.yaml` -> exit 0.
+- Client: `cd app && ./tool/generate_api.sh` -> exit 0; generated `notificationsList({String? eventCode, bool? unread})` and `event_code`/`unread` query serialization.
+- Flutter: `cd app && flutter test test/notifications_screen_test.dart` -> 1 passed.
+- OpenAPI: notification environment plus `/home/nts/src/LamTo/.venv/bin/pytest src/lamto/api/tests/test_openapi.py -q` -> 7 passed.
+- Drift pre-commit: `cd app && ./tool/check_api_generated.sh` regenerated identical content but exited 1 because its porcelain check includes the intentional staged generated diff. It is rerun after this commit, when that diff is clean.
+- Formatting: `cd app && dart format lib/features/transparency/transparency_repository.dart test/notifications_screen_test.dart` -> 2 files checked, 1 formatted.
+
+### Generation
+
+`manage.py spectacular` emitted optional OpenAPI query parameters on `/api/v1/notifications`; the existing pinned generator produced only the three expected `NotificationsApi` files. No generated type was hand-edited.
+
+### Commit
+
+`feat: filter resident notifications` (this commit).
+
+### Self-Review
+
+- Filters are validated before occupancy resolution but applied only to the queryset returned by tenant- and recipient-scoped `resident_feed`.
+- Converting `QueryDict` to a plain dict prevents an omitted optional boolean from being treated as an HTML checkbox value of `false`, preserving unfiltered behavior.
+- Cursor links retain both query parameters; tests cover both pages, invalid booleans, read/unread states, event codes, and foreign-building isolation.
+- Generated diff was inspected after correcting an initially misplaced schema annotation; final generation affects `NotificationsApi` only.
+
+### Concerns
+
+- `check_api_generated.sh` cannot pass before committing an intentional generated change because it treats staged changes as stale; post-commit verification is required.
+- The generator reports its existing Node shell-argument deprecation and removed build-runner option warnings; generation still exits successfully.

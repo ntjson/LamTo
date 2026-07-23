@@ -435,6 +435,11 @@ class NotificationFeedSerializer(serializers.Serializer):
     read_at = serializers.DateTimeField(allow_null=True)
 
 
+class NotificationFilterSerializer(serializers.Serializer):
+    event_code = serializers.CharField(required=False, max_length=80)
+    unread = serializers.BooleanField(required=False)
+
+
 class DeviceRegisterSerializer(serializers.Serializer):
     install_id = serializers.CharField(
         max_length=64, help_text="Stable per-install client UUID (spec 7.2)."

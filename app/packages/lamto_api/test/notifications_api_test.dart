@@ -7,7 +7,7 @@ void main() {
   final instance = LamtoApi().getNotificationsApi();
 
   group(NotificationsApi, () {
-    //Future<PaginatedNotificationFeedList> notificationsList({ int xLamToOccupancy, String cursor }) async
+    //Future<PaginatedNotificationFeedList> notificationsList({ int xLamToOccupancy, String cursor, String eventCode, bool unread }) async
     test('test notificationsList', () async {
       // TODO
     });

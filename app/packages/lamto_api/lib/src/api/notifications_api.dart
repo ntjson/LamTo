@@ -26,6 +26,8 @@ class NotificationsApi {
   /// Parameters:
   /// * [xLamToOccupancy] - Active occupancy id for the authenticated resident. Required when the caller has multiple active occupancies; omitted when exactly one is auto-selected. Invalid or foreign ids yield 404.
   /// * [cursor] - The pagination cursor value.
+  /// * [eventCode]
+  /// * [unread]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -38,6 +40,8 @@ class NotificationsApi {
   Future<Response<PaginatedNotificationFeedList>> notificationsList({
     int? xLamToOccupancy,
     String? cursor,
+    String? eventCode,
+    bool? unread,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -68,6 +72,8 @@ class NotificationsApi {
 
     final _queryParameters = <String, dynamic>{
       if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (eventCode != null) r'event_code': encodeQueryParameter(_serializers, eventCode, const FullType(String)),
+      if (unread != null) r'unread': encodeQueryParameter(_serializers, unread, const FullType(bool)),
     };
 
     final _response = await _dio.request<Object>(

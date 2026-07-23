@@ -49,6 +49,7 @@ from lamto.api.serializers import (
     LogoutInstallIdSerializer,
     MeSerializer,
     NotificationFeedSerializer,
+    NotificationFilterSerializer,
     NotificationPreferenceSerializer,
     NotificationPreferenceUpdateSerializer,
     ReportCreateSerializer,
@@ -745,15 +746,23 @@ class NotificationListView(generics.ListAPIView):
     pagination_class = NotificationCursorPagination
 
     @extend_schema(
-        parameters=[OCCUPANCY_HEADER_PARAMETER],
+        parameters=[NotificationFilterSerializer, OCCUPANCY_HEADER_PARAMETER],
         responses={200: NotificationFeedSerializer(many=True), **problem_responses(401, 403, 404, 422)},
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
+        filters = NotificationFilterSerializer(data=self.request.query_params.dict())
+        filters.is_valid(raise_exception=True)
         _occupancy, tenant = resolve_api_occupancy(self.request)
-        return resident_feed(self.request.user, tenant.building_id)
+        queryset = resident_feed(self.request.user, tenant.building_id)
+        event_code = filters.validated_data.get("event_code")
+        if event_code:
+            queryset = queryset.filter(event_code=event_code)
+        if "unread" in filters.validated_data:
+            queryset = queryset.filter(read_at__isnull=filters.validated_data["unread"])
+        return queryset
 
 
 class NotificationReadView(APIView):
