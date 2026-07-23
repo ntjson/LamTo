@@ -86,7 +86,7 @@ def submit_registration(*, full_name, phone, email, password, building_id, unit_
             matching,
             status=RegistrationRequest.Status.PENDING,
             expires_at__lte=now,
-        )
+        ).order_by("pk")
     )
     _expire_requests(stale, now)
     expire_registration_requests()

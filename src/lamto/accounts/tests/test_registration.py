@@ -10,6 +10,7 @@ from django.contrib.auth.hashers import check_password
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, connection, transaction
 from django.test import TransactionTestCase
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from lamto.accounts.models import (
@@ -282,6 +283,82 @@ class RegistrationDecisionRaceTests(TransactionTestCase):
 
         request.refresh_from_db()
         assert request.status == RegistrationRequest.Status.APPROVED
+
+
+class RegistrationSubmissionRaceTests(TransactionTestCase):
+    def _fixture_teardown(self):
+        pass
+
+    def tearDown(self):
+        RegistrationRequest.objects.all().delete()
+        Unit.objects.all().delete()
+        Building.objects.all().delete()
+
+    def test_crossed_phone_email_submissions_lock_stale_rows_by_primary_key(self):
+        building = Building.objects.create(name="Submission race tower")
+        unit = Unit.objects.create(building=building, label="R1")
+        now = timezone.now()
+        RegistrationRequest.objects.bulk_create(
+            [
+                RegistrationRequest(
+                    full_name="First stale",
+                    phone="+84901111111",
+                    email="second@example.test",
+                    building=building,
+                    unit=unit,
+                    password_hash="hashed",
+                    status_token_digest="a" * 64,
+                    expires_at=now,
+                ),
+                RegistrationRequest(
+                    full_name="Second stale",
+                    phone="+84902222222",
+                    email="first@example.test",
+                    building=building,
+                    unit=unit,
+                    password_hash="hashed",
+                    status_token_digest="b" * 64,
+                    expires_at=now,
+                ),
+            ]
+        )
+        start = threading.Barrier(2)
+
+        def submit_crossed(phone, email):
+            connection.close()
+            try:
+                start.wait(timeout=10)
+                with CaptureQueriesContext(connection) as queries:
+                    submit(
+                        unit,
+                        phone=phone,
+                        email=email,
+                        full_name=email,
+                    )
+                locking_sql = next(
+                    query["sql"]
+                    for query in queries.captured_queries
+                    if "FOR UPDATE" in query["sql"]
+                    and '"accounts_registrationrequest"' in query["sql"]
+                    and '"expires_at" <=' in query["sql"]
+                )
+                return locking_sql
+            finally:
+                connection.close()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(
+                submit_crossed, "0901111111", "first@example.test"
+            )
+            second = pool.submit(
+                submit_crossed, "0902222222", "second@example.test"
+            )
+            locking_queries = [first.result(timeout=10), second.result(timeout=10)]
+
+        assert all(
+            'ORDER BY "accounts_registrationrequest"."id" ASC' in query
+            for query in locking_queries
+        )
 
 
 def test_submit_registration_hashes_secrets_and_normalizes_values(unit):
