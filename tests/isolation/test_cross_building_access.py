@@ -39,6 +39,7 @@ from lamto.finance.models import (
 from lamto.gate.models import FaceEnrollment, PendingEnrollmentPhoto, VehiclePlate
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase
 from lamto.notifications.models import NotificationDelivery
+from lamto.notifications.announcements import publish_announcement
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 from lamto.web.staff import nav_items_for
 
@@ -63,6 +64,9 @@ STAFF_CASES = {
     "web:staff-registration-detail": ("registration_pk", "GET"),
     "web:staff-registration-approve": ("registration_pk", "POST"),
     "web:staff-registration-reject": ("registration_pk", "POST"),
+    "web:staff-announcement-detail": ("announcement_pk", "GET"),
+    "web:staff-announcement-edit": ("announcement_pk", "GET"),
+    "web:staff-announcement-withdraw": ("announcement_pk", "POST"),
 }
 STAFF_FORBIDDEN_CASES = set()
 
@@ -243,6 +247,12 @@ class CrossBuildingAccessTests(TestCase):
             building_id=b_building.pk,
             unit_id=b_occupancy.unit_id,
         ).request.pk
+        cls.b["announcement_pk"] = publish_announcement(
+            cls.seed_b.management_memberships[0].user,
+            b_building.pk,
+            "Building B announcement",
+            B_LEAK_MARKER,
+        ).pk
 
     def _management_login(self):
         membership = self.seed_a.management_memberships[0]
@@ -313,10 +323,17 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_seven_areas_and_non_manager_is_denied(self):
+    def test_management_has_eight_areas_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
-            "inbox", "cases", "finance", "exports", "gate", "registrations", "ops"
+            "inbox",
+            "cases",
+            "finance",
+            "exports",
+            "gate",
+            "registrations",
+            "announcements",
+            "ops",
         ]
         self._management_login()
         assert self.client.get(reverse("web:case-list")).status_code == 200
