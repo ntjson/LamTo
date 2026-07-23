@@ -29,10 +29,22 @@ _DUPLICATE_CONSTRAINTS = {
     "unique_pending_registration_phone",
     "unique_pending_registration_email",
 }
+_USER_DUPLICATE_CONSTRAINTS = {"accounts_user_email_key", "accounts_user_phone_key"}
 
 
 def status_token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _expire_requests(requests, now):
+    for request in requests:
+        request.status = RegistrationRequest.Status.EXPIRED
+        request.password_hash = ""
+        request.decided_at = now
+        request.updated_at = now
+    RegistrationRequest.objects.bulk_update(
+        requests, ["status", "password_hash", "decided_at", "updated_at"]
+    )
 
 
 def expire_registration_requests(*, limit=100, now=None) -> int:
@@ -46,14 +58,7 @@ def expire_registration_requests(*, limit=100, now=None) -> int:
             )
             .order_by("expires_at")[:limit]
         )
-        for request in requests:
-            request.status = RegistrationRequest.Status.EXPIRED
-            request.password_hash = ""
-            request.decided_at = now
-            request.updated_at = now
-        RegistrationRequest.objects.bulk_update(
-            requests, ["status", "password_hash", "decided_at", "updated_at"]
-        )
+        _expire_requests(requests, now)
     return len(requests)
 
 
@@ -105,13 +110,17 @@ def submit_registration(*, full_name, phone, email, password, building_id, unit_
 
 
 def get_registration_status(status_token):
-    request = RegistrationRequest.objects.get(
-        status_token_digest=status_token_digest(status_token)
-    )
-    if request.status == RegistrationRequest.Status.PENDING:
-        expire_registration_requests()
-        request.refresh_from_db()
-    return request
+    now = timezone.now()
+    with transaction.atomic():
+        request = RegistrationRequest.objects.select_for_update().get(
+            status_token_digest=status_token_digest(status_token)
+        )
+        if (
+            request.status == RegistrationRequest.Status.PENDING
+            and request.expires_at <= now
+        ):
+            _expire_requests([request], now)
+        return request
 
 
 def approve_registration(*, request_id, actor):
@@ -160,7 +169,10 @@ def approve_registration(*, request_id, actor):
             )
             return user
     except IntegrityError as error:
-        raise RegistrationConflict() from error
+        constraint = getattr(getattr(error.__cause__, "diag", None), "constraint_name", None)
+        if constraint in _USER_DUPLICATE_CONSTRAINTS:
+            raise RegistrationConflict() from error
+        raise
 
 
 @transaction.atomic

@@ -1,11 +1,15 @@
 import hashlib
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.contrib import admin
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, connection, transaction
+from django.test import TransactionTestCase
 from django.utils import timezone
 
 from lamto.accounts.models import (
@@ -114,17 +118,49 @@ def test_second_decision_conflicts(unit, manager):
 
 def test_approval_user_conflict_rolls_back(unit, manager):
     request = submit(unit).request
-    User.objects.create_user(phone="0901234567", password="existing")
+    existing = User.objects.create_user(phone="0901234567", password="existing")
+    user_count = User.objects.count()
 
     with pytest.raises(RegistrationConflict):
         approve_registration(request_id=request.id, actor=manager)
 
     request.refresh_from_db()
     assert request.status == RegistrationRequest.Status.PENDING
-    assert User.objects.filter(phone=request.phone).count() == 0
-    assert not ResidentOccupancy.objects.filter(
-        unit=request.unit, user__phone=request.phone
-    ).exists()
+    assert User.objects.count() == user_count
+    assert User.objects.filter(pk=existing.pk, phone="0901234567").exists()
+    assert not ResidentOccupancy.objects.filter(unit=request.unit).exists()
+
+
+def test_unrelated_approval_integrity_error_propagates_after_rollback(
+    unit, manager, monkeypatch
+):
+    request = submit(unit).request
+
+    def fail(**kwargs):
+        raise IntegrityError("unrelated")
+
+    monkeypatch.setattr(ResidentOccupancy.objects, "create", fail)
+    with pytest.raises(IntegrityError, match="unrelated"):
+        approve_registration(request_id=request.id, actor=manager)
+
+    request.refresh_from_db()
+    assert request.status == RegistrationRequest.Status.PENDING
+    assert User.objects.count() == 1
+
+
+def test_audit_failure_rolls_back_approval(unit, manager):
+    request = submit(unit).request
+
+    with patch(
+        "lamto.accounts.registration.record_audit",
+        side_effect=RuntimeError("audit unavailable"),
+    ), pytest.raises(RuntimeError, match="audit unavailable"):
+        approve_registration(request_id=request.id, actor=manager)
+
+    request.refresh_from_db()
+    assert request.status == RegistrationRequest.Status.PENDING
+    assert User.objects.count() == 1
+    assert not ResidentOccupancy.objects.exists()
 
 
 def test_expiry_clears_hash_and_records_decision_time(unit):
@@ -138,6 +174,95 @@ def test_expiry_clears_hash_and_records_decision_time(unit):
     assert request.status == RegistrationRequest.Status.EXPIRED
     assert request.password_hash == ""
     assert request.decided_at == now
+
+
+def test_status_lookup_expires_its_request_beyond_batch_limit(unit):
+    submission = submit(unit)
+    now = timezone.now()
+    RegistrationRequest.objects.filter(pk=submission.request.pk).update(expires_at=now)
+    RegistrationRequest.objects.bulk_create(
+        [
+            RegistrationRequest(
+                full_name=f"Older {index}",
+                phone=f"+848{index:08d}",
+                building=unit.building,
+                unit=unit,
+                password_hash="hashed",
+                status_token_digest=f"{index:064x}",
+                expires_at=now - timedelta(days=1),
+            )
+            for index in range(100)
+        ]
+    )
+
+    request = get_registration_status(submission.status_token)
+
+    assert request.status == RegistrationRequest.Status.EXPIRED
+    assert request.password_hash == ""
+
+
+class RegistrationDecisionRaceTests(TransactionTestCase):
+    def _fixture_teardown(self):
+        pass
+
+    def tearDown(self):
+        AuditEvent.objects.all().delete()
+        ResidentOccupancy.objects.all().delete()
+        RegistrationRequest.objects.all().delete()
+        ManagementMembership.objects.all().delete()
+        User.objects.all().delete()
+        Unit.objects.all().delete()
+        Building.objects.all().delete()
+
+    def test_first_concurrent_decision_wins(self):
+        building = Building.objects.create(name="Race tower")
+        unit = Unit.objects.create(building=building, label="R1")
+        manager = User.objects.create_user(email="race@example.com", password="secret")
+        ManagementMembership.objects.create(user=manager, building=building)
+        request = submit(unit).request
+        first_has_lock = threading.Event()
+        release_first = threading.Event()
+
+        def pause_audit(*args, **kwargs):
+            first_has_lock.set()
+            assert release_first.wait(10)
+
+        def approve():
+            connection.close()
+            try:
+                with patch(
+                    "lamto.accounts.registration.record_audit", side_effect=pause_audit
+                ):
+                    return approve_registration(
+                        request_id=request.pk, actor=User.objects.get(pk=manager.pk)
+                    )
+            finally:
+                connection.close()
+
+        def reject():
+            connection.close()
+            try:
+                return reject_registration(
+                    request_id=request.pk,
+                    actor=User.objects.get(pk=manager.pk),
+                    reason="No",
+                )
+            finally:
+                connection.close()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            approval = pool.submit(approve)
+            assert first_has_lock.wait(10)
+            rejection = pool.submit(reject)
+            with pytest.raises(TimeoutError):
+                rejection.result(timeout=0.2)
+            release_first.set()
+            approval.result(timeout=10)
+            with pytest.raises(RegistrationConflict):
+                rejection.result(timeout=10)
+
+        request.refresh_from_db()
+        assert request.status == RegistrationRequest.Status.APPROVED
 
 
 def test_submit_registration_hashes_secrets_and_normalizes_values(unit):
