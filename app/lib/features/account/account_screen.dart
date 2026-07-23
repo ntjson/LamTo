@@ -64,7 +64,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(me.displayName, style: Theme.of(context).textTheme.titleLarge),
-            Text(me.email, style: Theme.of(context).textTheme.bodySmall),
+            if (me.email != null && me.email!.isNotEmpty)
+              Text(me.email!, style: Theme.of(context).textTheme.bodySmall),
             if (me.phone != null && me.phone!.isNotEmpty)
               Text(me.phone!, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 24),
@@ -113,7 +114,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               _prefRow(l10n, category, serverPrefs[category.code]),
             const SizedBox(height: 24),
             OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GateRegistrationScreen(repository: ref.read(gateRepositoryProvider)))),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => GateRegistrationScreen(
+                    repository: ref.read(gateRepositoryProvider),
+                  ),
+                ),
+              ),
               icon: const Icon(Icons.door_front_door_outlined),
               label: const Text('Dang ky bien so va khuon mat'),
             ),

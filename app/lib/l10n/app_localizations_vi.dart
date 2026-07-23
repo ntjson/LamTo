@@ -34,6 +34,68 @@ class AppLocalizationsVi extends AppLocalizations {
   String get loginHidePassword => 'Ẩn mật khẩu';
 
   @override
+  String get registrationOpen => 'Đăng ký cư dân';
+
+  @override
+  String get registrationTitle => 'Đăng ký cư dân';
+
+  @override
+  String get registrationFullName => 'Họ và tên';
+
+  @override
+  String get registrationPhone => 'Số điện thoại';
+
+  @override
+  String get registrationEmail => 'Email (không bắt buộc)';
+
+  @override
+  String get registrationPassword => 'Mật khẩu';
+
+  @override
+  String get registrationBuilding => 'Tòa nhà';
+
+  @override
+  String get registrationUnit => 'Căn hộ';
+
+  @override
+  String get registrationRequired => 'Bắt buộc';
+
+  @override
+  String get registrationSubmit => 'Gửi yêu cầu';
+
+  @override
+  String get registrationPendingTitle => 'Đang chờ duyệt đăng ký';
+
+  @override
+  String get registrationPendingBody =>
+      'Ban quản lý đang xem xét yêu cầu của bạn.';
+
+  @override
+  String get registrationRejectedTitle => 'Đăng ký bị từ chối';
+
+  @override
+  String get registrationApprovedTitle => 'Đăng ký đã được duyệt';
+
+  @override
+  String get registrationApprovedBody =>
+      'Tài khoản đã sẵn sàng. Tiếp tục để đăng nhập.';
+
+  @override
+  String get registrationExpiredTitle => 'Yêu cầu đã hết hạn';
+
+  @override
+  String get registrationExpiredBody => 'Yêu cầu đăng ký này đã hết hạn.';
+
+  @override
+  String get registrationRefresh => 'Làm mới';
+
+  @override
+  String get registrationNewRequest => 'Gửi yêu cầu mới';
+
+  @override
+  String get registrationContinueLogin => 'Tiếp tục đăng nhập';
+
+  @override
   String get apiBaseUrlTitle => 'Máy chủ API';
 
   @override

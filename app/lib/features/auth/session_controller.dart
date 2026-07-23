@@ -55,7 +55,8 @@ class SessionController extends AsyncNotifier<SessionState> {
       return SessionAuthenticated(me);
     } on DioException catch (e) {
       final failure = Failure.fromDio(e);
-      final isAuth = e.response?.statusCode == 401 ||
+      final isAuth =
+          e.response?.statusCode == 401 ||
           failure.code == 'authentication_failed' ||
           failure.code == 'not_authenticated';
       if (isAuth) {
@@ -73,12 +74,12 @@ class SessionController extends AsyncNotifier<SessionState> {
   /// deactivate after register for the same install_id).
   void _schedulePendingDeregisterRetry() {
     unawaited(
-      ref.read(pushRegistrarProvider).onAuthenticatedSession().catchError(
-            (Object _) {},
-          ),
+      ref
+          .read(pushRegistrarProvider)
+          .onAuthenticatedSession()
+          .catchError((Object _) {}),
     );
   }
-
 
   Future<void> _restoreOccupancy(Me me) async {
     final userKey = _userKey(me);
@@ -100,7 +101,8 @@ class SessionController extends AsyncNotifier<SessionState> {
   }
 
   String _userKey(Me me) {
-    if (me.email.isNotEmpty) return me.email;
+    final email = me.email;
+    if (email != null && email.isNotEmpty) return email;
     final phone = me.phone;
     if (phone != null && phone.isNotEmpty) return phone;
     return 'install';
@@ -119,7 +121,8 @@ class SessionController extends AsyncNotifier<SessionState> {
       _schedulePendingDeregisterRetry();
     } on DioException catch (e) {
       final failure = Failure.fromDio(e);
-      final isAuth = e.response?.statusCode == 401 ||
+      final isAuth =
+          e.response?.statusCode == 401 ||
           failure.code == 'authentication_failed' ||
           failure.code == 'not_authenticated';
       if (isAuth) {
@@ -151,9 +154,7 @@ class SessionController extends AsyncNotifier<SessionState> {
     await ReportDraftStore().clearAll();
     // Amendment 8: drop app-owned photo copies. path_provider may be
     // unavailable or hang in widget tests — never block session clear.
-    unawaited(
-      ReportPhotoFileStore().clearAll().catchError((Object _) {}),
-    );
+    unawaited(ReportPhotoFileStore().clearAll().catchError((Object _) {}));
     // My Issues watches sessionControllerProvider and rebuilds on this state.
     state = const AsyncData(SessionUnauthenticated());
   }
@@ -170,4 +171,6 @@ class SessionController extends AsyncNotifier<SessionState> {
 }
 
 final sessionControllerProvider =
-    AsyncNotifierProvider<SessionController, SessionState>(SessionController.new);
+    AsyncNotifierProvider<SessionController, SessionState>(
+      SessionController.new,
+    );

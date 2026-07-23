@@ -34,6 +34,68 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginHidePassword => 'Hide password';
 
   @override
+  String get registrationOpen => 'Register as a resident';
+
+  @override
+  String get registrationTitle => 'Resident registration';
+
+  @override
+  String get registrationFullName => 'Full name';
+
+  @override
+  String get registrationPhone => 'Phone';
+
+  @override
+  String get registrationEmail => 'Email (optional)';
+
+  @override
+  String get registrationPassword => 'Password';
+
+  @override
+  String get registrationBuilding => 'Building';
+
+  @override
+  String get registrationUnit => 'Unit';
+
+  @override
+  String get registrationRequired => 'Required';
+
+  @override
+  String get registrationSubmit => 'Submit request';
+
+  @override
+  String get registrationPendingTitle => 'Registration pending';
+
+  @override
+  String get registrationPendingBody => 'Management is reviewing your request.';
+
+  @override
+  String get registrationRejectedTitle => 'Registration rejected';
+
+  @override
+  String get registrationApprovedTitle => 'Registration approved';
+
+  @override
+  String get registrationApprovedBody =>
+      'Your account is ready. Continue to sign in.';
+
+  @override
+  String get registrationExpiredTitle => 'Request expired';
+
+  @override
+  String get registrationExpiredBody =>
+      'This registration request has expired.';
+
+  @override
+  String get registrationRefresh => 'Refresh';
+
+  @override
+  String get registrationNewRequest => 'Submit a new request';
+
+  @override
+  String get registrationContinueLogin => 'Continue to sign in';
+
+  @override
   String get apiBaseUrlTitle => 'API server';
 
   @override

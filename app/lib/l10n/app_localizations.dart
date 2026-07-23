@@ -146,6 +146,126 @@ abstract class AppLocalizations {
   /// **'Hide password'**
   String get loginHidePassword;
 
+  /// No description provided for @registrationOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Register as a resident'**
+  String get registrationOpen;
+
+  /// No description provided for @registrationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resident registration'**
+  String get registrationTitle;
+
+  /// No description provided for @registrationFullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get registrationFullName;
+
+  /// No description provided for @registrationPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get registrationPhone;
+
+  /// No description provided for @registrationEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email (optional)'**
+  String get registrationEmail;
+
+  /// No description provided for @registrationPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get registrationPassword;
+
+  /// No description provided for @registrationBuilding.
+  ///
+  /// In en, this message translates to:
+  /// **'Building'**
+  String get registrationBuilding;
+
+  /// No description provided for @registrationUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get registrationUnit;
+
+  /// No description provided for @registrationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get registrationRequired;
+
+  /// No description provided for @registrationSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit request'**
+  String get registrationSubmit;
+
+  /// No description provided for @registrationPendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration pending'**
+  String get registrationPendingTitle;
+
+  /// No description provided for @registrationPendingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Management is reviewing your request.'**
+  String get registrationPendingBody;
+
+  /// No description provided for @registrationRejectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration rejected'**
+  String get registrationRejectedTitle;
+
+  /// No description provided for @registrationApprovedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration approved'**
+  String get registrationApprovedTitle;
+
+  /// No description provided for @registrationApprovedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is ready. Continue to sign in.'**
+  String get registrationApprovedBody;
+
+  /// No description provided for @registrationExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Request expired'**
+  String get registrationExpiredTitle;
+
+  /// No description provided for @registrationExpiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This registration request has expired.'**
+  String get registrationExpiredBody;
+
+  /// No description provided for @registrationRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get registrationRefresh;
+
+  /// No description provided for @registrationNewRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit a new request'**
+  String get registrationNewRequest;
+
+  /// No description provided for @registrationContinueLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to sign in'**
+  String get registrationContinueLogin;
+
   /// No description provided for @apiBaseUrlTitle.
   ///
   /// In en, this message translates to:

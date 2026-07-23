@@ -7,20 +7,29 @@ import '../../core/failure.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/api_base_url_tile.dart';
+import 'registration_screen.dart';
 import 'session_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.initialIdentifier = ''});
+
+  final String initialIdentifier;
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _id = TextEditingController();
+  late final TextEditingController _id;
   final _pw = TextEditingController();
   String? _error;
   bool _busy = false;
   bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _id = TextEditingController(text: widget.initialIdentifier);
+  }
 
   @override
   void dispose() {
@@ -110,6 +119,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 FilledButton(
                   onPressed: _busy ? null : () => _submit(l10n),
                   child: Text(l10n.loginSubmit),
+                ),
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const RegistrationScreen(),
+                          ),
+                        ),
+                  child: Text(l10n.registrationOpen),
                 ),
                 const SizedBox(height: 24),
                 const ApiBaseUrlTile(),
