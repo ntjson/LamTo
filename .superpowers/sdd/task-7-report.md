@@ -29,3 +29,15 @@ Implemented the resident registration form and device-bound status flow with loc
 - Approved navigation clears the secret and prefills only the phone identifier; password starts empty.
 - Full analyzer restored after fixing both nullable email compile callers.
 - No unresolved concerns.
+
+## Reviewer Follow-up
+
+- Added explicit retry actions for registration-options and initial/stale status refresh failures.
+- Reused `adaptivePageRoute` for registration navigation and matched the existing iOS `CupertinoPageScaffold`, `CupertinoNavigationBar`, and `CupertinoButton` treatment.
+- Added live-region semantics for asynchronous registration errors and status changes.
+- Confirmed with a widget regression test that failed submissions clear the password field.
+- RED: new focused tests failed before implementation because retry/live-region widgets and Cupertino registration treatment were absent.
+- `flutter test test/registration_screen_test.dart test/account_screen_test.dart`: 18 tests passed.
+- `flutter analyze`: no issues found.
+- `flutter test`: 196 tests passed.
+- `git diff --check`: passed.

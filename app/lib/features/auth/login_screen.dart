@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/failure.dart';
+import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/api_base_url_tile.dart';
@@ -124,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: _busy
                       ? null
                       : () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
+                          adaptivePageRoute<void>(
                             builder: (_) => const RegistrationScreen(),
                           ),
                         ),

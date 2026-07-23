@@ -1,8 +1,11 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/failure.dart';
+import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -83,7 +86,7 @@ class _RegistrationStatusScreenState
     await ref.read(registrationStatusStoreProvider).clear();
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const RegistrationScreen()),
+      adaptivePageRoute<void>(builder: (_) => const RegistrationScreen()),
     );
   }
 
@@ -91,7 +94,7 @@ class _RegistrationStatusScreenState
     await ref.read(registrationStatusStoreProvider).clear();
     if (!mounted) return;
     await Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(
+      adaptivePageRoute<void>(
         builder: (_) => LoginScreen(initialIdentifier: widget.secret.phone),
       ),
       (route) => false,
@@ -102,83 +105,128 @@ class _RegistrationStatusScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final status = _status;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.registrationTitle)),
-      body: PageBody(
+    return _page(
+      PageBody(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: status == null
               ? Center(
                   child: _error == null
                       ? const CircularProgressIndicator.adaptive()
-                      : Text(_error!),
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '${status.building} · ${status.unit}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    if (status.status == RegistrationStatusEnum.PENDING) ...[
-                      Text(
-                        l10n.registrationPendingTitle,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(l10n.registrationPendingBody),
-                      const SizedBox(height: 16),
-                      OutlinedButton(
-                        onPressed: _busy ? null : _refresh,
-                        child: Text(l10n.registrationRefresh),
-                      ),
-                    ] else if (status.status ==
-                        RegistrationStatusEnum.REJECTED) ...[
-                      Text(
-                        l10n.registrationRejectedTitle,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(status.rejectionReason!),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _newRequest,
-                        child: Text(l10n.registrationNewRequest),
-                      ),
-                    ] else if (status.status ==
-                        RegistrationStatusEnum.APPROVED) ...[
-                      Text(
-                        l10n.registrationApprovedTitle,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(l10n.registrationApprovedBody),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _login,
-                        child: Text(l10n.registrationContinueLogin),
-                      ),
-                    ] else ...[
-                      Text(
-                        l10n.registrationExpiredTitle,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(l10n.registrationExpiredBody),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _newRequest,
-                        child: Text(l10n.registrationNewRequest),
-                      ),
-                    ],
-                    if (_error != null)
-                      Text(
-                        _error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Semantics(
+                              key: const Key('registration_status_error'),
+                              liveRegion: true,
+                              child: Text(_error!),
+                            ),
+                            _secondaryAction(l10n.commonRetry, _refresh),
+                          ],
                         ),
+                )
+              : Semantics(
+                  key: const Key('registration_status_state'),
+                  liveRegion: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '${status.building} · ${status.unit}',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                  ],
+                      const SizedBox(height: 16),
+                      if (status.status == RegistrationStatusEnum.PENDING) ...[
+                        Text(
+                          l10n.registrationPendingTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(l10n.registrationPendingBody),
+                        const SizedBox(height: 16),
+                        _secondaryAction(
+                          l10n.registrationRefresh,
+                          _busy ? null : _refresh,
+                        ),
+                      ] else if (status.status ==
+                          RegistrationStatusEnum.REJECTED) ...[
+                        Text(
+                          l10n.registrationRejectedTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(status.rejectionReason!),
+                        const SizedBox(height: 16),
+                        _primaryAction(
+                          l10n.registrationNewRequest,
+                          _newRequest,
+                        ),
+                      ] else if (status.status ==
+                          RegistrationStatusEnum.APPROVED) ...[
+                        Text(
+                          l10n.registrationApprovedTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(l10n.registrationApprovedBody),
+                        const SizedBox(height: 16),
+                        _primaryAction(l10n.registrationContinueLogin, _login),
+                      ] else ...[
+                        Text(
+                          l10n.registrationExpiredTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(l10n.registrationExpiredBody),
+                        const SizedBox(height: 16),
+                        _primaryAction(
+                          l10n.registrationNewRequest,
+                          _newRequest,
+                        ),
+                      ],
+                      if (_error != null)
+                        Semantics(
+                          key: const Key('registration_status_error'),
+                          liveRegion: true,
+                          child: Column(
+                            children: [
+                              Text(
+                                _error!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                              _secondaryAction(l10n.commonRetry, _refresh),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
         ),
       ),
+      l10n,
     );
   }
+
+  Widget _page(Widget child, AppLocalizations l10n) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(
+          middle: Text(l10n.registrationTitle),
+        ),
+        child: SafeArea(child: child),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.registrationTitle)),
+      body: child,
+    );
+  }
+
+  Widget _primaryAction(String label, VoidCallback? onPressed) =>
+      defaultTargetPlatform == TargetPlatform.iOS
+      ? CupertinoButton.filled(onPressed: onPressed, child: Text(label))
+      : FilledButton(onPressed: onPressed, child: Text(label));
+
+  Widget _secondaryAction(String label, VoidCallback? onPressed) =>
+      defaultTargetPlatform == TargetPlatform.iOS
+      ? CupertinoButton(onPressed: onPressed, child: Text(label))
+      : OutlinedButton(onPressed: onPressed, child: Text(label));
 }

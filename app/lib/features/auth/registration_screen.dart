@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/failure.dart';
+import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -41,12 +44,20 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     if (!mounted) return;
     if (secret != null) {
       await Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
+        adaptivePageRoute<void>(
           builder: (_) => RegistrationStatusScreen(secret: secret),
         ),
       );
       return;
     }
+    await _loadOptions();
+  }
+
+  Future<void> _loadOptions() async {
+    setState(() {
+      _checkingSecret = true;
+      _error = null;
+    });
     try {
       final buildings = await ref
           .read(registrationRepositoryProvider)
@@ -104,7 +115,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       await ref.read(registrationStatusStoreProvider).save(secret);
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
+        adaptivePageRoute<void>(
           builder: (_) => RegistrationStatusScreen(secret: secret),
         ),
       );
@@ -139,13 +150,31 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         ?.where((item) => item.id == _buildingId)
         .firstOrNull;
     if (_checkingSecret || (_buildings == null && _error == null)) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator.adaptive()),
+      return _page(
+        const Center(child: CircularProgressIndicator.adaptive()),
+        l10n,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.registrationTitle)),
-      body: PageBody(
+    if (_buildings == null) {
+      return _page(
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                key: const Key('registration_error'),
+                liveRegion: true,
+                child: Text(_error!),
+              ),
+              _secondaryAction(l10n.commonRetry, _loadOptions),
+            ],
+          ),
+        ),
+        l10n,
+      );
+    }
+    return _page(
+      PageBody(
         child: Form(
           key: _formKey,
           child: ListView(
@@ -218,26 +247,55 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 ),
               ),
               if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                Semantics(
+                  key: const Key('registration_error'),
+                  liveRegion: true,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ),
                 ),
               const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _busy ? null : _submit,
-                child: Text(l10n.registrationSubmit),
-              ),
+              _primaryAction(l10n.registrationSubmit, _busy ? null : _submit),
             ],
           ),
         ),
       ),
+      l10n,
     );
   }
+
+  Widget _page(Widget child, AppLocalizations l10n) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(
+          middle: Text(l10n.registrationTitle),
+        ),
+        child: SafeArea(
+          child: Material(type: MaterialType.transparency, child: child),
+        ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.registrationTitle)),
+      body: child,
+    );
+  }
+
+  Widget _primaryAction(String label, VoidCallback? onPressed) =>
+      defaultTargetPlatform == TargetPlatform.iOS
+      ? CupertinoButton.filled(onPressed: onPressed, child: Text(label))
+      : FilledButton(onPressed: onPressed, child: Text(label));
+
+  Widget _secondaryAction(String label, VoidCallback? onPressed) =>
+      defaultTargetPlatform == TargetPlatform.iOS
+      ? CupertinoButton(onPressed: onPressed, child: Text(label))
+      : TextButton(onPressed: onPressed, child: Text(label));
 
   String? _required(String? value) => value == null || value.trim().isEmpty
       ? AppLocalizations.of(context)!.registrationRequired

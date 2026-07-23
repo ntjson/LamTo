@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,7 @@ class _Adapter implements HttpClientAdapter {
   _Adapter(this.handler);
   final FutureOr<Map<String, Object?>> Function(RequestOptions) handler;
   int statusCalls = 0;
+  int optionsCalls = 0;
 
   @override
   Future<ResponseBody> fetch(
@@ -36,6 +38,7 @@ class _Adapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     if (options.path.endsWith('/status')) statusCalls++;
+    if (options.path.endsWith('/options')) optionsCalls++;
     final response = await handler(options);
     return ResponseBody.fromString(
       response.remove('_body')! as String,
@@ -78,6 +81,129 @@ Widget _app(_Store store, _Adapter adapter, {Widget? home}) {
 }
 
 void main() {
+  testWidgets('options load failure is announced and can be retried', (
+    tester,
+  ) async {
+    late final _Adapter adapter;
+    adapter = _Adapter((request) {
+      if (request.path.endsWith('/options') && adapter.optionsCalls == 1) {
+        throw DioException(requestOptions: request);
+      }
+      return _json(_options);
+    });
+    await tester.pumpWidget(
+      _app(_Store(), adapter, home: const RegistrationScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final error = tester.widget<Semantics>(
+      find.byKey(const Key('registration_error')),
+    );
+    expect(error.properties.liveRegion, isTrue);
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.optionsCalls, 2);
+    expect(find.byKey(const Key('registration_name')), findsOneWidget);
+  });
+
+  testWidgets('initial status failure is announced and can be retried', (
+    tester,
+  ) async {
+    late final _Adapter adapter;
+    adapter = _Adapter((request) {
+      if (adapter.statusCalls == 1) {
+        throw DioException(requestOptions: request);
+      }
+      return _json(
+        '{"status":"PENDING","phone":"0901","building":"Tower A","unit":"A-101"}',
+      );
+    });
+    await tester.pumpWidget(
+      _app(
+        _Store('{"token":"secret","phone":"0901"}'),
+        adapter,
+        home: const RegistrationScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const Key('registration_status_error')))
+          .properties
+          .liveRegion,
+      isTrue,
+    );
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.statusCalls, 2);
+    expect(find.text('Registration pending'), findsOneWidget);
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const Key('registration_status_state')))
+          .properties
+          .liveRegion,
+      isTrue,
+    );
+  });
+
+  testWidgets('iOS registration uses Cupertino route, screen, and action', (
+    tester,
+  ) async {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await tester.pumpWidget(_app(_Store(), _Adapter((_) => _json(_options))));
+      await tester.tap(find.text('Register as a resident'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CupertinoPageScaffold), findsOneWidget);
+      expect(find.byType(CupertinoNavigationBar), findsOneWidget);
+      expect(find.byType(CupertinoButton), findsWidgets);
+      expect(
+        ModalRoute.of(tester.element(find.byType(RegistrationScreen))),
+        isA<CupertinoPageRoute<void>>(),
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
+  });
+
+  testWidgets('iOS status uses Cupertino screen and refresh action', (
+    tester,
+  ) async {
+    final previous = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await tester.pumpWidget(
+        _app(
+          _Store('{"token":"secret","phone":"0901"}'),
+          _Adapter(
+            (_) => _json(
+              '{"status":"PENDING","phone":"0901","building":"Tower A","unit":"A-101"}',
+            ),
+          ),
+          home: const RegistrationScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CupertinoPageScaffold), findsOneWidget);
+      expect(find.byType(CupertinoNavigationBar), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.text('Refresh'),
+          matching: find.byType(CupertinoButton),
+        ),
+        findsOneWidget,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = previous;
+    }
+  });
+
   testWidgets('login offers registration', (tester) async {
     final store = _Store();
     final adapter = _Adapter((_) => _json(_options));
@@ -185,6 +311,54 @@ void main() {
     expect(submitted, isTrue);
   });
 
+  testWidgets('failed submission clears the password and announces error', (
+    tester,
+  ) async {
+    final adapter = _Adapter(
+      (request) => request.path.endsWith('/options')
+          ? _json(_options)
+          : _json('{}', 500),
+    );
+    await tester.pumpWidget(
+      _app(_Store(), adapter, home: const RegistrationScreen()),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('registration_name')),
+      'Resident A',
+    );
+    await tester.enterText(find.byKey(const Key('registration_phone')), '0901');
+    await tester.enterText(
+      find.byKey(const Key('registration_password')),
+      'secret123',
+    );
+    await tester.tap(find.byKey(const Key('registration_building')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tower A').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('registration_unit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A-101').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Submit request'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('registration_password')))
+          .controller!
+          .text,
+      isEmpty,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const Key('registration_error')))
+          .properties
+          .liveRegion,
+      isTrue,
+    );
+  });
+
   testWidgets('successful submit stores normalized phone and shows pending', (
     tester,
   ) async {
@@ -266,9 +440,11 @@ void main() {
   ) async {
     final store = _Store('{"token":"secret","phone":"0901"}');
     final adapter = _Adapter(
-      (_) => _json(
-        '{"status":"REJECTED","phone":"0901","building":"Tower A","unit":"A-101","rejection_reason":"Lease could not be verified"}',
-      ),
+      (request) => request.path.endsWith('/options')
+          ? _json(_options)
+          : _json(
+              '{"status":"REJECTED","phone":"0901","building":"Tower A","unit":"A-101","rejection_reason":"Lease could not be verified"}',
+            ),
     );
     await tester.pumpWidget(
       _app(store, adapter, home: const RegistrationScreen()),
