@@ -10,7 +10,7 @@ import '../settings/api_base_url_tile.dart';
 import '../transparency/transparency_repository.dart';
 import '../gate/gate_registration_screen.dart';
 
-/// The five resident notification categories (server defaults absent rows to
+/// Resident notification categories (server defaults absent rows to
 /// enabled). Labels resolve through l10n.
 List<({String code, String label})> residentPreferenceCategories(
   AppLocalizations l10n,
@@ -20,6 +20,7 @@ List<({String code, String label})> residentPreferenceCategories(
   (code: 'work.completed', label: l10n.prefWorkCompleted),
   (code: 'ledger.publication', label: l10n.prefLedgerPublication),
   (code: 'correction.status', label: l10n.prefCorrectionStatus),
+  (code: 'building.announcement', label: l10n.prefBuildingAnnouncement),
 ];
 
 /// Account tab (spec 6.3(7)). Body-only: the shell owns chrome.

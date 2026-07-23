@@ -189,6 +189,14 @@ void main() {
       expect(find.text('Tòa A · B-1204'), findsOneWidget);
       expect(find.text('Tòa C · C-101'), findsOneWidget);
       expect(find.text('Khoản chi được công bố'), findsOneWidget);
+      expect(find.text('Thông báo của ban quản lý'), findsOneWidget);
+      final announcementPush = find.byKey(
+        const Key('push_building.announcement'),
+      );
+      expect(tester.widget<Switch>(announcementPush).value, isTrue);
+      await tester.tap(announcementPush);
+      await tester.pumpAndSettle();
+      expect(repo.patches, contains(('building.announcement', null, false)));
 
       // Push toggle for ledger.publication starts OFF (from /me row); flip it.
       final pushSwitches = find.byType(Switch);
@@ -196,7 +204,7 @@ void main() {
       // The screen keys each switch: 'push_ledger.publication'.
       await tester.tap(find.byKey(const Key('push_ledger.publication')));
       await tester.pumpAndSettle();
-      expect(repo.patches.single, ('ledger.publication', null, true));
+      expect(repo.patches, contains(('ledger.publication', null, true)));
       expect(find.text('Đăng xuất'), findsOneWidget);
       expect(find.text('Đăng xuất mọi thiết bị'), findsOneWidget);
     },

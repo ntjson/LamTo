@@ -248,6 +248,10 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await _pumpShell(tester);
+      expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).destinations,
+        hasLength(4),
+      );
       await tester.tap(find.byType(FundChart));
       await tester.pumpAndSettle();
 

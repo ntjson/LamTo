@@ -26,6 +26,7 @@ class HomeScreen extends ConsumerWidget {
     final fund = ref.watch(fundSummaryProvider);
     final reports = ref.watch(myReportsProvider);
     final spending = ref.watch(recentSpendingProvider);
+    final announcement = ref.watch(latestAnnouncementProvider);
 
     return Material(
       color: Colors.transparent,
@@ -38,6 +39,7 @@ class HomeScreen extends ConsumerWidget {
               ref.refresh(fundSummaryProvider.future),
               ref.refresh(recentSpendingProvider.future),
               ref.refresh(myReportsProvider.future),
+              ref.refresh(latestAnnouncementProvider.future),
             ]);
           } catch (_) {}
         },
@@ -45,6 +47,23 @@ class HomeScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
+            if (announcement.value case final notice?) ...[
+              Card.filled(
+                child: ListTile(
+                  minTileHeight: 64,
+                  leading: const Icon(Icons.campaign_outlined),
+                  title: Text(l10n.homeAnnouncementTitle),
+                  subtitle: Text(
+                    notice.subject,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openAnnouncement(context, ref, notice),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             Row(
               children: [
                 Expanded(
@@ -107,6 +126,19 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openAnnouncement(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationFeed notice,
+  ) async {
+    await ref
+        .read(transparencyRepositoryProvider)
+        .markNotificationRead(notice.id);
+    ref.invalidate(latestAnnouncementProvider);
+    ref.invalidate(notificationsProvider);
+    if (context.mounted) await showNotificationDialog(context, notice);
   }
 
   /// DESIGN.md fund-balance signature: large tabular amount + stat grid.

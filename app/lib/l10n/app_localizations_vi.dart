@@ -390,6 +390,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get homeFundTitle => 'Quỹ bảo trì';
 
   @override
+  String get homeAnnouncementTitle => 'Thông báo tòa nhà';
+
+  @override
   String get homeFundInflows => 'Thu (30 ngày)';
 
   @override
@@ -605,6 +608,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get prefCorrectionStatus => 'Điều chỉnh';
+
+  @override
+  String get prefBuildingAnnouncement => 'Thông báo của ban quản lý';
 
   @override
   String get fundChartTitle => 'Số dư quỹ';

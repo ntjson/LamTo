@@ -812,6 +812,12 @@ abstract class AppLocalizations {
   /// **'Maintenance fund'**
   String get homeFundTitle;
 
+  /// No description provided for @homeAnnouncementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Building announcement'**
+  String get homeAnnouncementTitle;
+
   /// No description provided for @homeFundInflows.
   ///
   /// In en, this message translates to:
@@ -1207,6 +1213,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Corrections'**
   String get prefCorrectionStatus;
+
+  /// No description provided for @prefBuildingAnnouncement.
+  ///
+  /// In en, this message translates to:
+  /// **'Building announcements'**
+  String get prefBuildingAnnouncement;
 
   /// No description provided for @fundChartTitle.
   ///

@@ -1,39 +1,54 @@
-## Task 5 Report
+# Task 5 Report
 
-### Status
+## Files
 
-Implemented the building-scoped management registration queue, detail and decision actions, staff navigation entry, and pending-registration Inbox items.
+- `app/lib/features/home/home_screen.dart`
+- `app/lib/features/notifications/notifications_screen.dart`
+- `app/lib/features/account/account_screen.dart`
+- `app/lib/l10n/app_en.arb`
+- `app/lib/l10n/app_vi.arb`
+- `app/lib/l10n/app_localizations.dart`
+- `app/lib/l10n/app_localizations_en.dart`
+- `app/lib/l10n/app_localizations_vi.dart`
+- `app/test/announcement_home_test.dart`
+- `app/test/home_screen_test.dart`
+- `app/test/notifications_screen_test.dart`
+- `app/test/account_screen_test.dart`
 
-### TDD
+## TDD Evidence
 
-- RED: 9 expected failures for missing routes, views, navigation, and Inbox items.
-- GREEN: 9 focused tests passed after the minimal implementation.
-- Regression: all 63 web tests passed.
+Red command:
 
-### Self-review
+`cd app && flutter test test/announcement_home_test.dart test/home_screen_test.dart test/notifications_screen_test.dart test/account_screen_test.dart`
 
-- List, detail, and blank-rejection lookups are scoped to the active management building.
-- Approval and rejection authorization and transactions remain in the existing decision services.
-- Duplicate decisions surface a conflict message and do not create another user.
-- Templates render no password hash or status token digest.
-- Navigation assertions use containment so future entries do not make them brittle.
+Red result: failed as expected because `latestAnnouncementProvider`, the shared `AlertDialog`, and the building-announcement preference label were absent.
 
-### Verification
+Final commands and results:
 
-```text
-PYTHONPATH="$PWD/src" ../../.venv/bin/pytest \
-  src/lamto/web/tests/test_staff_registrations.py \
-  src/lamto/web/tests/test_staff.py \
-  src/lamto/web/tests/test_action_inbox.py -q
-9 passed in 12.38s
+- `cd app && flutter gen-l10n`: completed successfully using `l10n.yaml`.
+- `cd app && flutter test test/announcement_home_test.dart test/home_screen_test.dart test/notifications_screen_test.dart test/account_screen_test.dart`: 19 tests passed.
+- `cd app && flutter analyze`: no issues found.
 
-PYTHONPATH="$PWD/src" ../../.venv/bin/pytest src/lamto/web/tests -q
-63 passed in 22.16s
+## Behavior
 
-PYTHONPATH="$PWD/src" ../../.venv/bin/python manage.py check
-System check identified no issues (0 silenced).
-```
+- Home requests the newest unread `building.announcement` through the existing authenticated repository and displays it before the fund summary.
+- Opening the highlight marks it read, refreshes home and inbox providers, opens full content in the shared dialog, and advances to the next server-returned unread delivery.
+- Edited unread deliveries resurface with current content; absent withdrawn deliveries disappear without client-side state.
+- The inbox uses the same dialog for feed-only announcement links, marks them read, and retains them in the feed.
+- Account preferences expose a server-default-on, user-toggleable building-announcement push preference.
+- Existing four destinations remain unchanged.
 
-### Concerns
+## Self-review
 
-- The shared virtualenv does not include `ruff`; `git diff --check`, Django checks, and tests were used instead.
+- Compact 320px layout at 2x text scaling passes without overflow; the highlight uses wrapping platform text roles and a native 64dp list target.
+- The single tonal `Card.filled` highlight does not introduce a card stack or a new component vocabulary.
+- Theme color roles, `AlertDialog`, `ListTile`, and `Switch.adaptive` preserve dark-mode and Material/Cupertino behavior.
+- Full body content scrolls in the dialog; no fixed text sizes or raw colors were added.
+
+## Commit
+
+`feat: show building announcements in resident app`
+
+## Concerns
+
+None. Dependency tooling reported newer incompatible package versions, but focused tests and analysis were clean.

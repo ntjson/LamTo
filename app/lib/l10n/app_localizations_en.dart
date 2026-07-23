@@ -390,6 +390,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeFundTitle => 'Maintenance fund';
 
   @override
+  String get homeAnnouncementTitle => 'Building announcement';
+
+  @override
   String get homeFundInflows => 'In (30d)';
 
   @override
@@ -604,6 +607,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefCorrectionStatus => 'Corrections';
+
+  @override
+  String get prefBuildingAnnouncement => 'Building announcements';
 
   @override
   String get fundChartTitle => 'Fund balance';

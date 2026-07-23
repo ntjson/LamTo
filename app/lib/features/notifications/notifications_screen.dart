@@ -71,6 +71,35 @@ final notificationsProvider =
       NotificationsController.new,
     );
 
+Future<void> showNotificationDialog(
+  BuildContext context,
+  NotificationFeed notice,
+) => showDialog<void>(
+  context: context,
+  builder: (context) => AlertDialog(
+    title: Text(notice.subject),
+    content: SingleChildScrollView(child: Text(notice.body)),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+      ),
+    ],
+  ),
+);
+
+final latestAnnouncementProvider =
+    FutureProvider.autoDispose<NotificationFeed?>((ref) async {
+      ref.watch(occupancyScopedProviders);
+      final page = await ref
+          .watch(transparencyRepositoryProvider)
+          .listNotifications(
+            eventCode: 'building.announcement',
+            unread: true,
+          );
+      return page.results.firstOrNull;
+    });
+
 /// Notifications feed (spec 6.3(8)): list, mark-read, allowlisted deep links.
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -143,13 +172,14 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  void _open(
+  Future<void> _open(
     BuildContext context,
     WidgetRef ref,
     NotificationsController controller,
     NotificationFeed notice,
-  ) {
-    controller.markRead(notice);
+  ) async {
+    await controller.markRead(notice);
+    if (!context.mounted) return;
     switch (parseEventKey(notice.eventKey)) {
       case DeepLinkReport(:final id):
         Navigator.push(
@@ -163,7 +193,7 @@ class NotificationsScreen extends ConsumerWidget {
           adaptivePageRoute(builder: (_) => LedgerDetailScreen(entryId: id)),
         );
       case DeepLinkFeed():
-        break; // already on the feed
+        await showNotificationDialog(context, notice);
     }
   }
 }

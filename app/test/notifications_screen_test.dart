@@ -20,6 +20,9 @@ NotificationFeed _notice(int id, {String? eventKey, DateTime? readAt}) =>
     );
 
 class _FakeRepo implements TransparencyRepository {
+  _FakeRepo([NotificationFeed? notice]) : notice = notice ?? _notice(9);
+
+  final NotificationFeed notice;
   final read = <int>[];
 
   @override
@@ -28,7 +31,7 @@ class _FakeRepo implements TransparencyRepository {
     String? eventCode,
     bool? unread,
   }) async => PaginatedNotificationFeedList(
-    (b) => b..results = ListBuilder<NotificationFeed>([_notice(9)]),
+    (b) => b..results = ListBuilder<NotificationFeed>([notice]),
   );
 
   @override
@@ -43,6 +46,45 @@ class _FakeRepo implements TransparencyRepository {
 }
 
 void main() {
+  testWidgets('announcement opens full content dialog and remains in inbox', (
+    tester,
+  ) async {
+    final repo = _FakeRepo(
+      _notice(9).rebuild(
+        (b) => b
+          ..eventCode = 'building.announcement'
+          ..eventKey = 'building.announcement:announcement:9',
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [transparencyRepositoryProvider.overrideWithValue(repo)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const NotificationsScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Khoản chi mới'));
+    await tester.pumpAndSettle();
+
+    expect(repo.read, [9]);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Một khoản chi vừa được công bố.'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byType(TextButton).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Khoản chi mới'), findsOneWidget);
+  });
+
   testWidgets('lists notices; tap marks read and deep-links to ledger detail', (
     tester,
   ) async {
