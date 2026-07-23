@@ -1,6 +1,14 @@
+from django.core.validators import validate_email
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from lamto.accounts.models import RegistrationRequest
+
+
+@extend_schema_field(OpenApiTypes.STR)
+class RegistrationEmailField(serializers.CharField):
+    pass
 
 
 class RegistrationUnitSerializer(serializers.Serializer):
@@ -17,10 +25,15 @@ class RegistrationBuildingSerializer(serializers.Serializer):
 class RegistrationCreateSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=150)
     phone = serializers.CharField(max_length=32)
-    email = serializers.EmailField(required=False, allow_blank=True)
+    email = RegistrationEmailField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, trim_whitespace=False)
     building_id = serializers.IntegerField()
     unit_id = serializers.IntegerField()
+
+    def validate_email(self, value):
+        if value:
+            validate_email(value)
+        return value
 
 
 class RegistrationSubmissionSerializer(serializers.Serializer):

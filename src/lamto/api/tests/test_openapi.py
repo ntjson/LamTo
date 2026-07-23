@@ -10,6 +10,15 @@ from django.test import SimpleTestCase
 SCHEMA_PATH = (
     Path(settings.BASE_DIR).parent.parent / "docs" / "api" / "openapi-v1.yaml"
 )
+CLIENT_MODELS = (
+    Path(settings.BASE_DIR).parent.parent
+    / "app"
+    / "packages"
+    / "lamto_api"
+    / "lib"
+    / "src"
+    / "model"
+)
 REGENERATE = "python manage.py spectacular --file docs/api/openapi-v1.yaml"
 
 
@@ -100,6 +109,30 @@ class OpenApiDriftTests(SimpleTestCase):
         for field in ("type:", "title:", "status:", "code:"):
             assert field in content
         assert "application/problem+json" in content
+
+    def test_registration_email_generates_as_optional_string(self):
+        import yaml
+
+        schema = yaml.safe_load(SCHEMA_PATH.read_text())
+        email = schema["components"]["schemas"]["RegistrationCreateRequest"][
+            "properties"
+        ]["email"]
+        assert email == {"type": "string"}
+
+    def test_generated_registration_models_do_not_print_secrets(self):
+        request = (CLIENT_MODELS / "registration_create_request.g.dart").read_text()
+        submission = (CLIENT_MODELS / "registration_submission.g.dart").read_text()
+        request_start = request.index("String toString()")
+        submission_start = submission.index("String toString()")
+        request_to_string = request[
+            request_start : request.index("\n  }\n}", request_start)
+        ]
+        submission_to_string = submission[
+            submission_start : submission.index("\n  }\n}", submission_start)
+        ]
+
+        assert "password" not in request_to_string
+        assert "statusToken" not in submission_to_string
 
     def test_tenant_routes_document_occupancy_header(self):
         """Optional X-LamTo-Occupancy is a header parameter on each tenant path."""

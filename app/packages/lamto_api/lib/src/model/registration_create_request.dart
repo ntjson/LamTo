@@ -3,7 +3,6 @@
 //
 
 // ignore_for_file: unused_element
-import 'package:lamto_api/src/model/registration_create_request_email.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -27,7 +26,7 @@ abstract class RegistrationCreateRequest implements Built<RegistrationCreateRequ
   String get phone;
 
   @BuiltValueField(wireName: r'email')
-  RegistrationCreateRequestEmail? get email;
+  String? get email;
 
   @BuiltValueField(wireName: r'password')
   String get password;
@@ -75,7 +74,7 @@ class _$RegistrationCreateRequestSerializer implements PrimitiveSerializer<Regis
       yield r'email';
       yield serializers.serialize(
         object.email,
-        specifiedType: const FullType(RegistrationCreateRequestEmail),
+        specifiedType: const FullType(String),
       );
     }
     yield r'password';
@@ -133,9 +132,9 @@ class _$RegistrationCreateRequestSerializer implements PrimitiveSerializer<Regis
         case r'email':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(RegistrationCreateRequestEmail),
-          ) as RegistrationCreateRequestEmail;
-          result.email.replace(valueDes);
+            specifiedType: const FullType(String),
+          ) as String;
+          result.email = valueDes;
           break;
         case r'password':
           final valueDes = serializers.deserialize(

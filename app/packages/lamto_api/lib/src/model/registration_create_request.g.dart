@@ -12,7 +12,7 @@ class _$RegistrationCreateRequest extends RegistrationCreateRequest {
   @override
   final String phone;
   @override
-  final RegistrationCreateRequestEmail? email;
+  final String? email;
   @override
   final String password;
   @override
@@ -72,7 +72,6 @@ class _$RegistrationCreateRequest extends RegistrationCreateRequest {
           ..add('fullName', fullName)
           ..add('phone', phone)
           ..add('email', email)
-          ..add('password', password)
           ..add('buildingId', buildingId)
           ..add('unitId', unitId))
         .toString();
@@ -92,11 +91,9 @@ class RegistrationCreateRequestBuilder
   String? get phone => _$this._phone;
   set phone(String? phone) => _$this._phone = phone;
 
-  RegistrationCreateRequestEmailBuilder? _email;
-  RegistrationCreateRequestEmailBuilder get email =>
-      _$this._email ??= RegistrationCreateRequestEmailBuilder();
-  set email(RegistrationCreateRequestEmailBuilder? email) =>
-      _$this._email = email;
+  String? _email;
+  String? get email => _$this._email;
+  set email(String? email) => _$this._email = email;
 
   String? _password;
   String? get password => _$this._password;
@@ -119,7 +116,7 @@ class RegistrationCreateRequestBuilder
     if ($v != null) {
       _fullName = $v.fullName;
       _phone = $v.phone;
-      _email = $v.email?.toBuilder();
+      _email = $v.email;
       _password = $v.password;
       _buildingId = $v.buildingId;
       _unitId = $v.unitId;
@@ -142,33 +139,20 @@ class RegistrationCreateRequestBuilder
   RegistrationCreateRequest build() => _build();
 
   _$RegistrationCreateRequest _build() {
-    _$RegistrationCreateRequest _$result;
-    try {
-      _$result = _$v ??
-          _$RegistrationCreateRequest._(
-            fullName: BuiltValueNullFieldError.checkNotNull(
-                fullName, r'RegistrationCreateRequest', 'fullName'),
-            phone: BuiltValueNullFieldError.checkNotNull(
-                phone, r'RegistrationCreateRequest', 'phone'),
-            email: _email?.build(),
-            password: BuiltValueNullFieldError.checkNotNull(
-                password, r'RegistrationCreateRequest', 'password'),
-            buildingId: BuiltValueNullFieldError.checkNotNull(
-                buildingId, r'RegistrationCreateRequest', 'buildingId'),
-            unitId: BuiltValueNullFieldError.checkNotNull(
-                unitId, r'RegistrationCreateRequest', 'unitId'),
-          );
-    } catch (_) {
-      late String _$failedField;
-      try {
-        _$failedField = 'email';
-        _email?.build();
-      } catch (e) {
-        throw BuiltValueNestedFieldError(
-            r'RegistrationCreateRequest', _$failedField, e.toString());
-      }
-      rethrow;
-    }
+    final _$result = _$v ??
+        _$RegistrationCreateRequest._(
+          fullName: BuiltValueNullFieldError.checkNotNull(
+              fullName, r'RegistrationCreateRequest', 'fullName'),
+          phone: BuiltValueNullFieldError.checkNotNull(
+              phone, r'RegistrationCreateRequest', 'phone'),
+          email: email,
+          password: BuiltValueNullFieldError.checkNotNull(
+              password, r'RegistrationCreateRequest', 'password'),
+          buildingId: BuiltValueNullFieldError.checkNotNull(
+              buildingId, r'RegistrationCreateRequest', 'buildingId'),
+          unitId: BuiltValueNullFieldError.checkNotNull(
+              unitId, r'RegistrationCreateRequest', 'unitId'),
+        );
     replace(_$result);
     return _$result;
   }

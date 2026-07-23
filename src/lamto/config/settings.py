@@ -369,6 +369,7 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
     "ENUM_NAME_OVERRIDES": {
         "StatusEnum": "lamto.maintenance.models.IssueReport.Status",
         "RegistrationStatusEnum": "lamto.accounts.models.RegistrationRequest.Status",

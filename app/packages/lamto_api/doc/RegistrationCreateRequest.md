@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **fullName** | **String** |  |
 **phone** | **String** |  |
-**email** | [**RegistrationCreateRequestEmail**](RegistrationCreateRequestEmail.md) |  | [optional]
+**email** | **String** |  | [optional]
 **password** | **String** |  |
 **buildingId** | **int** |  |
 **unitId** | **int** |  |

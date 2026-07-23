@@ -69,20 +69,31 @@ class RegistrationCreateView(PublicRegistrationView):
         },
     )
     def post(self, request):
-        serializer = RegistrationCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        phone_key = f"registration-phone:{normalize_phone(data['phone'])}"
         ip = client_ip(request)
         try:
-            assert_not_throttled(phone_key, None)
             assert_not_throttled("registration-ip", ip)
         except PermissionDenied:
             raise exceptions.Throttled(
                 detail="Too many registration attempts. Try again later."
             )
-        record_auth_failure(phone_key, None, kind="registration")
         record_auth_failure("registration-ip", ip, kind="registration")
+
+        raw_data = request.data
+        raw_phone = raw_data.get("phone") if hasattr(raw_data, "get") else None
+        normalized_phone = normalize_phone(raw_phone) if isinstance(raw_phone, str) else None
+        if normalized_phone is not None:
+            phone_key = f"registration-phone:{normalized_phone}"
+            try:
+                assert_not_throttled(phone_key, None)
+            except PermissionDenied:
+                raise exceptions.Throttled(
+                    detail="Too many registration attempts. Try again later."
+                )
+            record_auth_failure(phone_key, None, kind="registration")
+
+        serializer = RegistrationCreateSerializer(data=raw_data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
         if not Unit.objects.filter(
             pk=data["unit_id"], building_id=data["building_id"]
@@ -106,6 +117,11 @@ class RegistrationCreateView(PublicRegistrationView):
 
 
 class RegistrationStatusView(PublicRegistrationView):
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response["Cache-Control"] = "private, no-store"
+        return response
+
     @extend_schema(
         operation_id="registration_status",
         tags=["registration"],
@@ -130,6 +146,4 @@ class RegistrationStatusView(PublicRegistrationView):
         }
         if registration.status == RegistrationRequest.Status.REJECTED:
             data["rejection_reason"] = registration.rejection_reason
-        response = Response(RegistrationStatusSerializer(data).data)
-        response["Cache-Control"] = "private, no-store"
-        return response
+        return Response(RegistrationStatusSerializer(data).data)

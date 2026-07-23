@@ -59,7 +59,6 @@ import 'package:lamto_api/src/model/proposal_version.dart';
 import 'package:lamto_api/src/model/recognition_outcome.dart';
 import 'package:lamto_api/src/model/registration_building.dart';
 import 'package:lamto_api/src/model/registration_create_request.dart';
-import 'package:lamto_api/src/model/registration_create_request_email.dart';
 import 'package:lamto_api/src/model/registration_status.dart';
 import 'package:lamto_api/src/model/registration_status_enum.dart';
 import 'package:lamto_api/src/model/registration_submission.dart';
@@ -124,7 +123,6 @@ part 'serializers.g.dart';
   RecognitionOutcome,
   RegistrationBuilding,
   RegistrationCreateRequest,
-  RegistrationCreateRequestEmail,
   RegistrationStatus,
   RegistrationStatusEnum,
   RegistrationSubmission,

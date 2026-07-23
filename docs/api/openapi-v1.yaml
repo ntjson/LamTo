@@ -2219,11 +2219,7 @@ components:
           minLength: 1
           maxLength: 32
         email:
-          oneOf:
-          - type: string
-            format: email
-          - type: string
-            maxLength: 0
+          type: string
         password:
           type: string
           writeOnly: true

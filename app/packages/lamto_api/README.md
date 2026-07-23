@@ -149,7 +149,6 @@ Class | Method | HTTP request | Description
  - [RecognitionOutcome](doc/RecognitionOutcome.md)
  - [RegistrationBuilding](doc/RegistrationBuilding.md)
  - [RegistrationCreateRequest](doc/RegistrationCreateRequest.md)
- - [RegistrationCreateRequestEmail](doc/RegistrationCreateRequestEmail.md)
  - [RegistrationStatus](doc/RegistrationStatus.md)
  - [RegistrationStatusEnum](doc/RegistrationStatusEnum.md)
  - [RegistrationSubmission](doc/RegistrationSubmission.md)

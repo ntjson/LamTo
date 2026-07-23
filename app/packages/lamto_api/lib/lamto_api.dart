@@ -69,7 +69,6 @@ export 'package:lamto_api/src/model/proposal_version.dart';
 export 'package:lamto_api/src/model/recognition_outcome.dart';
 export 'package:lamto_api/src/model/registration_building.dart';
 export 'package:lamto_api/src/model/registration_create_request.dart';
-export 'package:lamto_api/src/model/registration_create_request_email.dart';
 export 'package:lamto_api/src/model/registration_status.dart';
 export 'package:lamto_api/src/model/registration_status_enum.dart';
 export 'package:lamto_api/src/model/registration_submission.dart';

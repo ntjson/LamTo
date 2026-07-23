@@ -17,7 +17,7 @@ void main() {
       // TODO
     });
 
-    // RegistrationCreateRequestEmail email
+    // String email
     test('to test the property `email`', () async {
       // TODO
     });

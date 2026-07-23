@@ -105,6 +105,7 @@ def test_status_requires_exact_header_and_disables_storage(api_client, unit):
 
     assert missing.status_code == 400
     assert problem(missing)["code"] == "validation_failed"
+    assert missing["Cache-Control"] == "private, no-store"
     assert response.status_code == 200
     assert response["Cache-Control"] == "private, no-store"
     assert response.json() == {
@@ -116,6 +117,16 @@ def test_status_requires_exact_header_and_disables_storage(api_client, unit):
     body = response.content.decode()
     assert submission.status_token not in body
     assert submission.request.password_hash not in body
+
+
+def test_invalid_status_token_disables_storage(api_client):
+    response = api_client.get(
+        reverse("api:registration-status"),
+        HTTP_X_REGISTRATION_STATUS_TOKEN="invalid",
+    )
+
+    assert response.status_code == 404
+    assert response["Cache-Control"] == "private, no-store"
 
 
 @pytest.mark.parametrize(
@@ -204,3 +215,45 @@ def test_attempts_are_recorded_before_submission(api_client, unit):
         )
 
     assert AuthThrottleBucket.objects.count() == 2
+
+
+def test_serializer_invalid_attempts_throttle_usable_phone(api_client):
+    for attempt in range(5):
+        response = api_client.post(
+            reverse("api:registration-create"),
+            {"phone": "090 123 4567"},
+            format="json",
+            REMOTE_ADDR=f"203.0.113.{attempt}",
+        )
+        assert response.status_code == 400
+
+    response = api_client.post(
+        reverse("api:registration-create"),
+        {"phone": "+84 90 123 4567"},
+        format="json",
+        REMOTE_ADDR="203.0.113.99",
+    )
+
+    assert response.status_code == 429
+
+
+def test_malformed_json_attempts_are_throttled_by_ip(api_client):
+    for _ in range(5):
+        response = api_client.generic(
+            "POST",
+            reverse("api:registration-create"),
+            "{",
+            content_type="application/json",
+            REMOTE_ADDR="203.0.113.20",
+        )
+        assert response.status_code == 400
+
+    response = api_client.generic(
+        "POST",
+        reverse("api:registration-create"),
+        "{",
+        content_type="application/json",
+        REMOTE_ADDR="203.0.113.20",
+    )
+
+    assert response.status_code == 429

@@ -33,4 +33,8 @@ fi
 
 ( cd "$OUT" && dart pub get && dart run build_runner build --delete-conflicting-outputs )
 shopt -s globstar nullglob
+# built_value prints every property by default. Keep one-time credentials out of
+# logs and crash reports while preserving their wire serialization.
+perl -0pi -e "s/\n\s*\.\.add\('(password|statusToken)', \1\)//g" \
+  "$OUT"/lib/src/model/registration_{create_request,submission}.g.dart
 perl -0pi -e 's/[ \t]+$//mg; s/\n+\z/\n/' "$OUT"/**/*.dart "$OUT"/**/*.md
