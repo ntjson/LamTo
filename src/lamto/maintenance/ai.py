@@ -203,10 +203,10 @@ def _process_claimed_job(job):
         )
         with urlopen(request, timeout=settings.AI_TRIAGE_TIMEOUT_SECONDS) as response:
             raw = response.read()
-    except (URLError, TimeoutError, OSError) as error:
-        return _manual(job, f"transport: {error}", "transport", started)
     except TriageValidationError as error:
         return _manual(job, f"config: {error}", "config", started)
+    except (URLError, TimeoutError, OSError, ValueError) as error:
+        return _manual(job, f"transport: {error}", "transport", started)
 
     try:
         request_id, triage = _extract_triage(json.loads(raw))

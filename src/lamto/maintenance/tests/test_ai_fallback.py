@@ -155,6 +155,17 @@ class TriageTests(TestCase):
         self.assertTrue(IssueReport.objects.filter(pk=report.pk).exists())
         self.assertIn("transport", job.failure_reason)
 
+    @patch("lamto.maintenance.ai.urlopen", side_effect=ValueError("invalid URL"))
+    def test_request_value_error_routes_to_manual_triage(self, _urlopen):
+        report = self.submit("Elevator shakes")
+
+        job = process_triage_job(report.triage_job.id)
+
+        self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        report.refresh_from_db()
+        self.assertEqual(report.status, IssueReport.Status.IN_REVIEW)
+        self.assertIn("transport", job.failure_reason)
+
     @patch("lamto.maintenance.ai.urlopen")
     def test_invalid_duplicate_id_routes_to_manual_triage(self, urlopen):
         report = self.submit("Elevator shakes")
