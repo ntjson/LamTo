@@ -26,8 +26,17 @@ class FakeResponse:
         return json.dumps(self.payload).encode()
 
 
-@override_settings(AI_TRIAGE_URL="https://triage.example.test/v1/triage", AI_TRIAGE_TOKEN="token")
+@override_settings(
+    AI_TRIAGE_URL="https://triage.example.test/v1/chat/completions",
+    AI_TRIAGE_TOKEN="token",
+    AI_TRIAGE_MODEL="gpt-4o-mini",
+)
 class TriageTests(TestCase):
+    @override_settings(AI_TRIAGE_MODEL="")
+    def test_missing_model_is_rejected(self):
+        with self.assertRaisesRegex(TriageValidationError, "AI_TRIAGE_MODEL"):
+            _endpoint_url()
+
     @override_settings(AI_TRIAGE_URL="http://triage.example.test/v1/triage")
     def test_http_endpoint_is_rejected_without_explicit_opt_in(self):
         with self.assertRaisesRegex(TriageValidationError, "HTTPS"):

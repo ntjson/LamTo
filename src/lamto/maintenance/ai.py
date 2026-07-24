@@ -69,6 +69,8 @@ def _endpoint_url():
         raise TriageValidationError("AI_TRIAGE_URL must use HTTPS outside local/test mode")
     if not settings.AI_TRIAGE_TOKEN:
         raise TriageValidationError("AI_TRIAGE_TOKEN is required")
+    if not settings.AI_TRIAGE_MODEL:
+        raise TriageValidationError("AI_TRIAGE_MODEL is required")
     return url
 
 

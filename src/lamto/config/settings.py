@@ -188,6 +188,7 @@ CLAMAV_HOST = os.environ["CLAMAV_HOST"]
 CLAMAV_PORT = os.environ["CLAMAV_PORT"]
 AI_TRIAGE_URL = os.environ["AI_TRIAGE_URL"]
 AI_TRIAGE_TOKEN = os.environ["AI_TRIAGE_TOKEN"]
+AI_TRIAGE_MODEL = os.getenv("AI_TRIAGE_MODEL", "")
 AI_TRIAGE_TIMEOUT_SECONDS = float(os.getenv("AI_TRIAGE_TIMEOUT_SECONDS", "5"))
 AI_TRIAGE_ALLOW_HTTP = os.getenv("AI_TRIAGE_ALLOW_HTTP", "").lower() in {"1", "true", "yes"}
 BLOCKCHAIN_CHAIN_ID = int(os.getenv("BLOCKCHAIN_CHAIN_ID", os.getenv("CHAIN_ID", "1337")))
