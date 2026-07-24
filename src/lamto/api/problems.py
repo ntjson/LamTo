@@ -80,6 +80,12 @@ class RegistrationConflictProblem(exceptions.APIException):
     default_code = "registration_conflict"
 
 
+class BillVoided(exceptions.APIException):
+    status_code = 409
+    default_detail = "This bill was voided and can no longer be paid."
+    default_code = "bill_voided"
+
+
 class GateNoFaceDetected(exceptions.APIException):
     status_code, default_code, default_detail = 422, "gate_no_face_detected", "No face was detected in the image."
 class GateMultipleFaces(exceptions.APIException):
@@ -129,6 +135,7 @@ _EXCEPTION_CODES = (
     (OccupancySelectionRequired, "occupancy_selection_required"),
     (RegistrationConflictProblem, "registration_conflict"),
     (ClientRefConflict, "client_ref_conflict"),
+    (BillVoided, "bill_voided"),
     (exceptions.NotAuthenticated, "not_authenticated"),
     (exceptions.AuthenticationFailed, "authentication_failed"),
     (exceptions.PermissionDenied, "permission_denied"),

@@ -4,10 +4,15 @@ from rest_framework import exceptions, generics, pagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from lamto.api.bill_serializers import BillDetailSerializer, BillSummarySerializer
+from lamto.api.bill_serializers import (
+    BillConfirmPaymentRequestSerializer,
+    BillDetailSerializer,
+    BillSummarySerializer,
+)
 from lamto.api.downloads import issue_download_token
-from lamto.api.problems import problem_responses
+from lamto.api.problems import BillVoided, problem_responses
 from lamto.billing.models import Bill
+from lamto.billing.services import BillReferenceError, BillVoidedError, confirm_payment
 
 
 class BillCursorPagination(pagination.CursorPagination):
@@ -63,4 +68,36 @@ class BillDetailView(APIView):
         bill = _own_bills(request.user).select_related("document").filter(pk=pk).first()
         if bill is None:
             raise exceptions.NotFound("Bill not found.")
+        return Response(BillDetailSerializer(_detail_payload(request, bill)).data)
+
+
+class BillConfirmPaymentView(APIView):
+    @extend_schema(
+        operation_id="bills_confirm_payment",
+        tags=["bills"],
+        request=BillConfirmPaymentRequestSerializer,
+        responses={
+            200: BillDetailSerializer,
+            **problem_responses(400, 401, 403, 404, 409),
+        },
+    )
+    def post(self, request, pk):
+        bill = _own_bills(request.user).select_related("document").filter(pk=pk).first()
+        if bill is None:
+            raise exceptions.NotFound("Bill not found.")
+        serializer = BillConfirmPaymentRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            bill = confirm_payment(
+                bill,
+                source=Bill.PaymentSource.SELF_ATTESTED_DEMO,
+                actor=request.user,
+                reference=serializer.validated_data["reference"],
+            )
+        except BillReferenceError:
+            raise exceptions.ValidationError(
+                {"reference": "This QR does not match the bill."}
+            ) from None
+        except BillVoidedError:
+            raise BillVoided() from None
         return Response(BillDetailSerializer(_detail_payload(request, bill)).data)

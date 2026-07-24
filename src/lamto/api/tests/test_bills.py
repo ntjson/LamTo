@@ -8,7 +8,7 @@ from knox.models import AuthToken
 from lamto.api.downloads import issue_download_token
 from lamto.accounts.models import Building, ManagementMembership, ResidentOccupancy, Unit, User
 from lamto.billing.models import Bill
-from lamto.billing.services import issue_bill, void_bill
+from lamto.billing.services import BillVoidedError, issue_bill, void_bill
 from lamto.documents.models import Document, DocumentVersion
 
 
@@ -130,3 +130,77 @@ def test_bill_download_token_denies_void_bill():
         response = _redeem(Client(), resident, bill.document_id)
 
     assert response.status_code == 404
+
+
+def test_confirm_records_payment_with_matching_reference():
+    _manager, resident, bill = _world()
+    client = Client()
+    response = client.post(
+        reverse("api:bills-confirm-payment", args=[bill.pk]),
+        {"reference": bill.reference},
+        content_type="application/json",
+        headers=_auth(resident),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == Bill.Status.PAID
+    bill.refresh_from_db()
+    assert bill.payment_source == Bill.PaymentSource.SELF_ATTESTED_DEMO
+
+
+def test_confirm_rejects_wrong_reference_and_hides_void_bill():
+    manager, resident, bill = _world()
+    client = Client()
+    url = reverse("api:bills-confirm-payment", args=[bill.pk])
+
+    wrong = client.post(
+        url,
+        {"reference": "nope"},
+        content_type="application/json",
+        headers=_auth(resident),
+    )
+    assert wrong.status_code == 400
+    assert wrong.json()["code"] == "validation_failed"
+
+    void_bill(manager, bill.pk, reason="cancelled")
+    hidden = client.post(
+        url,
+        {"reference": bill.reference},
+        content_type="application/json",
+        headers=_auth(resident),
+    )
+    assert hidden.status_code == 404
+
+
+def test_confirm_denies_another_residents_bill():
+    _manager, _resident, bill = _world()
+    stranger = User.objects.create_user(email="stranger@x.test", password="pw")
+    building = Building.objects.create(name="Tower B")
+    unit = Unit.objects.create(building=building, label="201")
+    ResidentOccupancy.objects.create(user=stranger, unit=unit)
+
+    response = Client().post(
+        reverse("api:bills-confirm-payment", args=[bill.pk]),
+        {"reference": bill.reference},
+        content_type="application/json",
+        headers=_auth(stranger),
+    )
+
+    assert response.status_code == 404
+    bill.refresh_from_db()
+    assert bill.status == Bill.Status.ISSUED
+
+
+def test_confirm_maps_concurrent_void_to_bill_voided():
+    _manager, resident, bill = _world()
+
+    with patch("lamto.api.bill_views.confirm_payment", side_effect=BillVoidedError):
+        response = Client().post(
+            reverse("api:bills-confirm-payment", args=[bill.pk]),
+            {"reference": bill.reference},
+            content_type="application/json",
+            headers=_auth(resident),
+        )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "bill_voided"

@@ -37,6 +37,11 @@ urlpatterns = [
     path("fund/series", views.FundSeriesView.as_view(), name="fund-series"),
     path("bills", bill_views.BillListView.as_view(), name="bills-list"),
     path("bills/<int:pk>", bill_views.BillDetailView.as_view(), name="bills-detail"),
+    path(
+        "bills/<int:pk>/confirm-payment",
+        bill_views.BillConfirmPaymentView.as_view(),
+        name="bills-confirm-payment",
+    ),
     path("reports", views.ReportListCreateView.as_view(), name="reports"),
     path("reports/<int:pk>", views.ReportDetailView.as_view(), name="report-detail"),
     path("reports/<int:pk>/info-reply", views.ReportInfoReplyView.as_view(), name="report-info-reply"),
