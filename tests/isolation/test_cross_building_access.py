@@ -323,7 +323,7 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_eight_areas_and_non_manager_is_denied(self):
+    def test_management_has_nine_areas_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
             "inbox",
@@ -333,6 +333,7 @@ class CrossBuildingAccessTests(TestCase):
             "gate",
             "registrations",
             "announcements",
+            "bills",
             "ops",
         ]
         self._management_login()

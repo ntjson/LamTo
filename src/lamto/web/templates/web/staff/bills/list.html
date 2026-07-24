@@ -1,0 +1,23 @@
+{% extends "web/staff/shell.html" %}
+{% load i18n %}
+{% block title %}{% trans "Bills" %} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>{% trans "Bills" %}</h1>
+  <p class="hint">{% blocktrans with building=membership.building.name %}Resident bills for {{ building }}.{% endblocktrans %}</p>
+  <form method="post" action="{% url 'web:staff-bill-create' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button type="submit" class="button">{% trans "Issue bill" %}</button>
+  </form>
+  <ul class="task-list">
+    {% for bill in bills %}
+    <li class="task-row">
+      <span class="task-action">{{ bill.title }} · {{ bill.amount_vnd }}đ</span>
+      <span class="task-subject">{{ bill.get_status_display }} · {{ bill.resident }} · {{ bill.issued_at }}</span>
+    </li>
+    {% empty %}<li>{% trans "No bills have been issued." %}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

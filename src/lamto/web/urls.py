@@ -8,6 +8,7 @@ from lamto.web.announcement_views import (
     announcement_list,
     announcement_withdraw,
 )
+from lamto.web.bill_views import bill_create, bill_list
 from lamto.web.registration_views import (
     registration_approve,
     registration_detail,
@@ -41,6 +42,8 @@ urlpatterns = [
     path("s/building/", staff_common.switch_building, name="switch-building"),
     path("s/announcements/", announcement_list, name="staff-announcement-list"),
     path("s/announcements/create/", announcement_create, name="staff-announcement-create"),
+    path("s/bills/", bill_list, name="staff-bill-list"),
+    path("s/bills/create/", bill_create, name="staff-bill-create"),
     path(
         "s/announcements/<int:announcement_id>/",
         announcement_detail,
