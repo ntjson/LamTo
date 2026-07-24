@@ -14,6 +14,7 @@ PUSH_COPY = {
     "triage.status": ("Phản ánh đã được phân loại", "Phản ánh của bạn đã được mở thành yêu cầu xử lý."),
     "work.completed": ("Công việc đã hoàn thành", "Vui lòng đánh giá công việc đã thực hiện."),
     "ledger.publication": ("Khoản chi mới được công bố", "Có khoản chi mới trong sổ quỹ tòa nhà."),
+    "building.bill_issued": ("Có hóa đơn mới từ ban quản lý", "Mở ứng dụng để xem chi tiết."),
 }
 _DEFAULT_COPY = ("Thông báo mới", "Bạn có một thông báo mới.")
 _ANNOUNCEMENT_COPY = {
@@ -36,6 +37,7 @@ DEEP_LINK_TYPES = {
     "report": "report",
     "case": "case",
     "entry": "ledger",
+    "bill": "bill",
 }
 
 _firebase_app = None
