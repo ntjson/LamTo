@@ -38,6 +38,12 @@ URGENCIES = {"LOW", "MEDIUM", "HIGH"}
 MODEL_KEYS = RESPONSE_KEYS - {"provider_request_id"}
 MAX_REPORT_CHARS = 4000
 MAX_CANDIDATE_CHARS = 1000
+MODEL_STRING_LIMITS = {
+    "category": 128,
+    "department": 128,
+    "interpreted_location": 1000,
+}
+MAX_PROVIDER_REQUEST_ID_CHARS = 255
 
 
 def _claim_triage_job(job_id=None):
@@ -59,6 +65,13 @@ def _claim_triage_job(job_id=None):
 
 def _endpoint_url():
     url = settings.AI_TRIAGE_URL
+    if any(
+        character.isspace() or ord(character) < 32 or ord(character) == 127
+        for character in url
+    ):
+        raise TriageValidationError(
+            "AI_TRIAGE_URL must not contain whitespace or control characters"
+        )
     try:
         parsed = urlsplit(url)
     except ValueError as error:
@@ -88,6 +101,9 @@ def _validate_response(payload, candidate_ids):
         for key in ("category", "interpreted_location", "department")
     ):
         raise TriageValidationError("response strings must be non-empty strings")
+    for key, limit in MODEL_STRING_LIMITS.items():
+        if len(payload[key]) > limit:
+            raise TriageValidationError(f"response {key} exceeds {limit} characters")
     if payload["urgency"] not in URGENCIES:
         raise TriageValidationError("response urgency is invalid")
     if type(payload["confidence_percent"]) is not int or not 0 <= payload["confidence_percent"] <= 100:
@@ -107,7 +123,8 @@ def _validate_response(payload, candidate_ids):
     return payload
 
 
-def _manual(job, reason, error_class):
+def _manual(job, reason, error_class, started, request_id=None):
+    elapsed_ms = int((time.perf_counter() - started) * 1000)
     job.status = TriageJob.Status.NEEDS_MANUAL
     job.failure_reason = reason[:255]
     job.completed_at = timezone.now()
@@ -116,10 +133,12 @@ def _manual(job, reason, error_class):
         pk=job.report_id, status=IssueReport.Status.SUBMITTED
     ).update(status=IssueReport.Status.IN_REVIEW)
     logger.info(
-        "triage.processed job=%s report=%s model=%s outcome=manual error_class=%s",
+        "triage.processed job=%s report=%s model=%s request_id=%s latency_ms=%s outcome=manual error_class=%s",
         job.pk,
         job.report_id,
         settings.AI_TRIAGE_MODEL,
+        request_id or "-",
+        elapsed_ms,
         error_class,
     )
     return job
@@ -156,6 +175,8 @@ def _extract_triage(envelope):
     request_id = envelope.get("id")
     if not _valid_string(request_id):
         raise TriageValidationError("provider envelope is missing id")
+    if len(request_id) > MAX_PROVIDER_REQUEST_ID_CHARS:
+        raise TriageValidationError("provider envelope id exceeds 255 characters")
     try:
         content = envelope["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as error:
@@ -183,22 +204,31 @@ def _process_claimed_job(job):
         with urlopen(request, timeout=settings.AI_TRIAGE_TIMEOUT_SECONDS) as response:
             raw = response.read()
     except (URLError, TimeoutError, OSError) as error:
-        return _manual(job, f"transport: {error}", "transport")
+        return _manual(job, f"transport: {error}", "transport", started)
     except TriageValidationError as error:
-        return _manual(job, f"config: {error}", "config")
+        return _manual(job, f"config: {error}", "config", started)
 
     try:
         request_id, triage = _extract_triage(json.loads(raw))
-    except (TriageValidationError, json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
-        return _manual(job, f"invalid envelope: {error}", "invalid_envelope")
+    except (
+        TriageValidationError,
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+        KeyError,
+        IndexError,
+        TypeError,
+    ) as error:
+        return _manual(job, f"invalid envelope: {error}", "invalid_envelope", started)
 
     try:
         payload = _validate_response(triage, candidate_ids)
     except (TriageValidationError, ValueError, TypeError) as error:
-        return _manual(job, f"schema: {error}", "schema")
+        return _manual(job, f"schema: {error}", "schema", started, request_id)
 
     if payload["requires_manual_review"]:
-        return _manual(job, "provider requested manual review", "provider_manual")
+        return _manual(
+            job, "provider requested manual review", "provider_manual", started, request_id
+        )
 
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     payload["provider_request_id"] = request_id

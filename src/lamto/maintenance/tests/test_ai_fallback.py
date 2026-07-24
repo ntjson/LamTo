@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 
 from lamto.accounts.models import Building, ResidentOccupancy, Unit
 from lamto.maintenance.ai import (
+    MAX_CANDIDATE_CHARS,
     MAX_REPORT_CHARS,
     TriageValidationError,
     _endpoint_url,
@@ -51,6 +52,8 @@ class FakeResponse:
         return False
 
     def read(self):
+        if isinstance(self.payload, bytes):
+            return self.payload
         return json.dumps(self.payload).encode()
 
 
@@ -87,6 +90,17 @@ class TriageTests(TestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, IssueReport.Status.IN_REVIEW)
 
+    @override_settings(AI_TRIAGE_URL="https://triage.example.test/bad path")
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_whitespace_endpoint_routes_to_manual_triage(self, urlopen):
+        report = self.submit("Elevator shakes")
+
+        job = process_triage_job(report.triage_job.id)
+
+        self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        self.assertIn("config", job.failure_reason)
+        urlopen.assert_not_called()
+
     def submit(self, text):
         building = getattr(self, "building", None) or Building.objects.create(name="Building B")
         self.building = building
@@ -121,7 +135,13 @@ class TriageTests(TestCase):
         user_msg = json.loads(json.loads(sent)["messages"][1]["content"])
         self.assertNotIn("photo", json.dumps(user_msg))
         self.assertIn("Elevator shakes", sent)
-        self.assertEqual(json.loads(request.data)["model"], "gpt-4o-mini")
+        body = json.loads(request.data)
+        self.assertEqual(body["model"], "gpt-4o-mini")
+        self.assertEqual(body["temperature"], 0)
+        self.assertEqual(body["response_format"], {"type": "json_object"})
+        self.assertEqual(
+            [message["role"] for message in body["messages"]], ["system", "user"]
+        )
 
     @patch("lamto.maintenance.ai.urlopen", side_effect=URLError("offline"))
     def test_transport_failure_preserves_report_for_manual_triage(self, _urlopen):
@@ -186,6 +206,41 @@ class TriageTests(TestCase):
         self.assertIn("envelope", job.failure_reason)
 
     @patch("lamto.maintenance.ai.urlopen")
+    def test_non_utf8_response_routes_to_manual_triage(self, urlopen):
+        report = self.submit("Elevator shakes")
+        urlopen.return_value = FakeResponse(b"\xff")
+
+        job = process_triage_job(report.triage_job.id)
+
+        self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        self.assertIn("invalid envelope", job.failure_reason)
+
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_oversized_model_strings_route_to_manual_triage(self, urlopen):
+        limits = {"category": 128, "department": 128, "interpreted_location": 1000}
+        for field, limit in limits.items():
+            with self.subTest(field=field):
+                report = self.submit("Elevator shakes")
+                urlopen.return_value = FakeResponse(
+                    envelope(triage_payload(**{field: "x" * (limit + 1)}))
+                )
+
+                job = process_triage_job(report.triage_job.id)
+
+                self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+                self.assertIn(field, job.failure_reason)
+
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_oversized_response_id_routes_to_manual_triage(self, urlopen):
+        report = self.submit("Elevator shakes")
+        urlopen.return_value = FakeResponse(envelope(triage_payload(), request_id="x" * 256))
+
+        job = process_triage_job(report.triage_job.id)
+
+        self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        self.assertIn("envelope", job.failure_reason)
+
+    @patch("lamto.maintenance.ai.urlopen")
     def test_report_text_is_truncated_in_request(self, urlopen):
         long_text = ("leak " * MAX_REPORT_CHARS).strip()  # well over the char cap
         report = self.submit(long_text)
@@ -198,6 +253,35 @@ class TriageTests(TestCase):
         self.assertEqual(len(user_msg["text"]), MAX_REPORT_CHARS)
         report.refresh_from_db()
         self.assertEqual(report.text, long_text)
+
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_candidate_text_is_truncated_in_request(self, urlopen):
+        candidate = self.submit("Elevator " + "x" * MAX_CANDIDATE_CHARS * 2)
+        report = self.submit("Elevator")
+        urlopen.return_value = FakeResponse(envelope(triage_payload()))
+
+        process_triage_job(report.triage_job.id)
+
+        sent = json.loads(urlopen.call_args.args[0].data)
+        candidates = json.loads(sent["messages"][1]["content"])["candidates"]
+        sent_candidate = next(item for item in candidates if item["id"] == candidate.id)
+        self.assertEqual(len(sent_candidate["text"]), MAX_CANDIDATE_CHARS)
+
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_manual_log_includes_latency_and_response_id(self, urlopen):
+        report = self.submit("Elevator shakes")
+        urlopen.return_value = FakeResponse(
+            envelope(triage_payload(requires_manual_review=True), request_id="cmpl-manual")
+        )
+
+        with self.assertLogs("lamto.maintenance.ai", level="INFO") as logs:
+            process_triage_job(report.triage_job.id)
+
+        message = logs.output[0]
+        self.assertIn("request_id=cmpl-manual", message)
+        self.assertRegex(message, r"latency_ms=\d+")
+        self.assertNotIn("token", message)
+        self.assertNotIn("Elevator shakes", message)
 
     def test_duplicate_candidates_are_limited_to_five(self):
         report = self.submit("Elevator shakes")
