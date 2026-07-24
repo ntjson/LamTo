@@ -2,6 +2,7 @@ import time
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import storages
 from django.test import override_settings
 from django.urls import reverse
 from django_otp import DEVICE_ID_SESSION_KEY
@@ -102,17 +103,40 @@ def test_cross_building_resident_is_rejected(client):
 
 
 @override_settings(PUSH_ENABLED=False)
-def test_issue_failure_rolls_back_upload_bill_and_deliveries(client, monkeypatch):
+def test_issue_failure_rolls_back_upload_and_deletes_blob(
+    client, monkeypatch, settings, tmp_path
+):
+    settings.STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": tmp_path},
+        },
+        "private": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": tmp_path},
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
+    }
     building, _manager = setup_manager(client)
     unit = Unit.objects.create(building=building, label="101")
     resident = User.objects.create_user(email="r@x.test", password="pw")
     ResidentOccupancy.objects.create(user=resident, unit=unit)
     real_issue_bill = bill_views.issue_bill
+    real_upload_document = bill_views.upload_document
+    uploaded = []
+
+    def record_upload(*args, **kwargs):
+        version = real_upload_document(*args, **kwargs)
+        uploaded.append(version.storage_key)
+        return version
 
     def fail_after_issue(*args, **kwargs):
         real_issue_bill(*args, **kwargs)
         raise BillError("Injected issuance failure.")
 
+    monkeypatch.setattr(bill_views, "upload_document", record_upload)
     monkeypatch.setattr(bill_views, "issue_bill", fail_after_issue)
 
     response = client.post(
@@ -126,10 +150,13 @@ def test_issue_failure_rolls_back_upload_bill_and_deliveries(client, monkeypatch
     )
 
     assert response.status_code == 200
+    assert b"Injected issuance failure." in response.content
     assert not Document.objects.exists()
     assert not DocumentVersion.objects.exists()
     assert not Bill.objects.exists()
     assert not NotificationDelivery.objects.exists()
+    assert len(uploaded) == 1
+    assert not storages["private"].exists(uploaded[0])
 
 
 def test_resident_choices_are_active_building_scoped_and_deduplicated(client):

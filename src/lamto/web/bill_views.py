@@ -11,7 +11,7 @@ from lamto.billing.services import BillError, issue_bill
 from lamto.documents.models import Document
 from lamto.web.forms.bills import BillForm
 from lamto.web.staff import require_management_context, staff_context
-from lamto.web.staff_documents import upload_document
+from lamto.web.staff_documents import _delete_storage_blob, upload_document
 
 
 def _resident_choices(building_id):
@@ -67,6 +67,7 @@ def bill_create(request):
     choices = _resident_choices(membership.building_id)
     form = BillForm(request.POST, request.FILES, resident_choices=choices)
     if form.is_valid():
+        document = None
         try:
             with transaction.atomic():
                 document = upload_document(
@@ -87,6 +88,10 @@ def bill_create(request):
                     due_date=form.cleaned_data["due_date"],
                 )
         except (ValidationError, BillError) as error:
+            if document is not None:
+                _delete_storage_blob(
+                    document.storage_key, document.provider_version_id or ""
+                )
             form.add_error(None, str(error))
         else:
             messages.success(request, "Bill issued.")
