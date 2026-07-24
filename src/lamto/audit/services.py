@@ -14,10 +14,11 @@ def record_audit(actor, membership, action, target_type, target_id, result, meta
         }
         resident_rating = action == "work.rate" and target_type == "CompletionRating"
         resident_document = action == "document.upload" and target_type == "DocumentVersion"
+        bill_payment = action == "bill.payment_recorded" and target_type == "Bill"
         valid_occupancy = occupancy_id is not None and ResidentOccupancy.objects.filter(
             pk=occupancy_id, user_id=getattr(actor, "pk", None), active=True
         ).exists()
-        if (resident_report or resident_rating or resident_document) and valid_occupancy:
+        if bill_payment or (resident_report or resident_rating or resident_document) and valid_occupancy:
             pass
         elif (
             (action, target_type) != ("document.download", "DocumentVersion")

@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 
 from lamto.accounts.models import ResidentOccupancy
 from lamto.accounts.services import require_management
@@ -11,6 +12,14 @@ from lamto.notifications.services import EVENT_BILL_ISSUED, queue_notification
 
 
 class BillError(Exception):
+    pass
+
+
+class BillVoidedError(BillError):
+    pass
+
+
+class BillReferenceError(BillError):
     pass
 
 
@@ -94,3 +103,31 @@ def issue_bill(
         metadata={"bill_id": bill.pk, "amount_vnd": amount_vnd},
     )
     return bill
+
+
+@transaction.atomic
+def confirm_payment(bill, *, source, actor, reference) -> Bill:
+    locked = Bill.objects.select_for_update().get(pk=bill.pk)
+    if locked.status == Bill.Status.VOID:
+        raise BillVoidedError()
+    if locked.status == Bill.Status.PAID:
+        return locked
+    if reference != locked.reference:
+        raise BillReferenceError()
+    locked.status = Bill.Status.PAID
+    locked.payment_source = source
+    locked.paid_at = timezone.now()
+    locked.paid_confirmed_by = actor
+    locked.save(
+        update_fields=["status", "payment_source", "paid_at", "paid_confirmed_by"]
+    )
+    record_audit(
+        actor=actor,
+        membership=None,
+        action="bill.payment_recorded",
+        target_type="Bill",
+        target_id=str(locked.pk),
+        result="accepted",
+        metadata={"bill_id": locked.pk, "source": source},
+    )
+    return locked
