@@ -6,10 +6,38 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
 from lamto.accounts.models import Building, ResidentOccupancy, Unit
-from lamto.maintenance.ai import TriageValidationError, _endpoint_url, process_triage_job
+from lamto.maintenance.ai import (
+    MAX_REPORT_CHARS,
+    TriageValidationError,
+    _endpoint_url,
+    process_triage_job,
+)
 from lamto.maintenance.candidates import find_duplicate_candidates
 from lamto.maintenance.models import BuildingLocation, IssueReport, TriageJob, TriageSuggestion
 from lamto.maintenance.reporting import submit_report
+
+
+def triage_payload(**overrides):
+    payload = {
+        "category": "Elevator",
+        "interpreted_location": "Building B / Lift 2",
+        "urgency": "HIGH",
+        "confidence_percent": 87,
+        "requires_manual_review": False,
+        "duplicate_report_ids": [],
+        "department": "Maintenance",
+        "deadline_minutes": 240,
+        "missing_information": [],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def envelope(triage, request_id="cmpl-1"):
+    body = {"choices": [{"message": {"content": json.dumps(triage)}}]}
+    if request_id is not None:
+        body["id"] = request_id
+    return body
 
 
 class FakeResponse:
@@ -66,18 +94,7 @@ class TriageTests(TestCase):
         candidate = self.submit("Elevator shakes loudly")
         report = self.submit("Elevator shakes")
         urlopen.return_value = FakeResponse(
-            {
-                "category": "Elevator",
-                "interpreted_location": "Building B / Lift 2",
-                "urgency": "HIGH",
-                "confidence_percent": 87,
-                "requires_manual_review": False,
-                "duplicate_report_ids": [candidate.id],
-                "department": "Maintenance",
-                "deadline_minutes": 240,
-                "missing_information": [],
-                "provider_request_id": "req-123",
-            }
+            envelope(triage_payload(duplicate_report_ids=[candidate.id]))
         )
 
         job = process_triage_job(report.triage_job.id)
@@ -85,9 +102,15 @@ class TriageTests(TestCase):
         self.assertEqual(job.status, TriageJob.Status.SUCCEEDED)
         report.refresh_from_db()
         self.assertEqual(report.status, IssueReport.Status.IN_REVIEW)
-        self.assertEqual(TriageSuggestion.objects.get(job=job).duplicate_report_ids, [candidate.id])
+        suggestion = TriageSuggestion.objects.get(job=job)
+        self.assertEqual(suggestion.duplicate_report_ids, [candidate.id])
+        self.assertEqual(suggestion.provider_request_id, "cmpl-1")
         request = urlopen.call_args.args[0]
-        self.assertNotIn("photo", request.data.decode())
+        sent = request.data.decode()
+        user_msg = json.loads(json.loads(sent)["messages"][1]["content"])
+        self.assertNotIn("photo", json.dumps(user_msg))
+        self.assertIn("Elevator shakes", sent)
+        self.assertEqual(json.loads(request.data)["model"], "gpt-4o-mini")
 
     @patch("lamto.maintenance.ai.urlopen", side_effect=URLError("offline"))
     def test_transport_failure_preserves_report_for_manual_triage(self, _urlopen):
@@ -105,18 +128,7 @@ class TriageTests(TestCase):
     def test_invalid_duplicate_id_routes_to_manual_triage(self, urlopen):
         report = self.submit("Elevator shakes")
         urlopen.return_value = FakeResponse(
-            {
-                "category": "Elevator",
-                "interpreted_location": "Building B / Lift 2",
-                "urgency": "HIGH",
-                "confidence_percent": 87,
-                "requires_manual_review": False,
-                "duplicate_report_ids": [999],
-                "department": "Maintenance",
-                "deadline_minutes": 240,
-                "missing_information": [],
-                "provider_request_id": "req-123",
-            }
+            envelope(triage_payload(duplicate_report_ids=[999]))
         )
 
         job = process_triage_job(report.triage_job.id)
@@ -128,18 +140,7 @@ class TriageTests(TestCase):
     def test_provider_manual_request_preserves_report(self, urlopen):
         report = self.submit("Elevator shakes")
         urlopen.return_value = FakeResponse(
-            {
-                "category": "Elevator",
-                "interpreted_location": "Building B / Lift 2",
-                "urgency": "HIGH",
-                "confidence_percent": 87,
-                "requires_manual_review": True,
-                "duplicate_report_ids": [],
-                "department": "Maintenance",
-                "deadline_minutes": 240,
-                "missing_information": [],
-                "provider_request_id": "req-123",
-            }
+            envelope(triage_payload(requires_manual_review=True))
         )
 
         job = process_triage_job(report.triage_job.id)
@@ -152,24 +153,40 @@ class TriageTests(TestCase):
     def test_non_list_missing_information_routes_to_manual_triage(self, urlopen):
         report = self.submit("Elevator shakes")
         urlopen.return_value = FakeResponse(
-            {
-                "category": "Elevator",
-                "interpreted_location": "Building B / Lift 2",
-                "urgency": "HIGH",
-                "confidence_percent": 87,
-                "requires_manual_review": False,
-                "duplicate_report_ids": [],
-                "department": "Maintenance",
-                "deadline_minutes": 240,
-                "missing_information": "photo",
-                "provider_request_id": "req-123",
-            }
+            envelope(triage_payload(missing_information="photo"))
         )
 
         job = process_triage_job(report.triage_job.id)
 
         self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
         self.assertIn("missing_information", job.failure_reason)
+
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_missing_response_id_routes_to_manual_triage(self, urlopen):
+        report = self.submit("Elevator shakes")
+        urlopen.return_value = FakeResponse(
+            envelope(triage_payload(), request_id=None)
+        )
+
+        job = process_triage_job(report.triage_job.id)
+
+        self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        self.assertEqual(TriageSuggestion.objects.count(), 0)
+        self.assertIn("envelope", job.failure_reason)
+
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_report_text_is_truncated_in_request(self, urlopen):
+        long_text = ("leak " * MAX_REPORT_CHARS).strip()  # well over the char cap
+        report = self.submit(long_text)
+        urlopen.return_value = FakeResponse(envelope(triage_payload()))
+
+        process_triage_job(report.triage_job.id)
+
+        sent = json.loads(urlopen.call_args.args[0].data)
+        user_msg = json.loads(sent["messages"][1]["content"])
+        self.assertEqual(len(user_msg["text"]), MAX_REPORT_CHARS)
+        report.refresh_from_db()
+        self.assertEqual(report.text, long_text)
 
     def test_duplicate_candidates_are_limited_to_five(self):
         report = self.submit("Elevator shakes")

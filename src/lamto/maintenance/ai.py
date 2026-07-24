@@ -1,14 +1,7 @@
-"""Live AI triage contract.
-
-POST ``AI_TRIAGE_URL`` with bearer authentication and this JSON body (photos are
-never included): ``report_id``, ``text``, ``location_path_snapshot``, and
-``candidates`` (each candidate has ``id``, ``text``, and
-``location_path_snapshot``). A successful response is exactly:
-
-``{"category": str, "interpreted_location": str, "urgency": "LOW"|"MEDIUM"|"HIGH", "confidence_percent": int, "requires_manual_review": bool, "duplicate_report_ids": [int], "department": str, "deadline_minutes": int, "missing_information": [str], "provider_request_id": str}``.
-"""
+"""In-process OpenAI-compatible triage provider."""
 
 import json
+import logging
 import time
 from urllib.error import URLError
 from urllib.parse import urlsplit
@@ -20,6 +13,9 @@ from django.utils import timezone
 
 from .candidates import find_duplicate_candidates
 from .models import IssueReport, TriageJob, TriageSuggestion
+from .triage_prompt import build_system_prompt
+
+logger = logging.getLogger(__name__)
 
 
 class TriageValidationError(ValueError):
@@ -39,6 +35,9 @@ RESPONSE_KEYS = {
     "provider_request_id",
 }
 URGENCIES = {"LOW", "MEDIUM", "HIGH"}
+MODEL_KEYS = RESPONSE_KEYS - {"provider_request_id"}
+MAX_REPORT_CHARS = 4000
+MAX_CANDIDATE_CHARS = 1000
 
 
 def _claim_triage_job(job_id=None):
@@ -79,9 +78,12 @@ def _valid_string(value):
 
 
 def _validate_response(payload, candidate_ids):
-    if type(payload) is not dict or set(payload) != RESPONSE_KEYS:
+    if type(payload) is not dict or set(payload) != MODEL_KEYS:
         raise TriageValidationError("response keys do not match the contract")
-    if not all(_valid_string(payload[key]) for key in ("category", "interpreted_location", "department", "provider_request_id")):
+    if not all(
+        _valid_string(payload[key])
+        for key in ("category", "interpreted_location", "department")
+    ):
         raise TriageValidationError("response strings must be non-empty strings")
     if payload["urgency"] not in URGENCIES:
         raise TriageValidationError("response urgency is invalid")
@@ -102,7 +104,7 @@ def _validate_response(payload, candidate_ids):
     return payload
 
 
-def _manual(job, reason):
+def _manual(job, reason, error_class):
     job.status = TriageJob.Status.NEEDS_MANUAL
     job.failure_reason = reason[:255]
     job.completed_at = timezone.now()
@@ -110,30 +112,64 @@ def _manual(job, reason):
     IssueReport.objects.filter(
         pk=job.report_id, status=IssueReport.Status.SUBMITTED
     ).update(status=IssueReport.Status.IN_REVIEW)
+    logger.info(
+        "triage.processed job=%s report=%s model=%s outcome=manual error_class=%s",
+        job.pk,
+        job.report_id,
+        settings.AI_TRIAGE_MODEL,
+        error_class,
+    )
     return job
+
+
+def _chat_body(job, candidates):
+    user_payload = {
+        "report_id": job.report_id,
+        "text": job.report.text[:MAX_REPORT_CHARS],
+        "location_path_snapshot": job.report.location_path_snapshot,
+        "candidates": [
+            {
+                "id": candidate.pk,
+                "text": candidate.text[:MAX_CANDIDATE_CHARS],
+                "location_path_snapshot": candidate.location_path_snapshot,
+            }
+            for candidate in candidates
+        ],
+    }
+    return {
+        "model": settings.AI_TRIAGE_MODEL,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": build_system_prompt()},
+            {"role": "user", "content": json.dumps(user_payload)},
+        ],
+    }
+
+
+def _extract_triage(envelope):
+    if type(envelope) is not dict:
+        raise TriageValidationError("provider envelope is not an object")
+    request_id = envelope.get("id")
+    if not _valid_string(request_id):
+        raise TriageValidationError("provider envelope is missing id")
+    try:
+        content = envelope["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as error:
+        raise TriageValidationError(f"missing choices/message/content: {error}")
+    if not _valid_string(content):
+        raise TriageValidationError("provider message content is empty")
+    return request_id, json.loads(content)
 
 
 def _process_claimed_job(job):
     started = time.perf_counter()
+    candidates = list(find_duplicate_candidates(job.report))
+    candidate_ids = {candidate.pk for candidate in candidates}
     try:
-        candidates = list(find_duplicate_candidates(job.report))
-        candidate_ids = {candidate.pk for candidate in candidates}
-        body = {
-            "report_id": job.report_id,
-            "text": job.report.text,
-            "location_path_snapshot": job.report.location_path_snapshot,
-            "candidates": [
-                {
-                    "id": candidate.pk,
-                    "text": candidate.text,
-                    "location_path_snapshot": candidate.location_path_snapshot,
-                }
-                for candidate in candidates
-            ],
-        }
         request = Request(
             _endpoint_url(),
-            data=json.dumps(body).encode(),
+            data=json.dumps(_chat_body(job, candidates)).encode(),
             headers={
                 "Authorization": f"Bearer {settings.AI_TRIAGE_TOKEN}",
                 "Content-Type": "application/json",
@@ -142,18 +178,27 @@ def _process_claimed_job(job):
             method="POST",
         )
         with urlopen(request, timeout=settings.AI_TRIAGE_TIMEOUT_SECONDS) as response:
-            payload = json.loads(response.read())
-        payload = _validate_response(payload, candidate_ids)
+            raw = response.read()
     except (URLError, TimeoutError, OSError) as error:
-        return _manual(job, f"transport: {error}")
-    except json.JSONDecodeError as error:
-        return _manual(job, f"invalid JSON: {error}")
+        return _manual(job, f"transport: {error}", "transport")
+    except TriageValidationError as error:
+        return _manual(job, f"config: {error}", "config")
+
+    try:
+        request_id, triage = _extract_triage(json.loads(raw))
+    except (TriageValidationError, json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
+        return _manual(job, f"invalid envelope: {error}", "invalid_envelope")
+
+    try:
+        payload = _validate_response(triage, candidate_ids)
     except (TriageValidationError, ValueError, TypeError) as error:
-        return _manual(job, f"schema: {error}")
+        return _manual(job, f"schema: {error}", "schema")
 
     if payload["requires_manual_review"]:
-        return _manual(job, "provider requested manual review")
+        return _manual(job, "provider requested manual review", "provider_manual")
+
     elapsed_ms = int((time.perf_counter() - started) * 1000)
+    payload["provider_request_id"] = request_id
     TriageSuggestion.objects.create(
         job=job,
         category=payload["category"],
@@ -165,7 +210,7 @@ def _process_claimed_job(job):
         deadline_minutes=payload["deadline_minutes"],
         missing_information=payload["missing_information"],
         raw_response=payload,
-        provider_request_id=payload["provider_request_id"],
+        provider_request_id=request_id,
         validation_metadata={"candidate_ids": sorted(candidate_ids)},
         elapsed_ms=elapsed_ms,
     )
@@ -175,6 +220,14 @@ def _process_claimed_job(job):
     IssueReport.objects.filter(
         pk=job.report_id, status=IssueReport.Status.SUBMITTED
     ).update(status=IssueReport.Status.IN_REVIEW)
+    logger.info(
+        "triage.processed job=%s report=%s model=%s request_id=%s latency_ms=%s outcome=succeeded",
+        job.pk,
+        job.report_id,
+        settings.AI_TRIAGE_MODEL,
+        request_id,
+        elapsed_ms,
+    )
     return job
 
 
