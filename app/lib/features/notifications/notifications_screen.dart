@@ -216,6 +216,8 @@ class NotificationsScreen extends ConsumerWidget {
         );
       case DeepLinkFeed():
         await showNotificationDialog(context, notice);
+      case DeepLinkBill():
+        await showNotificationDialog(context, notice);
     }
   }
 }

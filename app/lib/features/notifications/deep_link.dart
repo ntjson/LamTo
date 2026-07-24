@@ -1,4 +1,4 @@
-/// Allowlisted deep-link map (spec 7.4): report, ledger entry, or the feed.
+/// Allowlisted deep-link map (spec 7.4): report, ledger entry, bill, or feed.
 ///
 /// Anything unknown falls back to the feed — a link can never widen access.
 /// [event_key] / push destinations carry **only allowlisted type+id** (A8);
@@ -33,6 +33,15 @@ class DeepLinkLedger extends DeepLink {
   int get hashCode => Object.hash('ledger', id);
 }
 
+class DeepLinkBill extends DeepLink {
+  const DeepLinkBill(this.id);
+  final int id;
+  @override
+  bool operator ==(Object other) => other is DeepLinkBill && other.id == id;
+  @override
+  int get hashCode => Object.hash('bill', id);
+}
+
 class DeepLinkFeed extends DeepLink {
   const DeepLinkFeed();
   @override
@@ -41,10 +50,10 @@ class DeepLinkFeed extends DeepLink {
   int get hashCode => 'feed'.hashCode;
 }
 
-/// Push payload data: `{'type': report|case|ledger|notifications, 'id': ...}`.
+/// Push payload data: `{'type': report|case|ledger|bill|notifications, 'id': ...}`.
 ///
-/// Allowlist only: `report` + numeric id → [DeepLinkReport], `ledger` +
-/// numeric id → [DeepLinkLedger]. `case`, `notifications`, missing/invalid
+/// Allowlist only: `report`, `ledger`, or `bill` plus a numeric id.
+/// `case`, `notifications`, missing/invalid
 /// ids, and any other type → [DeepLinkFeed] (A2). Not an authorization check
 /// (A8) — the destination screen re-fetches via the authenticated API.
 DeepLink parsePushLink({String? type, String? id}) {
@@ -52,14 +61,15 @@ DeepLink parsePushLink({String? type, String? id}) {
   return switch (type) {
     'report' when parsed != null => DeepLinkReport(parsed),
     'ledger' when parsed != null => DeepLinkLedger(parsed),
+    'bill' when parsed != null => DeepLinkBill(parsed),
     _ => const DeepLinkFeed(),
   };
 }
 
 /// Feed `event_key`: `'{code}:{entity}:{id}[:{suffix}]'`.
 ///
-/// Allowlist only: entity `report` → [DeepLinkReport], `entry` →
-/// [DeepLinkLedger]. Entity `case` / `correction` / `work` / unknown or
+/// Allowlist only: entity `report`, `entry`, or `bill`. Entity `case`,
+/// `correction`, `work`, unknown, or
 /// non-numeric id → [DeepLinkFeed] (A2). Keys are not treated as authorization
 /// (A8) — destinations re-fetch through the authenticated API.
 DeepLink parseEventKey(String eventKey) {
@@ -70,6 +80,7 @@ DeepLink parseEventKey(String eventKey) {
   return switch (parts[1]) {
     'report' => DeepLinkReport(id),
     'entry' => DeepLinkLedger(id),
+    'bill' => DeepLinkBill(id),
     _ => const DeepLinkFeed(),
   };
 }
