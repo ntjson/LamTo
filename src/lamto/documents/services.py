@@ -43,6 +43,7 @@ PHOTO_KINDS = {
     Document.Kind.BEFORE_PHOTO,
     Document.Kind.AFTER_PHOTO,
 }
+BILL_KINDS = {Document.Kind.RESIDENT_BILL}
 
 
 def _membership_for(uploader, building):
@@ -84,6 +85,8 @@ def create_resident_report_photo(resident, building, uploaded_file, scanner) -> 
 def _allowed_content_types(document):
     if document.kind in PHOTO_KINDS:
         return {"image/jpeg", "image/png"}
+    if document.kind in BILL_KINDS:
+        return {"application/pdf", "image/jpeg", "image/png"}
     return {"application/pdf"}
 
 

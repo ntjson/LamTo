@@ -27,6 +27,7 @@ class Document(InsertOnlyModel):
         ACCEPTANCE_REPORT = "ACCEPTANCE_REPORT", "Completion report"
         PAYMENT_PROOF = "PAYMENT_PROOF", "Payment proof"
         CONTRACT = "CONTRACT", "Contract"
+        RESIDENT_BILL = "RESIDENT_BILL", "Resident bill"
 
     building = models.ForeignKey(Building, on_delete=models.PROTECT)
     kind = models.CharField(max_length=32, choices=Kind.choices)
