@@ -104,6 +104,142 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Authentication required or failed (code=not_authenticated or
             authentication_failed).
+  /api/v1/bills:
+    get:
+      operationId: bills_list
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      tags:
+      - bills
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBillSummaryList'
+          description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+  /api/v1/bills/{id}:
+    get:
+      operationId: bills_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bills
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillDetail'
+          description: ''
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
+  /api/v1/bills/{id}/confirm-payment:
+    post:
+      operationId: bills_confirm_payment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bills
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillConfirmPaymentRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BillConfirmPaymentRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BillConfirmPaymentRequestRequest'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillDetail'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed (code=validation_failed).
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Authentication required or failed (code=not_authenticated or
+            authentication_failed).
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Permission denied (code=permission_denied).
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Resource not found (code=not_found).
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: A request conflicts with existing state.
   /api/v1/cases/{id}/rating:
     post:
       operationId: cases_rating_create
@@ -1418,6 +1554,90 @@ paths:
           description: Resource not found (code=not_found).
 components:
   schemas:
+    BillConfirmPaymentRequestRequest:
+      type: object
+      properties:
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required:
+      - reference
+    BillDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        amount_vnd:
+          type: integer
+        status:
+          $ref: '#/components/schemas/Status04eEnum'
+        period:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        issued_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+        document_filename:
+          type: string
+        document_download_url:
+          type: string
+      required:
+      - amount_vnd
+      - document_download_url
+      - document_filename
+      - due_date
+      - id
+      - issued_at
+      - note
+      - paid_at
+      - period
+      - status
+      - title
+    BillSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        amount_vnd:
+          type: integer
+        status:
+          $ref: '#/components/schemas/Status04eEnum'
+        period:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        issued_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - amount_vnd
+      - due_date
+      - id
+      - issued_at
+      - paid_at
+      - period
+      - status
+      - title
     CaseRatingRequest:
       type: object
       properties:
@@ -1840,6 +2060,25 @@ components:
       - building_name
       - id
       - unit_label
+    PaginatedBillSummaryList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillSummary'
     PaginatedLedgerEntryListList:
       type: object
       required:
@@ -2495,6 +2734,16 @@ components:
       - filename
       - id
       - kind
+    Status04eEnum:
+      enum:
+      - ISSUED
+      - PAID
+      - VOID
+      type: string
+      description: |-
+        * `ISSUED` - Issued
+        * `PAID` - Paid
+        * `VOID` - Void
     StatusEnum:
       enum:
       - SUBMITTED
