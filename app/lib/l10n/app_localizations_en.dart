@@ -698,6 +698,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeBillTitle => 'Building bill';
 
   @override
+  String get homeBillLoading => 'Loading building bill…';
+
+  @override
   String get billsTitle => 'Bills';
 
   @override

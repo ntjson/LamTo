@@ -225,6 +225,7 @@
   "proposalViewFromLedger": "View proposal",
   "proposalRateCta": "Rate the result",
   "homeBillTitle": "Building bill",
+  "homeBillLoading": "Loading building bill…",
   "billsTitle": "Bills",
   "billAmountLabel": "Amount",
   "billDueLabel": "Due",

@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/core/error_retry.dart';
 import 'package:lamto/core/format.dart';
+import 'package:lamto/features/bills/bills_screen.dart';
 import 'package:lamto/features/bills/bills_repository.dart';
 import 'package:lamto/features/home/home_screen.dart';
 import 'package:lamto/features/ledger/ledger_screen.dart';
@@ -60,6 +61,16 @@ ReportSummary _report(String text, StatusEnum status) => ReportSummary(
     ..isPrivate = false
     ..locationPathSnapshot = 'B / Hall'
     ..createdAt = DateTime.utc(2026, 7, 9),
+);
+
+BillSummary _bill() => BillSummary(
+  (builder) => builder
+    ..id = 7
+    ..title = 'July bill'
+    ..amountVnd = 250000
+    ..status = BillStatusEnum.ISSUED
+    ..period = '2026-07'
+    ..issuedAt = DateTime.utc(2026, 7, 1),
 );
 
 class _FakeReports implements ReportsRepository {
@@ -114,6 +125,15 @@ class _FakeTransparency implements TransparencyRepository {
     int? month,
   }) async => PaginatedLedgerEntryListList(
     (b) => b..results = ListBuilder<LedgerEntryList>([_entry(1)]),
+  );
+
+  @override
+  Future<PaginatedNotificationFeedList> listNotifications({
+    String? cursor,
+    String? eventCode,
+    bool? unread,
+  }) async => PaginatedNotificationFeedList(
+    (builder) => builder.results = ListBuilder<NotificationFeed>(),
   );
 
   @override
@@ -179,6 +199,101 @@ Future<void> _pumpShell(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('Home bills action opens the empty bills list', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
+          billsProvider.overrideWith((ref) async => []),
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Bills'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BillsScreen), findsOneWidget);
+    expect(find.text('No bills.'), findsOneWidget);
+  });
+
+  testWidgets('Home shows the newest unpaid bill', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => _bill()),
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Building bill'), findsOneWidget);
+    expect(find.textContaining('250.000 ₫'), findsOneWidget);
+  });
+
+  testWidgets('Home names bill loading', (tester) async {
+    final pending = Completer<BillSummary?>();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) => pending.future),
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Loading building bill…'), findsOneWidget);
+  });
+
+  testWidgets('Home refresh exposes a newest bill failure', (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async {
+            if (calls++ == 0) return _bill();
+            throw Exception('bill failed');
+          }),
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, 300));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ErrorRetry), findsOneWidget);
+  });
+
   testWidgets('home renders fund chart card', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

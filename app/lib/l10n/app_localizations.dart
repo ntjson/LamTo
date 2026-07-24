@@ -1388,6 +1388,12 @@ abstract class AppLocalizations {
   /// **'Building bill'**
   String get homeBillTitle;
 
+  /// No description provided for @homeBillLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading building bill…'**
+  String get homeBillLoading;
+
   /// No description provided for @billsTitle.
   ///
   /// In en, this message translates to:

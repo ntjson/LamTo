@@ -226,6 +226,7 @@
   "proposalViewFromLedger": "Xem đề xuất",
   "proposalRateCta": "Đánh giá kết quả",
   "homeBillTitle": "Hóa đơn tòa nhà",
+  "homeBillLoading": "Đang tải hóa đơn tòa nhà…",
   "billsTitle": "Hóa đơn",
   "billAmountLabel": "Số tiền",
   "billDueLabel": "Hạn",

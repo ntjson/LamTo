@@ -699,6 +699,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get homeBillTitle => 'Hóa đơn tòa nhà';
 
   @override
+  String get homeBillLoading => 'Đang tải hóa đơn tòa nhà…';
+
+  @override
   String get billsTitle => 'Hóa đơn';
 
   @override

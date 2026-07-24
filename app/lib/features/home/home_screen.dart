@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import '../bills/bill_detail_screen.dart';
 import '../bills/bills_repository.dart';
+import '../bills/bills_screen.dart';
 import '../ledger/ledger_detail_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../reports/issue_detail_screen.dart';
@@ -35,8 +36,6 @@ class HomeScreen extends ConsumerWidget {
       color: Colors.transparent,
       child: RefreshIndicator.adaptive(
         onRefresh: () async {
-          // Each section renders its own AsyncError; a failed refresh must
-          // not escape as an unhandled zone error.
           try {
             await Future.wait([
               ref.refresh(fundSummaryProvider.future),
@@ -45,29 +44,47 @@ class HomeScreen extends ConsumerWidget {
               ref.refresh(latestAnnouncementProvider.future),
               ref.refresh(newestUnpaidBillProvider.future),
             ]);
-          } catch (_) {}
+          } catch (_) {
+            // Each failed provider retains AsyncError and renders its retry
+            // surface below; do not turn a handled section error into a zone error.
+          }
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
-            if (newestBill.value case final bill?) ...[
-              ListTile(
-                minTileHeight: 64,
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.receipt_long_outlined),
-                title: Text(l10n.homeBillTitle),
-                subtitle: Text('${bill.title} · ${formatVnd(bill.amountVnd)}'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  adaptivePageRoute(
-                    builder: (_) => BillDetailScreen(billId: bill.id),
+            ...switch (newestBill) {
+              AsyncData(value: final bill?) => [
+                ListTile(
+                  minTileHeight: 64,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: Text(l10n.homeBillTitle),
+                  subtitle: Text(
+                    '${bill.title} · ${formatVnd(bill.amountVnd)}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    adaptivePageRoute(
+                      builder: (_) => BillDetailScreen(billId: bill.id),
+                    ),
                   ),
                 ),
-              ),
-              const Divider(),
-            ],
+                const Divider(),
+              ],
+              AsyncData() => const [],
+              AsyncError(:final error) => [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: ErrorRetry(
+                    error: error,
+                    onRetry: () => ref.invalidate(newestUnpaidBillProvider),
+                  ),
+                ),
+              ],
+              _ => [_SectionLoading(label: l10n.homeBillLoading)],
+            },
             if (announcement.value case final notice?) ...[
               Card.filled(
                 child: ListTile(
@@ -91,6 +108,15 @@ class HomeScreen extends ConsumerWidget {
                   child: Text(
                     l10n.homeFundTitle,
                     style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  iconSize: 28,
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  tooltip: l10n.billsTitle,
+                  onPressed: () => Navigator.push(
+                    context,
+                    adaptivePageRoute(builder: (_) => const BillsScreen()),
                   ),
                 ),
                 IconButton(

@@ -2,6 +2,7 @@ import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lamto/features/bills/bills_repository.dart';
 import 'package:lamto/features/home/home_screen.dart';
 import 'package:lamto/features/notifications/notifications_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
@@ -90,6 +91,7 @@ Future<void> _pumpHome(WidgetTester tester, _Repo repo) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        newestUnpaidBillProvider.overrideWith((ref) async => null),
         reportsRepositoryProvider.overrideWithValue(_Reports()),
         transparencyRepositoryProvider.overrideWithValue(repo),
       ],
@@ -141,6 +143,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
           reportsRepositoryProvider.overrideWithValue(_Reports()),
           transparencyRepositoryProvider.overrideWithValue(repo),
         ],
