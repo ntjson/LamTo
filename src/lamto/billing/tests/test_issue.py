@@ -11,16 +11,16 @@ from lamto.accounts.models import (
 )
 from lamto.audit.models import AuditEvent
 from lamto.billing.models import Bill
-from lamto.billing.services import EVENT_BILL_ISSUED, in_app_event_key, issue_bill
+from lamto.billing.services import BillError, EVENT_BILL_ISSUED, in_app_event_key, issue_bill
 from lamto.documents.models import Document, DocumentVersion
-from lamto.notifications.models import Device, NotificationDelivery
+from lamto.notifications.models import Device, NotificationDelivery, NotificationPreference
 
 
 pytestmark = pytest.mark.django_db
 
 
-def _doc(building, uploader):
-    document = Document.objects.create(building=building, kind=Document.Kind.RESIDENT_BILL)
+def _doc(building, uploader, *, kind=Document.Kind.RESIDENT_BILL):
+    document = Document.objects.create(building=building, kind=kind)
     return DocumentVersion.objects.create(
         document=document,
         version=1,
@@ -89,7 +89,7 @@ def test_issue_bill_rejects_resident_without_active_occupancy():
     manager = User.objects.create_user(email="m@x.test", password="pw")
     ManagementMembership.objects.create(user=manager, building=building)
     stranger = User.objects.create_user(email="s@x.test", password="pw")
-    with pytest.raises(Exception):
+    with pytest.raises(BillError, match="active occupancy"):
         issue_bill(
             manager,
             building.pk,
@@ -98,3 +98,100 @@ def test_issue_bill_rejects_resident_without_active_occupancy():
             amount_vnd=1000,
             document=_doc(building, manager),
         )
+
+
+def test_issue_bill_rejects_missing_resident():
+    building = Building.objects.create(name="Tower A")
+    manager = User.objects.create_user(email="m@x.test", password="pw")
+    ManagementMembership.objects.create(user=manager, building=building)
+
+    with pytest.raises(BillError, match="Resident does not exist"):
+        issue_bill(
+            manager,
+            building.pk,
+            999999,
+            title="x",
+            amount_vnd=1000,
+            document=_doc(building, manager),
+        )
+
+
+def test_issue_bill_rejects_non_bill_document():
+    building = Building.objects.create(name="Tower A")
+    manager = User.objects.create_user(email="m@x.test", password="pw")
+    ManagementMembership.objects.create(user=manager, building=building)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="r@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+
+    with pytest.raises(BillError, match="resident bill"):
+        issue_bill(
+            manager,
+            building.pk,
+            resident.pk,
+            title="x",
+            amount_vnd=1000,
+            document=_doc(building, manager, kind=Document.Kind.INVOICE),
+        )
+
+
+def test_issue_bill_rejects_document_from_another_building():
+    building = Building.objects.create(name="Tower A")
+    other_building = Building.objects.create(name="Tower B")
+    manager = User.objects.create_user(email="m@x.test", password="pw")
+    ManagementMembership.objects.create(user=manager, building=building)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="r@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+
+    with pytest.raises(BillError, match="target building"):
+        issue_bill(
+            manager,
+            building.pk,
+            resident.pk,
+            title="x",
+            amount_vnd=1000,
+            document=_doc(other_building, manager),
+        )
+
+
+@override_settings(PUSH_ENABLED=True)
+def test_issue_bill_respects_resident_push_opt_out():
+    building = Building.objects.create(name="Tower A")
+    manager = User.objects.create_user(email="m@x.test", password="pw")
+    ManagementMembership.objects.create(user=manager, building=building)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="r@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    Device.objects.create(
+        user=resident,
+        install_id="i",
+        fcm_token="t",
+        platform=Device.Platform.ANDROID,
+        last_seen_at=timezone.now(),
+    )
+    NotificationPreference.objects.create(
+        user=resident,
+        event_code=EVENT_BILL_ISSUED,
+        push_enabled=False,
+    )
+
+    bill = issue_bill(
+        manager,
+        building.pk,
+        resident.pk,
+        title="x",
+        amount_vnd=1000,
+        document=_doc(building, manager),
+    )
+
+    assert NotificationDelivery.objects.filter(
+        recipient=resident,
+        channel=NotificationDelivery.Channel.IN_APP,
+        event_key=in_app_event_key(bill.pk),
+    ).exists()
+    assert not NotificationDelivery.objects.filter(
+        recipient=resident,
+        channel=NotificationDelivery.Channel.PUSH,
+        event_code=EVENT_BILL_ISSUED,
+    ).exists()
