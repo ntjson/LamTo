@@ -76,3 +76,26 @@ def test_confirm_rejects_wrong_reference():
         )
     bill.refresh_from_db()
     assert bill.status == Bill.Status.ISSUED
+
+
+def test_confirm_rejects_wrong_reference_when_already_paid():
+    bill, resident = _bill()
+    source = Bill.PaymentSource.SELF_ATTESTED_DEMO
+    confirm_payment(bill, source=source, actor=resident, reference=bill.reference)
+
+    with pytest.raises(BillReferenceError):
+        confirm_payment(bill, source=source, actor=resident, reference="not-it")
+
+
+def test_confirm_rejects_void_bill():
+    bill, resident = _bill()
+    bill.status = Bill.Status.VOID
+    bill.save(update_fields=["status"])
+
+    with pytest.raises(BillVoidedError):
+        confirm_payment(
+            bill,
+            source=Bill.PaymentSource.SELF_ATTESTED_DEMO,
+            actor=resident,
+            reference=bill.reference,
+        )

@@ -110,10 +110,10 @@ def confirm_payment(bill, *, source, actor, reference) -> Bill:
     locked = Bill.objects.select_for_update().get(pk=bill.pk)
     if locked.status == Bill.Status.VOID:
         raise BillVoidedError()
-    if locked.status == Bill.Status.PAID:
-        return locked
     if reference != locked.reference:
         raise BillReferenceError()
+    if locked.status == Bill.Status.PAID:
+        return locked
     locked.status = Bill.Status.PAID
     locked.payment_source = source
     locked.paid_at = timezone.now()
