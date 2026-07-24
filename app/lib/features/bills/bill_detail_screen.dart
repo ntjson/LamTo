@@ -9,11 +9,13 @@ import 'package:lamto_api/lamto_api.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/adaptive_page_route.dart';
 import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import 'bill_scan_screen.dart';
 import 'bills_repository.dart';
 
 class BillDetailScreen extends ConsumerStatefulWidget {
@@ -67,6 +69,14 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
       } catch (_) {}
       if (mounted) setState(() => _openingDocument = false);
     }
+  }
+
+  void _scanPayment() {
+    Navigator.of(context).push(
+      adaptivePageRoute<void>(
+        builder: (_) => BillScanScreen(billId: widget.billId),
+      ),
+    );
   }
 
   @override
@@ -163,11 +173,14 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
           const SizedBox(height: 24),
           if (defaultTargetPlatform == TargetPlatform.iOS)
             CupertinoButton.filled(
-              onPressed: null,
+              onPressed: _scanPayment,
               child: Text(l10n.billPayAction),
             )
           else
-            FilledButton(onPressed: null, child: Text(l10n.billPayAction)),
+            FilledButton(
+              onPressed: _scanPayment,
+              child: Text(l10n.billPayAction),
+            ),
         ],
       ],
     );

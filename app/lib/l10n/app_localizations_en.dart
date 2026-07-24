@@ -738,5 +738,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billPaymentRecorded => 'Payment recorded';
 
   @override
+  String get billPaymentVoided =>
+      'This bill was voided. No payment was recorded.';
+
+  @override
+  String get billPaymentUnknown =>
+      'We could not confirm whether the payment was recorded. Check the bill status before trying again.';
+
+  @override
+  String get billCameraUnavailable =>
+      'The camera is unavailable. Allow camera access in device settings, then try again.';
+
+  @override
   String get billNone => 'No bills.';
 }

@@ -739,5 +739,17 @@ class AppLocalizationsVi extends AppLocalizations {
   String get billPaymentRecorded => 'Đã ghi nhận thanh toán';
 
   @override
+  String get billPaymentVoided =>
+      'Hóa đơn này đã bị hủy. Thanh toán chưa được ghi nhận.';
+
+  @override
+  String get billPaymentUnknown =>
+      'Chưa thể xác nhận thanh toán đã được ghi nhận hay chưa. Hãy kiểm tra trạng thái hóa đơn trước khi thử lại.';
+
+  @override
+  String get billCameraUnavailable =>
+      'Không thể sử dụng máy ảnh. Hãy cho phép truy cập máy ảnh trong cài đặt thiết bị rồi thử lại.';
+
+  @override
   String get billNone => 'Chưa có hóa đơn.';
 }

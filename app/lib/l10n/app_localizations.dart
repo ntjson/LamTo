@@ -1466,6 +1466,24 @@ abstract class AppLocalizations {
   /// **'Payment recorded'**
   String get billPaymentRecorded;
 
+  /// No description provided for @billPaymentVoided.
+  ///
+  /// In en, this message translates to:
+  /// **'This bill was voided. No payment was recorded.'**
+  String get billPaymentVoided;
+
+  /// No description provided for @billPaymentUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'We could not confirm whether the payment was recorded. Check the bill status before trying again.'**
+  String get billPaymentUnknown;
+
+  /// No description provided for @billCameraUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera is unavailable. Allow camera access in device settings, then try again.'**
+  String get billCameraUnavailable;
+
   /// No description provided for @billNone.
   ///
   /// In en, this message translates to:

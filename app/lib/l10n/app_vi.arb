@@ -239,5 +239,8 @@
   "billScanInstruction": "Hướng máy ảnh vào mã QR trên hóa đơn để ghi nhận thanh toán.",
   "billInvalidQr": "Mã QR không hợp lệ.",
   "billPaymentRecorded": "Đã ghi nhận thanh toán",
+  "billPaymentVoided": "Hóa đơn này đã bị hủy. Thanh toán chưa được ghi nhận.",
+  "billPaymentUnknown": "Chưa thể xác nhận thanh toán đã được ghi nhận hay chưa. Hãy kiểm tra trạng thái hóa đơn trước khi thử lại.",
+  "billCameraUnavailable": "Không thể sử dụng máy ảnh. Hãy cho phép truy cập máy ảnh trong cài đặt thiết bị rồi thử lại.",
   "billNone": "Chưa có hóa đơn."
 }

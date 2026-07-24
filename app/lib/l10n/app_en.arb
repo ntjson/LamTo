@@ -238,5 +238,8 @@
   "billScanInstruction": "Point the camera at the bill QR to record your payment.",
   "billInvalidQr": "That QR code is not a LamTo bill.",
   "billPaymentRecorded": "Payment recorded",
+  "billPaymentVoided": "This bill was voided. No payment was recorded.",
+  "billPaymentUnknown": "We could not confirm whether the payment was recorded. Check the bill status before trying again.",
+  "billCameraUnavailable": "The camera is unavailable. Allow camera access in device settings, then try again.",
   "billNone": "No bills."
 }
