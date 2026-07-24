@@ -208,6 +208,8 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 decoration: InputDecoration(
                   labelText: l10n.registrationPassword,
                 ),
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _busy ? null : _submit(),
                 validator: _required,
               ),
               DropdownButtonFormField<int>(

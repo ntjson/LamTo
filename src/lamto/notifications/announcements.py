@@ -69,6 +69,12 @@ def publish_announcement(actor, building_id: int, title: str, body: str) -> Anno
         )
         _queue_push(announcement, recipient, "published")
 
+    NotificationDelivery.objects.filter(
+        building_id=building_id,
+        event_key=in_app_event_key(announcement.id),
+        channel=NotificationDelivery.Channel.IN_APP,
+    ).update(status=NotificationDelivery.Status.AVAILABLE)
+
     record_audit(
         actor=actor,
         membership=membership,

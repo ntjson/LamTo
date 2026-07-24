@@ -101,7 +101,6 @@ class AnnouncementTests(TestCase):
         announcement = publish_announcement(
             self.manager, self.building.id, "Water shutdown", "From 10:00 to 12:00"
         )
-        process_due_notifications(limit=10)
 
         delivery = NotificationDelivery.objects.get(
             recipient=resident,
@@ -114,6 +113,7 @@ class AnnouncementTests(TestCase):
         assert delivery.subject == announcement.title
         assert delivery.body == announcement.body
         assert delivery.status == NotificationDelivery.Status.AVAILABLE
+        process_due_notifications(limit=10)
         assert NotificationDelivery.objects.count() == 1
         assert not NotificationDelivery.objects.filter(
             channel=NotificationDelivery.Channel.EMAIL

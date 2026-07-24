@@ -311,6 +311,46 @@ void main() {
     expect(submitted, isTrue);
   });
 
+  testWidgets('password keyboard action submits a completed request', (
+    tester,
+  ) async {
+    var submitted = false;
+    final adapter = _Adapter((request) {
+      if (request.path.endsWith('/options')) return _json(_options);
+      submitted = true;
+      return _json(
+        '{"status":"PENDING","status_token":"new","phone":"0901"}',
+        201,
+      );
+    });
+    await tester.pumpWidget(
+      _app(_Store(), adapter, home: const RegistrationScreen()),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('registration_name')),
+      'Resident A',
+    );
+    await tester.enterText(find.byKey(const Key('registration_phone')), '0901');
+    await tester.tap(find.byKey(const Key('registration_building')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tower A').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('registration_unit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A-101').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('registration_password')),
+      'secret123',
+    );
+
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(submitted, isTrue);
+  });
+
   testWidgets('failed submission clears the password and announces error', (
     tester,
   ) async {
