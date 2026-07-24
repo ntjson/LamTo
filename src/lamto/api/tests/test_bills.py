@@ -1,8 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from django.test import Client
 from django.urls import reverse
 from knox.models import AuthToken
 
+from lamto.api.downloads import issue_download_token
 from lamto.accounts.models import Building, ManagementMembership, ResidentOccupancy, Unit, User
 from lamto.billing.models import Bill
 from lamto.billing.services import issue_bill, void_bill
@@ -61,11 +64,19 @@ def test_list_shows_only_own_non_void_bills():
         document=bill.document,
     )
     void_bill(manager, voided.pk, reason="oops")
+    newest = issue_bill(
+        manager,
+        bill.building_id,
+        resident.pk,
+        title="Newest",
+        amount_vnd=2,
+        document=bill.document,
+    )
 
     client = Client()
     res = client.get(reverse("api:bills-list"), headers=_auth(resident))
     ids = [row["id"] for row in res.json()["results"]]
-    assert res.status_code == 200 and ids == [bill.pk]
+    assert res.status_code == 200 and ids == [newest.pk, bill.pk]
 
     # A co-resident sees none of this resident's bills.
     assert client.get(reverse("api:bills-list"), headers=_auth(other)).json()["results"] == []
@@ -83,3 +94,39 @@ def test_detail_denied_for_other_resident_and_carries_download_url():
     assert "/api/v1/documents/" in ok.json()["document_download_url"]
     denied = client.get(reverse("api:bills-detail", args=[bill.pk]), headers=_auth(stranger))
     assert denied.status_code == 404
+
+
+def _redeem(client, user, document_id):
+    token = issue_download_token(user.pk, document_id)
+    return client.get(reverse("api:document-download", args=[token]), headers=_auth(user))
+
+
+def test_bill_download_token_owner_succeeds():
+    _manager, resident, bill = _world()
+    with patch("lamto.api.views.read_version_bytes", return_value=b"bill"):
+        response = _redeem(Client(), resident, bill.document_id)
+
+    assert response.status_code == 200
+    assert response.content == b"bill"
+
+
+def test_bill_download_token_denies_co_resident():
+    _manager, resident, bill = _world()
+    co_resident = User.objects.create_user(email="co@x.test", password="pw")
+    ResidentOccupancy.objects.create(
+        user=co_resident,
+        unit=ResidentOccupancy.objects.get(user=resident).unit,
+    )
+    with patch("lamto.api.views.read_version_bytes", return_value=b"bill"):
+        response = _redeem(Client(), co_resident, bill.document_id)
+
+    assert response.status_code == 404
+
+
+def test_bill_download_token_denies_void_bill():
+    manager, resident, bill = _world()
+    void_bill(manager, bill.pk, reason="cancelled")
+    with patch("lamto.api.views.read_version_bytes", return_value=b"bill"):
+        response = _redeem(Client(), resident, bill.document_id)
+
+    assert response.status_code == 404
