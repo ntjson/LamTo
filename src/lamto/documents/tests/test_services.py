@@ -1,12 +1,14 @@
+import io
 import tempfile
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from PIL import Image
 
 from lamto.accounts.models import Building, ManagementMembership
 from lamto.documents.models import Document
-from lamto.documents.services import create_document_version
+from lamto.documents.services import DocumentUploadRejected, create_document_version
 
 
 _PNG = (
@@ -25,17 +27,41 @@ _PNG = (
     }
 )
 class DocumentServiceTests(TestCase):
-    def test_resident_bill_accepts_png(self):
+    def make_manager_and_bill(self):
         building = Building.objects.create(name="Tower A")
         manager = get_user_model().objects.create_user(email="m@x.test", password="pw")
         ManagementMembership.objects.create(user=manager, building=building)
-        document = Document.objects.create(building=building, kind=Document.Kind.RESIDENT_BILL)
-
-        version = create_document_version(
-            document,
-            SimpleUploadedFile("bill.png", _PNG, content_type="image/png"),
-            manager,
-            scanner=lambda _: True,
+        return manager, Document.objects.create(
+            building=building, kind=Document.Kind.RESIDENT_BILL
         )
 
-        self.assertEqual(version.content_type, "image/png")
+    def test_resident_bill_accepts_pdf_jpeg_and_png(self):
+        manager, document = self.make_manager_and_bill()
+        jpeg = io.BytesIO()
+        Image.new("RGB", (1, 1)).save(jpeg, format="JPEG")
+
+        for filename, content_type, content in (
+            ("bill.pdf", "application/pdf", b"%PDF-1.7\nbill"),
+            ("bill.jpg", "image/jpeg", jpeg.getvalue()),
+            ("bill.png", "image/png", _PNG),
+        ):
+            with self.subTest(content_type=content_type):
+                version = create_document_version(
+                    document,
+                    SimpleUploadedFile(filename, content, content_type=content_type),
+                    manager,
+                    scanner=lambda _: True,
+                )
+
+                self.assertEqual(version.content_type, content_type)
+
+    def test_resident_bill_rejects_other_content_types(self):
+        manager, document = self.make_manager_and_bill()
+
+        with self.assertRaises(DocumentUploadRejected):
+            create_document_version(
+                document,
+                SimpleUploadedFile("bill.txt", b"bill", content_type="text/plain"),
+                manager,
+                scanner=lambda _: True,
+            )
