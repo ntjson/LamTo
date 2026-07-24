@@ -10,6 +10,7 @@ import 'package:lamto_api/src/auth/basic_auth.dart';
 import 'package:lamto_api/src/auth/bearer_auth.dart';
 import 'package:lamto_api/src/auth/oauth.dart';
 import 'package:lamto_api/src/api/auth_api.dart';
+import 'package:lamto_api/src/api/bills_api.dart';
 import 'package:lamto_api/src/api/cases_api.dart';
 import 'package:lamto_api/src/api/devices_api.dart';
 import 'package:lamto_api/src/api/documents_api.dart';
@@ -81,6 +82,12 @@ class LamtoApi {
   /// by doing that all interceptors will not be executed
   AuthApi getAuthApi() {
     return AuthApi(dio, serializers);
+  }
+
+  /// Get BillsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  BillsApi getBillsApi() {
+    return BillsApi(dio, serializers);
   }
 
   /// Get CasesApi instance, base route and serializer can be overridden by a given but be careful,

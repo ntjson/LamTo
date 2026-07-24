@@ -3,6 +3,11 @@
 README.md
 analysis_options.yaml
 doc/AuthApi.md
+doc/BillConfirmPaymentRequestRequest.md
+doc/BillDetail.md
+doc/BillStatusEnum.md
+doc/BillSummary.md
+doc/BillsApi.md
 doc/CaseRatingRequest.md
 doc/CaseRatingResult.md
 doc/CasesApi.md
@@ -37,6 +42,7 @@ doc/NotificationPreference.md
 doc/NotificationPreferenceUpdateItemRequest.md
 doc/NotificationsApi.md
 doc/Occupancy.md
+doc/PaginatedBillSummaryList.md
 doc/PaginatedLedgerEntryListList.md
 doc/PaginatedNotificationFeedList.md
 doc/PaginatedProposalList.md
@@ -78,6 +84,7 @@ doc/Verification.md
 lib/lamto_api.dart
 lib/src/api.dart
 lib/src/api/auth_api.dart
+lib/src/api/bills_api.dart
 lib/src/api/cases_api.dart
 lib/src/api/devices_api.dart
 lib/src/api/documents_api.dart
@@ -97,6 +104,10 @@ lib/src/auth/basic_auth.dart
 lib/src/auth/bearer_auth.dart
 lib/src/auth/oauth.dart
 lib/src/date_serializer.dart
+lib/src/model/bill_confirm_payment_request_request.dart
+lib/src/model/bill_detail.dart
+lib/src/model/bill_status_enum.dart
+lib/src/model/bill_summary.dart
 lib/src/model/case_rating_request.dart
 lib/src/model/case_rating_result.dart
 lib/src/model/date.dart
@@ -123,6 +134,7 @@ lib/src/model/notification_feed.dart
 lib/src/model/notification_preference.dart
 lib/src/model/notification_preference_update_item_request.dart
 lib/src/model/occupancy.dart
+lib/src/model/paginated_bill_summary_list.dart
 lib/src/model/paginated_ledger_entry_list_list.dart
 lib/src/model/paginated_notification_feed_list.dart
 lib/src/model/paginated_proposal_list.dart
@@ -161,6 +173,11 @@ lib/src/model/verification.dart
 lib/src/serializers.dart
 pubspec.yaml
 test/auth_api_test.dart
+test/bill_confirm_payment_request_request_test.dart
+test/bill_detail_test.dart
+test/bill_status_enum_test.dart
+test/bill_summary_test.dart
+test/bills_api_test.dart
 test/case_rating_request_test.dart
 test/case_rating_result_test.dart
 test/cases_api_test.dart
@@ -195,6 +212,7 @@ test/notification_preference_test.dart
 test/notification_preference_update_item_request_test.dart
 test/notifications_api_test.dart
 test/occupancy_test.dart
+test/paginated_bill_summary_list_test.dart
 test/paginated_ledger_entry_list_list_test.dart
 test/paginated_notification_feed_list_test.dart
 test/paginated_proposal_list_test.dart

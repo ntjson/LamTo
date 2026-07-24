@@ -68,6 +68,9 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**authLoginCreate**](doc/AuthApi.md#authlogincreate) | **POST** /api/v1/auth/login |
 [*AuthApi*](doc/AuthApi.md) | [**authLogoutAllCreate**](doc/AuthApi.md#authlogoutallcreate) | **POST** /api/v1/auth/logout-all |
 [*AuthApi*](doc/AuthApi.md) | [**authLogoutCreate**](doc/AuthApi.md#authlogoutcreate) | **POST** /api/v1/auth/logout |
+[*BillsApi*](doc/BillsApi.md) | [**billsConfirmPayment**](doc/BillsApi.md#billsconfirmpayment) | **POST** /api/v1/bills/{id}/confirm-payment |
+[*BillsApi*](doc/BillsApi.md) | [**billsList**](doc/BillsApi.md#billslist) | **GET** /api/v1/bills |
+[*BillsApi*](doc/BillsApi.md) | [**billsRetrieve**](doc/BillsApi.md#billsretrieve) | **GET** /api/v1/bills/{id} |
 [*CasesApi*](doc/CasesApi.md) | [**casesRatingCreate**](doc/CasesApi.md#casesratingcreate) | **POST** /api/v1/cases/{id}/rating |
 [*DevicesApi*](doc/DevicesApi.md) | [**devicesCreate**](doc/DevicesApi.md#devicescreate) | **POST** /api/v1/devices |
 [*DevicesApi*](doc/DevicesApi.md) | [**devicesDestroy**](doc/DevicesApi.md#devicesdestroy) | **DELETE** /api/v1/devices/{install_id} |
@@ -104,6 +107,10 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [BillConfirmPaymentRequestRequest](doc/BillConfirmPaymentRequestRequest.md)
+ - [BillDetail](doc/BillDetail.md)
+ - [BillStatusEnum](doc/BillStatusEnum.md)
+ - [BillSummary](doc/BillSummary.md)
  - [CaseRatingRequest](doc/CaseRatingRequest.md)
  - [CaseRatingResult](doc/CaseRatingResult.md)
  - [Device](doc/Device.md)
@@ -129,6 +136,7 @@ Class | Method | HTTP request | Description
  - [NotificationPreference](doc/NotificationPreference.md)
  - [NotificationPreferenceUpdateItemRequest](doc/NotificationPreferenceUpdateItemRequest.md)
  - [Occupancy](doc/Occupancy.md)
+ - [PaginatedBillSummaryList](doc/PaginatedBillSummaryList.md)
  - [PaginatedLedgerEntryListList](doc/PaginatedLedgerEntryListList.md)
  - [PaginatedNotificationFeedList](doc/PaginatedNotificationFeedList.md)
  - [PaginatedProposalList](doc/PaginatedProposalList.md)

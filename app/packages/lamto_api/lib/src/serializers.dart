@@ -14,6 +14,10 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:lamto_api/src/date_serializer.dart';
 import 'package:lamto_api/src/model/date.dart';
 
+import 'package:lamto_api/src/model/bill_confirm_payment_request_request.dart';
+import 'package:lamto_api/src/model/bill_detail.dart';
+import 'package:lamto_api/src/model/bill_status_enum.dart';
+import 'package:lamto_api/src/model/bill_summary.dart';
 import 'package:lamto_api/src/model/case_rating_request.dart';
 import 'package:lamto_api/src/model/case_rating_result.dart';
 import 'package:lamto_api/src/model/device.dart';
@@ -39,6 +43,7 @@ import 'package:lamto_api/src/model/notification_feed.dart';
 import 'package:lamto_api/src/model/notification_preference.dart';
 import 'package:lamto_api/src/model/notification_preference_update_item_request.dart';
 import 'package:lamto_api/src/model/occupancy.dart';
+import 'package:lamto_api/src/model/paginated_bill_summary_list.dart';
 import 'package:lamto_api/src/model/paginated_ledger_entry_list_list.dart';
 import 'package:lamto_api/src/model/paginated_notification_feed_list.dart';
 import 'package:lamto_api/src/model/paginated_proposal_list.dart';
@@ -78,6 +83,10 @@ import 'package:lamto_api/src/model/verification.dart';
 part 'serializers.g.dart';
 
 @SerializersFor([
+  BillConfirmPaymentRequestRequest,
+  BillDetail,
+  BillStatusEnum,
+  BillSummary,
   CaseRatingRequest,
   CaseRatingResult,
   Device,
@@ -103,6 +112,7 @@ part 'serializers.g.dart';
   NotificationPreference,
   NotificationPreferenceUpdateItemRequest,
   Occupancy,
+  PaginatedBillSummaryList,
   PaginatedLedgerEntryListList,
   PaginatedNotificationFeedList,
   PaginatedProposalList,

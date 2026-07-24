@@ -11,6 +11,7 @@ export 'package:lamto_api/src/serializers.dart';
 export 'package:lamto_api/src/model/date.dart';
 
 export 'package:lamto_api/src/api/auth_api.dart';
+export 'package:lamto_api/src/api/bills_api.dart';
 export 'package:lamto_api/src/api/cases_api.dart';
 export 'package:lamto_api/src/api/devices_api.dart';
 export 'package:lamto_api/src/api/documents_api.dart';
@@ -24,6 +25,10 @@ export 'package:lamto_api/src/api/proposals_api.dart';
 export 'package:lamto_api/src/api/registration_api.dart';
 export 'package:lamto_api/src/api/reports_api.dart';
 
+export 'package:lamto_api/src/model/bill_confirm_payment_request_request.dart';
+export 'package:lamto_api/src/model/bill_detail.dart';
+export 'package:lamto_api/src/model/bill_status_enum.dart';
+export 'package:lamto_api/src/model/bill_summary.dart';
 export 'package:lamto_api/src/model/case_rating_request.dart';
 export 'package:lamto_api/src/model/case_rating_result.dart';
 export 'package:lamto_api/src/model/device.dart';
@@ -49,6 +54,7 @@ export 'package:lamto_api/src/model/notification_feed.dart';
 export 'package:lamto_api/src/model/notification_preference.dart';
 export 'package:lamto_api/src/model/notification_preference_update_item_request.dart';
 export 'package:lamto_api/src/model/occupancy.dart';
+export 'package:lamto_api/src/model/paginated_bill_summary_list.dart';
 export 'package:lamto_api/src/model/paginated_ledger_entry_list_list.dart';
 export 'package:lamto_api/src/model/paginated_notification_feed_list.dart';
 export 'package:lamto_api/src/model/paginated_proposal_list.dart';

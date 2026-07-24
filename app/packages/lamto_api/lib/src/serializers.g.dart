@@ -7,6 +7,10 @@ part of 'serializers.dart';
 // **************************************************************************
 
 Serializers _$serializers = (Serializers().toBuilder()
+      ..add(BillConfirmPaymentRequestRequest.serializer)
+      ..add(BillDetail.serializer)
+      ..add(BillStatusEnum.serializer)
+      ..add(BillSummary.serializer)
       ..add(CaseRatingRequest.serializer)
       ..add(CaseRatingResult.serializer)
       ..add(Device.serializer)
@@ -32,6 +36,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(NotificationPreference.serializer)
       ..add(NotificationPreferenceUpdateItemRequest.serializer)
       ..add(Occupancy.serializer)
+      ..add(PaginatedBillSummaryList.serializer)
       ..add(PaginatedLedgerEntryListList.serializer)
       ..add(PaginatedNotificationFeedList.serializer)
       ..add(PaginatedProposalList.serializer)
@@ -67,6 +72,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(TokenResponse.serializer)
       ..add(VehiclePlate.serializer)
       ..add(Verification.serializer)
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(BillSummary)]),
+          () => ListBuilder<BillSummary>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(FundSeriesPoint)]),
           () => ListBuilder<FundSeriesPoint>())
