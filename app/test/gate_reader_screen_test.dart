@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/features/gate/reader/gate_reader_screen.dart';
 import 'package:lamto/features/gate/reader/reader_credential_store.dart';
 import 'package:lamto/features/gate/reader/reader_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeReader implements ReaderApi {
   FakeReader({this.matched = true, this.error, this.deviceDirection = 'ENTRY'});
@@ -15,9 +16,15 @@ class FakeReader implements ReaderApi {
   final String deviceDirection;
   String? plate;
   String? facePath;
+  int deviceCalls = 0;
   @override
-  Future<ReaderDevice> getDevice() async =>
-      ReaderDevice.fromJson({'label': 'North', 'direction': deviceDirection});
+  Future<ReaderDevice> getDevice() async {
+    deviceCalls++;
+    return ReaderDevice.fromJson({
+      'label': 'North',
+      'direction': deviceDirection,
+    });
+  }
 
   @override
   Future<ReaderResult> recognizeFace(String path) async {
@@ -73,6 +80,8 @@ class FakeCamera implements ReaderCamera {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('secure credential is persisted and can be cleared', (
     tester,
   ) async {
@@ -87,7 +96,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), ' secret ');
+    await tester.enterText(find.byKey(const Key('reader-credential')), ' secret ');
     await tester.tap(find.text('Kich hoat dau doc'));
     await tester.pump();
     expect(store.value, 'secret');
@@ -166,6 +175,75 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Khong nhan dien duoc'), findsOneWidget);
     expect(file.existsSync(), isFalse);
+  });
+
+  testWidgets('an unusable server URL blocks activation before any request', (
+    tester,
+  ) async {
+    final reader = FakeReader();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GateReaderScreen(
+          repositoryFor: (_) => reader,
+          camera: FakeCamera('/tmp/unused'),
+          store: MemoryStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('reader-base-url')), 'localhost:8000');
+    await tester.enterText(find.byKey(const Key('reader-credential')), 'secret');
+    await tester.tap(find.text('Kich hoat dau doc'));
+    await tester.pumpAndSettle();
+    expect(reader.deviceCalls, 0);
+    expect(find.textContaining('khong hop le'), findsOneWidget);
+    expect(find.byKey(const Key('camera-preview')), findsNothing);
+  });
+
+  testWidgets('server URL is normalized, applied, and restored on relaunch', (
+    tester,
+  ) async {
+    final applied = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GateReaderScreen(
+          repositoryFor: (_) => FakeReader(),
+          camera: FakeCamera('/tmp/unused'),
+          store: MemoryStore(),
+          onBaseUrl: applied.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('reader-base-url')),
+      '  http://10.0.2.2:8000/  ',
+    );
+    await tester.enterText(find.byKey(const Key('reader-credential')), 'secret');
+    await tester.tap(find.text('Kich hoat dau doc'));
+    await tester.pumpAndSettle();
+
+    expect(applied.last, 'http://10.0.2.2:8000');
+    expect(find.byKey(const Key('camera-preview')), findsOneWidget);
+
+    // A relaunch must reuse the saved host, not the compile-time default.
+    // Unmount first: pumping the same widget type in place would reuse the
+    // existing State and never re-run bootstrap.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    final relaunched = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GateReaderScreen(
+          repositoryFor: (_) => FakeReader(),
+          camera: FakeCamera('/tmp/unused'),
+          store: MemoryStore(),
+          onBaseUrl: relaunched.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(relaunched, contains('http://10.0.2.2:8000'));
   });
 
   test('reader errors map every stable face code distinctly', () {

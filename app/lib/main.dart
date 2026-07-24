@@ -28,6 +28,7 @@ Future<void> main() async {
       home: GateReaderScreen(
         camera: CameraReader(controller),
         repositoryFor: (credential) => ReaderRepository(dio, credential),
+        onBaseUrl: (url) => dio.options.baseUrl = url,
       ),
     ),
   );

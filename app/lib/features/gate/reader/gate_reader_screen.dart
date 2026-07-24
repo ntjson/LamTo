@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/api_base_url.dart';
 import 'plate_ocr.dart';
 import 'reader_credential_store.dart';
 import 'reader_repository.dart';
@@ -32,17 +34,24 @@ class GateReaderScreen extends StatefulWidget {
     required this.camera,
     this.store,
     this.ocr = extractPlate,
+    this.onBaseUrl,
   });
   final ReaderApi Function(String) repositoryFor;
   final ReaderCamera camera;
   final ReaderCredentialStore? store;
   final Future<String?> Function(String) ocr;
+
+  /// Applies the operator-entered server URL. Reader mode runs without a
+  /// [ProviderScope], so the host is pushed onto the caller's Dio instead of
+  /// read from `apiBaseUrlProvider`.
+  final void Function(String)? onBaseUrl;
   @override
   State<GateReaderScreen> createState() => _GateReaderScreenState();
 }
 
 class _GateReaderScreenState extends State<GateReaderScreen> {
   final credential = TextEditingController();
+  final baseUrl = TextEditingController(text: defaultApiBaseUrl);
   String? token;
   String? direction;
   ReaderResult? result;
@@ -53,14 +62,26 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
   @override
   void initState() {
     super.initState();
-    store.read().then((value) {
-      if (value != null) _activate(value, persist: false);
-    });
+    _bootstrap();
+  }
+
+  /// Restore the saved host before any stored credential is replayed, so a
+  /// silent activation cannot run against a stale compile-time default.
+  Future<void> _bootstrap() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = normalizeApiBaseUrl(prefs.getString(kApiBaseUrlPrefsKey) ?? '');
+    if (saved != null) {
+      baseUrl.text = saved;
+      widget.onBaseUrl?.call(saved);
+    }
+    final value = await store.read();
+    if (value != null) await _activate(value, persist: false);
   }
 
   @override
   void dispose() {
     credential.dispose();
+    baseUrl.dispose();
     widget.camera.dispose();
     super.dispose();
   }
@@ -104,6 +125,22 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
   }
 
   Future<void> _activate(String value, {bool persist = true}) async {
+    final url = normalizeApiBaseUrl(baseUrl.text);
+    if (url == null) {
+      if (mounted) {
+        setState(
+          () => message = 'URL may chu khong hop le. Can https:// hoac http://',
+        );
+      }
+      return;
+    }
+    widget.onBaseUrl?.call(url);
+    if (persist) {
+      // Saved on attempt, not on success: a reader pointed at a host that is
+      // briefly down keeps its URL across a restart.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kApiBaseUrlPrefsKey, url);
+    }
     try {
       final device = await widget.repositoryFor(value).getDevice();
       if (persist) {
@@ -138,6 +175,17 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
+                    key: const Key('reader-base-url'),
+                    controller: baseUrl,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Dia chi may chu',
+                    ),
+                  ),
+                  TextField(
+                    key: const Key('reader-credential'),
                     controller: credential,
                     obscureText: true,
                     decoration: const InputDecoration(labelText: 'Ma thiet bi'),
@@ -225,6 +273,9 @@ String readerError(DioException error) {
   return switch (code) {
     'gate_device_revoked' => 'Ma thiet bi da bi thu hoi.',
     'gate_device_expired' => 'Ma thiet bi da het han.',
+    // Without this case a wrong code fell through to the connection-lost
+    // default, which reads as a network fault the operator cannot act on.
+    'gate_device_unauthenticated' => 'Ma thiet bi khong dung.',
     'gate_no_face_detected' => 'Khong tim thay khuon mat. Thu lai.',
     'gate_multiple_faces' => 'Khung hinh chi duoc co mot khuon mat.',
     'gate_face_too_small' => 'Khuon mat qua nho. Hay lai gan hon.',
