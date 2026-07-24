@@ -119,6 +119,10 @@ class _AppRouterState extends ConsumerState<AppRouter> {
         navigator.push(
           adaptivePageRoute(builder: (_) => const NotificationsScreen()),
         );
+      case DeepLinkBill():
+        navigator.push(
+          adaptivePageRoute(builder: (_) => const NotificationsScreen()),
+        );
     }
   }
 

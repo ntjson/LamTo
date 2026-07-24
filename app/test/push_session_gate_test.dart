@@ -204,6 +204,28 @@ void main() {
     },
   );
 
+  testWidgets(
+    'bill push safely falls back to notifications until detail exists',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = _FakeStore('knox');
+      final push = _ControllablePushSource()
+        ..initial = {'type': 'bill', 'id': '7'};
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._overrides(store: store, auth: _AuthRepo(_me()), push: push),
+          ],
+          child: const LamToApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NotificationsScreen), findsOneWidget);
+    },
+  );
+
   testWidgets('authenticated stream open navigates ledger without re-open', (
     tester,
   ) async {
