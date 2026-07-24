@@ -131,3 +131,33 @@ def confirm_payment(bill, *, source, actor, reference) -> Bill:
         metadata={"bill_id": locked.pk, "source": source},
     )
     return locked
+
+
+@transaction.atomic
+def void_bill(actor, bill_id, *, reason) -> Bill:
+    reason = (reason or "").strip()
+    if not reason:
+        raise BillError("A void reason is required.")
+    locked = Bill.objects.select_for_update().get(pk=bill_id)
+    membership = require_management(actor, locked.building_id)
+    if locked.status != Bill.Status.ISSUED:
+        raise BillError("Only an issued bill can be voided.")
+    locked.status = Bill.Status.VOID
+    locked.void_by = actor
+    locked.void_at = timezone.now()
+    locked.void_reason = reason
+    locked.save(update_fields=["status", "void_by", "void_at", "void_reason"])
+    NotificationDelivery.objects.filter(
+        event_key=in_app_event_key(locked.pk),
+        channel=NotificationDelivery.Channel.IN_APP,
+    ).delete()
+    record_audit(
+        actor=actor,
+        membership=membership,
+        action="bill.voided",
+        target_type="Bill",
+        target_id=str(locked.pk),
+        result="accepted",
+        metadata={"bill_id": locked.pk},
+    )
+    return locked
