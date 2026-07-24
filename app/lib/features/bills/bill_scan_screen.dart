@@ -9,6 +9,12 @@ import 'bills_repository.dart';
 
 enum BillScanResult { invalidQr, recorded, voided, error }
 
+void invalidateBillViews(ProviderContainer container, int billId) {
+  container.invalidate(billDetailProvider(billId));
+  container.invalidate(billsProvider);
+  container.invalidate(newestUnpaidBillProvider);
+}
+
 Future<BillScanResult> handleScannedCode(
   ProviderContainer container,
   int billId,
@@ -63,14 +69,14 @@ class _BillScanScreenState extends ConsumerState<BillScanScreen> {
 
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
+    if (result != BillScanResult.invalidQr) {
+      invalidateBillViews(ProviderScope.containerOf(context), widget.billId);
+    }
     switch (result) {
       case BillScanResult.invalidQr:
         messenger.showSnackBar(SnackBar(content: Text(l10n.billInvalidQr)));
         setState(() => _handling = false);
       case BillScanResult.recorded:
-        ref.invalidate(billDetailProvider(widget.billId));
-        ref.invalidate(billsProvider);
-        ref.invalidate(newestUnpaidBillProvider);
         Navigator.of(context).pop();
         messenger.showSnackBar(
           SnackBar(content: Text(l10n.billPaymentRecorded)),

@@ -38,6 +38,56 @@ ProviderContainer _container(_Repo repo) => ProviderContainer(
 );
 
 void main() {
+  test(
+    'refreshes detail, list, and Home bill state before leaving scan',
+    () async {
+      var detailLoads = 0;
+      var listLoads = 0;
+      var homeLoads = 0;
+      final container = ProviderContainer(
+        overrides: [
+          billDetailProvider(1).overrideWith((ref) async {
+            detailLoads++;
+            return _Repo().confirmPayment(1, 'ref');
+          }),
+          billsProvider.overrideWith((ref) async {
+            listLoads++;
+            return [];
+          }),
+          newestUnpaidBillProvider.overrideWith((ref) async {
+            homeLoads++;
+            return null;
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      final subscriptions = [
+        container.listen(billDetailProvider(1), (_, _) {}),
+        container.listen(billsProvider, (_, _) {}),
+        container.listen(newestUnpaidBillProvider, (_, _) {}),
+      ];
+      addTearDown(() {
+        for (final subscription in subscriptions) {
+          subscription.close();
+        }
+      });
+      await Future.wait([
+        container.read(billDetailProvider(1).future),
+        container.read(billsProvider.future),
+        container.read(newestUnpaidBillProvider.future),
+      ]);
+
+      invalidateBillViews(container, 1);
+      await Future.wait([
+        container.read(billDetailProvider(1).future),
+        container.read(billsProvider.future),
+        container.read(newestUnpaidBillProvider.future),
+      ]);
+
+      expect((detailLoads, listLoads, homeLoads), (2, 2, 2));
+    },
+  );
+
   test('rejects a non-LamTo QR without confirming payment', () async {
     final repo = _Repo();
     final container = _container(repo);
