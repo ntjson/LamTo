@@ -241,6 +241,20 @@ def test_bill_list_is_building_scoped(client):
     assert hidden.title.encode() not in response.content
 
 
+def test_bill_list_rows_navigate_to_detail(client):
+    building, manager = setup_manager(client)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="resident@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    bill = _issue(building, manager, resident, "list-link")
+    detail_url = reverse("web:staff-bill-detail", args=[bill.pk])
+
+    response = client.get(reverse("web:staff-bill-list"))
+
+    assert f'<a class="task-row" href="{detail_url}">'.encode() in response.content
+    assert client.get(detail_url).status_code == 200
+
+
 def test_bill_qr_svg_encodes_lamto_bill_payload():
     from lamto.billing.qr import bill_qr_svg
 

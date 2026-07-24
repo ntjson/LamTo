@@ -4,6 +4,7 @@ from lamto.accounts.models import Building, ManagementMembership, ResidentOccupa
 from lamto.audit.models import AuditEvent
 from lamto.billing.models import Bill
 from lamto.billing.services import (
+    BillActorError,
     BillReferenceError,
     BillVoidedError,
     confirm_payment,
@@ -74,6 +75,22 @@ def test_confirm_rejects_wrong_reference():
             actor=resident,
             reference="not-it",
         )
+    bill.refresh_from_db()
+    assert bill.status == Bill.Status.ISSUED
+
+
+def test_self_attested_confirmation_rejects_another_actor():
+    bill, _resident = _bill()
+    stranger = User.objects.create_user(email="stranger@x.test", password="pw")
+
+    with pytest.raises(BillActorError, match="bill resident"):
+        confirm_payment(
+            bill,
+            source=Bill.PaymentSource.SELF_ATTESTED_DEMO,
+            actor=stranger,
+            reference=bill.reference,
+        )
+
     bill.refresh_from_db()
     assert bill.status == Bill.Status.ISSUED
 

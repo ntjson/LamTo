@@ -23,6 +23,10 @@ class BillReferenceError(BillError):
     pass
 
 
+class BillActorError(BillError):
+    pass
+
+
 def in_app_event_key(bill_id: int) -> str:
     return f"{EVENT_BILL_ISSUED}:bill:{bill_id}"
 
@@ -112,6 +116,13 @@ def confirm_payment(bill, *, source, actor, reference) -> Bill:
         raise BillVoidedError()
     if reference != locked.reference:
         raise BillReferenceError()
+    if (
+        source == Bill.PaymentSource.SELF_ATTESTED_DEMO
+        and actor.pk != locked.resident_id
+    ):
+        raise BillActorError(
+            "Self-attested payment must be confirmed by the bill resident."
+        )
     if locked.status == Bill.Status.PAID:
         return locked
     locked.status = Bill.Status.PAID

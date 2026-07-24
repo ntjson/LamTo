@@ -13,9 +13,11 @@
   </form>
   <ul class="task-list">
     {% for bill in bills %}
-    <li class="task-row">
-      <span class="task-action">{{ bill.title }} · {{ bill.amount_vnd }}đ</span>
-      <span class="task-subject">{{ bill.get_status_display }} · {{ bill.resident }} · {{ bill.issued_at }}</span>
+    <li>
+      <a class="task-row" href="{% url 'web:staff-bill-detail' bill.pk %}">
+        <span class="task-action">{{ bill.title }} · {{ bill.amount_vnd }}đ</span>
+        <span class="task-subject">{{ bill.get_status_display }} · {{ bill.resident }} · {{ bill.issued_at }}</span>
+      </a>
     </li>
     {% empty %}<li>{% trans "No bills have been issued." %}</li>{% endfor %}
   </ul>
