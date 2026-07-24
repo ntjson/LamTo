@@ -223,5 +223,19 @@
   "proposalSettled": "Paid and acknowledged by the payee",
   "proposalUnsettled": "Payment not yet settled",
   "proposalViewFromLedger": "View proposal",
-  "proposalRateCta": "Rate the result"
+  "proposalRateCta": "Rate the result",
+  "homeBillTitle": "Building bill",
+  "billsTitle": "Bills",
+  "billAmountLabel": "Amount",
+  "billDueLabel": "Due",
+  "billViewFile": "View bill",
+  "billPayAction": "I've paid",
+  "billStatusIssued": "Unpaid",
+  "billStatusPaid": "Payment recorded",
+  "billStatusVoid": "Voided",
+  "billScanTitle": "Scan payment QR",
+  "billScanInstruction": "Point the camera at the bill QR to record your payment.",
+  "billInvalidQr": "That QR code is not a LamTo bill.",
+  "billPaymentRecorded": "Payment recorded",
+  "billNone": "No bills."
 }

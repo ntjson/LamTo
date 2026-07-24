@@ -693,4 +693,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proposalRateCta => 'Rate the result';
+
+  @override
+  String get homeBillTitle => 'Building bill';
+
+  @override
+  String get billsTitle => 'Bills';
+
+  @override
+  String get billAmountLabel => 'Amount';
+
+  @override
+  String get billDueLabel => 'Due';
+
+  @override
+  String get billViewFile => 'View bill';
+
+  @override
+  String get billPayAction => 'I\'ve paid';
+
+  @override
+  String get billStatusIssued => 'Unpaid';
+
+  @override
+  String get billStatusPaid => 'Payment recorded';
+
+  @override
+  String get billStatusVoid => 'Voided';
+
+  @override
+  String get billScanTitle => 'Scan payment QR';
+
+  @override
+  String get billScanInstruction =>
+      'Point the camera at the bill QR to record your payment.';
+
+  @override
+  String get billInvalidQr => 'That QR code is not a LamTo bill.';
+
+  @override
+  String get billPaymentRecorded => 'Payment recorded';
+
+  @override
+  String get billNone => 'No bills.';
 }

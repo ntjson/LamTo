@@ -1381,6 +1381,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rate the result'**
   String get proposalRateCta;
+
+  /// No description provided for @homeBillTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Building bill'**
+  String get homeBillTitle;
+
+  /// No description provided for @billsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bills'**
+  String get billsTitle;
+
+  /// No description provided for @billAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get billAmountLabel;
+
+  /// No description provided for @billDueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Due'**
+  String get billDueLabel;
+
+  /// No description provided for @billViewFile.
+  ///
+  /// In en, this message translates to:
+  /// **'View bill'**
+  String get billViewFile;
+
+  /// No description provided for @billPayAction.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve paid'**
+  String get billPayAction;
+
+  /// No description provided for @billStatusIssued.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpaid'**
+  String get billStatusIssued;
+
+  /// No description provided for @billStatusPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment recorded'**
+  String get billStatusPaid;
+
+  /// No description provided for @billStatusVoid.
+  ///
+  /// In en, this message translates to:
+  /// **'Voided'**
+  String get billStatusVoid;
+
+  /// No description provided for @billScanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan payment QR'**
+  String get billScanTitle;
+
+  /// No description provided for @billScanInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at the bill QR to record your payment.'**
+  String get billScanInstruction;
+
+  /// No description provided for @billInvalidQr.
+  ///
+  /// In en, this message translates to:
+  /// **'That QR code is not a LamTo bill.'**
+  String get billInvalidQr;
+
+  /// No description provided for @billPaymentRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment recorded'**
+  String get billPaymentRecorded;
+
+  /// No description provided for @billNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No bills.'**
+  String get billNone;
 }
 
 class _AppLocalizationsDelegate

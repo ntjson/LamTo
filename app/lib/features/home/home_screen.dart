@@ -7,6 +7,8 @@ import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../bills/bill_detail_screen.dart';
+import '../bills/bills_repository.dart';
 import '../ledger/ledger_detail_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../reports/issue_detail_screen.dart';
@@ -27,6 +29,7 @@ class HomeScreen extends ConsumerWidget {
     final reports = ref.watch(myReportsProvider);
     final spending = ref.watch(recentSpendingProvider);
     final announcement = ref.watch(latestAnnouncementProvider);
+    final newestBill = ref.watch(newestUnpaidBillProvider);
 
     return Material(
       color: Colors.transparent,
@@ -40,6 +43,7 @@ class HomeScreen extends ConsumerWidget {
               ref.refresh(recentSpendingProvider.future),
               ref.refresh(myReportsProvider.future),
               ref.refresh(latestAnnouncementProvider.future),
+              ref.refresh(newestUnpaidBillProvider.future),
             ]);
           } catch (_) {}
         },
@@ -47,6 +51,23 @@ class HomeScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
+            if (newestBill.value case final bill?) ...[
+              ListTile(
+                minTileHeight: 64,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(l10n.homeBillTitle),
+                subtitle: Text('${bill.title} · ${formatVnd(bill.amountVnd)}'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  adaptivePageRoute(
+                    builder: (_) => BillDetailScreen(billId: bill.id),
+                  ),
+                ),
+              ),
+              const Divider(),
+            ],
             if (announcement.value case final notice?) ...[
               Card.filled(
                 child: ListTile(

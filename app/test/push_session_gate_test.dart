@@ -8,6 +8,8 @@ import 'package:lamto/app.dart';
 import 'package:lamto/core/providers.dart';
 import 'package:lamto/core/token_store.dart';
 import 'package:lamto/features/auth/auth_repository.dart';
+import 'package:lamto/features/bills/bill_detail_screen.dart';
+import 'package:lamto/features/bills/bills_repository.dart';
 import 'package:lamto/features/ledger/ledger_detail_screen.dart';
 import 'package:lamto/features/ledger/ledger_screen.dart';
 import 'package:lamto/features/notifications/notifications_screen.dart';
@@ -204,27 +206,38 @@ void main() {
     },
   );
 
-  testWidgets(
-    'bill push safely falls back to notifications until detail exists',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      final store = _FakeStore('knox');
-      final push = _ControllablePushSource()
-        ..initial = {'type': 'bill', 'id': '7'};
+  testWidgets('bill push opens bill detail', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = _FakeStore('knox');
+    final push = _ControllablePushSource()
+      ..initial = {'type': 'bill', 'id': '7'};
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            ..._overrides(store: store, auth: _AuthRepo(_me()), push: push),
-          ],
-          child: const LamToApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ..._overrides(store: store, auth: _AuthRepo(_me()), push: push),
+          billDetailProvider(7).overrideWith(
+            (ref) async => BillDetail(
+              (builder) => builder
+                ..id = 7
+                ..title = 'July bill'
+                ..amountVnd = 250000
+                ..status = BillStatusEnum.ISSUED
+                ..period = '2026-07'
+                ..issuedAt = DateTime.utc(2026, 7, 1)
+                ..note = ''
+                ..documentFilename = 'bill.pdf'
+                ..documentDownloadUrl = '/api/v1/documents/t',
+            ),
+          ),
+        ],
+        child: const LamToApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.byType(NotificationsScreen), findsOneWidget);
-    },
-  );
+    expect(find.byType(BillDetailScreen), findsOneWidget);
+  });
 
   testWidgets('authenticated stream open navigates ledger without re-open', (
     tester,

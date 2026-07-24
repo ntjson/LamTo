@@ -14,6 +14,7 @@ import 'features/auth/login_screen.dart';
 import 'features/settings/api_base_url_tile.dart';
 import 'features/auth/occupancy_picker_screen.dart';
 import 'features/auth/session_controller.dart';
+import 'features/bills/bill_detail_screen.dart';
 import 'features/ledger/ledger_detail_screen.dart';
 import 'features/notifications/deep_link.dart';
 import 'features/notifications/notifications_screen.dart';
@@ -119,9 +120,9 @@ class _AppRouterState extends ConsumerState<AppRouter> {
         navigator.push(
           adaptivePageRoute(builder: (_) => const NotificationsScreen()),
         );
-      case DeepLinkBill():
+      case DeepLinkBill(:final id):
         navigator.push(
-          adaptivePageRoute(builder: (_) => const NotificationsScreen()),
+          adaptivePageRoute(builder: (_) => BillDetailScreen(billId: id)),
         );
     }
   }

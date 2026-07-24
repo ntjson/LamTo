@@ -694,4 +694,47 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get proposalRateCta => 'Đánh giá kết quả';
+
+  @override
+  String get homeBillTitle => 'Hóa đơn tòa nhà';
+
+  @override
+  String get billsTitle => 'Hóa đơn';
+
+  @override
+  String get billAmountLabel => 'Số tiền';
+
+  @override
+  String get billDueLabel => 'Hạn';
+
+  @override
+  String get billViewFile => 'Xem hóa đơn';
+
+  @override
+  String get billPayAction => 'Tôi đã thanh toán';
+
+  @override
+  String get billStatusIssued => 'Chưa thanh toán';
+
+  @override
+  String get billStatusPaid => 'Đã ghi nhận thanh toán';
+
+  @override
+  String get billStatusVoid => 'Đã hủy';
+
+  @override
+  String get billScanTitle => 'Quét mã QR thanh toán';
+
+  @override
+  String get billScanInstruction =>
+      'Hướng máy ảnh vào mã QR trên hóa đơn để ghi nhận thanh toán.';
+
+  @override
+  String get billInvalidQr => 'Mã QR không hợp lệ.';
+
+  @override
+  String get billPaymentRecorded => 'Đã ghi nhận thanh toán';
+
+  @override
+  String get billNone => 'Chưa có hóa đơn.';
 }

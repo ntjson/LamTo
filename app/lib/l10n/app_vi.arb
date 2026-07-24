@@ -224,5 +224,19 @@
   "proposalSettled": "Đã thanh toán và bên nhận đã xác nhận",
   "proposalUnsettled": "Chưa quyết toán thanh toán",
   "proposalViewFromLedger": "Xem đề xuất",
-  "proposalRateCta": "Đánh giá kết quả"
+  "proposalRateCta": "Đánh giá kết quả",
+  "homeBillTitle": "Hóa đơn tòa nhà",
+  "billsTitle": "Hóa đơn",
+  "billAmountLabel": "Số tiền",
+  "billDueLabel": "Hạn",
+  "billViewFile": "Xem hóa đơn",
+  "billPayAction": "Tôi đã thanh toán",
+  "billStatusIssued": "Chưa thanh toán",
+  "billStatusPaid": "Đã ghi nhận thanh toán",
+  "billStatusVoid": "Đã hủy",
+  "billScanTitle": "Quét mã QR thanh toán",
+  "billScanInstruction": "Hướng máy ảnh vào mã QR trên hóa đơn để ghi nhận thanh toán.",
+  "billInvalidQr": "Mã QR không hợp lệ.",
+  "billPaymentRecorded": "Đã ghi nhận thanh toán",
+  "billNone": "Chưa có hóa đơn."
 }

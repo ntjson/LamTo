@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/core/error_retry.dart';
 import 'package:lamto/core/format.dart';
+import 'package:lamto/features/bills/bills_repository.dart';
 import 'package:lamto/features/home/home_screen.dart';
 import 'package:lamto/features/ledger/ledger_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
@@ -162,6 +163,7 @@ Future<void> _pumpShell(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        newestUnpaidBillProvider.overrideWith((ref) async => null),
         reportsRepositoryProvider.overrideWithValue(_FakeReports()),
         transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
       ],
@@ -181,6 +183,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
           reportsRepositoryProvider.overrideWithValue(_FakeReports()),
           transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
         ],
@@ -201,6 +204,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
           reportsRepositoryProvider.overrideWithValue(_FakeReports()),
           transparencyRepositoryProvider.overrideWithValue(
             _PendingSeriesTransparency(),
@@ -224,6 +228,7 @@ void main() {
       ProviderScope(
         retry: (_, _) => null,
         overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
           reportsRepositoryProvider.overrideWithValue(_FakeReports()),
           transparencyRepositoryProvider.overrideWithValue(
             _ThrowingSeriesTransparency(),
@@ -317,6 +322,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
           reportsRepositoryProvider.overrideWithValue(_FakeReports()),
           transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
         ],
@@ -347,6 +353,7 @@ void main() {
         ProviderScope(
           retry: (_, _) => null,
           overrides: [
+            newestUnpaidBillProvider.overrideWith((ref) async => null),
             reportsRepositoryProvider.overrideWithValue(_ThrowingReports()),
             transparencyRepositoryProvider.overrideWithValue(
               _FakeTransparency(),
@@ -385,6 +392,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
           reportsRepositoryProvider.overrideWithValue(_PendingReports()),
           transparencyRepositoryProvider.overrideWithValue(
             _PendingTransparency(),
@@ -411,6 +419,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
           reportsRepositoryProvider.overrideWithValue(_FakeReports()),
           transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
         ],

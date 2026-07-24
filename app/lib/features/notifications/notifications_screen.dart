@@ -10,6 +10,7 @@ import '../../core/load_more_button.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../bills/bill_detail_screen.dart';
 import '../ledger/ledger_detail_screen.dart';
 import '../reports/issue_detail_screen.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
@@ -113,10 +114,7 @@ final latestAnnouncementProvider =
       ref.watch(occupancyScopedProviders);
       final page = await ref
           .watch(transparencyRepositoryProvider)
-          .listNotifications(
-            eventCode: 'building.announcement',
-            unread: true,
-          );
+          .listNotifications(eventCode: 'building.announcement', unread: true);
       return page.results.firstOrNull;
     });
 
@@ -216,8 +214,11 @@ class NotificationsScreen extends ConsumerWidget {
         );
       case DeepLinkFeed():
         await showNotificationDialog(context, notice);
-      case DeepLinkBill():
-        await showNotificationDialog(context, notice);
+      case DeepLinkBill(:final id):
+        Navigator.push(
+          context,
+          adaptivePageRoute(builder: (_) => BillDetailScreen(billId: id)),
+        );
     }
   }
 }
