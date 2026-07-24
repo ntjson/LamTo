@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
@@ -67,23 +68,24 @@ def bill_create(request):
     form = BillForm(request.POST, request.FILES, resident_choices=choices)
     if form.is_valid():
         try:
-            document = upload_document(
-                membership.building,
-                Document.Kind.RESIDENT_BILL,
-                request.user,
-                form.cleaned_data["document"],
-            )
-            issue_bill(
-                request.user,
-                membership.building_id,
-                int(form.cleaned_data["resident"]),
-                title=form.cleaned_data["title"],
-                amount_vnd=form.cleaned_data["amount_vnd"],
-                document=document,
-                note=form.cleaned_data["note"],
-                period=form.cleaned_data["period"],
-                due_date=form.cleaned_data["due_date"],
-            )
+            with transaction.atomic():
+                document = upload_document(
+                    membership.building,
+                    Document.Kind.RESIDENT_BILL,
+                    request.user,
+                    form.cleaned_data["document"],
+                )
+                issue_bill(
+                    request.user,
+                    membership.building_id,
+                    int(form.cleaned_data["resident"]),
+                    title=form.cleaned_data["title"],
+                    amount_vnd=form.cleaned_data["amount_vnd"],
+                    document=document,
+                    note=form.cleaned_data["note"],
+                    period=form.cleaned_data["period"],
+                    due_date=form.cleaned_data["due_date"],
+                )
         except (ValidationError, BillError) as error:
             form.add_error(None, str(error))
         else:
