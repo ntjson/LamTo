@@ -1573,7 +1573,7 @@ components:
         amount_vnd:
           type: integer
         status:
-          $ref: '#/components/schemas/Status04eEnum'
+          $ref: '#/components/schemas/BillStatusEnum'
         period:
           type: string
         due_date:
@@ -1605,6 +1605,16 @@ components:
       - period
       - status
       - title
+    BillStatusEnum:
+      enum:
+      - ISSUED
+      - PAID
+      - VOID
+      type: string
+      description: |-
+        * `ISSUED` - Issued
+        * `PAID` - Paid
+        * `VOID` - Void
     BillSummary:
       type: object
       properties:
@@ -1615,7 +1625,7 @@ components:
         amount_vnd:
           type: integer
         status:
-          $ref: '#/components/schemas/Status04eEnum'
+          $ref: '#/components/schemas/BillStatusEnum'
         period:
           type: string
         due_date:
@@ -2734,16 +2744,6 @@ components:
       - filename
       - id
       - kind
-    Status04eEnum:
-      enum:
-      - ISSUED
-      - PAID
-      - VOID
-      type: string
-      description: |-
-        * `ISSUED` - Issued
-        * `PAID` - Paid
-        * `VOID` - Void
     StatusEnum:
       enum:
       - SUBMITTED

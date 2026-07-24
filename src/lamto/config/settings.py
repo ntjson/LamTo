@@ -372,6 +372,7 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
     "ENUM_NAME_OVERRIDES": {
+        "BillStatusEnum": "lamto.billing.models.Bill.Status",
         "StatusEnum": "lamto.maintenance.models.IssueReport.Status",
         "RegistrationStatusEnum": "lamto.accounts.models.RegistrationRequest.Status",
     },
