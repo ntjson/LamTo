@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from lamto.api import gate_views, registration_views, views
+from lamto.api import bill_views, gate_views, registration_views, views
 
 app_name = "api"
 
@@ -35,6 +35,8 @@ urlpatterns = [
     path("ledger/<int:pk>", views.LedgerDetailView.as_view(), name="ledger-detail"),
     path("fund/summary", views.FundSummaryView.as_view(), name="fund-summary"),
     path("fund/series", views.FundSeriesView.as_view(), name="fund-series"),
+    path("bills", bill_views.BillListView.as_view(), name="bills-list"),
+    path("bills/<int:pk>", bill_views.BillDetailView.as_view(), name="bills-detail"),
     path("reports", views.ReportListCreateView.as_view(), name="reports"),
     path("reports/<int:pk>", views.ReportDetailView.as_view(), name="report-detail"),
     path("reports/<int:pk>/info-reply", views.ReportInfoReplyView.as_view(), name="report-info-reply"),

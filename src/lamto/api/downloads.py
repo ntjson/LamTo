@@ -45,6 +45,7 @@ RESIDENT_DOWNLOADABLE_KINDS = frozenset(
         Document.Kind.AFTER_PHOTO,
         Document.Kind.QUOTATION,
         Document.Kind.PAYMENT_PROOF,
+        Document.Kind.RESIDENT_BILL,
     }
 )
 
@@ -100,6 +101,14 @@ def resident_can_download(user, version) -> bool:
     are refused by RESIDENT_DOWNLOADABLE_KINDS before any lookup runs."""
     if version.document.kind not in RESIDENT_DOWNLOADABLE_KINDS:
         return False
+    if version.document.kind == Document.Kind.RESIDENT_BILL:
+        from lamto.billing.models import Bill
+
+        return (
+            Bill.objects.filter(document=version, resident=user)
+            .exclude(status=Bill.Status.VOID)
+            .exists()
+        )
     if version.document.kind == Document.Kind.REPORT_PHOTO:
         return ReportPhoto.objects.filter(version=version, report__reporter=user).exists()
     if version.document.kind in (Document.Kind.BEFORE_PHOTO, Document.Kind.AFTER_PHOTO):
