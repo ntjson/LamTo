@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_totp',
     'lamto.accounts',
     'lamto.audit',
+    'lamto.billing',
     'lamto.documents',
     'lamto.finance',
     'lamto.gate',
