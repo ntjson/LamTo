@@ -76,6 +76,17 @@ class TriageTests(TestCase):
     def test_http_endpoint_is_permitted_with_explicit_opt_in(self):
         self.assertEqual(_endpoint_url(), "http://triage.example.test/v1/triage")
 
+    @override_settings(AI_TRIAGE_URL="https://[invalid/v1/chat/completions")
+    def test_malformed_endpoint_routes_to_manual_triage(self):
+        report = self.submit("Elevator shakes")
+
+        job = process_triage_job(report.triage_job.id)
+
+        self.assertEqual(job.status, TriageJob.Status.NEEDS_MANUAL)
+        self.assertIn("config", job.failure_reason)
+        report.refresh_from_db()
+        self.assertEqual(report.status, IssueReport.Status.IN_REVIEW)
+
     def submit(self, text):
         building = getattr(self, "building", None) or Building.objects.create(name="Building B")
         self.building = building

@@ -59,7 +59,10 @@ def _claim_triage_job(job_id=None):
 
 def _endpoint_url():
     url = settings.AI_TRIAGE_URL
-    parsed = urlsplit(url)
+    try:
+        parsed = urlsplit(url)
+    except ValueError as error:
+        raise TriageValidationError(f"AI_TRIAGE_URL is invalid: {error}") from error
     if not parsed.scheme or not parsed.netloc:
         raise TriageValidationError("AI_TRIAGE_URL must be an absolute URL")
     if parsed.scheme != "https" and not (
