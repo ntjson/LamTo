@@ -1,0 +1,26 @@
+{% extends "web/staff/shell.html" %}
+{% load i18n %}
+{% block title %}{{ bill.title }} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <p><a class="back-link" href="{% url 'web:staff-bill-list' %}">{% trans "Back to bills" %}</a></p>
+  <h1>{{ bill.title }}</h1>
+  <dl class="detail-list detail-list-wide">
+    <div><dt>{% trans "Resident" %}</dt><dd>{{ bill.resident }}</dd></div>
+    <div><dt>{% trans "Amount" %}</dt><dd>{{ bill.amount_vnd }}đ</dd></div>
+    <div><dt>{% trans "Status" %}</dt><dd>{{ bill.get_status_display }}</dd></div>
+    {% if bill.status == "PAID" %}
+    <div><dt>{% trans "Payment" %}</dt><dd>{% trans "Resident-reported, not bank-verified" %} · {{ bill.paid_confirmed_by }} · {{ bill.paid_at }}</dd></div>
+    {% endif %}
+  </dl>
+  {% if bill.status == "ISSUED" %}
+  <h2>{% trans "Payment QR (demo)" %}</h2>
+  <div class="qr">{{ qr_svg }}</div>
+  <form method="post" action="{% url 'web:staff-bill-void' bill.pk %}" onsubmit="return confirm('{% trans "Void this bill?" %}');">
+    {% csrf_token %}
+    <label>{% trans "Reason" %} <input type="text" name="reason" required></label>
+    <button type="submit" class="button button-secondary">{% trans "Void bill" %}</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

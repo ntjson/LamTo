@@ -28,6 +28,8 @@ from knox.models import AuthToken
 from lamto.accounts.models import ResidentOccupancy
 from lamto.accounts.registration import submit_registration
 from lamto.accounts.security import RECENT_REAUTH_KEY
+from lamto.billing.models import Bill
+from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import (
@@ -67,6 +69,8 @@ STAFF_CASES = {
     "web:staff-announcement-detail": ("announcement_pk", "GET"),
     "web:staff-announcement-edit": ("announcement_pk", "GET"),
     "web:staff-announcement-withdraw": ("announcement_pk", "POST"),
+    "web:staff-bill-detail": ("bill_pk", "GET"),
+    "web:staff-bill-void": ("bill_pk", "POST"),
 }
 STAFF_FORBIDDEN_CASES = set()
 
@@ -131,6 +135,8 @@ API_TENANT_OBJECT = {
     "api:case-rating": ("case_pk", "POST", 404),
     "api:notification-read": ("notification_pk", "POST", 404),
     "api:gate-plate-detail": ("plate_pk", "DELETE", 404),
+    "api:bills-detail": ("bill_pk", "GET", 404),
+    "api:bills-confirm-payment": ("bill_pk", "POST", 404),
 }
 
 # Ownership-scoped lists/writes (the caller's own rows; never building-tenant).
@@ -138,6 +144,7 @@ API_OWNERSHIP_LIST = {
     "api:reports": "GET mine + POST create",
     "api:gate-plates": "POST plate for current occupancy",
     "api:gate-face": "POST/DELETE face for current occupancy",
+    "api:bills-list": "GET own bills",
 }
 
 # Explicitly non-tenant / non-walked routes (none in Phase 0).
@@ -252,6 +259,28 @@ class CrossBuildingAccessTests(TestCase):
             b_building.pk,
             "Building B announcement",
             B_LEAK_MARKER,
+        ).pk
+        bill_document = Document.objects.create(
+            building=b_building,
+            kind=Document.Kind.RESIDENT_BILL,
+        )
+        bill_version = DocumentVersion.objects.create(
+            document=bill_document,
+            version=1,
+            storage_key="isolation/building-b-bill.pdf",
+            filename="bill.pdf",
+            content_type="application/pdf",
+            byte_size=1,
+            sha256="0" * 64,
+            uploader=cls.seed_b.management_memberships[0].user,
+        )
+        cls.b["bill_pk"] = Bill.objects.create(
+            building=b_building,
+            resident=cls.seed_b.residents[0],
+            title="Building B bill",
+            amount_vnd=1000,
+            document=bill_version,
+            issued_by=cls.seed_b.management_memberships[0].user,
         ).pk
 
     def _management_login(self):

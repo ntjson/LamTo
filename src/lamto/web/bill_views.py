@@ -2,12 +2,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST
 
 from lamto.accounts.models import ResidentOccupancy
 from lamto.billing.models import Bill
-from lamto.billing.services import BillError, issue_bill
+from lamto.billing.qr import bill_qr_svg
+from lamto.billing.services import BillError, issue_bill, void_bill
 from lamto.documents.models import Document
 from lamto.web.forms.bills import BillForm
 from lamto.web.staff import require_management_context, staff_context
@@ -38,6 +40,14 @@ def _bills_for(building_id):
         Bill.objects.filter(building_id=building_id)
         .select_related("resident")
         .order_by("-issued_at", "-pk")
+    )
+
+
+def _bill_for(membership, pk):
+    return get_object_or_404(
+        Bill.objects.select_related("resident", "paid_confirmed_by"),
+        pk=pk,
+        building_id=membership.building_id,
     )
 
 
@@ -108,3 +118,36 @@ def bill_create(request):
             form=form,
         ),
     )
+
+
+@login_required
+@require_GET
+def bill_detail(request, pk):
+    membership, memberships = require_management_context(request)
+    bill = _bill_for(membership, pk)
+    return render(
+        request,
+        "web/staff/bills/detail.html",
+        staff_context(
+            request,
+            membership,
+            memberships,
+            nav_active="bills",
+            bill=bill,
+            qr_svg=mark_safe(bill_qr_svg(bill.reference)),
+        ),
+    )
+
+
+@login_required
+@require_POST
+def bill_void(request, pk):
+    membership, _memberships = require_management_context(request)
+    bill = _bill_for(membership, pk)
+    try:
+        void_bill(request.user, bill.pk, reason=request.POST.get("reason", ""))
+    except BillError as error:
+        messages.error(request, str(error))
+    else:
+        messages.success(request, "Bill voided.")
+    return redirect("web:staff-bill-detail", bill.pk)

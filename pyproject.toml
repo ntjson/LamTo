@@ -25,6 +25,7 @@ dependencies = [
   "onnxruntime>=1.20,<2",
   "insightface>=0.7.3,<0.8",
   "opencv-python-headless>=4.10,<5",
+  "qrcode>=7,<9",
 ]
 
 [project.optional-dependencies]

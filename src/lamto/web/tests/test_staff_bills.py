@@ -1,6 +1,9 @@
 import time
+from xml.etree import ElementTree
 
 import pytest
+import qrcode
+import qrcode.image.svg
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.storage import storages
 from django.test import override_settings
@@ -18,7 +21,7 @@ from lamto.accounts.models import (
 )
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.billing.models import Bill
-from lamto.billing.services import BillError
+from lamto.billing.services import BillError, confirm_payment, issue_bill
 from lamto.documents.models import Document, DocumentVersion
 from lamto.notifications.models import NotificationDelivery
 from lamto.web import bill_views
@@ -197,6 +200,17 @@ def _document(building, manager, suffix):
     )
 
 
+def _issue(building, manager, resident, suffix="detail"):
+    return issue_bill(
+        manager,
+        building.pk,
+        resident.pk,
+        title="Phí 07",
+        amount_vnd=250000,
+        document=_document(building, manager, suffix),
+    )
+
+
 def test_bill_list_is_building_scoped(client):
     building, manager = setup_manager(client)
     unit = Unit.objects.create(building=building, label="101")
@@ -225,3 +239,93 @@ def test_bill_list_is_building_scoped(client):
     assert list(response.context["bills"]) == [visible]
     assert visible.title.encode() in response.content
     assert hidden.title.encode() not in response.content
+
+
+def test_bill_qr_svg_encodes_lamto_bill_payload():
+    from lamto.billing.qr import bill_qr_svg
+
+    expected = qrcode.make(
+        "lamto-bill:bill-reference",
+        image_factory=qrcode.image.svg.SvgPathImage,
+        box_size=10,
+        border=2,
+    ).to_string()
+
+    actual_path = ElementTree.fromstring(bill_qr_svg("bill-reference")).find(
+        "{http://www.w3.org/2000/svg}path"
+    )
+    expected_path = ElementTree.fromstring(expected).find(
+        "{http://www.w3.org/2000/svg}path"
+    )
+
+    assert actual_path is not None
+    assert expected_path is not None
+    assert actual_path.attrib["d"] == expected_path.attrib["d"]
+
+
+def test_detail_shows_qr_and_honest_resident_reported_copy_when_paid(client):
+    building, manager = setup_manager(client)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="r@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    bill = _issue(building, manager, resident)
+
+    response = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
+
+    assert response.status_code == 200
+    assert b"<svg" in response.content
+
+    confirm_payment(
+        bill,
+        source=Bill.PaymentSource.SELF_ATTESTED_DEMO,
+        actor=resident,
+        reference=bill.reference,
+    )
+    paid = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
+
+    assert b"resident-reported" in paid.content.lower()
+    assert b"not bank-verified" in paid.content.lower()
+
+
+def test_void_marks_bill_void(client):
+    building, manager = setup_manager(client)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="r@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    bill = _issue(building, manager, resident)
+
+    response = client.post(
+        reverse("web:staff-bill-void", args=[bill.pk]),
+        {"reason": "Issued in error"},
+    )
+
+    assert response.status_code == 302
+    bill.refresh_from_db()
+    assert bill.status == Bill.Status.VOID
+
+
+def test_bill_detail_and_void_are_building_scoped(client):
+    building, manager = setup_manager(client)
+    other = Building.objects.create(name="Tower B")
+    unit = Unit.objects.create(building=other, label="9")
+    resident = User.objects.create_user(email="other@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    bill = Bill.objects.create(
+        building=other,
+        resident=resident,
+        title="Other bill",
+        amount_vnd=250000,
+        document=_document(other, manager, "other"),
+        issued_by=manager,
+    )
+
+    detail = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
+    void = client.post(
+        reverse("web:staff-bill-void", args=[bill.pk]),
+        {"reason": "Not ours"},
+    )
+
+    assert detail.status_code == 404
+    assert void.status_code == 404
+    bill.refresh_from_db()
+    assert bill.status == Bill.Status.ISSUED
