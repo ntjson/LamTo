@@ -160,7 +160,12 @@ def test_confirm_rejects_wrong_reference_and_hides_void_bill():
         headers=_auth(resident),
     )
     assert wrong.status_code == 400
-    assert wrong.json()["code"] == "validation_failed"
+    problem = wrong.json()
+    assert problem["code"] == "validation_failed"
+    assert problem["detail"] == "Request validation failed."
+    assert problem["errors"]["reference"]["message"] == (
+        "This QR does not match the bill."
+    )
 
     void_bill(manager, bill.pk, reason="cancelled")
     hidden = client.post(
@@ -203,4 +208,6 @@ def test_confirm_maps_concurrent_void_to_bill_voided():
         )
 
     assert response.status_code == 409
-    assert response.json()["code"] == "bill_voided"
+    problem = response.json()
+    assert problem["code"] == "bill_voided"
+    assert problem["detail"] == "This bill was voided and can no longer be paid."
