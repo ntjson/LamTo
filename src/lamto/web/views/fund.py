@@ -59,7 +59,7 @@ def fund_home(request):
     series = fund_series(building_id, range_key=range_key)
     window_inflows = sum(row["inflows_vnd"] for row in series)
     window_outflows = sum(row["outflows_vnd"] for row in series)
-    window_closing = series[-1]["balance_vnd"]
+    window_closing = series[-1]["balance_vnd"] if series else 0
     chart_points = [
         {**row, "period_start": row["period_start"].isoformat()} for row in series
     ]

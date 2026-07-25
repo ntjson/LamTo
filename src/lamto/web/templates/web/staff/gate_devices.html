@@ -1,6 +1,23 @@
 {% extends "web/staff/shell.html" %}
-{% block content %}<h1>Gate readers</h1>
-{% if issued_token %}<p>This credential is shown once. Configure the reader now.</p><code>{{ issued_token }}</code>{% endif %}
-<form method="post">{% csrf_token %}<input type="hidden" name="action" value="create"><label>Reader label <input name="label" required maxlength="120"></label><label>Direction <select name="direction" required>{% for value,label in directions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label><button>Register reader</button></form>
-<table><caption>Reader inventory</caption><thead><tr><th>Reader</th><th>Direction</th><th>Status</th><th>Last seen</th><th>Credentials</th><th>Actions</th></tr></thead><tbody>{% for x in devices %}<tr><td>{{ x.label }}</td><td>{{ x.get_direction_display }}</td><td>{% if x.active %}Active{% else %}Inactive{% endif %}</td><td>{{ x.last_seen_hour|default:"Never" }}</td><td>{% for credential in x.credentials.all %}{% if credential.revoked_at %}Revoked{% elif credential.expires_at %}Expires {{ credential.expires_at }}{% else %}Active{% endif %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="revoke"><input type="hidden" name="credential" value="{{ credential.pk }}"><button>Revoke credential</button></form>{% empty %}None{% endfor %}</td><td><form method="post">{% csrf_token %}<input type="hidden" name="action" value="rotate"><input type="hidden" name="device" value="{{ x.pk }}"><button>Rotate credential</button></form></td></tr>{% empty %}<tr><td colspan="6">No readers registered.</td></tr>{% endfor %}</tbody></table>
+{% load i18n %}
+{% block title %}{% trans "Gate readers" %} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>{% trans "Gate readers" %}</h1>
+  {% if issued_token %}<p class="status status-warning">{% trans "This credential is shown once. Configure the reader now." %}</p><code class="hash">{{ issued_token }}</code>{% endif %}
+  <form method="post" class="stack-form workflow-section workflow-primary" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="create"><label for="reader-label">{% trans "Reader label" %}</label><input id="reader-label" name="label" required maxlength="120"><label for="reader-direction">{% trans "Direction" %}</label><select id="reader-direction" name="direction" required>{% for value,label in directions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select><button class="button button-primary">{% trans "Register reader" %}</button></form>
+  <section class="workflow-section">
+    <h2>{% trans "Reader inventory" %}</h2>
+    <ul class="task-list">
+      {% for x in devices %}
+      <li><article class="task-row">
+        <strong class="task-action">{% trans "Manage reader" %}</strong>
+        <span class="task-subject">{{ x.label }} · {{ x.get_direction_display }}</span>
+        <span class="task-meta">{% if x.active %}{% trans "Active" %}{% else %}{% trans "Inactive" %}{% endif %} · {% trans "Last seen" %}: {% if x.last_seen_hour %}{{ x.last_seen_hour }}{% else %}{% trans "Never" %}{% endif %}</span>
+        <div>{% for credential in x.credentials.all %}<p>{% if credential.revoked_at %}{% trans "Credential revoked" %}{% elif credential.expires_at %}{% blocktrans with expiry=credential.expires_at %}Credential expires {{ expiry }}{% endblocktrans %}{% else %}{% trans "Credential active" %}{% endif %}</p><form method="post" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="revoke"><input type="hidden" name="credential" value="{{ credential.pk }}"><button class="button button-secondary">{% trans "Revoke credential" %}</button></form>{% empty %}<p class="hint">{% trans "No credentials." %}</p>{% endfor %}<form method="post" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="rotate"><input type="hidden" name="device" value="{{ x.pk }}"><button class="button button-secondary">{% trans "Rotate credential" %}</button></form></div>
+      </article></li>
+      {% empty %}<li class="empty-state">{% trans "No readers registered." %}</li>{% endfor %}
+    </ul>
+  </section>
+</section>
 {% endblock %}

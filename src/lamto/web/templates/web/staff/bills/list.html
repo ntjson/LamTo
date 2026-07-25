@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n %}
+{% load humanize i18n %}
 {% block title %}{% trans "Bills" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
@@ -15,8 +15,10 @@
     {% for bill in bills %}
     <li>
       <a class="task-row" href="{% url 'web:staff-bill-detail' bill.pk %}">
-        <span class="task-action">{{ bill.title }} · {{ bill.amount_vnd }}đ</span>
+        <span class="task-action">{{ bill.title }}</span>
         <span class="task-subject">{{ bill.get_status_display }} · {{ bill.resident }} · {{ bill.issued_at }}</span>
+        <span class="task-amount">{{ bill.amount_vnd|intcomma }} VND</span>
+        <span class="task-meta"></span>
       </a>
     </li>
     {% empty %}<li>{% trans "No bills have been issued." %}</li>{% endfor %}

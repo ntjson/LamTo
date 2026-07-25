@@ -5,12 +5,14 @@ import json
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.text import Truncator
 from django.views.decorators.http import require_GET, require_http_methods
 
 from lamto.audit.services import record_audit
+from lamto.documents.models import Document
 from lamto.finance.proposals import spending_proposal_cases
 from lamto.maintenance.ai import URGENCIES
 from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion
@@ -25,6 +27,7 @@ from lamto.web.forms.staff import (
     ProgressUpdateForm,
 )
 from lamto.web.staff import require_management_context, staff_context
+from lamto.web.staff_documents import _delete_storage_blob, upload_document
 from lamto.web.views.staff_common import (
     accountability_chain_for,
     deadline_tone,
@@ -165,16 +168,16 @@ def report_detail(request, pk):
         return redirect("web:case-detail", pk=link.case_id)
 
     suggestion = TriageSuggestion.objects.filter(job__report=report).first()
+    action = request.POST.get("action") if request.method == "POST" else None
     form = ConfirmTriageForm(
-        request.POST or None,
+        request.POST if action == "confirm_triage" else None,
         building_id=building_id,
         initial=_triage_initial_from_suggestion(suggestion),
         extra_deadline_minutes=suggestion.deadline_minutes if suggestion else None,
     )
-    info_form = InfoRequestForm(request.POST or None)
-    decline_form = DeclineReportForm(request.POST or None)
+    info_form = InfoRequestForm(request.POST if action == "request_info" else None)
+    decline_form = DeclineReportForm(request.POST if action == "decline" else None)
     if request.method == "POST":
-        action = request.POST.get("action")
         if action == "confirm_triage":
             require_management_context(request)
             if form.is_valid():
@@ -266,15 +269,25 @@ def case_detail(request, pk):
                 messages.success(request, "Case work started.")
             return redirect("web:case-detail", pk=case.pk)
         if action in {"publish_progress", "complete_work"}:
-            work_form = ProgressUpdateForm(request.POST, building_id=building_id, uploader_id=request.user.pk)
+            work_form = ProgressUpdateForm(request.POST, request.FILES, building_id=building_id, uploader_id=request.user.pk)
             if work_form.is_valid():
+                uploaded = []
                 try:
-                    service = complete_case_work if action == "complete_work" else publish_progress
-                    service(case, request.user, work_form.cleaned_data["cause"],
-                            work_form.cleaned_data["result"],
-                            list(work_form.cleaned_data["before_versions"]),
-                            list(work_form.cleaned_data["after_versions"]))
+                    with transaction.atomic():
+                        before = list(work_form.cleaned_data["before_versions"])
+                        after = list(work_form.cleaned_data["after_versions"])
+                        if work_form.cleaned_data.get("before_upload"):
+                            uploaded.append(upload_document(case.building, Document.Kind.BEFORE_PHOTO, request.user, work_form.cleaned_data["before_upload"]))
+                            before.extend(uploaded[-1:])
+                        if work_form.cleaned_data.get("after_upload"):
+                            uploaded.append(upload_document(case.building, Document.Kind.AFTER_PHOTO, request.user, work_form.cleaned_data["after_upload"]))
+                            after.extend(uploaded[-1:])
+                        service = complete_case_work if action == "complete_work" else publish_progress
+                        service(case, request.user, work_form.cleaned_data["cause"],
+                                work_form.cleaned_data["result"], before, after)
                 except (ValidationError, PermissionDenied) as error:
+                    for version in uploaded:
+                        _delete_storage_blob(version.storage_key, version.provider_version_id or "")
                     if isinstance(error, ValidationError):
                         work_form.add_error(None, error)
                     else:

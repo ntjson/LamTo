@@ -10,7 +10,7 @@ from django_otp.util import random_hex
 
 from lamto.accounts.models import Building, ManagementMembership
 from lamto.accounts.security import RECENT_REAUTH_KEY
-from lamto.web.staff import finance_nav_items_for, nav_items_for
+from lamto.web.staff import finance_nav_items_for, gate_nav_items_for, nav_items_for
 
 
 @override_settings(LANGUAGE_CODE="en", ROOT_URLCONF="lamto.config.urls")
@@ -50,6 +50,10 @@ class ManagementShellTests(TestCase):
         self.assertEqual(
             [str(item["label"]) for item in finance_nav_items_for(self.membership)],
             ["Proposals", "Settlements", "Fund"],
+        )
+        self.assertEqual(
+            [str(item["label"]) for item in gate_nav_items_for(self.membership)],
+            ["Review", "Registrations", "Readers", "Activity"],
         )
 
     def test_base_template_uses_the_product_identity(self):

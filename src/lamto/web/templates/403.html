@@ -1,0 +1,10 @@
+{% extends "web/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Access denied" %} · LamTo{% endblock %}
+{% block content %}
+<section class="panel" aria-labelledby="error-heading">
+  <h1 id="error-heading">{% trans "Access denied" %}</h1>
+  <p>{% trans "Sign in with a Management account that has access to this page." %}</p>
+  <a class="button button-primary" href="{% url 'login' %}">{% trans "Go to sign in" %}</a>
+</section>
+{% endblock %}

@@ -1,4 +1,18 @@
 {% extends "web/staff/shell.html" %}
-{% block content %}<h1>Gate activity</h1><p>Rolling 24-hour view</p>
-<table><thead><tr><th>Timestamp</th><th>Direction</th><th>Reader</th><th>Kind</th><th>Identity</th><th>Unit</th><th>Score</th></tr></thead><tbody>{% for x in events %}<tr><td>{{ x.occurred_at }}</td><td>{{ x.get_direction_display }}</td><td>{{ x.device.label }}</td><td>{{ x.get_kind_display }}</td><td>{% if x.matched_occupancy %}{{ x.matched_occupancy.user.display_name }}{% else %}Unrecognized{% endif %}{% if x.normalized_plate_text %} ({{ x.normalized_plate_text }}){% endif %}</td><td>{% if x.matched_occupancy %}{{ x.matched_occupancy.unit.label }}{% endif %}</td><td>{{ x.match_score|default_if_none:"-" }}</td></tr>{% empty %}<tr><td colspan="7">No activity in the rolling window.</td></tr>{% endfor %}</tbody></table>
+{% load i18n %}
+{% block title %}{% trans "Gate activity" %} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header"><h1>{% trans "Gate activity" %}</h1><p class="hint">{% trans "Complete gate event rows are deleted within 24 hours. No durable movement history exists." %}</p></div>
+  <ul class="task-list">
+    {% for x in events %}
+    <li><article class="task-row">
+      <strong class="task-action">{% trans "Deleted within 24 hours" %}</strong>
+      <span class="task-subject">{% if x.matched_occupancy %}{{ x.matched_occupancy.user.display_name }} · {{ x.matched_occupancy.unit.label }}{% else %}{% trans "Unrecognized" %}{% endif %}{% if x.normalized_plate_text %} · {{ x.normalized_plate_text }}{% endif %}</span>
+      <span>{{ x.get_kind_display }}{% if x.match_score is not None %} · {% trans "Score" %} {{ x.match_score }}{% endif %}</span>
+      <span class="task-meta">{{ x.occurred_at }} · {{ x.device.label }} · {{ x.get_direction_display }}</span>
+    </article></li>
+    {% empty %}<li class="empty-state">{% trans "No activity remains in the 24-hour window." %}</li>{% endfor %}
+  </ul>
+</section>
 {% endblock %}

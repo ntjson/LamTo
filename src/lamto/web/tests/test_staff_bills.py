@@ -1,9 +1,11 @@
 import time
+import tempfile
 from xml.etree import ElementTree
 
 import pytest
 import qrcode
 import qrcode.image.svg
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.storage import storages
 from django.test import override_settings
@@ -29,6 +31,13 @@ from lamto.web import bill_views
 
 pytestmark = pytest.mark.django_db
 
+_TEMP = tempfile.mkdtemp(prefix="lamto-bills-")
+_STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+    "private": {"BACKEND": "django.core.files.storage.FileSystemStorage", "OPTIONS": {"location": _TEMP}},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
 
 def setup_manager(client, name="Tower A"):
     building = Building.objects.create(name=name)
@@ -51,8 +60,9 @@ def _pdf():
     )
 
 
-@override_settings(PUSH_ENABLED=False)
-def test_issue_creates_bill_and_delivery(client):
+@override_settings(PUSH_ENABLED=False, STORAGES=_STORAGES)
+def test_issue_creates_bill_and_delivery(client, monkeypatch):
+    monkeypatch.setattr("lamto.web.staff_documents.scan_with_clamav", lambda _file: True)
     building, _manager = setup_manager(client)
     unit = Unit.objects.create(building=building, label="101")
     resident = User.objects.create_user(email="r@x.test", password="pw")
@@ -69,7 +79,7 @@ def test_issue_creates_bill_and_delivery(client):
         },
     )
 
-    assert response.status_code == 302
+    assert response.status_code == 302, response.context["form"].errors.as_json()
     bill = Bill.objects.get()
     assert (bill.resident_id, bill.amount_vnd, bill.status) == (
         resident.pk,
@@ -105,23 +115,11 @@ def test_cross_building_resident_is_rejected(client):
     assert not Bill.objects.exists()
 
 
-@override_settings(PUSH_ENABLED=False)
+@override_settings(PUSH_ENABLED=False, STORAGES=_STORAGES)
 def test_issue_failure_rolls_back_upload_and_deletes_blob(
-    client, monkeypatch, settings, tmp_path
+    client, monkeypatch
 ):
-    settings.STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-            "OPTIONS": {"location": tmp_path},
-        },
-        "private": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-            "OPTIONS": {"location": tmp_path},
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-        },
-    }
+    monkeypatch.setattr("lamto.web.staff_documents.scan_with_clamav", lambda _file: True)
     building, _manager = setup_manager(client)
     unit = Unit.objects.create(building=building, label="101")
     resident = User.objects.create_user(email="r@x.test", password="pw")
@@ -255,6 +253,21 @@ def test_bill_list_rows_navigate_to_detail(client):
     assert client.get(detail_url).status_code == 200
 
 
+def test_bill_amounts_use_grouped_vnd_format(client):
+    building, manager = setup_manager(client)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="resident@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    bill = _issue(building, manager, resident, "vnd-format")
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
+
+    listing = client.get(reverse("web:staff-bill-list"))
+    detail = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
+
+    assert b'<span class="task-amount">250,000 VND</span>' in listing.content
+    assert b"250,000 VND" in detail.content
+
+
 def test_bill_qr_svg_encodes_lamto_bill_payload():
     from lamto.billing.qr import bill_qr_svg
 
@@ -310,12 +323,46 @@ def test_void_marks_bill_void(client):
 
     response = client.post(
         reverse("web:staff-bill-void", args=[bill.pk]),
-        {"reason": "Issued in error"},
+        {"reason": "Issued in error", "confirm": "on"},
     )
 
     assert response.status_code == 302
     bill.refresh_from_db()
     assert bill.status == Bill.Status.VOID
+
+
+def test_void_requires_in_page_confirmation(client):
+    building, manager = setup_manager(client)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="confirm@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    bill = _issue(building, manager, resident, "confirm")
+
+    response = client.post(
+        reverse("web:staff-bill-void", args=[bill.pk]),
+        {"reason": "Issued in error"},
+    )
+
+    assert response.status_code == 200
+    assert b"confirm" in response.content.lower()
+    assert b'id_confirm_error' in response.content
+    assert b"onsubmit=" not in response.content
+    bill.refresh_from_db()
+    assert bill.status == Bill.Status.ISSUED
+
+
+def test_void_confirmation_renders_vietnamese_catalogue(client):
+    building, manager = setup_manager(client)
+    unit = Unit.objects.create(building=building, label="101")
+    resident = User.objects.create_user(email="vi@x.test", password="pw")
+    ResidentOccupancy.objects.create(user=resident, unit=unit)
+    bill = _issue(building, manager, resident, "vi-confirm")
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = "vi"
+
+    response = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
+
+    assert "Việc hủy sẽ đóng hóa đơn và không thể hoàn tác.".encode() in response.content
+    assert "Tôi hiểu rằng việc hủy hóa đơn này không thể hoàn tác.".encode() in response.content
 
 
 def test_bill_detail_and_void_are_building_scoped(client):
@@ -336,7 +383,7 @@ def test_bill_detail_and_void_are_building_scoped(client):
     detail = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
     void = client.post(
         reverse("web:staff-bill-void", args=[bill.pk]),
-        {"reason": "Not ours"},
+        {"reason": "Not ours", "confirm": "on"},
     )
 
     assert detail.status_code == 404

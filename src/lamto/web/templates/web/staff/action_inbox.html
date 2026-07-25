@@ -2,35 +2,34 @@
 {% load i18n humanize static staff_extras %}
 {% block title %}{% trans "Action inbox" %} · LamTo{% endblock %}
 {% block content %}
+<h1 id="inbox-heading">{% trans "Action inbox" %}</h1>
 <section class="panel" aria-labelledby="fund-chart-card-heading">
-  {% if fund_link_ok %}<a class="fund-chart-link" href="{% url 'web:fund-home' %}">{% endif %}
-    <div class="panel-header">
-      <div>
-        <h2 id="fund-chart-card-heading">{% trans "Maintenance fund" %}</h2>
-        <p class="balance-value">
-          <span class="amount">{{ fund_balance_vnd|intcomma }}</span>
-          <span class="currency">VND</span>
-        </p>
-      </div>
+  <div class="panel-header">
+    <div>
+      <h2 id="fund-chart-card-heading">{% trans "Maintenance fund" %}</h2>
+      <p class="balance-value">
+        <span class="amount">{{ fund_balance_vnd|intcomma }}</span>
+        <span class="currency">VND</span>
+      </p>
     </div>
+    {% if fund_link_ok %}<a class="button button-secondary" href="{% url 'web:fund-home' %}">{% trans "View fund" %}</a>{% endif %}
+  </div>
     <div class="chart-box chart-box-compact">
       <canvas id="fund-chart" role="img" data-compact="1"
               aria-label="{% trans 'Fund balance chart' %}"
               data-label-balance="{% trans 'Balance' %}"></canvas>
     </div>
-  {% if fund_link_ok %}</a>{% endif %}
   {{ fund_chart_points|json_script:"fund-chart-data" }}
 </section>
 <section class="panel" aria-labelledby="inbox-heading">
   <div class="panel-header">
     <div>
-      <h1 id="inbox-heading">{% trans "Action inbox" %}</h1>
       <p class="hint">{% blocktrans with building=membership.building.name %}Work assigned to Management at {{ building }}.{% endblocktrans %}</p>
     </div>
     {% if action_page.paginator.count %}<p class="queue-count">{% staff_task_count action_page.paginator.count %}</p>{% endif %}
   </div>
 
-  {% include "web/staff/_list_toolbar.html" with filter_param="status" %}
+  {% include "web/staff/_list_toolbar.html" with filter_param="status" filter_label=_("Task group") %}
 
   {% if action_groups %}
   <div class="task-queue">

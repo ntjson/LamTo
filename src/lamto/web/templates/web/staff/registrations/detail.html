@@ -14,8 +14,8 @@
     <div><dt>{% trans "Status" %}</dt><dd>{{ registration.get_status_display }}</dd></div>
   </dl>
   {% if registration.status == "PENDING" %}
-  <form method="post" action="{% url 'web:staff-registration-approve' registration.pk %}">{% csrf_token %}<button type="submit" class="button">{% trans "Approve" %}</button></form>
-  <form method="post" action="{% url 'web:staff-registration-reject' registration.pk %}">
+  <form method="post" action="{% url 'web:staff-registration-approve' registration.pk %}" data-busy-on-submit>{% csrf_token %}<button type="submit" class="button">{% trans "Approve" %}</button></form>
+  <form method="post" action="{% url 'web:staff-registration-reject' registration.pk %}" data-busy-on-submit>
     {% csrf_token %}
     <label for="rejection-reason">{% trans "Rejection reason" %}</label>
     <textarea id="rejection-reason" name="reason" required></textarea>

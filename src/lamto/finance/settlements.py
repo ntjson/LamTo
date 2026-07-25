@@ -45,6 +45,8 @@ def record_transfer(proposal, membership, *, amount_vnd, payee_name, bank_refere
         raise ValidationError("Settlement already exists for this proposal.")
     if type(amount_vnd) is not int or amount_vnd <= 0:
         raise ValidationError("Settlement amount must be a positive integer VND amount.")
+    if proposal.current_version is None or amount_vnd != proposal.current_version.amount_vnd:
+        raise ValidationError("Settlement amount must match the published proposal amount.")
     payee_name = str(payee_name or "").strip()
     if not payee_name:
         raise ValidationError("Payee name is required.")

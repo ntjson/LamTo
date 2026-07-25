@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.files.storage import storages
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,13 +14,15 @@ from lamto.web.staff import require_management_context, staff_context
 def _context(request, membership, memberships, **extra):
     return staff_context(request, membership, memberships, nav_active="gate", **extra)
 
+@login_required
 @require_GET
 def gate_queue(request):
     membership, memberships = require_management_context(request)
-    return render(request, "web/staff/gate_queue.html", _context(request, membership, memberships,
+    return render(request, "web/staff/gate_queue.html", _context(request, membership, memberships, gate_active="review",
         pending_faces=FaceEnrollment.objects.filter(status=ReviewStatus.PENDING, occupancy__unit__building=membership.building).select_related("occupancy__user", "occupancy__unit"),
         pending_plates=VehiclePlate.objects.filter(status=ReviewStatus.PENDING, building=membership.building).select_related("occupancy__user", "occupancy__unit")))
 
+@login_required
 @require_GET
 def gate_face_photo(request, pk):
     membership, _ = require_management_context(request)
@@ -31,6 +34,7 @@ def gate_face_photo(request, pk):
     response["Pragma"] = "no-cache"
     return response
 
+@login_required
 @require_http_methods(["POST"])
 def gate_face_decide(request, pk):
     membership, _ = require_management_context(request); enrollment = get_object_or_404(FaceEnrollment, pk=pk, occupancy__unit__building=membership.building)
@@ -43,6 +47,7 @@ def gate_face_decide(request, pk):
     except ReviewNotPossible as error: messages.error(request, str(error))
     return redirect(request.POST.get("next") or "web:gate-queue")
 
+@login_required
 @require_http_methods(["POST"])
 def gate_plate_decide(request, pk):
     membership, _ = require_management_context(request); plate = get_object_or_404(VehiclePlate, pk=pk, building=membership.building)
@@ -54,13 +59,15 @@ def gate_plate_decide(request, pk):
     except ReviewNotPossible as error: messages.error(request, str(error))
     return redirect(request.POST.get("next") or "web:gate-queue")
 
+@login_required
 @require_GET
 def gate_registrations(request):
     membership, memberships = require_management_context(request)
-    return render(request, "web/staff/gate_registrations.html", _context(request, membership, memberships,
+    return render(request, "web/staff/gate_registrations.html", _context(request, membership, memberships, gate_active="registrations",
         faces=FaceEnrollment.objects.filter(status=ReviewStatus.APPROVED, occupancy__unit__building=membership.building),
         plates=VehiclePlate.objects.filter(status=ReviewStatus.APPROVED, building=membership.building)))
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def gate_devices(request):
     membership, memberships = require_management_context(request); issued_token = None
@@ -76,9 +83,10 @@ def gate_devices(request):
                 device = GateDevice.objects.create(building=membership.building, label=label, direction=direction); _, issued_token = issue_credential(device, membership)
         elif action == "rotate": _, issued_token = rotate_credential(get_object_or_404(GateDevice, pk=request.POST.get("device"), building=membership.building), membership)
         elif action == "revoke": revoke_credential(get_object_or_404(GateDeviceCredential, pk=request.POST.get("credential"), device__building=membership.building), membership)
-    return render(request, "web/staff/gate_devices.html", _context(request, membership, memberships, devices=GateDevice.objects.filter(building=membership.building).prefetch_related("credentials"), directions=GateDevice.Direction.choices, issued_token=issued_token))
+    return render(request, "web/staff/gate_devices.html", _context(request, membership, memberships, gate_active="devices", devices=GateDevice.objects.filter(building=membership.building).prefetch_related("credentials"), directions=GateDevice.Direction.choices, issued_token=issued_token))
 
+@login_required
 @require_GET
 def gate_log(request):
     membership, memberships = require_management_context(request)
-    return render(request, "web/staff/gate_log.html", _context(request, membership, memberships, events=GateEvent.objects.filter(building=membership.building).select_related("device", "matched_occupancy__user", "matched_occupancy__unit").order_by("-occurred_at")[:500]))
+    return render(request, "web/staff/gate_log.html", _context(request, membership, memberships, gate_active="activity", events=GateEvent.objects.filter(building=membership.building).select_related("device", "matched_occupancy__user", "matched_occupancy__unit").order_by("-occurred_at")[:500]))

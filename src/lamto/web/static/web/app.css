@@ -125,7 +125,7 @@ summary:focus-visible {
   content: "▾";
   margin-inline-start: var(--space-2);
   color: var(--color-muted);
-  font-size: 0.85em;
+  font-size: 0.85rem;
 }
 
 .membership-bar-disclosure {
@@ -379,7 +379,7 @@ h3 {
 }
 
 .status-icon {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
 }
 
 a.status {
@@ -395,7 +395,9 @@ button.button {
   min-width: var(--touch);
   padding: 0.65rem 1rem;
   border-radius: 10px;
-  border: 1px solid transparent;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-brand);
   font: inherit;
   font-weight: 600;
   text-decoration: none;
@@ -420,6 +422,7 @@ button.button {
   background: var(--color-brand-hover);
 }
 
+.button:active,
 .button-primary:active,
 .button-secondary:active {
   transform: translateY(1px);
@@ -431,6 +434,7 @@ button.button {
   border-color: var(--color-border);
 }
 
+.button:not(.button-primary):hover,
 .button-secondary:hover {
   background: var(--color-bg);
   border-color: var(--color-brand);
@@ -535,6 +539,11 @@ button.button:disabled {
 
 .task-row:focus-visible {
   background: var(--color-bg);
+}
+
+.task-row img {
+  max-width: 100%;
+  height: auto;
 }
 
 .task-action {
@@ -739,20 +748,23 @@ code {
 }
 
 
-.finance-nav {
+.finance-nav,
+.gate-nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
 
-.finance-nav {
+.finance-nav,
+.gate-nav {
   padding: var(--space-2) var(--space-4);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
 .finance-nav a,
+.gate-nav a,
 .back-link {
   min-height: var(--touch);
   display: inline-flex;
@@ -760,18 +772,22 @@ code {
   font-weight: 600;
 }
 
-.finance-nav a {
+.finance-nav a,
+.gate-nav a {
   padding: var(--space-1) var(--space-3);
   border-radius: 999px;
   text-decoration: none;
 }
 
-.finance-nav a:hover {
+.finance-nav a:hover,
+.gate-nav a:hover {
   background: var(--color-bg);
 }
 
 .finance-nav a.is-active,
-.finance-nav a.is-active:hover {
+.finance-nav a.is-active:hover,
+.gate-nav a.is-active,
+.gate-nav a.is-active:hover {
   background: var(--color-brand);
   color: var(--color-brand-ink);
 }
@@ -889,7 +905,8 @@ code {
 }
 
 .accountability-stage-state {
-  color: var(--color-muted);
+  color: inherit;
+  font-weight: 700;
 }
 
 .accountability-stage-complete {

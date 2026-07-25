@@ -1,20 +1,45 @@
 {% extends "web/staff/shell.html" %}
+{% load i18n %}
+{% block title %}{% trans "Gate review" %} · LamTo{% endblock %}
 {% block content %}
-<h1>Gate review</h1>
-<h2>Faces</h2>
-{% for x in pending_faces %}
-<article>
-  <img src="{% url 'web:gate-face-photo' x.pk %}" alt="Enrollment photo for {{ x.occupancy.user.display_name }}" width="320">
-  <h3>{{ x.occupancy.user.display_name }}</h3><p>Unit {{ x.occupancy.unit.label }}</p>
-  <form method="post" action="{% url 'web:gate-face-decide' x.pk %}">{% csrf_token %}<button name="decision" value="approve">Approve</button></form>
-  <form method="post" action="{% url 'web:gate-face-decide' x.pk %}">{% csrf_token %}<label>Rejection reason <input name="note" required maxlength="255"></label><button name="decision" value="reject">Reject</button></form>
-</article>
-{% empty %}<p>No faces waiting for review.</p>{% endfor %}
-<h2>Plates</h2>
-{% for x in pending_plates %}
-<article><h3>{{ x.plate }}</h3><p>{{ x.occupancy.user.display_name }}, unit {{ x.occupancy.unit.label }}</p>
-  <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}">{% csrf_token %}<button name="decision" value="approve">Approve</button></form>
-  <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}">{% csrf_token %}<label>Rejection reason <input name="note" required maxlength="255"></label><button name="decision" value="reject">Reject</button></form>
-</article>
-{% empty %}<p>No plates waiting for review.</p>{% endfor %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>{% trans "Gate review" %}</h1>
+    <p class="hint">{% trans "Review resident face and vehicle plate enrolments." %}</p>
+  </div>
+  <section class="workflow-section">
+    <h2>{% trans "Faces" %}</h2>
+    <ul class="task-list">
+      {% for x in pending_faces %}
+      <li>
+        <article class="task-row task-row-simple">
+          <img src="{% url 'web:gate-face-photo' x.pk %}" alt="{% blocktrans with resident=x.occupancy.user.display_name %}Enrollment photo for {{ resident }}{% endblocktrans %}" width="320">
+          <div><strong class="task-action">{{ x.occupancy.user.display_name }}</strong><p class="task-subject">{% blocktrans with unit=x.occupancy.unit.label %}Unit {{ unit }}{% endblocktrans %}</p></div>
+          <div>
+            <form method="post" action="{% url 'web:gate-face-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<button class="button button-primary" name="decision" value="approve">{% trans "Approve" %}</button></form>
+            <form method="post" action="{% url 'web:gate-face-decide' x.pk %}" class="stack-form" data-busy-on-submit>{% csrf_token %}<label for="face-reject-reason-{{ x.pk }}">{% trans "Rejection reason" %}</label><input id="face-reject-reason-{{ x.pk }}" name="note" required maxlength="255"><button class="button button-secondary" name="decision" value="reject">{% trans "Reject" %}</button></form>
+          </div>
+        </article>
+      </li>
+      {% empty %}<li class="empty-state">{% trans "No faces are waiting for review." %}</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="workflow-section">
+    <h2>{% trans "Plates" %}</h2>
+    <ul class="task-list">
+      {% for x in pending_plates %}
+      <li>
+        <article class="task-row task-row-simple">
+          <strong class="task-action">{{ x.plate }}</strong>
+          <p class="task-subject">{% blocktrans with resident=x.occupancy.user.display_name unit=x.occupancy.unit.label %}{{ resident }}, unit {{ unit }}{% endblocktrans %}</p>
+          <div>
+            <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<button class="button button-primary" name="decision" value="approve">{% trans "Approve" %}</button></form>
+            <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}" class="stack-form" data-busy-on-submit>{% csrf_token %}<label for="plate-reject-reason-{{ x.pk }}">{% trans "Rejection reason" %}</label><input id="plate-reject-reason-{{ x.pk }}" name="note" required maxlength="255"><button class="button button-secondary" name="decision" value="reject">{% trans "Reject" %}</button></form>
+          </div>
+        </article>
+      </li>
+      {% empty %}<li class="empty-state">{% trans "No plates are waiting for review." %}</li>{% endfor %}
+    </ul>
+  </section>
+</section>
 {% endblock %}

@@ -179,9 +179,12 @@ class ListPatternTests(TestCase):
         self.assertNotContains(filtered, f"Proposal #{in_review.pk}")
 
         review = self.client.get(
-            reverse("web:proposal-list"), {"status": "review"}
+            reverse("web:proposal-list"), {"status": Proposal.Status.PUBLISHED}
         )
         self.assertNotContains(review, f"Proposal #{draft.pk}")
         self.assertContains(review, f"Proposal #{in_review.pk}")
-        for label in ("Preparing", "Review", "Authorized"):
+        self.assertContains(review, '<label for="record-filter">Status')
+        for label in ("Draft", "Published", "Not proceeding", "In progress", "Completed", "Closed"):
             self.assertContains(review, label)
+        self.assertNotContains(review, "Review and decide")
+        self.assertNotContains(review, "Authorized")

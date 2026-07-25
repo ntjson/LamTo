@@ -10,7 +10,7 @@
       <p class="hint">{% trans "Spending proposals for this building, from draft through publication. Each row shows the next step." %}</p>
     </div>
   </div>
-  {% include "web/staff/_list_toolbar.html" %}
+  {% include "web/staff/_list_toolbar.html" with filter_label=_("Status") %}
   {% include "web/staff/_list.html" with items=proposal_items empty_label=_("No proposals need attention.") %}
 </section>
 {% else %}
@@ -20,12 +20,13 @@
   <div class="record-layout">
     <div class="record-summary">
       {% if version %}<p class="lede">{{ version.purpose }}</p>{% endif %}
+      {% if version %}<p>{% trans "The amount, contractor, scope, schedule, and quotation evidence are frozen." %} {% include "web/staff/_evidence_level.html" with event=version.outbox_event %}</p>{% endif %}
       <dl class="detail-list detail-list-wide">
         <div><dt>{% trans "Status" %}</dt><dd>{{ proposal.get_status_display }}</dd></div>
         {% if version %}
         <div><dt>{% trans "Amount" %}</dt><dd>{{ version.amount_vnd|intcomma }} VND</dd></div>
         <div><dt>{% trans "Contractor" %}</dt><dd>{{ version.contractor_name }}</dd></div>
-        <div><dt>{% trans "Maintenance case" %}</dt><dd><a href="{% url 'web:case-detail' proposal.case_id %}">{{ proposal.case.category }} · {% blocktrans with id=proposal.case_id %}Case #{{ id }}{% endblocktrans %}</a></dd></div>
+        {% if proposal.case_id %}<div><dt>{% trans "Maintenance case" %}</dt><dd><a href="{% url 'web:case-detail' proposal.case_id %}">{{ proposal.case.category }} · {% blocktrans with id=proposal.case_id %}Case #{{ id }}{% endblocktrans %}</a></dd></div>{% endif %}
         <div><dt>{% trans "Evidence" %}</dt><dd>{% blocktrans count counter=version.quotations.count %}{{ counter }} quotation file linked{% plural %}{{ counter }} quotation files linked{% endblocktrans %}</dd></div>
         {% endif %}
       </dl>
@@ -42,13 +43,30 @@
           <div><dt>{% trans "Verification" %}</dt><dd>{{ version.verification_label|default:_("Not yet verified") }}</dd></div>
           <div><dt>{% trans "Mode" %}</dt><dd>{{ proposal.mode }}</dd></div>
         </dl>
-        <h3>{% trans "Signed snapshot" %}</h3>
+        <h2>{% trans "Signed snapshot" %}</h2>
         <pre id="snapshot-json">{{ version.snapshot }}</pre>
       </details>
       {% endif %}
     </div>
 
     <div class="record-action">
+      {% if can_publish %}
+      <div class="workflow-section workflow-primary">
+        <h2>{% trans "Publish settled expense" %}</h2>
+        <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
+        <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form.as_p }}<button type="submit" class="button button-primary">{% trans "Publish to resident ledger" %}</button></form>
+      </div>
+      {% elif proposal.status == "PUBLISHED" %}
+      <div class="workflow-section workflow-primary">
+        <h2>{% trans "Decide whether to proceed" %}</h2>
+        <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="decide"><label><input type="checkbox" name="proceed"> {% trans "Proceed with this proposal" %}</label><label>{% trans "Decision note" %}<textarea name="note" class="input"></textarea></label><button type="submit" class="button button-primary">{% trans "Record decision" %}</button></form>
+      </div>
+      {% elif proposal.status == "IN_PROGRESS" %}
+      <div class="workflow-section workflow-primary">
+        <h2>{% trans "Publish work progress" %}</h2>
+        <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form.as_p }}<button name="action" value="progress" class="button button-secondary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-primary">{% trans "Complete work" %}</button></form>
+      </div>
+      {% endif %}
       {% if publication_pending %}
       <div class="workflow-section">
         <h2>{% trans "Publication awaiting confirmation" %}</h2>
@@ -69,6 +87,10 @@
         </dl>
         {% endif %}
       </div>
+      {% elif publication_problem == "FAILED" %}
+      <div class="workflow-section"><h2>{% trans "Evidence anchoring failed" %}</h2><p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "The signed proposal is saved, but anchoring failed. Review Operations health before retrying any action." %}</p><a class="button button-secondary" href="{% url 'web:ops-health' %}">{% trans "Review Operations health" %}</a></div>
+      {% elif publication_problem == "MISMATCH" %}
+      <div class="workflow-section"><h2>{% trans "Evidence mismatch detected" %}</h2><p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "The saved proposal does not match independently observed evidence. Stop and review Operations health." %}</p><a class="button button-secondary" href="{% url 'web:ops-health' %}">{% trans "Review Operations health" %}</a></div>
       {% elif not can_publish %}
       <p class="empty">{% trans "No action is assigned to this membership. Review the proposal summary and return to the action inbox." %}</p>
       {% endif %}

@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n %}
+{% load humanize i18n %}
 {% block title %}{{ bill.title }} · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
@@ -7,7 +7,7 @@
   <h1>{{ bill.title }}</h1>
   <dl class="detail-list detail-list-wide">
     <div><dt>{% trans "Resident" %}</dt><dd>{{ bill.resident }}</dd></div>
-    <div><dt>{% trans "Amount" %}</dt><dd>{{ bill.amount_vnd }}đ</dd></div>
+    <div><dt>{% trans "Amount" %}</dt><dd>{{ bill.amount_vnd|intcomma }} VND</dd></div>
     <div><dt>{% trans "Status" %}</dt><dd>{{ bill.get_status_display }}</dd></div>
     {% if bill.status == "PAID" %}
     <div><dt>{% trans "Payment" %}</dt><dd>{% trans "Resident-reported, not bank-verified" %} · {{ bill.paid_confirmed_by }} · {{ bill.paid_at }}</dd></div>
@@ -16,9 +16,10 @@
   {% if bill.status == "ISSUED" %}
   <h2>{% trans "Payment QR (demo)" %}</h2>
   <div class="qr">{{ qr_svg }}</div>
-  <form method="post" action="{% url 'web:staff-bill-void' bill.pk %}" onsubmit="return confirm('{% trans "Void this bill?" %}');">
+  <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "Voiding closes this bill and cannot be undone. Confirm the bill and reason before continuing." %}</p>
+  <form method="post" action="{% url 'web:staff-bill-void' bill.pk %}" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
-    <label>{% trans "Reason" %} <input type="text" name="reason" required></label>
+    {{ void_form.as_p }}
     <button type="submit" class="button button-secondary">{% trans "Void bill" %}</button>
   </form>
   {% endif %}

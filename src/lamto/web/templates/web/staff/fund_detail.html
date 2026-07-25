@@ -77,7 +77,8 @@
       {% endfor %}
     </ul>
   </div>
-  {% elif pending %}
+  {% endif %}
+  {% if pending %}
   <div class="workflow-section workflow-primary">
     <h2>{% trans "Publish settled expenses" %}</h2>
     <p class="hint">{% trans "Publication-eligible payments waiting to appear on the resident ledger." %}</p>
@@ -102,7 +103,8 @@
     <ul class="task-list">
       {% for entry in entries %}
       <li>
-        <div class="task-row task-row-simple">
+        <div class="task-row">
+          <span class="task-action">{% trans "Verified entry" %}</span>
           <span class="task-subject">#{{ entry.pk }} · {{ entry.get_entry_type_display }}</span>
           <span class="task-amount">{{ entry.amount_vnd|intcomma }} VND</span>
           <span class="task-meta"><span>{% trans "Recorded" %} {{ entry.recorded_at|staff_datetime }}</span></span>
@@ -115,26 +117,9 @@
     {% include "web/staff/_pagination.html" with list_meta=entries_list pagination_label=_("Verified entry pages") %}
   </div>
 
-  {% if pending_verification and pending %}
-  <div class="workflow-section">
-    <h2>{% trans "Pending reconciliation" %}</h2>
-    <p class="hint">{% trans "Publication-eligible but not yet published to the resident ledger." %}</p>
-    <ul class="task-list">
-      {% for proposal in pending %}
-      <li>
-        <a class="task-row" href="{% url 'web:proposal-detail' proposal.pk %}">
-          <span class="task-action">{% trans "Prepare publication" %}</span>
-          <span class="task-subject">{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}</span>
-          <span class="task-amount">{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}<span class="sr-only">{% trans "No amount recorded" %}</span><span aria-hidden="true">—</span>{% endif %}</span>
-          <span class="task-meta"></span>
-        </a>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
 </section>
 {% else %}
+<h1>{% if mode == "verify" %}{% blocktrans with id=entry.pk %}Verify fund source #{{ id }}{% endblocktrans %}{% else %}{% trans "Record fund source" %}{% endif %}</h1>
 {% include "web/staff/_fund_forms.html" %}
 {% endif %}
 {% endblock %}

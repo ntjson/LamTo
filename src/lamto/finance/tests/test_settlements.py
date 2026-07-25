@@ -15,6 +15,16 @@ from lamto.maintenance.cases import close_expired_completed_cases
 
 
 class SettlementTests(TestCase):
+    def test_transfer_amount_must_match_frozen_proposal_amount(self):
+        proposal, version = self.completed()
+        proof = self.document(Document.Kind.PAYMENT_PROOF, "mismatch")
+
+        with self.assertRaisesMessage(ValidationError, "must match the published proposal amount"):
+            record_transfer(
+                proposal, self.membership, amount_vnd=version.amount_vnd + 1,
+                payee_name="Payee", bank_reference="REF", transfer=proof,
+            )
+
     @classmethod
     def setUpTestData(cls):
         cls.building = Building.objects.create(name="B1")

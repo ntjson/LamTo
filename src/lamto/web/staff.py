@@ -81,6 +81,15 @@ def finance_nav_items_for(membership) -> list[dict[str, str]]:
     ]
 
 
+def gate_nav_items_for(membership) -> list[dict[str, str]]:
+    return [
+        {"label": _("Review"), "url_name": "web:gate-queue", "active_key": "review"},
+        {"label": _("Registrations"), "url_name": "web:gate-registrations", "active_key": "registrations"},
+        {"label": _("Readers"), "url_name": "web:gate-devices", "active_key": "devices"},
+        {"label": _("Activity"), "url_name": "web:gate-log", "active_key": "activity"},
+    ]
+
+
 def staff_context(request, membership, memberships, *, nav_active=None, **extra):
     nav_items = nav_items_for(membership)
     for item in nav_items:
@@ -92,6 +101,7 @@ def staff_context(request, membership, memberships, *, nav_active=None, **extra)
         "nav_items": nav_items,
         "nav_active": nav_active,
         "finance_nav_items": finance_nav_items_for(membership),
+        "gate_nav_items": gate_nav_items_for(membership),
         **extra,
     }
 

@@ -37,9 +37,9 @@
       {% for item in settlements %}
       <li>
         <a class="task-row task-row-simple" href="{% url 'web:settlement-detail' item.pk %}">
+          <span class="task-action">{% if item.ack %}{% trans "Review settlement" %}{% else %}{% trans "Record acknowledgement" %}{% endif %}</span>
           <span class="task-subject">{% blocktrans with id=item.pk %}Settlement #{{ id }}{% endblocktrans %}</span>
           <span class="task-amount">{{ item.amount_vnd|intcomma }} VND</span>
-          <span class="task-meta"></span>
         </a>
       </li>
       {% empty %}

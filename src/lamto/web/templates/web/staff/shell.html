@@ -64,12 +64,23 @@
   </nav>
   {% endif %}
 
-  {% if messages %}
-  <ul class="messages">
-    {% for message in messages %}
-    <li class="message message-{{ message.tags }}" role="{% if 'error' in message.tags %}alert{% else %}status{% endif %}">{{ message }}</li>
+  {% if nav_active == "gate" and gate_nav_items %}
+  <nav class="gate-nav" aria-label="{% trans 'Gate' %}">
+    {% for item in gate_nav_items %}
+    <a href="{% url item.url_name %}"{% if gate_active == item.active_key %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
     {% endfor %}
-  </ul>
+  </nav>
+  {% endif %}
+
+  {% if messages %}
+  <section aria-labelledby="messages-heading">
+    <h2 id="messages-heading" class="sr-only">{% trans "Messages" %}</h2>
+    <ul class="messages">
+    {% for message in messages %}
+    <li class="message message-{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  </section>
   {% endif %}
 
   <main id="main" class="site-main" role="main">

@@ -10,7 +10,7 @@
       <p class="hint">{% trans "Open resident reports awaiting triage, and active maintenance cases with their next step and deadline." %}</p>
     </div>
   </div>
-  {% include "web/staff/_list_toolbar.html" with list_meta=case_list filters=filters filters_active=filters_active filter_param=filter_param %}
+  {% include "web/staff/_list_toolbar.html" with list_meta=case_list filters=filters filters_active=filters_active filter_param=filter_param filter_label=_("Urgency") %}
   <div class="workflow-section">
     <h2>{% trans "Open reports" %}</h2>
     {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label=_("Open report pages") empty_label=_("No open reports.") only %}
@@ -76,7 +76,7 @@
       {% if ratings %}
       <div class="workflow-section">
         <h2>{% trans "Ratings" %}</h2>
-        <ul>{% for rating in ratings %}<li>{{ rating.resident }}: {{ rating.satisfied|yesno:"Satisfied,Not satisfied" }}</li>{% endfor %}</ul>
+        <ul>{% for rating in ratings %}<li>{{ rating.resident }}: {% if rating.satisfied %}{% trans "Satisfied" %}{% else %}{% trans "Not satisfied" %}{% endif %}</li>{% endfor %}</ul>
       </div>
       {% endif %}
       {% endif %}
@@ -122,7 +122,7 @@
       </div>
       <div class="workflow-section workflow-primary">
         <h2>{% trans "Publish progress" %}</h2>
-        <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Publish progress' %}">
+        <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit aria-label="{% trans 'Publish progress' %}">
           {% csrf_token %}
           {{ work_form.as_p }}
           <button name="action" value="publish_progress" type="submit" class="button button-secondary">{% trans "Publish progress" %}</button>

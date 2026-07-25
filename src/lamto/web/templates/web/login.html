@@ -1,9 +1,10 @@
 {% extends "web/base.html" %}
-{% block title %}Sign in · LamTo{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Sign in" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="login-heading">
-  <h1 id="login-heading">Sign in</h1>
-  <p class="lede">Use your account email or phone number, and your password.</p>
+  <h1 id="login-heading">{% trans "Sign in" %}</h1>
+  <p class="lede">{% trans "Use your account email or phone number, and your password." %}</p>
   <form method="post" class="stack-form">
     {% csrf_token %}
     {% if form.non_field_errors %}
@@ -16,7 +17,7 @@
       {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
     </div>
     {% endfor %}
-    <button type="submit" class="button button-primary">Sign in</button>
+    <button type="submit" class="button button-primary">{% trans "Sign in" %}</button>
   </form>
 </section>
 {% endblock %}

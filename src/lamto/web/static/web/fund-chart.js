@@ -8,14 +8,16 @@
   var points = JSON.parse(dataEl.textContent);
   if (!points.length) return;
   var compact = canvas.dataset.compact === "1";
+  var palette = getComputedStyle(document.documentElement);
+  var color = function (name) { return palette.getPropertyValue(name).trim(); };
   var vnd = function (v) { return Number(v).toLocaleString("vi-VN"); };
   var datasets = [
     {
       type: "line",
       label: canvas.dataset.labelBalance || "Balance",
       data: points.map(function (p) { return p.balance_vnd; }),
-      borderColor: "#3f51b5",
-      backgroundColor: "rgba(63, 81, 181, 0.12)",
+      borderColor: color("--color-brand"),
+      backgroundColor: color("--color-surface-muted"),
       fill: true,
       tension: 0.2,
       pointRadius: compact ? 0 : 2,
@@ -28,14 +30,14 @@
         type: "bar",
         label: canvas.dataset.labelInflows || "Inflows",
         data: points.map(function (p) { return p.inflows_vnd; }),
-        backgroundColor: "rgba(46, 125, 50, 0.6)",
+        backgroundColor: color("--color-success"),
         order: 1,
       },
       {
         type: "bar",
         label: canvas.dataset.labelOutflows || "Outflows",
         data: points.map(function (p) { return p.outflows_vnd; }),
-        backgroundColor: "rgba(198, 40, 40, 0.6)",
+        backgroundColor: color("--color-error"),
         order: 1,
       }
     );
@@ -48,7 +50,7 @@
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      animation: false,
       interaction: { mode: "index", intersect: false },
       scales: {
         x: { ticks: { display: !compact } },

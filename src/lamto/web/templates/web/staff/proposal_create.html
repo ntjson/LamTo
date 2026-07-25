@@ -9,6 +9,7 @@
   <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
     {% csrf_token %}
     <input type="hidden" name="action" value="prepare">
+    <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "Publishing freezes the amount, contractor, scope, schedule, and quotation evidence. The published proposal cannot be edited." %}</p>
     {{ create_form.as_p }}
     <p class="hint">{% trans "Upload the quotation (PDF). Amounts are integer VND." %}</p>
     <button type="submit" class="button button-primary">{% trans "Publish proposal" %}</button>

@@ -5,7 +5,7 @@
 <section class="panel">
   <h1>{% trans "Announcements" %}</h1>
   <p class="hint">{% blocktrans with building=membership.building.name %}Notices for {{ building }}.{% endblocktrans %}</p>
-  <form method="post" action="{% url 'web:staff-announcement-create' %}">
+  <form method="post" action="{% url 'web:staff-announcement-create' %}" data-busy-on-submit>
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit" class="button">{% trans "Publish announcement" %}</button>

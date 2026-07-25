@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 
 class BillForm(forms.Form):
@@ -15,3 +16,11 @@ class BillForm(forms.Form):
     def __init__(self, *args, resident_choices=(), **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["resident"].choices = list(resident_choices)
+
+
+class VoidBillForm(forms.Form):
+    reason = forms.CharField(max_length=500, label=_("Reason"))
+    confirm = forms.BooleanField(
+        required=True,
+        label=_("I understand voiding this bill cannot be undone."),
+    )

@@ -1,5 +1,4 @@
 {% load i18n humanize staff_extras %}
-<h1>{% blocktrans with id=entry.pk %}Verify fund source #{{ id }}{% endblocktrans %}</h1>
 <dl class="detail-list">
   <div><dt>{% trans "Type" %}</dt><dd>{{ entry.get_entry_type_display }}</dd></div>
   <div><dt>{% trans "Amount" %}</dt><dd>{{ entry.amount_vnd|intcomma }} VND</dd></div>
@@ -10,7 +9,6 @@
 {% elif verify_form %}
 <div class="workflow-section">
   <h2>{% trans "Verify source" %}</h2>
-  <p class="hint">{% trans "A source recorder cannot verify their own source." %}</p>
   <form method="post" class="stack-form">
     {% csrf_token %}
     {{ verify_form.as_p }}

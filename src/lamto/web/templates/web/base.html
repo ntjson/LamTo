@@ -1,33 +1,33 @@
-{% load static %}
+{% load i18n static %}
+{% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2f3a8f">
-  <meta name="description" content="LÀM TỔ — maintenance accountability for residents">
   <title>{% block title %}LÀM TỔ{% endblock %}</title>
   <link rel="icon" type="image/png" href="{% static 'web/brand/favicon.png' %}">
   <link rel="stylesheet" href="{% static 'web/app.css' %}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">{% trans "Skip to content" %}</a>
   <header class="site-header" role="banner">
     <div class="brand">
       <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="">
       <span class="brand-name">LÀM TỔ</span>
     </div>
-    {% if occupancy %}
-    <p class="building-label">{{ occupancy.unit.building.name }} · Unit {{ occupancy.unit.label }}</p>
-    {% endif %}
   </header>
 
   {% if messages %}
-  <ul class="messages" role="status">
+  <section aria-labelledby="messages-heading">
+    <h2 id="messages-heading" class="sr-only">{% trans "Messages" %}</h2>
+    <ul class="messages">
     {% for message in messages %}
     <li class="message message-{{ message.tags }}">{{ message }}</li>
     {% endfor %}
-  </ul>
+    </ul>
+  </section>
   {% endif %}
 
   <main id="main" class="site-main" role="main">

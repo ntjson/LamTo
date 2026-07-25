@@ -11,7 +11,7 @@ from lamto.billing.models import Bill
 from lamto.billing.qr import bill_qr_svg
 from lamto.billing.services import BillError, issue_bill, void_bill
 from lamto.documents.models import Document
-from lamto.web.forms.bills import BillForm
+from lamto.web.forms.bills import BillForm, VoidBillForm
 from lamto.web.staff import require_management_context, staff_context
 from lamto.web.staff_documents import _delete_storage_blob, upload_document
 
@@ -135,6 +135,7 @@ def bill_detail(request, pk):
             nav_active="bills",
             bill=bill,
             qr_svg=mark_safe(bill_qr_svg(bill.reference)),
+            void_form=VoidBillForm(),
         ),
     )
 
@@ -142,10 +143,16 @@ def bill_detail(request, pk):
 @login_required
 @require_POST
 def bill_void(request, pk):
-    membership, _memberships = require_management_context(request)
+    membership, memberships = require_management_context(request)
     bill = _bill_for(membership, pk)
+    form = VoidBillForm(request.POST)
+    if not form.is_valid():
+        return render(request, "web/staff/bills/detail.html", staff_context(
+            request, membership, memberships, nav_active="bills", bill=bill,
+            qr_svg=mark_safe(bill_qr_svg(bill.reference)), void_form=form,
+        ))
     try:
-        void_bill(request.user, bill.pk, reason=request.POST.get("reason", ""))
+        void_bill(request.user, bill.pk, reason=form.cleaned_data["reason"])
     except BillError as error:
         messages.error(request, str(error))
     else:

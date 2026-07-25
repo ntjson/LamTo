@@ -168,3 +168,441 @@ msgstr "6 tháng"
 
 msgid "12 months"
 msgstr "12 tháng"
+
+msgid "Reason"
+msgstr "Lý do"
+
+msgid "I understand voiding this bill cannot be undone."
+msgstr "Tôi hiểu rằng việc hủy hóa đơn này không thể hoàn tác."
+
+msgid "Cause"
+msgstr "Nguyên nhân"
+
+msgid "Result"
+msgstr "Kết quả"
+
+msgid "Before photos"
+msgstr "Ảnh trước khi thực hiện"
+
+msgid "After photos"
+msgstr "Ảnh sau khi thực hiện"
+
+msgid "Upload a new before photo"
+msgstr "Tải lên ảnh mới trước khi thực hiện"
+
+msgid "Upload a new after photo"
+msgstr "Tải lên ảnh mới sau khi thực hiện"
+
+msgid "Amount (VND)"
+msgstr "Số tiền (VND)"
+
+msgid "Payee name"
+msgstr "Tên người nhận"
+
+msgid "Bank reference"
+msgstr "Mã tham chiếu ngân hàng"
+
+msgid "Existing payment proof"
+msgstr "Bằng chứng thanh toán hiện có"
+
+msgid "Upload new payment proof"
+msgstr "Tải lên bằng chứng thanh toán mới"
+
+msgid "Select evidence…"
+msgstr "Chọn bằng chứng…"
+
+msgid "Select existing evidence or upload a new payment proof."
+msgstr "Chọn bằng chứng hiện có hoặc tải lên bằng chứng thanh toán mới."
+
+msgid "Contractor name"
+msgstr "Tên nhà thầu"
+
+msgid "Fund code"
+msgstr "Mã quỹ"
+
+msgid "Purpose"
+msgstr "Mục đích"
+
+msgid "Proposed action"
+msgstr "Hành động đề xuất"
+
+msgid "Expected schedule"
+msgstr "Lịch dự kiến"
+
+msgid "Quotation"
+msgstr "Báo giá"
+
+msgid "I understand publication freezes this proposal and it cannot be edited."
+msgstr "Tôi hiểu rằng việc công bố sẽ cố định đề xuất này và không thể chỉnh sửa."
+
+msgid "I confirm this settled expense is ready for the resident ledger."
+msgstr "Tôi xác nhận khoản chi đã quyết toán này sẵn sàng để đưa vào sổ cư dân."
+
+msgid "Review"
+msgstr "Xem xét"
+
+msgid "Registrations"
+msgstr "Đăng ký"
+
+msgid "Readers"
+msgstr "Thiết bị đọc"
+
+msgid "Activity"
+msgstr "Hoạt động"
+
+msgid "Messages"
+msgstr "Thông báo"
+
+msgid "Sign in"
+msgstr "Đăng nhập"
+
+msgid "Use your account email or phone number, and your password."
+msgstr "Sử dụng email hoặc số điện thoại của tài khoản và mật khẩu của bạn."
+
+msgid "Authenticator setup"
+msgstr "Thiết lập ứng dụng xác thực"
+
+msgid "Verify authenticator"
+msgstr "Xác minh ứng dụng xác thực"
+
+msgid "Set up authenticator (TOTP)"
+msgstr "Thiết lập ứng dụng xác thực (TOTP)"
+
+msgid "Scan this configuration with your authenticator app, then enter a 6-digit code."
+msgstr "Quét cấu hình này bằng ứng dụng xác thực, sau đó nhập mã gồm 6 chữ số."
+
+msgid "Enter the current code from your authenticator app."
+msgstr "Nhập mã hiện tại từ ứng dụng xác thực của bạn."
+
+msgid "Authentication code"
+msgstr "Mã xác thực"
+
+msgid "Verify"
+msgstr "Xác minh"
+
+msgid "Confirm enrollment"
+msgstr "Xác nhận đăng ký"
+
+msgid "Generate new secret"
+msgstr "Tạo khóa bí mật mới"
+
+msgid "Re-authenticate"
+msgstr "Xác thực lại"
+
+msgid "Confirm it is you"
+msgstr "Xác nhận đây là bạn"
+
+msgid "Sensitive financial actions require password and authenticator code within the last five minutes."
+msgstr "Các hành động tài chính nhạy cảm yêu cầu mật khẩu và mã xác thực trong vòng năm phút gần nhất."
+
+msgid "Password"
+msgstr "Mật khẩu"
+
+msgid "Authenticator code"
+msgstr "Mã ứng dụng xác thực"
+
+msgid "Confirm"
+msgstr "Xác nhận"
+
+msgid "Chain confirmed"
+msgstr "Đã xác nhận trên chuỗi"
+
+msgid "Locally signed"
+msgstr "Đã ký cục bộ"
+
+msgid "Mismatch"
+msgstr "Không khớp"
+
+msgid "Pending"
+msgstr "Đang chờ"
+
+msgid "Maintenance fund"
+msgstr "Quỹ bảo trì"
+
+msgid "View fund"
+msgstr "Xem quỹ"
+
+msgid "Task group"
+msgstr "Nhóm công việc"
+
+msgid "Voiding closes this bill and cannot be undone. Confirm the bill and reason before continuing."
+msgstr "Việc hủy sẽ đóng hóa đơn và không thể hoàn tác. Hãy xác nhận hóa đơn và lý do trước khi tiếp tục."
+
+msgid "Urgency"
+msgstr "Mức khẩn cấp"
+
+msgid "Satisfied"
+msgstr "Hài lòng"
+
+msgid "Not satisfied"
+msgstr "Không hài lòng"
+
+msgid "Verified entry"
+msgstr "Bút toán đã xác minh"
+
+msgid "Verify fund source #%(id)s"
+msgstr "Xác minh nguồn quỹ #%(id)s"
+
+msgid "Record fund source"
+msgstr "Ghi nhận nguồn quỹ"
+
+msgid "Gate readers"
+msgstr "Thiết bị đọc cổng"
+
+msgid "This credential is shown once. Configure the reader now."
+msgstr "Thông tin xác thực này chỉ hiển thị một lần. Hãy cấu hình thiết bị đọc ngay."
+
+msgid "Reader label"
+msgstr "Nhãn thiết bị đọc"
+
+msgid "Direction"
+msgstr "Hướng"
+
+msgid "Register reader"
+msgstr "Đăng ký thiết bị đọc"
+
+msgid "Reader inventory"
+msgstr "Danh sách thiết bị đọc"
+
+msgid "Manage reader"
+msgstr "Quản lý thiết bị đọc"
+
+msgid "Active"
+msgstr "Đang hoạt động"
+
+msgid "Inactive"
+msgstr "Không hoạt động"
+
+msgid "Last seen"
+msgstr "Lần cuối ghi nhận"
+
+msgid "Never"
+msgstr "Chưa bao giờ"
+
+msgid "Credential revoked"
+msgstr "Thông tin xác thực đã bị thu hồi"
+
+msgid "Credential expires %(expiry)s"
+msgstr "Thông tin xác thực hết hạn %(expiry)s"
+
+msgid "Credential active"
+msgstr "Thông tin xác thực đang hoạt động"
+
+msgid "Revoke credential"
+msgstr "Thu hồi thông tin xác thực"
+
+msgid "No credentials."
+msgstr "Không có thông tin xác thực."
+
+msgid "Rotate credential"
+msgstr "Đổi thông tin xác thực"
+
+msgid "No readers registered."
+msgstr "Chưa đăng ký thiết bị đọc nào."
+
+msgid "Gate activity"
+msgstr "Hoạt động tại cổng"
+
+msgid "Complete gate event rows are deleted within 24 hours. No durable movement history exists."
+msgstr "Toàn bộ bản ghi sự kiện cổng được xóa trong vòng 24 giờ. Không có lịch sử di chuyển lâu dài."
+
+msgid "Deleted within 24 hours"
+msgstr "Xóa trong vòng 24 giờ"
+
+msgid "Unrecognized"
+msgstr "Không nhận diện được"
+
+msgid "Score"
+msgstr "Điểm"
+
+msgid "No activity remains in the 24-hour window."
+msgstr "Không còn hoạt động nào trong khoảng 24 giờ."
+
+msgid "Gate review"
+msgstr "Xem xét đăng ký cổng"
+
+msgid "Review resident face and vehicle plate enrolments."
+msgstr "Xem xét đăng ký khuôn mặt và biển số xe của cư dân."
+
+msgid "Faces"
+msgstr "Khuôn mặt"
+
+msgid "Enrollment photo for %(resident)s"
+msgstr "Ảnh đăng ký của %(resident)s"
+
+msgid "Unit %(unit)s"
+msgstr "Căn %(unit)s"
+
+msgid "Approve"
+msgstr "Phê duyệt"
+
+msgid "Rejection reason"
+msgstr "Lý do từ chối"
+
+msgid "Reject"
+msgstr "Từ chối"
+
+msgid "No faces are waiting for review."
+msgstr "Không có khuôn mặt nào đang chờ xem xét."
+
+msgid "Plates"
+msgstr "Biển số"
+
+msgid "%(resident)s, unit %(unit)s"
+msgstr "%(resident)s, căn %(unit)s"
+
+msgid "No plates are waiting for review."
+msgstr "Không có biển số nào đang chờ xem xét."
+
+msgid "Gate registrations"
+msgstr "Đăng ký cổng"
+
+msgid "Revoke face"
+msgstr "Thu hồi khuôn mặt"
+
+msgid "No approved faces."
+msgstr "Chưa có khuôn mặt nào được phê duyệt."
+
+msgid "Revoke plate"
+msgstr "Thu hồi biển số"
+
+msgid "No approved plates."
+msgstr "Chưa có biển số nào được phê duyệt."
+
+msgid "Publishing freezes the amount, contractor, scope, schedule, and quotation evidence. The published proposal cannot be edited."
+msgstr "Việc công bố sẽ cố định số tiền, nhà thầu, phạm vi, lịch trình và bằng chứng báo giá. Đề xuất đã công bố không thể chỉnh sửa."
+
+msgid "The amount, contractor, scope, schedule, and quotation evidence are frozen."
+msgstr "Số tiền, nhà thầu, phạm vi, lịch trình và bằng chứng báo giá đã được cố định."
+
+msgid "Maintenance case"
+msgstr "Vụ việc bảo trì"
+
+msgid "Signed snapshot"
+msgstr "Bản chụp đã ký"
+
+msgid "Publish settled expense"
+msgstr "Công bố khoản chi đã quyết toán"
+
+msgid "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing."
+msgstr "Việc công bố sẽ thêm khoản chi đã quyết toán này vào sổ cư dân. Hãy xác minh đề xuất đã cố định và bằng chứng quyết toán trước khi tiếp tục."
+
+msgid "Decide whether to proceed"
+msgstr "Quyết định có tiếp tục hay không"
+
+msgid "Proceed with this proposal"
+msgstr "Tiếp tục với đề xuất này"
+
+msgid "Decision note"
+msgstr "Ghi chú quyết định"
+
+msgid "Record decision"
+msgstr "Ghi nhận quyết định"
+
+msgid "Publish work progress"
+msgstr "Công bố tiến độ công việc"
+
+msgid "Publish progress"
+msgstr "Công bố tiến độ"
+
+msgid "Complete work"
+msgstr "Hoàn tất công việc"
+
+msgid "Evidence anchoring failed"
+msgstr "Ghi neo bằng chứng thất bại"
+
+msgid "The signed proposal is saved, but anchoring failed. Review Operations health before retrying any action."
+msgstr "Đề xuất đã ký đã được lưu nhưng việc ghi neo thất bại. Hãy xem tình trạng vận hành trước khi thử lại bất kỳ hành động nào."
+
+msgid "Review Operations health"
+msgstr "Xem tình trạng vận hành"
+
+msgid "Evidence mismatch detected"
+msgstr "Phát hiện bằng chứng không khớp"
+
+msgid "The saved proposal does not match independently observed evidence. Stop and review Operations health."
+msgstr "Đề xuất đã lưu không khớp với bằng chứng được quan sát độc lập. Hãy dừng lại và xem tình trạng vận hành."
+
+msgid "Review settlement"
+msgstr "Xem xét quyết toán"
+
+msgid "Record acknowledgement"
+msgstr "Ghi nhận xác nhận của người nhận"
+
+msgid "Gate"
+msgstr "Cổng"
+
+msgid "This proposal is not eligible for publication."
+msgstr "Đề xuất này chưa đủ điều kiện để công bố."
+
+msgid "Settled expense published to the resident ledger."
+msgstr "Khoản chi đã quyết toán đã được công bố lên sổ cư dân."
+
+msgid "Resident registration"
+msgstr "Đăng ký cư dân"
+
+msgid "Manual triage"
+msgstr "Phân loại thủ công"
+
+msgid "Report review"
+msgstr "Xem xét báo cáo"
+
+msgid "Deadline risk"
+msgstr "Rủi ro hạn chót"
+
+msgid "Case in progress"
+msgstr "Vụ việc đang thực hiện"
+
+msgid "Proposal creation"
+msgstr "Tạo đề xuất"
+
+msgid "Proposal decision"
+msgstr "Quyết định đề xuất"
+
+msgid "Transfer recording"
+msgstr "Ghi nhận chuyển khoản"
+
+msgid "Acknowledgement recording"
+msgstr "Ghi nhận xác nhận"
+
+msgid "Integrity mismatch"
+msgstr "Toàn vẹn không khớp"
+
+msgid "Failed evidence anchor"
+msgstr "Ghi neo bằng chứng thất bại"
+
+msgid "Quarantined upload"
+msgstr "Tệp tải lên bị cách ly"
+
+msgid "Task type"
+msgstr "Loại công việc"
+
+msgid "Search tasks"
+msgstr "Tìm công việc"
+
+msgid "Case, work, payment…"
+msgstr "Vụ việc, công việc, thanh toán…"
+
+msgid "Action inbox pages"
+msgstr "Các trang hộp việc"
+
+msgid "Access denied"
+msgstr "Truy cập bị từ chối"
+
+msgid "Sign in with a Management account that has access to this page."
+msgstr "Đăng nhập bằng tài khoản Ban quản lý có quyền truy cập trang này."
+
+msgid "Go to sign in"
+msgstr "Đi đến đăng nhập"
+
+msgid "Page not found"
+msgstr "Không tìm thấy trang"
+
+msgid "The address may be incorrect, or the page may no longer exist."
+msgstr "Địa chỉ có thể không chính xác hoặc trang không còn tồn tại."
+
+msgid "Something went wrong"
+msgstr "Đã xảy ra lỗi"
+
+msgid "The request could not be completed. Your last action may not have been saved. Check the record before trying again, or return to sign in."
+msgstr "Không thể hoàn tất yêu cầu. Hành động cuối của bạn có thể chưa được lưu. Hãy kiểm tra bản ghi trước khi thử lại hoặc quay về đăng nhập."

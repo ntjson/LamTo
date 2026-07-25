@@ -1,9 +1,12 @@
 import time
+from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
+from django.template.loader import render_to_string
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from django.utils import translation
 from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.util import random_hex
@@ -13,6 +16,7 @@ from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceCase, TriageDecision
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 from lamto.web.forms.staff import ConfirmTriageForm
+from lamto.web.forms.staff import ProgressUpdateForm, RecordSettlementAcknowledgementForm, RecordSettlementTransferForm
 
 
 class ManagementWorkspaceTests(TestCase):
@@ -139,6 +143,31 @@ class ManagementWorkspaceTests(TestCase):
         self.assertEqual(report.status, IssueReport.Status.DECLINED)
         self.assertEqual(report.declined_reason, "Already repaired")
 
+    def test_failed_triage_binds_only_triage_form(self):
+        membership = self.login_management()
+        location = BuildingLocation.objects.create(building=membership.building, name="Lobby")
+        resident = get_user_model().objects.create_user(email="forms@example.test", password="secret")
+        report = IssueReport.objects.create(
+            reporter=resident, unit=Unit.objects.create(building=membership.building, label="A-3"),
+            building=membership.building, text="Leak", selected_location=location,
+            location_path_snapshot="Tower / Lobby", status=IssueReport.Status.IN_REVIEW,
+        )
+
+        response = self.client.post(reverse("web:staff-report-detail", args=[report.pk]), {
+            "action": "confirm_triage", "category": "Plumbing", "urgency": "HIGH",
+            "department": "Ops", "deadline_minutes": 60,
+        })
+
+        self.assertTrue(response.context["form"].is_bound)
+        self.assertFalse(response.context["info_form"].is_bound)
+        self.assertFalse(response.context["decline_form"].is_bound)
+
+    def test_evidence_forms_accept_new_uploads_in_the_same_post(self):
+        self.assertIn("before_upload", ProgressUpdateForm().fields)
+        self.assertIn("after_upload", ProgressUpdateForm().fields)
+        self.assertIn("proof_upload", RecordSettlementTransferForm().fields)
+        self.assertIn("proof_upload", RecordSettlementAcknowledgementForm().fields)
+
     def test_manager_can_reach_both_payment_steps(self):
         seed = seed_pilot_world(
             building_name="Payment Tower",
@@ -164,3 +193,19 @@ class ManagementWorkspaceTests(TestCase):
         self.assertEqual(verify_response.context["membership"], manager)
         self.assertEqual(verify_response.context["settlement"], settlement)
         self.assertContains(verify_response, f"settlement #{settlement.pk}", html=False)
+
+    def test_settlement_rows_lead_with_next_action(self):
+        with translation.override("en"):
+            html = render_to_string(
+                "web/staff/settlement_detail.html",
+                {
+                    "list_mode": True,
+                    "pending": [],
+                    "settlements": [
+                        SimpleNamespace(pk=7, amount_vnd=250_000, ack=None)
+                    ],
+                },
+            )
+
+        self.assertIn('<span class="task-action">Record acknowledgement</span>', html)
+        self.assertIn("Settlement #7", html)

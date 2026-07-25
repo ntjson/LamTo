@@ -1,5 +1,16 @@
 {% extends "web/staff/shell.html" %}
-{% block content %}<h1>Gate registrations</h1>
-<h2>Faces</h2>{% for x in faces %}<p>{{ x.occupancy.user.display_name }}, unit {{ x.occupancy.unit.label }}</p><form method="post" action="{% url 'web:gate-face-decide' x.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'web:gate-registrations' %}"><button name="decision" value="revoke">Revoke face</button></form>{% empty %}<p>No approved faces.</p>{% endfor %}
-<h2>Plates</h2>{% for x in plates %}<p>{{ x.plate }}, {{ x.occupancy.user.display_name }}, unit {{ x.occupancy.unit.label }}</p><form method="post" action="{% url 'web:gate-plate-decide' x.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'web:gate-registrations' %}"><button name="decision" value="revoke">Revoke plate</button></form>{% empty %}<p>No approved plates.</p>{% endfor %}
+{% load i18n %}
+{% block title %}{% trans "Gate registrations" %} · LamTo{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>{% trans "Gate registrations" %}</h1>
+  <section class="workflow-section">
+    <h2>{% trans "Faces" %}</h2>
+    <ul class="task-list">{% for x in faces %}<li><div class="task-row task-row-simple"><strong class="task-action">{{ x.occupancy.user.display_name }}</strong><span class="task-subject">{% blocktrans with unit=x.occupancy.unit.label %}Unit {{ unit }}{% endblocktrans %}</span><form method="post" action="{% url 'web:gate-face-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="next" value="{% url 'web:gate-registrations' %}"><button class="button button-secondary" name="decision" value="revoke">{% trans "Revoke face" %}</button></form></div></li>{% empty %}<li class="empty-state">{% trans "No approved faces." %}</li>{% endfor %}</ul>
+  </section>
+  <section class="workflow-section">
+    <h2>{% trans "Plates" %}</h2>
+    <ul class="task-list">{% for x in plates %}<li><div class="task-row task-row-simple"><strong class="task-action">{{ x.plate }}</strong><span class="task-subject">{% blocktrans with resident=x.occupancy.user.display_name unit=x.occupancy.unit.label %}{{ resident }}, unit {{ unit }}{% endblocktrans %}</span><form method="post" action="{% url 'web:gate-plate-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="next" value="{% url 'web:gate-registrations' %}"><button class="button button-secondary" name="decision" value="revoke">{% trans "Revoke plate" %}</button></form></div></li>{% empty %}<li class="empty-state">{% trans "No approved plates." %}</li>{% endfor %}</ul>
+  </section>
+</section>
 {% endblock %}

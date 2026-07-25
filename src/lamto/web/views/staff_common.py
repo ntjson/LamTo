@@ -63,6 +63,20 @@ ACTION_GROUPS = (
     ("due_soon", _("Due soon")),
     ("exceptions", _("Exceptions")),
 )
+ACTION_KIND_LABELS = {
+    "registration": _("Resident registration"),
+    "manual_triage": _("Manual triage"),
+    "review_report": _("Report review"),
+    "deadline_risk": _("Deadline risk"),
+    "in_progress_case": _("Case in progress"),
+    "proposal_create": _("Proposal creation"),
+    "proposal_decision": _("Proposal decision"),
+    "settlement_transfer": _("Transfer recording"),
+    "settlement_ack": _("Acknowledgement recording"),
+    "integrity_mismatch": _("Integrity mismatch"),
+    "failed_outbox": _("Failed evidence anchor"),
+    "quarantined_upload": _("Quarantined upload"),
+}
 
 
 def _action_group(item):
@@ -77,9 +91,11 @@ def prepare_action_inbox(
     items, *, query="", kind="", status="", page_number=1, querystring=""
 ):
     query = query.strip()
-    kind_filters = {}
-    for item in items:
-        kind_filters.setdefault(item.kind, item.title)
+    kind_filters = {
+        item.kind: ACTION_KIND_LABELS[item.kind]
+        for item in items
+        if item.kind in ACTION_KIND_LABELS
+    }
 
     filtered = [
         item
@@ -157,7 +173,7 @@ def action_inbox(request):
                 {**row, "period_start": row["period_start"].isoformat()}
                 for row in series
             ],
-            fund_balance_vnd=series[-1]["balance_vnd"],
+            fund_balance_vnd=series[-1]["balance_vnd"] if series else 0,
             fund_link_ok=True,
             action_groups=inbox["groups"],
             action_page=inbox["page"],
@@ -171,10 +187,10 @@ def action_inbox(request):
             filters_active=inbox["filters_active"],
             secondary_filters=inbox["secondary_filters"],
             secondary_filter_param="kind",
-            secondary_filter_label="Task type",
-            search_label="Search tasks",
-            search_placeholder="Case, work, payment…",
-            pagination_label="Action inbox pages",
+            secondary_filter_label=_("Task type"),
+            search_label=_("Search tasks"),
+            search_placeholder=_("Case, work, payment…"),
+            pagination_label=_("Action inbox pages"),
         ),
     )
 
@@ -343,12 +359,17 @@ def resolve_accountability_stage(
         return ("settlement", False, False) if case.completed_at else ("work", False, False)
 
     if proposal is not None:
-        return resolve_accountability_stage(
-            proposal=proposal,
-            case=getattr(proposal, "case", None),
-            published=published,
-            publication_pending=publication_pending,
-        )
+        if published is None:
+            published = PublishedLedgerEntry.objects.filter(proposal=proposal).exists()
+        if published:
+            return None, False, False
+        if settlement is not None and settlement.settled_at is not None:
+            return "publication", False, False
+        if proposal.status in _PROPOSAL_AUTHORIZED:
+            return "settlement", False, False
+        if proposal.status == Proposal.Status.NOT_PROCEEDING:
+            return "proposal", True, False
+        return "proposal", False, False
 
     return "report", False, False
 

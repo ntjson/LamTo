@@ -1,7 +1,6 @@
 {% load i18n humanize %}
 <section class="panel">
   {% if mode == "record" %}
-  <h1>{% trans "Record fund source" %}</h1>
   <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
     {% csrf_token %}
     <input type="hidden" name="action" value="prepare">

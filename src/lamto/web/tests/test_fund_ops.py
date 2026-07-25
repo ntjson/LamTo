@@ -1,5 +1,6 @@
 import tempfile
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.conf import settings
@@ -13,7 +14,7 @@ from django_otp.util import random_hex
 
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.documents.models import DocumentVersion
-from lamto.finance.models import MaintenanceFundEntry
+from lamto.finance.models import MaintenanceFundEntry, PublishedLedgerEntry
 from lamto.finance.selectors import pending_reconciliation_proposals
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
@@ -85,6 +86,38 @@ class FundSelectorTests(TestCase):
     },
 )
 class FundHomeTests(TestCase):
+    def test_pending_fund_row_can_publish_from_proposal_detail(self):
+        seed = seed_pilot_world(building_name="Publish Recovery B", email_prefix="pr")
+        driver = PilotDomainDriver(seed)
+        driver.submit_report("Lift noise", "Lift 2")
+        driver.confirm_triage_case()
+        driver.publish_proposal()
+        driver.complete_assigned_work()
+        driver.record_settlement_transfer()
+        with patch("lamto.finance.publication.publish_settlement_entry"):
+            driver.record_settlement_ack()
+        driver.confirm_all_chain_events()
+        self._login(seed, "fund_recorder")
+
+        fund = self.client.get(reverse("web:fund-home"))
+        detail_url = reverse("web:proposal-detail", args=[seed.proposal.pk])
+        self.assertContains(fund, detail_url)
+        detail = self.client.get(detail_url)
+        self.assertContains(detail, 'name="action" value="publish"', html=False)
+
+        response = self.client.post(detail_url, {"action": "publish", "confirm": "on"})
+
+        self.assertRedirects(response, detail_url)
+        self.assertTrue(PublishedLedgerEntry.objects.filter(proposal=seed.proposal).exists())
+    @patch("lamto.web.views.fund.fund_series", return_value=[])
+    def test_new_building_fund_home_handles_empty_series(self, _series):
+        seed = seed_pilot_world(building_name="Empty Fund B", email_prefix="ef", create_opening_fund=False)
+        self._login(seed, "fund_recorder")
+
+        response = self.client.get(reverse("web:fund-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["window_closing_vnd"], 0)
     def _login(self, seed, role_key):
         membership = seed.management_memberships[0]
         self.client.force_login(membership.user)
@@ -109,6 +142,38 @@ class FundHomeTests(TestCase):
         self.assertContains(resp, "Verified entries")
         # The seeded opening balance is a verified entry.
         self.assertContains(resp, "Opening balance")
+
+    def test_verified_fund_rows_lead_with_record_state(self):
+        seed = seed_pilot_world(building_name="Fund Row B", email_prefix="fhr")
+        self._login(seed, "fund_recorder")
+
+        resp = self.client.get(reverse("web:fund-home"))
+
+        self.assertContains(resp, '<span class="task-action">Verified entry</span>')
+
+    @patch("lamto.web.views.fund.pending_fund_verification_entries")
+    @patch("lamto.web.views.fund.pending_reconciliation_proposals")
+    def test_pending_proposals_render_once(self, pending_proposals, pending_entries):
+        seed = seed_pilot_world(building_name="Fund Pending B", email_prefix="fhp")
+        pending_proposals.return_value = [
+            SimpleNamespace(
+                pk=7,
+                current_version=SimpleNamespace(amount_vnd=250_000),
+            )
+        ]
+        pending_entries.return_value = [
+            SimpleNamespace(
+                pk=8,
+                amount_vnd=100_000,
+                get_entry_type_display=lambda: "Inflow",
+                recorded_at=timezone.now(),
+            )
+        ]
+        self._login(seed, "fund_recorder")
+
+        resp = self.client.get(reverse("web:fund-home"))
+
+        self.assertEqual(resp.content.count(b"Prepare publication"), 1)
 
     def test_fund_home_renders_chart_and_window_stats(self):
         seed = seed_pilot_world(building_name="Fund Chart B", email_prefix="fch")
@@ -254,6 +319,15 @@ class FundVerifyTests(TestCase):
     },
 )
 class ActionInboxChartTests(TestCase):
+    @patch("lamto.web.views.staff_common.fund_series", return_value=[])
+    def test_new_building_inbox_handles_empty_series(self, _series):
+        seed = seed_pilot_world(building_name="Empty Inbox B", email_prefix="ei", create_opening_fund=False)
+        self._login(seed, "fund_recorder")
+
+        response = self.client.get(reverse("web:action-inbox"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["fund_balance_vnd"], 0)
     def _login(self, seed, role_key):
         membership = seed.management_memberships[0]
         self.client.force_login(membership.user)
