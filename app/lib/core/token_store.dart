@@ -5,10 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Production: platform keystore via [FlutterSecureStorage].
 /// Integration / headless CI: [TokenStore.memory] avoids libsecret/keyring.
 class TokenStore {
-  TokenStore({
-    FlutterSecureStorage? storage,
-    this._key = 'lamto_auth_token',
-  })
+  TokenStore({FlutterSecureStorage? storage, this._key = 'lamto_auth_token'})
     : _storage =
           storage ??
           const FlutterSecureStorage(

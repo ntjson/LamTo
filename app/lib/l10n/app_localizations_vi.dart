@@ -335,6 +335,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get declinedTitle => 'Ban quản lý quyết định không tiếp nhận';
 
   @override
+  String get declinedCorrectedReportCta => 'Gửi phản ánh đã chỉnh sửa';
+
+  @override
   String get rateWorkCta => 'Đánh giá công việc';
 
   @override
@@ -595,6 +598,143 @@ class AppLocalizationsVi extends AppLocalizations {
   String get accountSignOutAll => 'Đăng xuất mọi thiết bị';
 
   @override
+  String get commonCancel => 'Hủy';
+
+  @override
+  String get gateAccountAction => 'Đăng ký biển số và khuôn mặt';
+
+  @override
+  String get gateRegistrationTitle => 'Đăng ký cổng';
+
+  @override
+  String get gatePlateLabel => 'Biển số xe';
+
+  @override
+  String get gateSubmitPlate => 'Gửi biển số để duyệt';
+
+  @override
+  String get gateRevokePlate => 'Thu hồi biển số';
+
+  @override
+  String get gateFaceTitle => 'Khuôn mặt';
+
+  @override
+  String get gateNotRegistered => 'Chưa đăng ký';
+
+  @override
+  String get gateCaptureFace => 'Chụp ảnh đăng ký';
+
+  @override
+  String get gateRevokeFace => 'Thu hồi khuôn mặt';
+
+  @override
+  String get gateRetentionNotice =>
+      'Ảnh chỉ được giữ để ban quản lý xem xét và sẽ bị xóa sau khi có quyết định.';
+
+  @override
+  String get gateRevokeConfirmBody =>
+      'Thông tin này sẽ không còn dùng để nhận diện tại cổng.';
+
+  @override
+  String get gateRevokeConfirm => 'Thu hồi';
+
+  @override
+  String get gateStatusPending => 'Đang chờ duyệt';
+
+  @override
+  String get gateStatusApproved => 'Đã duyệt';
+
+  @override
+  String gateStatusRejected(String note) {
+    return 'Bị từ chối: $note';
+  }
+
+  @override
+  String get gateStatusExpired => 'Ảnh đã hết hạn, vui lòng gửi lại';
+
+  @override
+  String get gateStatusUnknown => 'Không rõ trạng thái';
+
+  @override
+  String get gateErrorNoFace => 'Không tìm thấy khuôn mặt. Hãy chụp lại.';
+
+  @override
+  String get gateErrorMultipleFaces => 'Ảnh chỉ được có một khuôn mặt.';
+
+  @override
+  String get gateErrorFaceTooSmall => 'Khuôn mặt quá nhỏ. Hãy lại gần hơn.';
+
+  @override
+  String get gateErrorFaceTooBlurry => 'Ảnh quá mờ. Hãy chụp lại.';
+
+  @override
+  String get gateErrorFaceUnusable =>
+      'Ảnh không thể dùng để đăng ký khuôn mặt.';
+
+  @override
+  String get gateErrorPhotoRejected => 'Ảnh bị từ chối trước khi xử lý.';
+
+  @override
+  String get gateErrorPhotoTooLarge => 'Ảnh vượt quá dung lượng cho phép.';
+
+  @override
+  String get gateErrorPlateRegistered =>
+      'Biển số đã được đăng ký. Vui lòng liên hệ ban quản lý.';
+
+  @override
+  String get gateErrorUnavailable =>
+      'Dịch vụ nhận diện đang tạm ngừng. Hãy thử lại sau.';
+
+  @override
+  String get gateReaderTitle => 'Đầu đọc cổng';
+
+  @override
+  String get gateReaderServer => 'Địa chỉ máy chủ';
+
+  @override
+  String get gateReaderCredential => 'Mã thiết bị';
+
+  @override
+  String get gateReaderActivate => 'Kích hoạt đầu đọc';
+
+  @override
+  String get gateReaderInvalidUrl =>
+      'URL máy chủ không hợp lệ. Cần bắt đầu bằng https:// hoặc http://.';
+
+  @override
+  String get gateReaderPlateUnreadable =>
+      'Không đọc được biển số. Hãy thử lại.';
+
+  @override
+  String gateReaderUnit(String unit) {
+    return 'Căn $unit';
+  }
+
+  @override
+  String get gateReaderNoMatch => 'Không nhận diện được';
+
+  @override
+  String get gateReaderScanPlate => 'Quét biển số';
+
+  @override
+  String get gateReaderScanFace => 'Quét khuôn mặt';
+
+  @override
+  String get gateReaderClearDevice => 'Xóa mã thiết bị';
+
+  @override
+  String get gateReaderDeviceRevoked => 'Mã thiết bị đã bị thu hồi.';
+
+  @override
+  String get gateReaderDeviceExpired => 'Mã thiết bị đã hết hạn.';
+
+  @override
+  String get gateReaderDeviceInvalid => 'Mã thiết bị không đúng.';
+
+  @override
+  String get gateReaderThrottled => 'Thao tác quá nhanh. Vui lòng chờ.';
+
+  @override
   String get prefReportReceipt => 'Đã nhận phản ánh';
 
   @override
@@ -620,6 +760,21 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get fundChartSemantics => 'Biểu đồ số dư quỹ';
+
+  @override
+  String fundChartBalanceValue(String amount) {
+    return 'số dư $amount';
+  }
+
+  @override
+  String fundChartInflowValue(String amount) {
+    return 'thu $amount';
+  }
+
+  @override
+  String fundChartOutflowValue(String amount) {
+    return 'chi $amount';
+  }
 
   @override
   String get fundChartRange30d => '30 ngày';

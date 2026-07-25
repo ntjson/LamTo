@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/adaptive_page_route.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../core/page_body.dart';
@@ -83,8 +84,8 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final detail = ref.watch(billDetailProvider(widget.billId));
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.billsTitle)),
+    return AdaptiveScaffold(
+      title: l10n.billsTitle,
       body: PageBody(
         child: switch (detail) {
           AsyncData(:final value) => _body(context, l10n, value),

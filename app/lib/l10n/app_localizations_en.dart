@@ -335,6 +335,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get declinedTitle => 'Management decided not to proceed';
 
   @override
+  String get declinedCorrectedReportCta => 'File a corrected report';
+
+  @override
   String get rateWorkCta => 'Rate this work';
 
   @override
@@ -594,6 +597,144 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountSignOutAll => 'Sign out of all devices';
 
   @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get gateAccountAction => 'Register plate and face';
+
+  @override
+  String get gateRegistrationTitle => 'Gate registration';
+
+  @override
+  String get gatePlateLabel => 'License plate';
+
+  @override
+  String get gateSubmitPlate => 'Submit plate for approval';
+
+  @override
+  String get gateRevokePlate => 'Revoke plate';
+
+  @override
+  String get gateFaceTitle => 'Face';
+
+  @override
+  String get gateNotRegistered => 'Not registered';
+
+  @override
+  String get gateCaptureFace => 'Take registration photo';
+
+  @override
+  String get gateRevokeFace => 'Revoke face';
+
+  @override
+  String get gateRetentionNotice =>
+      'The photo is retained only for management review and deleted after a decision.';
+
+  @override
+  String get gateRevokeConfirmBody =>
+      'This information will no longer be used for gate recognition.';
+
+  @override
+  String get gateRevokeConfirm => 'Revoke';
+
+  @override
+  String get gateStatusPending => 'Awaiting approval';
+
+  @override
+  String get gateStatusApproved => 'Approved';
+
+  @override
+  String gateStatusRejected(String note) {
+    return 'Rejected: $note';
+  }
+
+  @override
+  String get gateStatusExpired => 'Photo expired; please submit another';
+
+  @override
+  String get gateStatusUnknown => 'Unknown status';
+
+  @override
+  String get gateErrorNoFace => 'No face found. Take another photo.';
+
+  @override
+  String get gateErrorMultipleFaces => 'The photo must contain one face only.';
+
+  @override
+  String get gateErrorFaceTooSmall => 'The face is too small. Move closer.';
+
+  @override
+  String get gateErrorFaceTooBlurry => 'The photo is too blurry. Take another.';
+
+  @override
+  String get gateErrorFaceUnusable =>
+      'The photo cannot be used for face registration.';
+
+  @override
+  String get gateErrorPhotoRejected =>
+      'The photo was rejected before processing.';
+
+  @override
+  String get gateErrorPhotoTooLarge => 'The photo exceeds the size limit.';
+
+  @override
+  String get gateErrorPlateRegistered =>
+      'This plate is already registered. Contact management.';
+
+  @override
+  String get gateErrorUnavailable =>
+      'Recognition is temporarily unavailable. Try again later.';
+
+  @override
+  String get gateReaderTitle => 'Gate reader';
+
+  @override
+  String get gateReaderServer => 'Server address';
+
+  @override
+  String get gateReaderCredential => 'Device credential';
+
+  @override
+  String get gateReaderActivate => 'Activate reader';
+
+  @override
+  String get gateReaderInvalidUrl =>
+      'The server URL is invalid. Start it with https:// or http://.';
+
+  @override
+  String get gateReaderPlateUnreadable =>
+      'The plate could not be read. Try again.';
+
+  @override
+  String gateReaderUnit(String unit) {
+    return 'Unit $unit';
+  }
+
+  @override
+  String get gateReaderNoMatch => 'No match found';
+
+  @override
+  String get gateReaderScanPlate => 'Scan plate';
+
+  @override
+  String get gateReaderScanFace => 'Scan face';
+
+  @override
+  String get gateReaderClearDevice => 'Clear device credential';
+
+  @override
+  String get gateReaderDeviceRevoked => 'The device credential was revoked.';
+
+  @override
+  String get gateReaderDeviceExpired => 'The device credential expired.';
+
+  @override
+  String get gateReaderDeviceInvalid => 'The device credential is invalid.';
+
+  @override
+  String get gateReaderThrottled => 'Actions are too frequent. Please wait.';
+
+  @override
   String get prefReportReceipt => 'Report received';
 
   @override
@@ -619,6 +760,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fundChartSemantics => 'Fund balance chart';
+
+  @override
+  String fundChartBalanceValue(String amount) {
+    return 'balance $amount';
+  }
+
+  @override
+  String fundChartInflowValue(String amount) {
+    return 'inflow $amount';
+  }
+
+  @override
+  String fundChartOutflowValue(String amount) {
+    return 'outflow $amount';
+  }
 
   @override
   String get fundChartRange30d => '30 days';

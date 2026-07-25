@@ -9,6 +9,7 @@ import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/brand_identity.dart';
 import 'login_screen.dart';
 import 'registration_screen.dart';
 import 'registration_status_store.dart';
@@ -131,6 +132,8 @@ class _RegistrationStatusScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const BrandIdentity(width: 160),
+                      const SizedBox(height: 20),
                       Text(
                         '${status.building} · ${status.unit}',
                         style: Theme.of(context).textTheme.titleLarge,

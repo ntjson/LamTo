@@ -12,8 +12,9 @@ const buildingScopedPathPrefixes = [
 /// True when [path] is a building-scoped endpoint that may receive the header.
 bool isBuildingScopedPath(String path) {
   final p = path.startsWith('http') ? Uri.parse(path).path : path;
-  return buildingScopedPathPrefixes
-      .any((prefix) => p == prefix || p.startsWith('$prefix/'));
+  return buildingScopedPathPrefixes.any(
+    (prefix) => p == prefix || p.startsWith('$prefix/'),
+  );
 }
 
 /// Selected active occupancy id (spec 3.4). Only the occupancy id is ever sent.

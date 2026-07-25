@@ -26,7 +26,13 @@ void main() {
       contains('Chưa có gì được gửi'),
     );
     expect(l10n.loginSubmit, 'Đăng nhập');
-    expect(failureMessage(Failure(code: 'network_error'), l10n), isNot(contains('HTTP')));
-    expect(failureMessage(Failure(code: 'network_error'), l10n), isNot(contains('401')));
+    expect(
+      failureMessage(Failure(code: 'network_error'), l10n),
+      isNot(contains('HTTP')),
+    );
+    expect(
+      failureMessage(Failure(code: 'network_error'), l10n),
+      isNot(contains('401')),
+    );
   });
 }

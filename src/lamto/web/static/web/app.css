@@ -102,15 +102,10 @@ summary:focus-visible {
 }
 
 .brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-brand);
-  line-height: 1;
-}
-
-.brand-mark-svg {
   display: block;
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
 }
 
 .membership-switcher {

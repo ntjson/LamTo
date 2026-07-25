@@ -21,8 +21,8 @@ abstract class AuthRepository {
 /// Thin wrapper over generated dart-dio [AuthApi]/[MeApi] on the shared Dio.
 class DioAuthRepository implements AuthRepository {
   DioAuthRepository(Dio dio)
-      : _auth = AuthApi(dio, standardSerializers),
-        _me = MeApi(dio, standardSerializers);
+    : _auth = AuthApi(dio, standardSerializers),
+      _me = MeApi(dio, standardSerializers);
 
   final AuthApi _auth;
   final MeApi _me;

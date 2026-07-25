@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 /// DESIGN.md light tokens. Accountability Indigo is primary (≤10% of a screen).
 class LamToColors {
   static const primary = Color(0xFF2F3A8F);
+  static const flowOut = Color(0xFF5B6577);
   static const onPrimary = Color(0xFFFFFFFF);
   static const bg = Color(0xFFF6F7FB);
   static const surface = Color(0xFFFFFFFF);
@@ -24,6 +25,9 @@ class LamToColors {
 
 /// Complete dark-theme tokens (clarification #6).
 class LamToColorsDark {
+  // 6.34:1 on Night Ground. The light primary remains a fill color only.
+  static const primary = Color(0xFF8A97E8);
+  static const flowOut = Color(0xFFA0A8B8);
   static const bg = Color(0xFF12141C);
   static const surface = Color(0xFF1C2030);
   static const ink = Color(0xFFE8EAF2);
@@ -106,9 +110,8 @@ class StatusChip extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: colors.fg,
-                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -144,7 +147,7 @@ ThemeData lamToTheme(Brightness brightness) {
   final scheme = ColorScheme.fromSeed(
     seedColor: LamToColors.primary,
     brightness: brightness,
-    primary: LamToColors.primary,
+    primary: isDark ? LamToColorsDark.primary : LamToColors.primary,
     onPrimary: LamToColors.onPrimary,
     // Dark keeps the derived light-tone error: #B42318 on Night Ground is
     // ~2.8:1, below the WCAG AA baseline for error text.

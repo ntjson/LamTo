@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/error_retry.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import 'reports_repository.dart';
@@ -32,8 +33,8 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) setState(() => _path.removeLast());
       },
-      child: Scaffold(
-        appBar: AppBar(title: Text(parent?.name ?? l10n.locationPickerTitle)),
+      child: AdaptiveScaffold(
+        title: parent?.name ?? l10n.locationPickerTitle,
         body: PageBody(
           child: switch (locations) {
             AsyncData(:final value) => _list(context, l10n, value, parent),

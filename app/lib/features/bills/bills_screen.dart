@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/adaptive_page_route.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../core/page_body.dart';
@@ -18,8 +19,8 @@ class BillsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final bills = ref.watch(billsProvider);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.billsTitle)),
+    return AdaptiveScaffold(
+      title: l10n.billsTitle,
       body: PageBody(
         child: switch (bills) {
           AsyncData(:final value) => _list(context, l10n, value),
@@ -46,16 +47,36 @@ class BillsScreen extends ConsumerWidget {
       if (bills.isEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 120),
-          child: Center(child: Text(l10n.billNone)),
+          child: Center(
+            child: Column(
+              children: [
+                Text(l10n.billNone),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  child: Text(
+                    MaterialLocalizations.of(context).backButtonTooltip,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       for (final bill in bills) ...[
         ListTile(
           minTileHeight: 64,
           contentPadding: EdgeInsets.zero,
-          title: Text(bill.title),
-          subtitle: Text(
-            formatVnd(bill.amountVnd),
-            style: listAmountStyle(context),
+          title: Text(switch (bill.status) {
+            BillStatusEnum.PAID => l10n.billStatusPaid,
+            BillStatusEnum.VOID => l10n.billStatusVoid,
+            _ => l10n.billStatusIssued,
+          }),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(bill.title),
+              Text(formatVnd(bill.amountVnd), style: listAmountStyle(context)),
+            ],
           ),
           trailing: StatusChip(
             tone: switch (bill.status) {

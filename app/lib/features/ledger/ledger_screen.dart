@@ -65,9 +65,6 @@ final ledgerListProvider =
       LedgerListController.new,
     );
 
-/// Selected chart range on the Sổ quỹ tab; survives tab switches.
-final fundChartRangeProvider = StateProvider<String>((_) => '6m');
-
 final ledgerSegmentProvider = StateProvider<int>((_) => 0);
 
 class _LedgerSegmentControl extends ConsumerWidget {
@@ -86,33 +83,6 @@ class _LedgerSegmentControl extends ConsumerWidget {
       showSelectedIcon: false,
       onSelectionChanged: (value) =>
           ref.read(ledgerSegmentProvider.notifier).state = value.first,
-    );
-  }
-}
-
-/// DESIGN.md filter-chip: Quiet Surface at rest, Accountability Indigo with
-/// on-primary ink when selected (never a semantic state color).
-class _PeriodChip extends StatelessWidget {
-  const _PeriodChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      selectedColor: scheme.primary,
-      checkmarkColor: scheme.onPrimary,
-      labelStyle: selected ? TextStyle(color: scheme.onPrimary) : null,
-      onSelected: (_) => onSelected(),
     );
   }
 }
@@ -144,14 +114,8 @@ class LedgerScreen extends ConsumerWidget {
     }
     final entries = ref.watch(ledgerListProvider);
     final controller = ref.read(ledgerListProvider.notifier);
-    final chartRange = ref.watch(fundChartRangeProvider);
     final currentYear = DateTime.now().year;
-    final years = [for (var y = currentYear; y >= currentYear - 2; y--) y];
-    String rangeLabel(String key) => switch (key) {
-      '30d' => l10n.fundChartRange30d,
-      '12m' => l10n.fundChartRange12m,
-      _ => l10n.fundChartRange6m,
-    };
+    final years = [for (var y = currentYear; y >= 2000; y--) y];
 
     return Material(
       color: Colors.transparent,
@@ -178,22 +142,15 @@ class LedgerScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            // Period filter: "All" + recent years (spec 6.3(6) period filters).
-            Wrap(
-              spacing: 8,
-              children: [
-                _PeriodChip(
-                  label: l10n.ledgerAllTime,
-                  selected: controller.year == null,
-                  onSelected: () => controller.setPeriod(),
-                ),
-                for (final y in years)
-                  _PeriodChip(
-                    label: '$y',
-                    selected: controller.year == y,
-                    onSelected: () => controller.setPeriod(newYear: y),
-                  ),
+            DropdownButtonFormField<int?>(
+              initialValue: controller.year,
+              decoration: InputDecoration(labelText: l10n.ledgerAllTime),
+              items: [
+                DropdownMenuItem(value: null, child: Text(l10n.ledgerAllTime)),
+                for (final year in years)
+                  DropdownMenuItem(value: year, child: Text('$year')),
               ],
+              onChanged: (year) => controller.setPeriod(newYear: year),
             ),
             const SizedBox(height: 8),
             Column(
@@ -204,26 +161,31 @@ class LedgerScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
-                SegmentedButton<String>(
-                  segments: [
-                    for (final key in fundSeriesRanges)
-                      ButtonSegment(value: key, label: Text(rangeLabel(key))),
-                  ],
-                  selected: {chartRange},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (selection) =>
-                      ref.read(fundChartRangeProvider.notifier).state =
-                          selection.first,
-                ),
-                const SizedBox(height: 12),
-                FundChart(range: chartRange),
+                FundChart(range: '12m'),
                 const SizedBox(height: 24),
               ],
             ),
             switch (entries) {
               AsyncData(:final value) when value.isEmpty => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(l10n.ledgerEmpty),
+                child: Column(
+                  children: [
+                    Text(l10n.ledgerEmpty),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: controller.year == null
+                          ? () =>
+                                ref.read(ledgerSegmentProvider.notifier).state =
+                                    1
+                          : () => controller.setPeriod(),
+                      child: Text(
+                        controller.year == null
+                            ? l10n.proposalsSegment
+                            : l10n.ledgerAllTime,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               AsyncData(:final value) => Column(
                 children: [
@@ -231,14 +193,15 @@ class LedgerScreen extends ConsumerWidget {
                     ListTile(
                       minTileHeight: 64,
                       contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        entry.contractorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      title: Text(l10n.ledgerDetailTitle),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            entry.contractorName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           Text(
                             formatVnd(entry.actualCostVnd),
                             style: listAmountStyle(context),

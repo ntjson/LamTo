@@ -17,8 +17,10 @@ void main() {
     expect(parseEventKey('report.receipt:report:5'), DeepLinkReport(5));
     expect(parseEventKey('ledger.publication:entry:42'), DeepLinkLedger(42));
     // Corrections/cases/work have no resident screen of their own -> feed.
-    expect(parseEventKey('correction.status:correction:7:PENDING'),
-        const DeepLinkFeed());
+    expect(
+      parseEventKey('correction.status:correction:7:PENDING'),
+      const DeepLinkFeed(),
+    );
     // A2: triage.status:case:… → feed (no Case detail screen).
     expect(parseEventKey('triage.status:case:3'), const DeepLinkFeed());
     expect(parseEventKey('work.update:work:9'), const DeepLinkFeed());

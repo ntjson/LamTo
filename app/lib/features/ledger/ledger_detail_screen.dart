@@ -10,10 +10,12 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/error_retry.dart';
 import '../../core/adaptive_page_route.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/failure.dart';
 import '../../core/format.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import '../proposals/proposal_detail_screen.dart';
 import '../transparency/transparency_repository.dart';
 import 'evidence_labels.dart';
@@ -32,8 +34,8 @@ class LedgerDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final detail = ref.watch(ledgerDetailProvider(entryId));
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.ledgerDetailTitle)),
+    return AdaptiveScaffold(
+      title: l10n.ledgerDetailTitle,
       body: PageBody(
         child: switch (detail) {
           AsyncData(:final value) => _body(context, l10n, value),
@@ -59,14 +61,16 @@ class LedgerDetailScreen extends ConsumerWidget {
     final verified =
         verification?.decision == 'VERIFIED' &&
         entry.integrityStatus == 'VERIFIED';
-    final mono = Theme.of(
-      context,
-    ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace');
+    final mono = Theme.of(context).textTheme.bodySmall?.copyWith(
+      fontFamily: 'SFMono-Regular',
+      fontFamilyFallback: const ['Menlo', 'Roboto Mono', 'monospace'],
+    );
     final titleStyle = Theme.of(context).textTheme.titleMedium;
     final proposalId = (entry.payload?.value as Map?)?['proposal_id'] as int?;
-    final conclusionColor = verified
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.error;
+    final conclusionColor = statusToneColors(
+      context,
+      verified ? StatusTone.success : StatusTone.warning,
+    ).fg;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -123,71 +127,60 @@ class LedgerDetailScreen extends ConsumerWidget {
           ),
           const Divider(),
         ],
+        Text(l10n.ledgerChainTitle, style: titleStyle),
+        const SizedBox(height: 4),
+        Text(l10n.ledgerChainHint),
+        _ChainStep(number: 1, title: l10n.ledgerChainReports, body: entry.why),
+        _ChainStep(
+          number: 2,
+          title: l10n.ledgerChainWork,
+          body: entry.whatWasFixed,
+        ),
+        _ChainStep(
+          number: 3,
+          title: l10n.ledgerChainApprovals,
+          body: entry.approvers
+              .map(
+                (a) => approverLine(
+                  _jsonField(a, 'role'),
+                  _jsonField(a, 'name'),
+                  l10n,
+                ),
+              )
+              .join('\n'),
+        ),
+        _ChainStep(
+          number: 4,
+          title: l10n.ledgerChainPayment,
+          body:
+              '${l10n.ledgerAmount}: ${formatVnd(entry.actualCostVnd)}\n'
+              '${l10n.ledgerContractor}: ${entry.contractorName}\n'
+              '${l10n.ledgerPublishedOn(date)}',
+        ),
+        _ChainStep(
+          number: 5,
+          title: l10n.ledgerChainVerification,
+          body: [
+            verification != null
+                ? l10n.ledgerVerifiedBy(verification.verifiedBy)
+                : l10n.ledgerNotVerified,
+            integrityStatusLabel(entry.integrityStatus, l10n),
+          ].join('\n'),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: EvidenceBadge(level: entry.proof.evidenceLevel),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(l10n.ledgerDocuments, style: titleStyle),
+        if (entry.documents.isNotEmpty)
+          for (final doc in entry.documents) _DocumentTile(document: doc),
+        const Divider(height: 32),
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
           childrenPadding: const EdgeInsets.only(bottom: 16),
-          title: Text(l10n.ledgerChainTitle, style: titleStyle),
-          subtitle: Text(l10n.ledgerChainHint),
+          title: Text(l10n.ledgerProofTitle, style: titleStyle),
           children: [
-            _ChainStep(
-              number: 1,
-              title: l10n.ledgerChainReports,
-              body: entry.why,
-            ),
-            _ChainStep(
-              number: 2,
-              title: l10n.ledgerChainWork,
-              body: entry.whatWasFixed,
-            ),
-            _ChainStep(
-              number: 3,
-              title: l10n.ledgerChainApprovals,
-              body: entry.approvers
-                  .map(
-                    (a) => approverLine(
-                      _jsonField(a, 'role'),
-                      _jsonField(a, 'name'),
-                      l10n,
-                    ),
-                  )
-                  .join('\n'),
-            ),
-            _ChainStep(
-              number: 4,
-              title: l10n.ledgerChainPayment,
-              body:
-                  '${l10n.ledgerAmount}: ${formatVnd(entry.actualCostVnd)}\n'
-                  '${l10n.ledgerContractor}: ${entry.contractorName}\n'
-                  '${l10n.ledgerPublishedOn(date)}',
-              child: entry.documents.isEmpty
-                  ? null
-                  : Column(
-                      children: [
-                        for (final doc in entry.documents)
-                          _DocumentTile(document: doc),
-                      ],
-                    ),
-            ),
-            _ChainStep(
-              number: 5,
-              title: l10n.ledgerChainVerification,
-              body: [
-                verification != null
-                    ? l10n.ledgerVerifiedBy(verification.verifiedBy)
-                    : l10n.ledgerNotVerified,
-                integrityStatusLabel(entry.integrityStatus, l10n),
-              ].join('\n'),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: EvidenceBadge(level: entry.proof.evidenceLevel),
-              ),
-            ),
-            const Divider(height: 32),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(l10n.ledgerProofTitle, style: titleStyle),
-            ),
-            const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.ledgerProofHash),

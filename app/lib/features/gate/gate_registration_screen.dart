@@ -1,7 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/error_retry.dart';
+import '../../l10n/app_localizations.dart';
 import 'gate_repository.dart';
 import 'plate_text.dart';
 
@@ -20,7 +21,7 @@ class GateRegistrationScreen extends StatefulWidget {
 class _GateRegistrationScreenState extends State<GateRegistrationScreen> {
   final plate = TextEditingController();
   Map<String, dynamic>? data;
-  String? error;
+  Object? error;
   bool busy = false;
   @override
   void initState() {
@@ -43,7 +44,7 @@ class _GateRegistrationScreenState extends State<GateRegistrationScreen> {
       await action();
       await _load();
     } catch (e) {
-      setState(() => error = gateErrorMessage(e));
+      if (mounted) setState(() => error = e);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -54,28 +55,28 @@ class _GateRegistrationScreenState extends State<GateRegistrationScreen> {
       final value = await widget.repository.registrations();
       if (mounted) setState(() => data = value);
     } catch (e) {
-      if (mounted) setState(() => error = gateErrorMessage(e));
+      if (mounted) setState(() => error = e);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final plates = (data?['plates'] as List?) ?? const [];
     final face = data?['face'] as Map?;
     return Scaffold(
-      appBar: AppBar(title: const Text('Dang ky cong')),
+      appBar: AppBar(title: Text(l10n.gateRegistrationTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (error != null)
-            Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
+            ErrorRetry(error: error!, onRetry: _load)
+          else if (data == null)
+            const Center(child: CircularProgressIndicator.adaptive()),
           TextField(
             controller: plate,
             decoration: InputDecoration(
-              labelText: 'Bien so xe',
+              labelText: l10n.gatePlateLabel,
               helperText: normalizePlateText(plate.text),
             ),
             onChanged: (_) => setState(() {}),
@@ -84,34 +85,42 @@ class _GateRegistrationScreenState extends State<GateRegistrationScreen> {
             onPressed: busy || !isPlausiblePlate(normalizePlateText(plate.text))
                 ? null
                 : () => _run(() => widget.repository.addPlate(plate.text)),
-            child: const Text('Gui bien so de duyet'),
+            child: Text(l10n.gateSubmitPlate),
           ),
           for (final item in plates.cast<Map>())
             ListTile(
               title: Text('${item['plate']}'),
               subtitle: Text(
-                statusText('${item['status']}', '${item['review_note'] ?? ''}'),
+                _statusText(
+                  l10n,
+                  '${item['status']}',
+                  '${item['review_note'] ?? ''}',
+                ),
               ),
               trailing: IconButton(
-                tooltip: 'Thu hoi bien so',
+                tooltip: l10n.gateRevokePlate,
                 icon: const Icon(Icons.delete),
-                onPressed: () => _run(
+                onPressed: () => _confirmRevoke(
+                  l10n.gateRevokePlate,
                   () => widget.repository.deletePlate(item['id'] as int),
                 ),
               ),
             ),
           const Divider(),
           ListTile(
-            title: const Text('Khuon mat'),
+            title: Text(l10n.gateFaceTitle),
             subtitle: Text(
               face == null
-                  ? 'Chua dang ky'
-                  : statusText(
+                  ? l10n.gateNotRegistered
+                  : _statusText(
+                      l10n,
                       '${face['status']}',
                       '${face['review_note'] ?? ''}',
                     ),
             ),
           ),
+          Text(l10n.gateRetentionNotice),
+          const SizedBox(height: 8),
           FilledButton(
             onPressed: busy
                 ? null
@@ -124,44 +133,54 @@ class _GateRegistrationScreenState extends State<GateRegistrationScreen> {
                       );
                     }
                   },
-            child: const Text('Chup anh dang ky'),
+            child: busy
+                ? const CircularProgressIndicator.adaptive()
+                : Text(l10n.gateCaptureFace),
           ),
           if (face != null)
             TextButton(
-              onPressed: () => _run(widget.repository.deleteFace),
-              child: const Text('Thu hoi khuon mat'),
+              onPressed: () => _confirmRevoke(
+                l10n.gateRevokeFace,
+                widget.repository.deleteFace,
+              ),
+              child: Text(l10n.gateRevokeFace),
             ),
-          const Text(
-            'Anh chi duoc giu de quan ly xem xet va se bi xoa sau khi co quyet dinh.',
-          ),
         ],
       ),
     );
   }
+
+  Future<void> _confirmRevoke(
+    String title,
+    Future<void> Function() action,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(l10n.gateRevokeConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.gateRevokeConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await _run(action);
+  }
 }
 
-String statusText(String status, String note) => switch (status) {
-  'PENDING' => 'Dang cho duyet',
-  'APPROVED' => 'Da duyet',
-  'REJECTED' => 'Bi tu choi: $note',
-  'EXPIRED' => 'Anh da het han, vui long gui lai',
-  _ => 'Khong ro trang thai',
-};
-String gateErrorMessage(Object error) {
-  final code = error is DioException && error.response?.data is Map
-      ? '${(error.response!.data as Map)['code']}'
-      : 'network_error';
-  return switch (code) {
-    'gate_no_face_detected' => 'Khong tim thay khuon mat.',
-    'gate_multiple_faces' => 'Anh chi duoc co mot khuon mat.',
-    'gate_face_too_small' => 'Khuon mat qua nho.',
-    'gate_face_too_blurry' => 'Anh qua mo.',
-    'gate_face_unusable' => 'Anh khong the dung de dang ky khuon mat.',
-    'gate_photo_rejected' => 'Anh bi tu choi truoc khi xu ly.',
-    'gate_face_upload_too_large' => 'Anh vuot qua dung luong cho phep.',
-    'gate_plate_already_registered' =>
-      'Bien so da duoc dang ky. Vui long lien he ban quan ly.',
-    'gate_model_unavailable' => 'Dich vu khuon mat dang tam ngung.',
-    _ => 'Khong the ket noi. Khong co du lieu nao duoc luu.',
-  };
-}
+String _statusText(AppLocalizations l10n, String status, String note) =>
+    switch (status) {
+      'PENDING' => l10n.gateStatusPending,
+      'APPROVED' => l10n.gateStatusApproved,
+      'REJECTED' => l10n.gateStatusRejected(note),
+      'EXPIRED' => l10n.gateStatusExpired,
+      _ => l10n.gateStatusUnknown,
+    };

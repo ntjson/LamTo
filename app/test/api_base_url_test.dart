@@ -13,7 +13,10 @@ void main() {
     });
 
     test('accepts emulator host', () {
-      expect(normalizeApiBaseUrl('http://10.0.2.2:8000'), 'http://10.0.2.2:8000');
+      expect(
+        normalizeApiBaseUrl('http://10.0.2.2:8000'),
+        'http://10.0.2.2:8000',
+      );
     });
 
     test('rejects empty and non-http schemes', () {

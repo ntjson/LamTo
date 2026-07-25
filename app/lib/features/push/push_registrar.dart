@@ -61,9 +61,9 @@ class PushRegistrar {
     required this.installIdStore,
     SharedPreferences? prefs,
     Duration? deregisterTimeout,
-  })  : _prefsOverride = prefs,
-        deregisterTimeout =
-            deregisterTimeout ?? PushRegistrar.defaultDeregisterTimeout;
+  }) : _prefsOverride = prefs,
+       deregisterTimeout =
+           deregisterTimeout ?? PushRegistrar.defaultDeregisterTimeout;
 
   /// Bounds devicesDestroy so logout never hangs on a stalled Dio call (I2).
   static const defaultDeregisterTimeout = Duration(seconds: 8);
@@ -146,9 +146,7 @@ class PushRegistrar {
       // (1) Finish prior failed logout deactivation before any re-register.
       if (pending != null && pending.isNotEmpty) {
         try {
-          await repository
-              .deactivateDevice(pending)
-              .timeout(deregisterTimeout);
+          await repository.deactivateDevice(pending).timeout(deregisterTimeout);
           await prefs.remove(PushPrefsKeys.pendingDeregister);
         } catch (_) {
           // Leave pending; re-register below may still succeed via upsert.
@@ -201,9 +199,7 @@ class PushRegistrar {
     _refreshSub = null;
     final installId = await installIdStore.get();
     try {
-      await repository
-          .deactivateDevice(installId)
-          .timeout(deregisterTimeout);
+      await repository.deactivateDevice(installId).timeout(deregisterTimeout);
       final prefs = await _prefs();
       await prefs.remove(PushPrefsKeys.pendingDeregister);
     } catch (_) {
@@ -218,9 +214,7 @@ class PushRegistrar {
       final prefs = await _prefs();
       final pending = prefs.getString(PushPrefsKeys.pendingDeregister);
       if (pending == null || pending.isEmpty) return;
-      await repository
-          .deactivateDevice(pending)
-          .timeout(deregisterTimeout);
+      await repository.deactivateDevice(pending).timeout(deregisterTimeout);
       await prefs.remove(PushPrefsKeys.pendingDeregister);
     } catch (_) {
       // Leave the pending key for a later authenticated session.

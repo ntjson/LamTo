@@ -70,7 +70,7 @@ class FirebasePushTokenSource implements PushTokenSource {
       final settings = await FirebaseMessaging.instance.requestPermission();
       final granted =
           settings.authorizationStatus == AuthorizationStatus.authorized ||
-              settings.authorizationStatus == AuthorizationStatus.provisional;
+          settings.authorizationStatus == AuthorizationStatus.provisional;
       return granted
           ? PushPermissionResult.granted
           : PushPermissionResult.denied;
@@ -115,7 +115,8 @@ class FirebasePushTokenSource implements PushTokenSource {
   @override
   Stream<Map<String, String>> get onMessageOpened async* {
     if (!await _ensure()) return;
-    yield* FirebaseMessaging.onMessageOpenedApp
-        .map((m) => m.data.map((k, v) => MapEntry(k, '$v')));
+    yield* FirebaseMessaging.onMessageOpenedApp.map(
+      (m) => m.data.map((k, v) => MapEntry(k, '$v')),
+    );
   }
 }

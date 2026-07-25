@@ -18,7 +18,9 @@ void main() {
     expect(app_main.main, isA<void Function()>());
   });
 
-  testWidgets('LamToApp mounts from ProviderScope (entry smoke)', (tester) async {
+  testWidgets('LamToApp mounts from ProviderScope (entry smoke)', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       ProviderScope(

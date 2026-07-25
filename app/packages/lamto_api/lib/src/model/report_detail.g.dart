@@ -33,6 +33,8 @@ class _$ReportDetail extends ReportDetail {
   final BuiltList<ReportPhoto> photos;
   @override
   final BuiltList<ReportCase> cases;
+  @override
+  final BuiltList<int> ledgerEntryIds;
 
   factory _$ReportDetail([void Function(ReportDetailBuilder)? updates]) =>
       (ReportDetailBuilder()..update(updates))._build();
@@ -50,7 +52,8 @@ class _$ReportDetail extends ReportDetail {
       this.triageStatus,
       this.category,
       required this.photos,
-      required this.cases})
+      required this.cases,
+      required this.ledgerEntryIds})
       : super._();
   @override
   ReportDetail rebuild(void Function(ReportDetailBuilder) updates) =>
@@ -75,7 +78,8 @@ class _$ReportDetail extends ReportDetail {
         triageStatus == other.triageStatus &&
         category == other.category &&
         photos == other.photos &&
-        cases == other.cases;
+        cases == other.cases &&
+        ledgerEntryIds == other.ledgerEntryIds;
   }
 
   @override
@@ -94,6 +98,7 @@ class _$ReportDetail extends ReportDetail {
     _$hash = $jc(_$hash, category.hashCode);
     _$hash = $jc(_$hash, photos.hashCode);
     _$hash = $jc(_$hash, cases.hashCode);
+    _$hash = $jc(_$hash, ledgerEntryIds.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -113,7 +118,8 @@ class _$ReportDetail extends ReportDetail {
           ..add('triageStatus', triageStatus)
           ..add('category', category)
           ..add('photos', photos)
-          ..add('cases', cases))
+          ..add('cases', cases)
+          ..add('ledgerEntryIds', ledgerEntryIds))
         .toString();
   }
 }
@@ -180,6 +186,12 @@ class ReportDetailBuilder
       _$this._cases ??= ListBuilder<ReportCase>();
   set cases(ListBuilder<ReportCase>? cases) => _$this._cases = cases;
 
+  ListBuilder<int>? _ledgerEntryIds;
+  ListBuilder<int> get ledgerEntryIds =>
+      _$this._ledgerEntryIds ??= ListBuilder<int>();
+  set ledgerEntryIds(ListBuilder<int>? ledgerEntryIds) =>
+      _$this._ledgerEntryIds = ledgerEntryIds;
+
   ReportDetailBuilder() {
     ReportDetail._defaults(this);
   }
@@ -200,6 +212,7 @@ class ReportDetailBuilder
       _category = $v.category;
       _photos = $v.photos.toBuilder();
       _cases = $v.cases.toBuilder();
+      _ledgerEntryIds = $v.ledgerEntryIds.toBuilder();
       _$v = null;
     }
     return this;
@@ -243,6 +256,7 @@ class ReportDetailBuilder
             category: category,
             photos: photos.build(),
             cases: cases.build(),
+            ledgerEntryIds: ledgerEntryIds.build(),
           );
     } catch (_) {
       late String _$failedField;
@@ -254,6 +268,8 @@ class ReportDetailBuilder
         photos.build();
         _$failedField = 'cases';
         cases.build();
+        _$failedField = 'ledgerEntryIds';
+        ledgerEntryIds.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'ReportDetail', _$failedField, e.toString());

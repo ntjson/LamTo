@@ -28,12 +28,12 @@ class _FakeAuth implements AuthRepository {
 
   @override
   Future<Me> fetchMe() async => Me(
-        (b) => b
-          ..displayName = 'R'
-          ..email = 'r@example.com'
-          ..occupancies = ListBuilder<Occupancy>()
-          ..notificationPreferences = ListBuilder<NotificationPreference>(),
-      );
+    (b) => b
+      ..displayName = 'R'
+      ..email = 'r@example.com'
+      ..occupancies = ListBuilder<Occupancy>()
+      ..notificationPreferences = ListBuilder<NotificationPreference>(),
+  );
   @override
   Future<String> login(String i, String p) async => 'tok';
   @override
@@ -84,17 +84,19 @@ void main() {
     TransparencyRepository? devices,
   }) {
     SharedPreferences.setMockInitialValues({});
-    final container = ProviderContainer(overrides: [
-      tokenStoreProvider.overrideWithValue(_FakeStore()),
-      authRepositoryProvider.overrideWithValue(auth),
-      pushRegistrarProvider.overrideWithValue(
-        PushRegistrar(
-          tokenSource: _NoPushSource(),
-          repository: devices ?? _FakeDevices(),
-          installIdStore: InstallIdStore(),
+    final container = ProviderContainer(
+      overrides: [
+        tokenStoreProvider.overrideWithValue(_FakeStore()),
+        authRepositoryProvider.overrideWithValue(auth),
+        pushRegistrarProvider.overrideWithValue(
+          PushRegistrar(
+            tokenSource: _NoPushSource(),
+            repository: devices ?? _FakeDevices(),
+            installIdStore: InstallIdStore(),
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
     addTearDown(container.dispose);
     return container;
   }
@@ -109,24 +111,28 @@ void main() {
     expect(state, isA<SessionUnauthenticated>());
   });
 
-  test('logout-all variant and server failure never block local sign-out',
-      () async {
-    final auth = _FakeAuth()..throwOnLogout = true;
-    final container = makeContainer(auth);
-    await container.read(sessionControllerProvider.future);
-    // Throws server-side; still signs out locally.
-    await container.read(sessionControllerProvider.notifier).signOut();
-    expect(await container.read(sessionControllerProvider.future),
-        isA<SessionUnauthenticated>());
+  test(
+    'logout-all variant and server failure never block local sign-out',
+    () async {
+      final auth = _FakeAuth()..throwOnLogout = true;
+      final container = makeContainer(auth);
+      await container.read(sessionControllerProvider.future);
+      // Throws server-side; still signs out locally.
+      await container.read(sessionControllerProvider.notifier).signOut();
+      expect(
+        await container.read(sessionControllerProvider.future),
+        isA<SessionUnauthenticated>(),
+      );
 
-    final auth2 = _FakeAuth();
-    final container2 = makeContainer(auth2);
-    await container2.read(sessionControllerProvider.future);
-    await container2
-        .read(sessionControllerProvider.notifier)
-        .signOut(allDevices: true);
-    expect(auth2.calls, ['logout-all']);
-  });
+      final auth2 = _FakeAuth();
+      final container2 = makeContainer(auth2);
+      await container2.read(sessionControllerProvider.future);
+      await container2
+          .read(sessionControllerProvider.notifier)
+          .signOut(allDevices: true);
+      expect(auth2.calls, ['logout-all']);
+    },
+  );
 
   test('signOut deregisters push device before server logout (A5)', () async {
     final auth = _FakeAuth();
@@ -139,18 +145,22 @@ void main() {
     expect(auth.calls, ['logout']);
   });
 
-  test('signOut still clears session when deregister fails (A5 pending)',
-      () async {
-    final auth = _FakeAuth();
-    final devices = _FakeDevices()..deactivateError = Exception('down');
-    final container = makeContainer(auth, devices: devices);
-    await container.read(sessionControllerProvider.future);
-    final installId = await InstallIdStore().get();
-    await container.read(sessionControllerProvider.notifier).signOut();
-    expect(devices.deactivated, isEmpty);
-    expect(await container.read(sessionControllerProvider.future),
-        isA<SessionUnauthenticated>());
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString(PushPrefsKeys.pendingDeregister), installId);
-  });
+  test(
+    'signOut still clears session when deregister fails (A5 pending)',
+    () async {
+      final auth = _FakeAuth();
+      final devices = _FakeDevices()..deactivateError = Exception('down');
+      final container = makeContainer(auth, devices: devices);
+      await container.read(sessionControllerProvider.future);
+      final installId = await InstallIdStore().get();
+      await container.read(sessionControllerProvider.notifier).signOut();
+      expect(devices.deactivated, isEmpty);
+      expect(
+        await container.read(sessionControllerProvider.future),
+        isA<SessionUnauthenticated>(),
+      );
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(PushPrefsKeys.pendingDeregister), installId);
+    },
+  );
 }

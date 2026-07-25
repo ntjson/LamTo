@@ -134,18 +134,19 @@ class _ProposalTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return ListTile(
       minTileHeight: 72,
-      title: Text(
-        proposal.purpose,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+      title: Align(
+        alignment: Alignment.centerLeft,
+        child: StatusChip(
+          tone: proposalStatusTone(proposal.status),
+          label: proposalStatusLabel(proposal.status, l10n),
+        ),
       ),
-      subtitle: Text(
-        formatVnd(proposal.amountVnd),
-        style: listAmountStyle(context),
-      ),
-      trailing: StatusChip(
-        tone: proposalStatusTone(proposal.status),
-        label: proposalStatusLabel(proposal.status, l10n),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(proposal.purpose, maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(formatVnd(proposal.amountVnd), style: listAmountStyle(context)),
+        ],
       ),
       onTap: () => Navigator.push(
         context,

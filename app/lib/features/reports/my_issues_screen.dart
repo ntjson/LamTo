@@ -10,6 +10,7 @@ import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import '../auth/session_controller.dart';
 import 'issue_detail_screen.dart';
+import 'report_form_screen.dart';
 import 'reports_repository.dart';
 
 /// Plain-language status labels (DESIGN.md: color never alone).
@@ -113,7 +114,18 @@ class MyIssuesScreen extends ConsumerWidget {
                 children: [
                   title,
                   const SizedBox(height: 120),
-                  Center(child: Text(l10n.issuesEmpty)),
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(l10n.issuesEmpty),
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () => openReportForm(context),
+                          child: Text(l10n.tabReport),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               )
             : ListView(
@@ -164,22 +176,24 @@ class _ReportTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return ListTile(
       minTileHeight: 64,
-      title: Text(report.text, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Row(
-        children: [
-          Expanded(
-            child: Text(
-              report.locationPathSnapshot,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (report.isPrivate) Chip(label: Text(l10n.privateBadge)),
-        ],
+      title: Align(
+        alignment: Alignment.centerLeft,
+        child: StatusChip(
+          tone: reportStatusTone(report.status),
+          label: reportStatusLabel(report.status, l10n),
+        ),
       ),
-      trailing: StatusChip(
-        tone: reportStatusTone(report.status),
-        label: reportStatusLabel(report.status, l10n),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(report.text, maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(
+            report.locationPathSnapshot,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (report.isPrivate) Text(l10n.privateBadge),
+        ],
       ),
       onTap: () => Navigator.push(
         context,

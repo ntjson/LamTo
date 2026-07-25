@@ -54,7 +54,10 @@ void main() {
         },
       ),
     );
-    await expectLater(dio.get<dynamic>('/api/v1/me'), throwsA(isA<DioException>()));
+    await expectLater(
+      dio.get<dynamic>('/api/v1/me'),
+      throwsA(isA<DioException>()),
+    );
     expect(store.token, isNull);
     expect(unauthorized, isTrue);
   });

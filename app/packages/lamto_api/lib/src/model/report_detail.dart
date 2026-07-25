@@ -29,6 +29,7 @@ part 'report_detail.g.dart';
 /// * [category]
 /// * [photos]
 /// * [cases]
+/// * [ledgerEntryIds]
 @BuiltValue()
 abstract class ReportDetail implements Built<ReportDetail, ReportDetailBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -71,12 +72,15 @@ abstract class ReportDetail implements Built<ReportDetail, ReportDetailBuilder> 
   @BuiltValueField(wireName: r'cases')
   BuiltList<ReportCase> get cases;
 
+  @BuiltValueField(wireName: r'ledger_entry_ids')
+  BuiltList<int> get ledgerEntryIds;
+
   ReportDetail._();
 
   factory ReportDetail([void updates(ReportDetailBuilder b)]) = _$ReportDetail;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(ReportDetailBuilder b) => b;
+  static void _defaults(ReportDetailBuilder b) => b..ledgerEntryIds = ListBuilder();
 
   @BuiltValueSerializer(custom: true)
   static Serializer<ReportDetail> get serializer => _$ReportDetailSerializer();
@@ -158,6 +162,11 @@ class _$ReportDetailSerializer implements PrimitiveSerializer<ReportDetail> {
     yield serializers.serialize(
       object.cases,
       specifiedType: const FullType(BuiltList, [FullType(ReportCase)]),
+    );
+    yield r'ledger_entry_ids';
+    yield serializers.serialize(
+      object.ledgerEntryIds,
+      specifiedType: const FullType(BuiltList, [FullType(int)]),
     );
   }
 
@@ -276,6 +285,13 @@ class _$ReportDetailSerializer implements PrimitiveSerializer<ReportDetail> {
             specifiedType: const FullType(BuiltList, [FullType(ReportCase)]),
           ) as BuiltList<ReportCase>;
           result.cases.replace(valueDes);
+          break;
+        case r'ledger_entry_ids':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(int)]),
+          ) as BuiltList<int>;
+          result.ledgerEntryIds.replace(valueDes);
           break;
         default:
           unhandled.add(key);

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../core/adaptive_scaffold.dart';
 import 'bill_qr.dart';
 import 'bills_repository.dart';
 
@@ -95,8 +96,8 @@ class _BillScanScreenState extends ConsumerState<BillScanScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.billScanTitle)),
+    return AdaptiveScaffold(
+      title: l10n.billScanTitle,
       body: Column(
         children: [
           Padding(

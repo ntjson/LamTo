@@ -1,12 +1,15 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/failure.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/brand_identity.dart';
 import '../settings/api_base_url_tile.dart';
 import 'registration_screen.dart';
 import 'session_controller.dart';
@@ -70,14 +73,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.loginTitle)),
+    return AdaptiveScaffold(
+      title: l10n.loginTitle,
       body: PageBody(
         child: AutofillGroup(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
+                const BrandIdentity(width: 200),
+                const SizedBox(height: 20),
                 TextField(
                   controller: _id,
                   decoration: InputDecoration(labelText: l10n.loginIdentifier),
@@ -131,8 +136,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                   child: Text(l10n.registrationOpen),
                 ),
-                const SizedBox(height: 24),
-                const ApiBaseUrlTile(),
+                if (kDebugMode) ...[
+                  const SizedBox(height: 24),
+                  const ApiBaseUrlTile(),
+                ],
               ],
             ),
           ),

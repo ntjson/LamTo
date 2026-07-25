@@ -53,23 +53,26 @@ class _FakeRepo implements AuthRepository {
 }
 
 Me _me({int occupancies = 0, List<int>? ids}) => Me(
-      (b) => b
-        ..displayName = 'Resident'
-        ..email = 'r@example.com'
-        ..phone = null
-        ..occupancies = ListBuilder<Occupancy>([
-          for (var i = 0; i < (ids?.length ?? occupancies); i++)
-            Occupancy(
-              (o) => o
-                ..id = ids?[i] ?? (i + 1)
-                ..unitLabel = 'A-${ids?[i] ?? (i + 1)}'
-                ..buildingName = 'Toa A',
-            ),
-        ])
-        ..notificationPreferences = ListBuilder<NotificationPreference>(),
-    );
+  (b) => b
+    ..displayName = 'Resident'
+    ..email = 'r@example.com'
+    ..phone = null
+    ..occupancies = ListBuilder<Occupancy>([
+      for (var i = 0; i < (ids?.length ?? occupancies); i++)
+        Occupancy(
+          (o) => o
+            ..id = ids?[i] ?? (i + 1)
+            ..unitLabel = 'A-${ids?[i] ?? (i + 1)}'
+            ..buildingName = 'Toa A',
+        ),
+    ])
+    ..notificationPreferences = ListBuilder<NotificationPreference>(),
+);
 
-DioException _dio(int? status, {DioExceptionType type = DioExceptionType.badResponse}) {
+DioException _dio(
+  int? status, {
+  DioExceptionType type = DioExceptionType.badResponse,
+}) {
   final req = RequestOptions(path: '/api/v1/me');
   return DioException(
     requestOptions: req,
@@ -103,10 +106,10 @@ class _NoopDevices implements TransparencyRepository {
 
 /// Override push so signOut never hits the real Dio (no connect timeout).
 PushRegistrar get _noopPushRegistrar => PushRegistrar(
-      tokenSource: _NoPushSource(),
-      repository: _NoopDevices(),
-      installIdStore: InstallIdStore(),
-    );
+  tokenSource: _NoPushSource(),
+  repository: _NoopDevices(),
+  installIdStore: InstallIdStore(),
+);
 
 void main() {
   setUp(() {
@@ -134,7 +137,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         tokenStoreProvider.overrideWithValue(store),
-        authRepositoryProvider.overrideWithValue(_FakeRepo(me: _me(occupancies: 1))),
+        authRepositoryProvider.overrideWithValue(
+          _FakeRepo(me: _me(occupancies: 1)),
+        ),
         occupancyStoreProvider.overrideWithValue(OccupancyStore()),
       ],
     );
@@ -252,30 +257,32 @@ void main() {
     expect(scopedBuildCount, greaterThan(before));
   });
 
-  test('signIn then fetchMe network error -> SessionBootstrapError keeps token',
-      () async {
-    final store = _FakeStore();
-    final repo = _FakeRepo(
-      fetchError: _dio(null, type: DioExceptionType.connectionTimeout),
-    );
-    final container = ProviderContainer(
-      overrides: [
-        tokenStoreProvider.overrideWithValue(store),
-        authRepositoryProvider.overrideWithValue(repo),
-        occupancyStoreProvider.overrideWithValue(OccupancyStore()),
-      ],
-    );
-    addTearDown(container.dispose);
-    // Cold start: unauthenticated
-    await container.read(sessionControllerProvider.future);
-    await container
-        .read(sessionControllerProvider.notifier)
-        .signIn('r@example.com', 'pw');
-    final state = container.read(sessionControllerProvider).value;
-    expect(state, isA<SessionBootstrapError>());
-    expect((state as SessionBootstrapError).failure.code, 'network_error');
-    expect(store.token, 'tok'); // token retained for retry
-  });
+  test(
+    'signIn then fetchMe network error -> SessionBootstrapError keeps token',
+    () async {
+      final store = _FakeStore();
+      final repo = _FakeRepo(
+        fetchError: _dio(null, type: DioExceptionType.connectionTimeout),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          tokenStoreProvider.overrideWithValue(store),
+          authRepositoryProvider.overrideWithValue(repo),
+          occupancyStoreProvider.overrideWithValue(OccupancyStore()),
+        ],
+      );
+      addTearDown(container.dispose);
+      // Cold start: unauthenticated
+      await container.read(sessionControllerProvider.future);
+      await container
+          .read(sessionControllerProvider.notifier)
+          .signIn('r@example.com', 'pw');
+      final state = container.read(sessionControllerProvider).value;
+      expect(state, isA<SessionBootstrapError>());
+      expect((state as SessionBootstrapError).failure.code, 'network_error');
+      expect(store.token, 'tok'); // token retained for retry
+    },
+  );
 
   test('signIn then fetchMe 401 -> unauthenticated and clears token', () async {
     final store = _FakeStore();
@@ -290,7 +297,9 @@ void main() {
     addTearDown(container.dispose);
     await container.read(sessionControllerProvider.future);
     await expectLater(
-      container.read(sessionControllerProvider.notifier).signIn('r@example.com', 'pw'),
+      container
+          .read(sessionControllerProvider.notifier)
+          .signIn('r@example.com', 'pw'),
       throwsA(isA<DioException>()),
     );
     final state = container.read(sessionControllerProvider).value;
@@ -301,8 +310,14 @@ void main() {
   test('signOut clears every report draft key (logout privacy)', () async {
     SharedPreferences.setMockInitialValues({});
     final draftStore = ReportDraftStore();
-    await draftStore.write(1, ReportDraft.fresh().copyWith(text: 'sensitive a'));
-    await draftStore.write(2, ReportDraft.fresh().copyWith(text: 'sensitive b'));
+    await draftStore.write(
+      1,
+      ReportDraft.fresh().copyWith(text: 'sensitive a'),
+    );
+    await draftStore.write(
+      2,
+      ReportDraft.fresh().copyWith(text: 'sensitive b'),
+    );
 
     final store = _FakeStore()..token = 't';
     final holder = OccupancyHolder()..occupancyId = 1;
@@ -322,8 +337,10 @@ void main() {
 
     await container.read(sessionControllerProvider.notifier).signOut();
 
-    expect(container.read(sessionControllerProvider).value,
-        isA<SessionUnauthenticated>());
+    expect(
+      container.read(sessionControllerProvider).value,
+      isA<SessionUnauthenticated>(),
+    );
     expect(store.token, isNull);
     expect(holder.occupancyId, isNull);
     expect(await draftStore.read(1), isNull);

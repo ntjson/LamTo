@@ -67,5 +67,6 @@ class ApiBaseUrlNotifier extends Notifier<String> {
   }
 }
 
-final apiBaseUrlProvider =
-    NotifierProvider<ApiBaseUrlNotifier, String>(ApiBaseUrlNotifier.new);
+final apiBaseUrlProvider = NotifierProvider<ApiBaseUrlNotifier, String>(
+  ApiBaseUrlNotifier.new,
+);

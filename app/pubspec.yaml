@@ -74,6 +74,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/brand/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

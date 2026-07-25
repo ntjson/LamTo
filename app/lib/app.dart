@@ -22,6 +22,7 @@ import 'features/reports/issue_detail_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'l10n/app_localizations.dart';
 import 'theme.dart';
+import 'widgets/brand_identity.dart';
 
 class LamToApp extends StatelessWidget {
   const LamToApp({super.key});
@@ -29,7 +30,7 @@ class LamToApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LamTo',
+      title: 'LÀM TỔ',
       theme: lamToTheme(Brightness.light),
       darkTheme: lamToTheme(Brightness.dark),
       localizationsDelegates: const [
@@ -174,7 +175,18 @@ class _AppRouterState extends ConsumerState<AppRouter> {
         onRetry: () => ref.invalidate(sessionControllerProvider),
       ),
       _ => const Scaffold(
-        body: Center(child: CircularProgressIndicator.adaptive()),
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                BrandIdentity(width: 220),
+                SizedBox(height: 24),
+                CircularProgressIndicator.adaptive(),
+              ],
+            ),
+          ),
+        ),
       ),
     };
   }
@@ -222,6 +234,8 @@ class BootstrapErrorScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  const BrandIdentity(width: 180),
+                  const SizedBox(height: 20),
                   ErrorRetry(error: failure, onRetry: onRetry),
                   const SizedBox(height: 16),
                   // Expanded so tunnel URL is visible without hunting.

@@ -53,6 +53,7 @@ class _$RegistrationSubmission extends RegistrationSubmission {
   String toString() {
     return (newBuiltValueToStringHelper(r'RegistrationSubmission')
           ..add('status', status)
+          ..add('statusToken', statusToken)
           ..add('phone', phone))
         .toString();
   }

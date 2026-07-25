@@ -2644,6 +2644,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReportCase'
+        ledger_entry_ids:
+          type: array
+          items:
+            type: integer
       required:
       - cases
       - category
@@ -2651,6 +2655,7 @@ components:
       - declined_reason
       - id
       - is_private
+      - ledger_entry_ids
       - location_path_snapshot
       - open_info_request
       - photos

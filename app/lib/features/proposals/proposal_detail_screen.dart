@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/error_retry.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/failure.dart';
 import '../../core/format.dart';
 import '../../core/page_body.dart';
@@ -22,8 +23,8 @@ class ProposalDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final proposal = ref.watch(proposalDetailProvider(proposalId));
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.proposalsSegment)),
+    return AdaptiveScaffold(
+      title: l10n.proposalsSegment,
       body: PageBody(
         child: switch (proposal) {
           AsyncData(:final value) => _body(context, ref, l10n, value),
@@ -71,10 +72,15 @@ class ProposalDetailScreen extends ConsumerWidget {
             trailing: EvidenceBadge(level: version.evidenceLevel),
           ),
           for (final document in version.supportingDocuments)
-            ListTile(
-              contentPadding: const EdgeInsets.only(left: 16),
-              leading: const Icon(Icons.description_outlined),
-              title: Text(document.filename),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.description_outlined),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(document.filename)),
+                ],
+              ),
             ),
         ],
         if (proposal.progress.isNotEmpty) ...[

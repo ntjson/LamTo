@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api_base_url.dart';
+import '../../../core/failure.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_vi.dart';
+import '../../../theme.dart';
 import 'plate_ocr.dart';
 import 'reader_credential_store.dart';
 import 'reader_repository.dart';
@@ -58,6 +61,8 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
   String? message;
   bool busy = false;
   ReaderCredentialStore get store => widget.store ?? ReaderCredentialStore();
+  AppLocalizations get l10n =>
+      AppLocalizations.of(context) ?? AppLocalizationsVi();
 
   @override
   void initState() {
@@ -69,7 +74,9 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
   /// silent activation cannot run against a stale compile-time default.
   Future<void> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = normalizeApiBaseUrl(prefs.getString(kApiBaseUrlPrefsKey) ?? '');
+    final saved = normalizeApiBaseUrl(
+      prefs.getString(kApiBaseUrlPrefsKey) ?? '',
+    );
     if (saved != null) {
       baseUrl.text = saved;
       widget.onBaseUrl?.call(saved);
@@ -105,13 +112,13 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
             });
       if (mounted) setState(() => result = value);
     } on FormatException {
-      if (mounted) setState(() => message = 'Khong doc duoc bien so. Thu lai.');
-    } on DioException catch (error) {
-      if (mounted) setState(() => message = readerError(error));
-    } catch (_) {
+      if (mounted) {
+        setState(() => message = l10n.gateReaderPlateUnreadable);
+      }
+    } catch (error) {
       if (mounted) {
         setState(
-          () => message = 'Mat ket noi. Khung hinh khong duoc luu de gui lai.',
+          () => message = failureMessage(Failure.fromObject(error), l10n),
         );
       }
     } finally {
@@ -128,9 +135,7 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
     final url = normalizeApiBaseUrl(baseUrl.text);
     if (url == null) {
       if (mounted) {
-        setState(
-          () => message = 'URL may chu khong hop le. Can https:// hoac http://',
-        );
+        setState(() => message = l10n.gateReaderInvalidUrl);
       }
       return;
     }
@@ -153,138 +158,128 @@ class _GateReaderScreenState extends State<GateReaderScreen> {
           message = null;
         });
       }
-    } on DioException catch (error) {
+    } catch (error) {
       if (mounted) {
-        setState(() => message = readerError(error));
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => message = 'Mat ket noi. Khong the kich hoat dau doc.');
+        setState(
+          () => message = failureMessage(Failure.fromObject(error), l10n),
+        );
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Dau doc cong')),
-    body: token == null
-        ? Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    key: const Key('reader-base-url'),
-                    controller: baseUrl,
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Dia chi may chu',
-                    ),
-                  ),
-                  TextField(
-                    key: const Key('reader-credential'),
-                    controller: credential,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Ma thiet bi'),
-                  ),
-                  FilledButton(
-                    onPressed: () async {
-                      final value = credential.text.trim();
-                      if (value.isNotEmpty) {
-                        await _activate(value);
-                      }
-                    },
-                    child: const Text('Kich hoat dau doc'),
-                  ),
-                  if (message != null) Text(message!),
-                ],
-              ),
-            ),
-          )
-        : Column(
-            children: [
-              Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
+  Widget build(BuildContext context) {
+    final l10n = this.l10n;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.gateReaderTitle)),
+      body: token == null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    widget.camera.preview,
-                    Align(
-                      alignment: Alignment.topCenter,
-                      child: SafeArea(child: Chip(label: Text(direction!))),
+                    TextField(
+                      key: const Key('reader-base-url'),
+                      controller: baseUrl,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      decoration: InputDecoration(
+                        labelText: l10n.gateReaderServer,
+                      ),
                     ),
+                    TextField(
+                      key: const Key('reader-credential'),
+                      controller: credential,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: l10n.gateReaderCredential,
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () async {
+                        final value = credential.text.trim();
+                        if (value.isNotEmpty) {
+                          await _activate(value);
+                        }
+                      },
+                      child: busy
+                          ? const CircularProgressIndicator.adaptive()
+                          : Text(l10n.gateReaderActivate),
+                    ),
+                    if (message != null) Text(message!),
                   ],
                 ),
               ),
-              if (result != null)
-                Card(
-                  color: result!.matched
-                      ? Colors.green.shade100
-                      : Colors.red.shade100,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      result!.matched
-                          ? '${result!.name}\nCan ${result!.unit}\n${result!.direction}'
-                          : 'Khong nhan dien duoc\n${result!.direction}',
-                      textAlign: TextAlign.center,
-                    ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      widget.camera.preview,
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: SafeArea(child: Chip(label: Text(direction!))),
+                      ),
+                    ],
                   ),
                 ),
-              if (message != null) Text(message!),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => _capture(false),
-                    icon: const Icon(Icons.directions_car),
-                    label: const Text('Quet bien so'),
+                if (result != null)
+                  Builder(
+                    builder: (context) {
+                      final colors = statusToneColors(
+                        context,
+                        result!.matched ? StatusTone.success : StatusTone.error,
+                      );
+                      return Card(
+                        color: colors.bg,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            result!.matched
+                                ? '${result!.name}\n${l10n.gateReaderUnit(result!.unit)}\n${result!.direction}'
+                                : '${l10n.gateReaderNoMatch}\n${result!.direction}',
+                            style: TextStyle(color: colors.fg),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => _capture(true),
-                    icon: const Icon(Icons.face),
-                    label: const Text('Quet khuon mat'),
-                  ),
-                ],
-              ),
-              TextButton(
-                onPressed: () async {
-                  await store.clear();
-                  if (mounted) {
-                    setState(() {
-                      token = null;
-                      result = null;
-                    });
-                  }
-                },
-                child: const Text('Xoa ma thiet bi'),
-              ),
-            ],
-          ),
-  );
-}
-
-String readerError(DioException error) {
-  final data = error.response?.data;
-  final code = data is Map ? '${data['code']}' : '';
-  return switch (code) {
-    'gate_device_revoked' => 'Ma thiet bi da bi thu hoi.',
-    'gate_device_expired' => 'Ma thiet bi da het han.',
-    // Without this case a wrong code fell through to the connection-lost
-    // default, which reads as a network fault the operator cannot act on.
-    'gate_device_unauthenticated' => 'Ma thiet bi khong dung.',
-    'gate_no_face_detected' => 'Khong tim thay khuon mat. Thu lai.',
-    'gate_multiple_faces' => 'Khung hinh chi duoc co mot khuon mat.',
-    'gate_face_too_small' => 'Khuon mat qua nho. Hay lai gan hon.',
-    'gate_face_too_blurry' => 'Khung hinh qua mo. Thu lai.',
-    'gate_face_unusable' => 'Khung hinh khong the dung de nhan dien.',
-    'gate_face_upload_too_large' => 'Khung hinh vuot qua dung luong cho phep.',
-    'gate_photo_rejected' => 'Khung hinh bi tu choi truoc khi xu ly.',
-    'gate_model_unavailable' => 'Dau doc dang ngoai tuyen.',
-    'gate_recognition_throttled' => 'Thao tac qua nhanh. Vui long cho.',
-    _ => 'Mat ket noi. Khung hinh khong duoc luu de gui lai.',
-  };
+                if (message != null) Text(message!),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: busy ? null : () => _capture(false),
+                      icon: const Icon(Icons.directions_car),
+                      label: Text(l10n.gateReaderScanPlate),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: busy ? null : () => _capture(true),
+                      icon: const Icon(Icons.face),
+                      label: Text(l10n.gateReaderScanFace),
+                    ),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await store.clear();
+                    if (mounted) {
+                      setState(() {
+                        token = null;
+                        result = null;
+                      });
+                    }
+                  },
+                  child: Text(l10n.gateReaderClearDevice),
+                ),
+              ],
+            ),
+    );
+  }
 }

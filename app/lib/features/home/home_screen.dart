@@ -14,6 +14,7 @@ import '../ledger/ledger_detail_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../reports/issue_detail_screen.dart';
 import '../reports/my_issues_screen.dart';
+import '../reports/report_form_screen.dart';
 import '../shell/home_shell.dart';
 import '../transparency/fund_chart.dart';
 import '../transparency/transparency_repository.dart';
@@ -149,7 +150,12 @@ class HomeScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             switch (reports) {
-              AsyncData(:final value) => _activeReports(context, l10n, value),
+              AsyncData(:final value) => _activeReports(
+                context,
+                ref,
+                l10n,
+                value,
+              ),
               AsyncError(:final error) => ErrorRetry(
                 error: error,
                 onRetry: () => ref.invalidate(myReportsProvider),
@@ -162,7 +168,12 @@ class HomeScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             switch (spending) {
-              AsyncData(:final value) => _recentSpending(context, l10n, value),
+              AsyncData(:final value) => _recentSpending(
+                context,
+                ref,
+                l10n,
+                value,
+              ),
               AsyncError(:final error) => ErrorRetry(
                 error: error,
                 onRetry: () => ref.invalidate(recentSpendingProvider),
@@ -249,6 +260,7 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _activeReports(
     BuildContext context,
+    WidgetRef ref,
     AppLocalizations l10n,
     List<ReportSummary> all,
   ) {
@@ -260,7 +272,16 @@ class HomeScreen extends ConsumerWidget {
     if (open.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(l10n.homeNoActiveReports),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.homeNoActiveReports),
+            TextButton(
+              onPressed: () => openReportForm(context),
+              child: Text(l10n.tabReport),
+            ),
+          ],
+        ),
       );
     }
     return Column(
@@ -269,12 +290,12 @@ class HomeScreen extends ConsumerWidget {
           ListTile(
             minTileHeight: 56,
             contentPadding: EdgeInsets.zero,
-            title: Text(
+            title: Text(reportStatusLabel(report.status, l10n)),
+            subtitle: Text(
               report.text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(reportStatusLabel(report.status, l10n)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -289,13 +310,23 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _recentSpending(
     BuildContext context,
+    WidgetRef ref,
     AppLocalizations l10n,
     List<LedgerEntryList> entries,
   ) {
     if (entries.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(l10n.homeNoSpending),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.homeNoSpending),
+            TextButton(
+              onPressed: () => selectLedgerTab(ref),
+              child: Text(l10n.tabLedger),
+            ),
+          ],
+        ),
       );
     }
     return Column(
@@ -304,14 +335,20 @@ class HomeScreen extends ConsumerWidget {
           ListTile(
             minTileHeight: 56,
             contentPadding: EdgeInsets.zero,
-            title: Text(
-              entry.contractorName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              formatVnd(entry.actualCostVnd),
-              style: listAmountStyle(context),
+            title: Text(l10n.ledgerDetailTitle),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.contractorName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  formatVnd(entry.actualCostVnd),
+                  style: listAmountStyle(context),
+                ),
+              ],
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(

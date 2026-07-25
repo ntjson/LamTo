@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/error_retry.dart';
+import '../../core/format.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import 'transparency_repository.dart';
 
 /// Fund balance history. Home uses the compact line; Ledger uses the full view.
@@ -26,9 +28,9 @@ class FundChart extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     return switch (ref.watch(fundSeriesProvider(range))) {
       AsyncData(:final value) => Semantics(
-        label: l10n.fundChartSemantics,
+        label: _semanticsLabel(context, l10n, value),
         button: onTap != null,
-        child: _chart(context, l10n, value),
+        child: ExcludeSemantics(child: _chart(context, l10n, value)),
       ),
       AsyncError(:final error) => ErrorRetry(
         error: error,
@@ -39,6 +41,23 @@ class FundChart extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator.adaptive()),
       ),
     };
+  }
+
+  String _semanticsLabel(
+    BuildContext context,
+    AppLocalizations l10n,
+    FundSeries series,
+  ) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final date = DateFormat(range == '30d' ? 'd/M' : 'M/yyyy', locale);
+    final values = series.points.map(
+      (point) =>
+          '${date.format(point.periodStart)}: '
+          '${l10n.fundChartBalanceValue(formatVnd(point.balanceVnd))}, '
+          '${l10n.fundChartInflowValue(formatVnd(point.inflowsVnd))}, '
+          '${l10n.fundChartOutflowValue(formatVnd(point.outflowsVnd))}',
+    );
+    return '${l10n.fundChartSemantics}. ${values.join('. ')}';
   }
 
   Widget _chart(
@@ -116,7 +135,9 @@ class FundChart extends ConsumerWidget {
   }
 
   Widget _flowsBars(BuildContext context, List<FundSeriesPoint> points) {
-    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final inflow = dark ? LamToColorsDark.primary : LamToColors.primary;
+    final outflow = dark ? LamToColorsDark.flowOut : LamToColors.flowOut;
     return BarChart(
       BarChartData(
         gridData: const FlGridData(show: false),
@@ -134,12 +155,12 @@ class FundChart extends ConsumerWidget {
               barRods: [
                 BarChartRodData(
                   toY: points[i].inflowsVnd.toDouble(),
-                  color: scheme.tertiary,
+                  color: inflow,
                   width: 6,
                 ),
                 BarChartRodData(
                   toY: points[i].outflowsVnd.toDouble(),
-                  color: scheme.error,
+                  color: outflow,
                   width: 6,
                 ),
               ],

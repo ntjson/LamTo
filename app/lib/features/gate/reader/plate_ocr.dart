@@ -6,19 +6,27 @@ String? bestPlateFromLines(List<String> lines, {bool joinAdjacent = false}) {
   final candidates = <String>[];
   for (var i = 0; i < lines.length; i++) {
     candidates.add(normalizePlateText(lines[i]));
-    if (joinAdjacent && i + 1 < lines.length) candidates.add(normalizePlateText('${lines[i]}${lines[i + 1]}'));
+    if (joinAdjacent && i + 1 < lines.length) {
+      candidates.add(normalizePlateText('${lines[i]}${lines[i + 1]}'));
+    }
   }
   final plausible = candidates.where(isPlausiblePlate);
   return plausible.where(_plateShape.hasMatch).firstOrNull;
 }
+
 Future<String?> extractPlate(String path) async {
   final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
   try {
     final text = await recognizer.processImage(InputImage.fromFilePath(path));
     for (final block in text.blocks) {
-      final plate = bestPlateFromLines(block.lines.map((x) => x.text).toList(), joinAdjacent: true);
+      final plate = bestPlateFromLines(
+        block.lines.map((x) => x.text).toList(),
+        joinAdjacent: true,
+      );
       if (plate != null) return plate;
     }
     return null;
-  } finally { await recognizer.close(); }
+  } finally {
+    await recognizer.close();
+  }
 }

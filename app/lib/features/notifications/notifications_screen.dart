@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/adaptive_page_route.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
 import '../../core/load_more_button.dart';
 import '../../core/page_body.dart';
@@ -128,8 +129,8 @@ class NotificationsScreen extends ConsumerWidget {
     final notices = ref.watch(notificationsProvider);
     final controller = ref.read(notificationsProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.notificationsTitle)),
+    return AdaptiveScaffold(
+      title: l10n.notificationsTitle,
       body: PageBody(
         child: switch (notices) {
           AsyncData(:final value) => RefreshIndicator.adaptive(
@@ -147,7 +148,22 @@ class NotificationsScreen extends ConsumerWidget {
                 if (value.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 120),
-                    child: Center(child: Text(l10n.notificationsEmpty)),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Text(l10n.notificationsEmpty),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: () => Navigator.maybePop(context),
+                            child: Text(
+                              MaterialLocalizations.of(
+                                context,
+                              ).backButtonTooltip,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 for (final notice in value)
                   ListTile(

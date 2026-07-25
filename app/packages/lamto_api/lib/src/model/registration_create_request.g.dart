@@ -72,6 +72,7 @@ class _$RegistrationCreateRequest extends RegistrationCreateRequest {
           ..add('fullName', fullName)
           ..add('phone', phone)
           ..add('email', email)
+          ..add('password', password)
           ..add('buildingId', buildingId)
           ..add('unitId', unitId))
         .toString();

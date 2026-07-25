@@ -194,7 +194,7 @@ void main() {
     expect(find.text('Acme Co', skipOffstage: false), findsNothing);
   });
 
-  testWidgets('ledger tab shows full fund chart with range selector', (
+  testWidgets('ledger tab shows one fixed trailing-year fund chart', (
     tester,
   ) async {
     final repo = _FakeRepo();
@@ -204,31 +204,8 @@ void main() {
     expect(find.byType(FundChart), findsOneWidget);
     expect(find.byType(LineChart), findsOneWidget);
     expect(find.byType(BarChart), findsOneWidget);
-    expect(find.byType(SegmentedButton<String>), findsOneWidget);
-  });
-
-  testWidgets('range selector switches the series', (tester) async {
-    final repo = _FakeRepo();
-    final container = ProviderContainer(
-      overrides: [transparencyRepositoryProvider.overrideWithValue(repo)],
-    );
-    addTearDown(container.dispose);
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('vi'),
-          home: const Scaffold(body: LedgerScreen()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('30 ngày'));
-    await tester.pumpAndSettle();
-    expect(container.read(fundChartRangeProvider), '30d');
-    expect(repo.seriesRanges, containsAllInOrder(['6m', '30d']));
+    expect(find.byType(SegmentedButton<String>), findsNothing);
+    expect(repo.seriesRanges, ['12m']);
   });
 
   testWidgets('ledger chart supports large text without overflow', (
@@ -263,7 +240,9 @@ void main() {
 
     // Choosing a year re-queries with the filter; empty period shows copy.
     final year = DateTime.now().year;
-    await tester.tap(find.text('$year'));
+    await tester.tap(find.byType(DropdownButtonFormField<int?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('$year').last);
     await tester.pumpAndSettle();
     expect(repo.periods.last, (year, null));
     expect(
@@ -273,7 +252,7 @@ void main() {
   });
 
   testWidgets(
-    'detail leads with conclusion then expands accountability chain',
+    'detail keeps accountability visible and technical proof disclosed',
     (tester) async {
       final repo = _FakeRepo();
       await tester.pumpWidget(
@@ -289,15 +268,16 @@ void main() {
       expect(find.text('Lift repair proposal'), findsOneWidget);
       Navigator.pop(tester.element(find.text('Lift repair proposal')));
       await tester.pumpAndSettle();
-      expect(find.text('Phản ánh và lý do'), findsNothing);
-      expect(find.text('ab12cd34'), findsNothing); // hash hidden until expanded
-
-      await tester.tap(find.text('Chuỗi trách nhiệm'));
-      await tester.pumpAndSettle();
       expect(find.text('Phản ánh và lý do'), findsOneWidget);
+      expect(find.text('ab12cd34'), findsNothing); // hash hidden until expanded
       expect(find.text('Công việc đã hoàn thành'), findsOneWidget);
       expect(find.text('Phê duyệt'), findsOneWidget);
       expect(find.text('Chứng từ thanh toán'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Xác minh độc lập'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
       expect(find.text('Xác minh độc lập'), findsOneWidget);
       expect(find.text('Cable secured'), findsOneWidget);
       expect(find.text('Worn cable'), findsOneWidget);
@@ -311,6 +291,8 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).last,
       );
+      await tester.tap(find.text('Chi tiết xác thực'));
+      await tester.pumpAndSettle();
       expect(find.text('ab12cd34'), findsOneWidget);
       expect(find.textContaining('0xfeed'), findsOneWidget);
     },

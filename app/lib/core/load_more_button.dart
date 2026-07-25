@@ -42,7 +42,7 @@ class _LoadMoreButtonState extends State<LoadMoreButton> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

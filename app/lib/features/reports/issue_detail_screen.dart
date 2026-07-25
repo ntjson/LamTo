@@ -5,12 +5,16 @@ import 'package:intl/intl.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/authenticated_image.dart';
+import '../../core/adaptive_page_route.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
 import '../../core/failure.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../ledger/ledger_detail_screen.dart';
 import 'reports_repository.dart';
+import 'report_form_screen.dart';
 
 String _date(DateTime value) =>
     DateFormat('dd/MM/yyyy').format(value.toLocal());
@@ -23,8 +27,8 @@ class IssueDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final detail = ref.watch(reportDetailProvider(reportId));
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.issueDetailTitle(reportId))),
+    return AdaptiveScaffold(
+      title: l10n.issueDetailTitle(reportId),
       body: PageBody(
         child: switch (detail) {
           AsyncData(:final value) => _body(context, ref, l10n, value),
@@ -63,7 +67,8 @@ class IssueDetailScreen extends ConsumerWidget {
       for (final caseItem in report.cases) ...[
         (
           Icons.folder_open_outlined,
-          l10n.timelineCase(caseItem.category),
+          '${l10n.timelineCase(caseItem.category)}\n'
+              '${caseItem.completedAt != null ? l10n.timelineCompleted : l10n.timelineWork(caseItem.updates.isNotEmpty ? l10n.workStatusInProgress : l10n.workStatusAssigned, _date(caseItem.deadlineAt))}',
           null,
         ),
       ],
@@ -119,6 +124,12 @@ class IssueDetailScreen extends ConsumerWidget {
               subtitle: Text(report.declinedReason!),
             ),
           ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => openReportForm(context),
+            icon: const Icon(Icons.edit_note_outlined),
+            label: Text(l10n.declinedCorrectedReportCta),
+          ),
         ],
         const SizedBox(height: 16),
         for (final (icon, label, tone) in steps)
@@ -166,6 +177,20 @@ class IssueDetailScreen extends ConsumerWidget {
                     _openRateSheet(context, ref, l10n, caseItem.id),
               ),
             ),
+        for (final entryId in report.ledgerEntryIds)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.account_balance_outlined),
+              label: Text(l10n.ledgerDetailTitle),
+              onPressed: () => Navigator.push(
+                context,
+                adaptivePageRoute(
+                  builder: (_) => LedgerDetailScreen(entryId: entryId),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -219,38 +244,50 @@ class _ProgressTile extends StatelessWidget {
   final BuiltList<ReportWorkUpdatePhoto> photos;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: const Icon(Icons.build_outlined),
-    title: Text(cause),
-    subtitle: Column(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(result),
-        Text(_date(createdAt)),
-        if (photos.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 96,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final photo in photos)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: AuthenticatedImage(
-                        photo.downloadUrl,
-                        width: 96,
-                        height: 96,
-                      ),
-                    ),
+        const Padding(
+          padding: EdgeInsets.only(top: 2),
+          child: Icon(Icons.build_outlined),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(cause, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(result),
+              Text(_date(createdAt)),
+              if (photos.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 96,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final photo in photos)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: AuthenticatedImage(
+                              photo.downloadUrl,
+                              width: 96,
+                              height: 96,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
+                ),
               ],
-            ),
+            ],
           ),
-        ],
+        ),
       ],
     ),
   );

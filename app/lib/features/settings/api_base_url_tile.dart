@@ -46,9 +46,9 @@ class _ApiBaseUrlTileState extends ConsumerState<ApiBaseUrlTile> {
       // Old knox tokens belong to the previous host.
       await ref.read(sessionControllerProvider.notifier).signOut();
       if (mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(content: Text(l10n.apiBaseUrlSaved)),
-        );
+        ScaffoldMessenger.maybeOf(
+          context,
+        )?.showSnackBar(SnackBar(content: Text(l10n.apiBaseUrlSaved)));
       }
     } on FormatException {
       if (mounted) setState(() => _error = l10n.apiBaseUrlInvalid);
@@ -69,9 +69,9 @@ class _ApiBaseUrlTileState extends ConsumerState<ApiBaseUrlTile> {
       _controller.text = ref.read(apiBaseUrlProvider);
       await ref.read(sessionControllerProvider.notifier).signOut();
       if (mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(content: Text(l10n.apiBaseUrlSaved)),
-        );
+        ScaffoldMessenger.maybeOf(
+          context,
+        )?.showSnackBar(SnackBar(content: Text(l10n.apiBaseUrlSaved)));
       }
     } catch (_) {
       if (mounted) setState(() => _error = l10n.errGeneric);
@@ -104,10 +104,7 @@ class _ApiBaseUrlTileState extends ConsumerState<ApiBaseUrlTile> {
       ),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
-        Text(
-          l10n.apiBaseUrlHelp,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(l10n.apiBaseUrlHelp, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 12),
         TextField(
           key: const Key('api_base_url_field'),

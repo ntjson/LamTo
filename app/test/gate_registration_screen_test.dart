@@ -1,13 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lamto/features/gate/gate_registration_screen.dart';
+import 'package:lamto/core/failure.dart';
+import 'package:lamto/l10n/app_localizations_vi.dart';
 
 void main() {
-  test('registration statuses have Vietnamese resident copy', () {
-    expect(statusText('PENDING', ''), contains('cho duyet'));
-    expect(statusText('REJECTED', 'Anh mo'), contains('Anh mo'));
-    expect(statusText('EXPIRED', ''), contains('gui lai'));
-  });
+  final l10n = AppLocalizationsVi();
 
   test('plate conflict does not leak another resident', () {
     final request = RequestOptions();
@@ -18,9 +15,9 @@ void main() {
         data: {'code': 'gate_plate_already_registered'},
       ),
     );
-    final message = gateErrorMessage(error);
-    expect(message, contains('lien he ban quan ly'));
-    expect(message, isNot(contains('can ho')));
+    final message = failureMessage(Failure.fromObject(error), l10n);
+    expect(message, contains('liên hệ ban quản lý'));
+    expect(message, isNot(contains('căn hộ')));
   });
 
   test('every stable face enrollment error has distinct Vietnamese copy', () {
@@ -36,11 +33,14 @@ void main() {
     ];
     final messages = codes.map((code) {
       final request = RequestOptions();
-      return gateErrorMessage(
-        DioException(
-          requestOptions: request,
-          response: Response(requestOptions: request, data: {'code': code}),
+      return failureMessage(
+        Failure.fromObject(
+          DioException(
+            requestOptions: request,
+            response: Response(requestOptions: request, data: {'code': code}),
+          ),
         ),
+        l10n,
       );
     });
     expect(messages.toSet(), hasLength(codes.length));

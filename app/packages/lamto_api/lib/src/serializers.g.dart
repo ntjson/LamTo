@@ -155,7 +155,10 @@ Serializers _$serializers = (Serializers().toBuilder()
           () => ListBuilder<ReportPhoto>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ReportCase)]),
-          () => ListBuilder<ReportCase>()))
+          () => ListBuilder<ReportCase>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>()))
     .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint

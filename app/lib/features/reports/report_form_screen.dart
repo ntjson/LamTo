@@ -6,9 +6,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/adaptive_page_route.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/failure.dart';
+import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import 'issue_detail_screen.dart';
 import 'location_picker_screen.dart';
 import 'my_issues_screen.dart';
@@ -23,6 +26,16 @@ const _photoQuality = 85;
 enum _DraftSaveState { idle, saving, saved, failed }
 
 const _autosaveDebounce = Duration(milliseconds: 300);
+
+Future<void> openReportForm(BuildContext context) => Navigator.push(
+  context,
+  adaptivePageRoute(
+    builder: (_) => AdaptiveScaffold(
+      title: AppLocalizations.of(context)!.reportFormTitle,
+      body: const PageBody(child: ReportFormScreen()),
+    ),
+  ),
+);
 
 /// Spec 6.3 report compose: required text + location, ≤5 photos, draft
 /// autosave/restore, submit through [ReportSubmitter], per-photo retry.
@@ -40,6 +53,8 @@ class ReportFormScreen extends ConsumerStatefulWidget {
 
 class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   final _text = TextEditingController();
+  final _scrollController = ScrollController();
+  final _noticeKey = GlobalKey();
   final _picker = ImagePicker();
   ReportDraft _draft = ReportDraft.fresh();
   bool _restored = false;
@@ -48,6 +63,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   bool _pushRequested = false;
   _DraftSaveState _draftSaveState = _DraftSaveState.idle;
   String? _notice;
+  StatusTone _noticeTone = StatusTone.info;
   SubmitOutcome? _outcome;
   Timer? _autosaveTimer;
   Future<void>? _pendingPersist;
@@ -98,7 +114,21 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     }
     _text.removeListener(_onTextChanged);
     _text.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _revealNotice() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final noticeContext = _noticeKey.currentContext;
+      if (noticeContext != null) {
+        Scrollable.ensureVisible(
+          noticeContext,
+          duration: const Duration(milliseconds: 200),
+          alignment: 0.2,
+        );
+      }
+    });
   }
 
   Future<void> _restore() async {
@@ -248,7 +278,11 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   Future<void> _submit(AppLocalizations l10n) async {
     if (_committed || _busy) return;
     if (_draft.text.trim().isEmpty || _draft.locationId == null) {
-      setState(() => _notice = l10n.reportMissingFields);
+      setState(() {
+        _notice = l10n.reportMissingFields;
+        _noticeTone = StatusTone.warning;
+      });
+      _revealNotice();
       return;
     }
     await _flushAutosave();
@@ -276,6 +310,9 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
         _notice = outcome.allPhotosUploaded
             ? l10n.reportSubmitted
             : l10n.reportPhotosPending;
+        _noticeTone = outcome.allPhotosUploaded
+            ? StatusTone.success
+            : StatusTone.warning;
         // Committed-result: leave fields as-is but hide Send (amendment 11).
         if (outcome.allPhotosUploaded) {
           unawaited(
@@ -285,20 +322,29 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           );
         }
       });
+      _revealNotice();
     } on ReportConflictException {
       // Already submitted with different content: mint a fresh ref so the
       // edited draft becomes a NEW report on the next send (spec 3.5).
       _draft = _draft.copyWith(clientRef: ReportDraft.fresh().clientRef);
       await _persist();
-      if (mounted) setState(() => _notice = l10n.reportConflict);
+      if (mounted) {
+        setState(() {
+          _notice = l10n.reportConflict;
+          _noticeTone = StatusTone.warning;
+        });
+        _revealNotice();
+      }
     } catch (e) {
       if (mounted) {
-        setState(
-          () => _notice = failureMessage(
+        setState(() {
+          _notice = failureMessage(
             e is Failure ? e : Failure.fromObject(e),
             l10n,
-          ),
-        );
+          );
+          _noticeTone = StatusTone.error;
+        });
+        _revealNotice();
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -331,8 +377,10 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
       // Stay in committed-result; never re-enable whole-report Send.
       if (outcome.allPhotosUploaded) {
         _notice = l10n.reportSubmitted;
+        _noticeTone = StatusTone.success;
       }
     });
+    _revealNotice();
   }
 
   void _openIssueDetail() {
@@ -376,13 +424,9 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            l10n.reportFormTitle,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
           TextField(
             controller: _text,
             maxLines: 4,
@@ -409,11 +453,10 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             leading: const Icon(Icons.place_outlined),
-            title: Text(
-              _draft.locationLabel.isEmpty
-                  ? l10n.reportLocationEmpty
-                  : _draft.locationLabel,
-            ),
+            title: Text(l10n.reportLocationEmpty),
+            subtitle: _draft.locationLabel.isEmpty
+                ? null
+                : Text(_draft.locationLabel),
             trailing: const Icon(Icons.chevron_right),
             onTap: editingLocked ? null : _pickLocation,
           ),
@@ -462,23 +505,60 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           ),
           if (_notice != null) ...[
             const SizedBox(height: 16),
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                _notice!,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+            Builder(
+              builder: (context) {
+                final colors = statusToneColors(context, _noticeTone);
+                final icon = switch (_noticeTone) {
+                  StatusTone.success => Icons.check_circle_outline,
+                  StatusTone.warning => Icons.info_outline,
+                  StatusTone.error => Icons.error_outline,
+                  StatusTone.info => Icons.info_outline,
+                };
+                return Semantics(
+                  liveRegion: true,
+                  child: Container(
+                    key: _noticeKey,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.bg,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(icon, color: colors.fg),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _notice!,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(color: colors.fg),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
           for (final photo in failedPhotos)
-            ListTile(
-              minTileHeight: 48,
-              leading: const Icon(Icons.error_outline),
-              title: Text(photo.filename, overflow: TextOverflow.ellipsis),
-              trailing: TextButton(
-                onPressed: () => _retryPhoto(photo, l10n),
-                child: Text(l10n.reportPhotoRetry),
-              ),
+            Builder(
+              builder: (context) {
+                final colors = statusToneColors(context, StatusTone.error);
+                return ListTile(
+                  minTileHeight: 48,
+                  tileColor: colors.bg,
+                  textColor: colors.fg,
+                  iconColor: colors.fg,
+                  leading: const Icon(Icons.error_outline),
+                  title: Text(photo.filename, overflow: TextOverflow.ellipsis),
+                  trailing: TextButton(
+                    onPressed: () => _retryPhoto(photo, l10n),
+                    child: Text(l10n.reportPhotoRetry),
+                  ),
+                );
+              },
             ),
           if (_committed) ...[
             const SizedBox(height: 16),

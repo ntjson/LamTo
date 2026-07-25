@@ -20,9 +20,22 @@ abstract class GateRepository {
 class DioGateRepository implements GateRepository {
   DioGateRepository(this.dio);
   final Dio dio;
-  @override Future<Map<String, dynamic>> registrations() async => Map<String, dynamic>.from((await dio.get(GateApiPaths.registrations)).data as Map);
-  @override Future<void> addPlate(String plate) async => dio.post(GateApiPaths.plates, data: {'plate': plate});
-  @override Future<void> deletePlate(int id) async => dio.delete('${GateApiPaths.plates}/$id');
-  @override Future<void> submitFace(String path) async => dio.post(GateApiPaths.face, data: FormData.fromMap({'photo': MultipartFile.fromFileSync(path)}));
-  @override Future<void> deleteFace() async => dio.delete(GateApiPaths.face);
+  @override
+  Future<Map<String, dynamic>> registrations() async =>
+      Map<String, dynamic>.from(
+        (await dio.get(GateApiPaths.registrations)).data as Map,
+      );
+  @override
+  Future<void> addPlate(String plate) async =>
+      dio.post(GateApiPaths.plates, data: {'plate': plate});
+  @override
+  Future<void> deletePlate(int id) async =>
+      dio.delete('${GateApiPaths.plates}/$id');
+  @override
+  Future<void> submitFace(String path) async => dio.post(
+    GateApiPaths.face,
+    data: FormData.fromMap({'photo': MultipartFile.fromFileSync(path)}),
+  );
+  @override
+  Future<void> deleteFace() async => dio.delete(GateApiPaths.face);
 }

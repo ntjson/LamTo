@@ -4,9 +4,11 @@ import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lamto/core/failure.dart';
 import 'package:lamto/features/gate/reader/gate_reader_screen.dart';
 import 'package:lamto/features/gate/reader/reader_credential_store.dart';
 import 'package:lamto/features/gate/reader/reader_repository.dart';
+import 'package:lamto/l10n/app_localizations_vi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeReader implements ReaderApi {
@@ -96,13 +98,16 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('reader-credential')), ' secret ');
-    await tester.tap(find.text('Kich hoat dau doc'));
+    await tester.enterText(
+      find.byKey(const Key('reader-credential')),
+      ' secret ',
+    );
+    await tester.tap(find.text('Kích hoạt đầu đọc'));
     await tester.pump();
     expect(store.value, 'secret');
     expect(find.byKey(const Key('camera-preview')), findsOneWidget);
     expect(find.text('ENTRY'), findsOneWidget);
-    await tester.tap(find.text('Xoa ma thiet bi'));
+    await tester.tap(find.text('Xóa mã thiết bị'));
     await tester.pump();
     expect(store.value, isNull);
   });
@@ -125,7 +130,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Quet bien so'));
+    await tester.tap(find.text('Quét biển số'));
     await tester.pumpAndSettle();
     expect(reader.plate, '51F12345');
     expect(find.textContaining('An'), findsOneWidget);
@@ -151,9 +156,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Quet khuon mat'));
+    await tester.tap(find.text('Quét khuôn mặt'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('khong duoc luu'), findsOneWidget);
+    expect(find.textContaining('chưa được lưu'), findsOneWidget);
     expect(camera.captures, 1);
     expect(file.existsSync(), isFalse);
   });
@@ -171,9 +176,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Quet khuon mat'));
+    await tester.tap(find.text('Quét khuôn mặt'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Khong nhan dien duoc'), findsOneWidget);
+    expect(find.textContaining('Không nhận diện được'), findsOneWidget);
     expect(file.existsSync(), isFalse);
   });
 
@@ -191,12 +196,18 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('reader-base-url')), 'localhost:8000');
-    await tester.enterText(find.byKey(const Key('reader-credential')), 'secret');
-    await tester.tap(find.text('Kich hoat dau doc'));
+    await tester.enterText(
+      find.byKey(const Key('reader-base-url')),
+      'localhost:8000',
+    );
+    await tester.enterText(
+      find.byKey(const Key('reader-credential')),
+      'secret',
+    );
+    await tester.tap(find.text('Kích hoạt đầu đọc'));
     await tester.pumpAndSettle();
     expect(reader.deviceCalls, 0);
-    expect(find.textContaining('khong hop le'), findsOneWidget);
+    expect(find.textContaining('không hợp lệ'), findsOneWidget);
     expect(find.byKey(const Key('camera-preview')), findsNothing);
   });
 
@@ -219,8 +230,11 @@ void main() {
       find.byKey(const Key('reader-base-url')),
       '  http://10.0.2.2:8000/  ',
     );
-    await tester.enterText(find.byKey(const Key('reader-credential')), 'secret');
-    await tester.tap(find.text('Kich hoat dau doc'));
+    await tester.enterText(
+      find.byKey(const Key('reader-credential')),
+      'secret',
+    );
+    await tester.tap(find.text('Kích hoạt đầu đọc'));
     await tester.pumpAndSettle();
 
     expect(applied.last, 'http://10.0.2.2:8000');
@@ -257,7 +271,14 @@ void main() {
       'gate_face_upload_too_large',
     ];
     expect(
-      codes.map((code) => readerError(_problem(code))).toSet(),
+      codes
+          .map(
+            (code) => failureMessage(
+              Failure.fromObject(_problem(code)),
+              AppLocalizationsVi(),
+            ),
+          )
+          .toSet(),
       hasLength(codes.length),
     );
   });

@@ -704,6 +704,12 @@ abstract class AppLocalizations {
   /// **'Management decided not to proceed'**
   String get declinedTitle;
 
+  /// No description provided for @declinedCorrectedReportCta.
+  ///
+  /// In en, this message translates to:
+  /// **'File a corrected report'**
+  String get declinedCorrectedReportCta;
+
   /// No description provided for @rateWorkCta.
   ///
   /// In en, this message translates to:
@@ -1184,6 +1190,258 @@ abstract class AppLocalizations {
   /// **'Sign out of all devices'**
   String get accountSignOutAll;
 
+  /// No description provided for @commonCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get commonCancel;
+
+  /// No description provided for @gateAccountAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Register plate and face'**
+  String get gateAccountAction;
+
+  /// No description provided for @gateRegistrationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gate registration'**
+  String get gateRegistrationTitle;
+
+  /// No description provided for @gatePlateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'License plate'**
+  String get gatePlateLabel;
+
+  /// No description provided for @gateSubmitPlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit plate for approval'**
+  String get gateSubmitPlate;
+
+  /// No description provided for @gateRevokePlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke plate'**
+  String get gateRevokePlate;
+
+  /// No description provided for @gateFaceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Face'**
+  String get gateFaceTitle;
+
+  /// No description provided for @gateNotRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Not registered'**
+  String get gateNotRegistered;
+
+  /// No description provided for @gateCaptureFace.
+  ///
+  /// In en, this message translates to:
+  /// **'Take registration photo'**
+  String get gateCaptureFace;
+
+  /// No description provided for @gateRevokeFace.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke face'**
+  String get gateRevokeFace;
+
+  /// No description provided for @gateRetentionNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo is retained only for management review and deleted after a decision.'**
+  String get gateRetentionNotice;
+
+  /// No description provided for @gateRevokeConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This information will no longer be used for gate recognition.'**
+  String get gateRevokeConfirmBody;
+
+  /// No description provided for @gateRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get gateRevokeConfirm;
+
+  /// No description provided for @gateStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting approval'**
+  String get gateStatusPending;
+
+  /// No description provided for @gateStatusApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get gateStatusApproved;
+
+  /// No description provided for @gateStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected: {note}'**
+  String gateStatusRejected(String note);
+
+  /// No description provided for @gateStatusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo expired; please submit another'**
+  String get gateStatusExpired;
+
+  /// No description provided for @gateStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown status'**
+  String get gateStatusUnknown;
+
+  /// No description provided for @gateErrorNoFace.
+  ///
+  /// In en, this message translates to:
+  /// **'No face found. Take another photo.'**
+  String get gateErrorNoFace;
+
+  /// No description provided for @gateErrorMultipleFaces.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo must contain one face only.'**
+  String get gateErrorMultipleFaces;
+
+  /// No description provided for @gateErrorFaceTooSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'The face is too small. Move closer.'**
+  String get gateErrorFaceTooSmall;
+
+  /// No description provided for @gateErrorFaceTooBlurry.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo is too blurry. Take another.'**
+  String get gateErrorFaceTooBlurry;
+
+  /// No description provided for @gateErrorFaceUnusable.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo cannot be used for face registration.'**
+  String get gateErrorFaceUnusable;
+
+  /// No description provided for @gateErrorPhotoRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo was rejected before processing.'**
+  String get gateErrorPhotoRejected;
+
+  /// No description provided for @gateErrorPhotoTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo exceeds the size limit.'**
+  String get gateErrorPhotoTooLarge;
+
+  /// No description provided for @gateErrorPlateRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'This plate is already registered. Contact management.'**
+  String get gateErrorPlateRegistered;
+
+  /// No description provided for @gateErrorUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognition is temporarily unavailable. Try again later.'**
+  String get gateErrorUnavailable;
+
+  /// No description provided for @gateReaderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gate reader'**
+  String get gateReaderTitle;
+
+  /// No description provided for @gateReaderServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get gateReaderServer;
+
+  /// No description provided for @gateReaderCredential.
+  ///
+  /// In en, this message translates to:
+  /// **'Device credential'**
+  String get gateReaderCredential;
+
+  /// No description provided for @gateReaderActivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate reader'**
+  String get gateReaderActivate;
+
+  /// No description provided for @gateReaderInvalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'The server URL is invalid. Start it with https:// or http://.'**
+  String get gateReaderInvalidUrl;
+
+  /// No description provided for @gateReaderPlateUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'The plate could not be read. Try again.'**
+  String get gateReaderPlateUnreadable;
+
+  /// No description provided for @gateReaderUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit {unit}'**
+  String gateReaderUnit(String unit);
+
+  /// No description provided for @gateReaderNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No match found'**
+  String get gateReaderNoMatch;
+
+  /// No description provided for @gateReaderScanPlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan plate'**
+  String get gateReaderScanPlate;
+
+  /// No description provided for @gateReaderScanFace.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan face'**
+  String get gateReaderScanFace;
+
+  /// No description provided for @gateReaderClearDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear device credential'**
+  String get gateReaderClearDevice;
+
+  /// No description provided for @gateReaderDeviceRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'The device credential was revoked.'**
+  String get gateReaderDeviceRevoked;
+
+  /// No description provided for @gateReaderDeviceExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The device credential expired.'**
+  String get gateReaderDeviceExpired;
+
+  /// No description provided for @gateReaderDeviceInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The device credential is invalid.'**
+  String get gateReaderDeviceInvalid;
+
+  /// No description provided for @gateReaderThrottled.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions are too frequent. Please wait.'**
+  String get gateReaderThrottled;
+
   /// No description provided for @prefReportReceipt.
   ///
   /// In en, this message translates to:
@@ -1237,6 +1495,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fund balance chart'**
   String get fundChartSemantics;
+
+  /// No description provided for @fundChartBalanceValue.
+  ///
+  /// In en, this message translates to:
+  /// **'balance {amount}'**
+  String fundChartBalanceValue(String amount);
+
+  /// No description provided for @fundChartInflowValue.
+  ///
+  /// In en, this message translates to:
+  /// **'inflow {amount}'**
+  String fundChartInflowValue(String amount);
+
+  /// No description provided for @fundChartOutflowValue.
+  ///
+  /// In en, this message translates to:
+  /// **'outflow {amount}'**
+  String fundChartOutflowValue(String amount);
 
   /// No description provided for @fundChartRange30d.
   ///

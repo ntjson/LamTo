@@ -272,6 +272,7 @@ class ReportDetailSerializer(serializers.Serializer):
     category = serializers.CharField(allow_null=True)
     photos = ReportPhotoSerializer(many=True)
     cases = ReportCaseSerializer(many=True)
+    ledger_entry_ids = serializers.ListField(child=serializers.IntegerField())
 
 
 class InfoReplySerializer(serializers.Serializer):

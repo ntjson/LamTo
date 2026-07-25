@@ -16,7 +16,8 @@ void main() {
     ];
     final schema = candidates.firstWhere(
       (f) => f.existsSync(),
-      orElse: () => throw StateError('openapi-v1.yaml not found for contract tests'),
+      orElse: () =>
+          throw StateError('openapi-v1.yaml not found for contract tests'),
     );
     final text = schema.readAsStringSync();
     // Collect OpenAPI path keys under `paths:`.

@@ -8,12 +8,12 @@ import 'package:mocktail/mocktail.dart';
 class _MockAdapter extends Mock implements HttpClientAdapter {}
 
 ResponseBody _json(int status, Object body) => ResponseBody.fromString(
-      jsonEncode(body),
-      status,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+  jsonEncode(body),
+  status,
+  headers: {
+    Headers.contentTypeHeader: [Headers.jsonContentType],
+  },
+);
 
 void main() {
   setUpAll(() => registerFallbackValue(RequestOptions(path: '/')));
@@ -47,10 +47,16 @@ void main() {
 
   test('updatePreference PATCHes one item and parses the list', () async {
     answerWith(200, [
-      {'event_code': 'ledger.publication', 'email_enabled': true, 'push_enabled': false},
+      {
+        'event_code': 'ledger.publication',
+        'email_enabled': true,
+        'push_enabled': false,
+      },
     ]);
     final prefs = await repo.updatePreference(
-        eventCode: 'ledger.publication', pushEnabled: false);
+      eventCode: 'ledger.publication',
+      pushEnabled: false,
+    );
     expect(lastRequest.method, 'PATCH');
     expect(lastRequest.path, '/api/v1/me/notification-preferences');
     final sent = lastRequest.data;
@@ -62,9 +68,17 @@ void main() {
   });
 
   test('registerDevice posts install/token/platform', () async {
-    answerWith(200, {'install_id': 'i-1', 'platform': 'ANDROID', 'active': true});
+    answerWith(200, {
+      'install_id': 'i-1',
+      'platform': 'ANDROID',
+      'active': true,
+    });
     final device = await repo.registerDevice(
-        installId: 'i-1', fcmToken: 'tok', platform: 'ANDROID', appVersion: '1.0');
+      installId: 'i-1',
+      fcmToken: 'tok',
+      platform: 'ANDROID',
+      appVersion: '1.0',
+    );
     expect(device.installId, 'i-1');
     final sent = lastRequest.data;
     final map = sent is String ? jsonDecode(sent) : sent as Map;

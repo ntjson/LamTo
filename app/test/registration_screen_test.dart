@@ -306,6 +306,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('A-101').last);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Submit request'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Submit request'));
     await tester.pumpAndSettle();
     expect(submitted, isTrue);

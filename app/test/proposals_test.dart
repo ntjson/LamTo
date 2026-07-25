@@ -162,10 +162,7 @@ void main() {
       find.text('Control board installed', skipOffstage: false),
       findsOneWidget,
     );
-    expect(
-      find.text('quotation.pdf', skipOffstage: false),
-      findsOneWidget,
-    );
+    expect(find.text('quotation.pdf', skipOffstage: false), findsOneWidget);
     expect(find.text('Paid and acknowledged by the payee'), findsOneWidget);
 
     await tester.scrollUntilVisible(

@@ -10,6 +10,7 @@ import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/brand_identity.dart';
 import 'registration_status_screen.dart';
 import 'registration_status_store.dart';
 
@@ -180,6 +181,8 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const BrandIdentity(width: 96),
+              const SizedBox(height: 12),
               TextFormField(
                 key: const Key('registration_name'),
                 controller: _name,

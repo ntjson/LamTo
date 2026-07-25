@@ -64,31 +64,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     const AccountScreen(),
   ];
 
-  void _openReport() {
-    final l10n = AppLocalizations.of(context)!;
-    final isIos = defaultTargetPlatform == TargetPlatform.iOS;
-    Navigator.of(context).push(
-      isIos
-          ? CupertinoPageRoute<void>(
-              builder: (_) => CupertinoPageScaffold(
-                navigationBar: CupertinoNavigationBar(
-                  middle: Text(l10n.reportFormTitle),
-                ),
-                child: const SafeArea(
-                  top: false,
-                  child: PageBody(child: ReportFormScreen()),
-                ),
-              ),
-            )
-          : MaterialPageRoute<void>(
-              builder: (_) => Scaffold(
-                appBar: AppBar(title: Text(l10n.reportFormTitle)),
-                body: const PageBody(child: ReportFormScreen()),
-              ),
-            ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<int>(shellTabProvider, (_, next) {
@@ -140,7 +115,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               excludeSemantics: true,
               child: CupertinoButton(
                 padding: EdgeInsets.zero,
-                onPressed: _openReport,
+                onPressed: () => openReportForm(context),
                 child: const Icon(CupertinoIcons.add),
               ),
             ),
@@ -163,7 +138,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // stretched phone bottom bar (Material 3 adaptive navigation).
       return Scaffold(
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: _openReport,
+          onPressed: () => openReportForm(context),
           icon: const Icon(Icons.add),
           label: Text(l10n.tabReport),
         ),
@@ -194,9 +169,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     }
 
     return Scaffold(
-      body: SafeArea(child: bodies[_index]),
+      body: SafeArea(child: PageBody(child: bodies[_index])),
       floatingActionButton: FloatingActionButton(
-        onPressed: _openReport,
+        onPressed: () => openReportForm(context),
         tooltip: l10n.tabReport,
         child: const Icon(Icons.add),
       ),

@@ -7,11 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/core/authenticated_image.dart';
+import 'package:lamto/core/occupancy.dart';
 import 'package:lamto/core/providers.dart';
 import 'package:lamto/features/reports/issue_detail_screen.dart';
+import 'package:lamto/features/reports/report_draft.dart';
+import 'package:lamto/features/reports/report_form_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 ReportDetail _detail({
   required bool canRate,
@@ -20,6 +24,7 @@ ReportDetail _detail({
   MapBuilder<String, JsonObject?>? openInfoRequest,
   List<ReportWorkUpdate>? updates,
   bool completed = true,
+  List<int> ledgerEntryIds = const [],
 }) => ReportDetail(
   (b) => b
     ..id = 42
@@ -34,6 +39,7 @@ ReportDetail _detail({
     ..category = 'Thang máy'
     ..openInfoRequest = openInfoRequest
     ..photos = ListBuilder<ReportPhoto>()
+    ..ledgerEntryIds = ListBuilder<int>(ledgerEntryIds)
     ..cases = ListBuilder<ReportCase>([
       ReportCase(
         (c) => c
@@ -150,13 +156,17 @@ class _MissingImageAdapter implements HttpClientAdapter {
 }
 
 Future<void> _pump(WidgetTester tester, _FakeRepo repo) async {
+  SharedPreferences.setMockInitialValues({});
   final dio = Dio(BaseOptions(baseUrl: 'http://test'))
     ..httpClientAdapter = _MissingImageAdapter();
+  final holder = OccupancyHolder()..occupancyId = 7;
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         reportsRepositoryProvider.overrideWithValue(repo),
         dioProvider.overrideWith((ref) => dio),
+        occupancyHolderProvider.overrideWithValue(holder),
+        reportDraftStoreProvider.overrideWithValue(ReportDraftStore()),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -229,6 +239,11 @@ void main() {
     expect(find.text('Ban quản lý quyết định không tiếp nhận'), findsOneWidget);
     expect(find.text('Outside management responsibility'), findsOneWidget);
     expect(find.text('Đánh giá công việc'), findsNothing);
+    expect(find.text('Gửi phản ánh đã chỉnh sửa'), findsOneWidget);
+
+    await tester.tap(find.text('Gửi phản ánh đã chỉnh sửa'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReportFormScreen), findsOneWidget);
   });
 
   testWidgets('rates eligible case as satisfied and refreshes', (tester) async {
@@ -370,5 +385,20 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Ban quản lý cần thêm thông tin'), findsNothing);
     }
+  });
+
+  testWidgets('published spending is reachable from its resident report', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeRepo(_detail(canRate: false, ledgerEntryIds: const [17])),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Chi tiết khoản chi'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Chi tiết khoản chi'), findsOneWidget);
   });
 }

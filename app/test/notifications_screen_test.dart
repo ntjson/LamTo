@@ -134,7 +134,9 @@ void main() {
     expect(find.text('Thông báo tiếp theo'), findsOneWidget);
   });
 
-  testWidgets('notification dialog uses Cupertino alert on iOS', (tester) async {
+  testWidgets('notification dialog uses Cupertino alert on iOS', (
+    tester,
+  ) async {
     final previous = debugDefaultTargetPlatformOverride;
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
@@ -190,7 +192,10 @@ void main() {
 
     expect(repo.read, [9]);
     expect(find.byType(AlertDialog), findsOneWidget);
-    expect(tester.widget<AlertDialog>(find.byType(AlertDialog)).scrollable, isTrue);
+    expect(
+      tester.widget<AlertDialog>(find.byType(AlertDialog)).scrollable,
+      isTrue,
+    );
     expect(
       find.descendant(
         of: find.byType(AlertDialog),

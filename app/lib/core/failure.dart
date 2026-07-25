@@ -15,6 +15,19 @@ const knownFailureCodes = {
   'network_error',
   'server_error',
   'schema_error',
+  'gate_no_face_detected',
+  'gate_multiple_faces',
+  'gate_face_too_small',
+  'gate_face_too_blurry',
+  'gate_face_unusable',
+  'gate_photo_rejected',
+  'gate_face_upload_too_large',
+  'gate_plate_already_registered',
+  'gate_model_unavailable',
+  'gate_device_revoked',
+  'gate_device_expired',
+  'gate_device_unauthenticated',
+  'gate_recognition_throttled',
 };
 
 class Failure {
@@ -67,8 +80,8 @@ class Failure {
   factory Failure.fromObject(Object error) => error is Failure
       ? error
       : error is DioException
-          ? Failure.fromDio(error)
-          : Failure(code: 'server_error');
+      ? Failure.fromDio(error)
+      : Failure(code: 'server_error');
 }
 
 /// Resident-facing copy per failure code (spec 6.4 doctrine). Never shows raw
@@ -84,6 +97,32 @@ String failureMessage(Failure f, AppLocalizations l10n) {
       return l10n.errOccupancyRequired;
     case 'network_error':
       return l10n.errNetwork;
+    case 'gate_no_face_detected':
+      return l10n.gateErrorNoFace;
+    case 'gate_multiple_faces':
+      return l10n.gateErrorMultipleFaces;
+    case 'gate_face_too_small':
+      return l10n.gateErrorFaceTooSmall;
+    case 'gate_face_too_blurry':
+      return l10n.gateErrorFaceTooBlurry;
+    case 'gate_face_unusable':
+      return l10n.gateErrorFaceUnusable;
+    case 'gate_photo_rejected':
+      return l10n.gateErrorPhotoRejected;
+    case 'gate_face_upload_too_large':
+      return l10n.gateErrorPhotoTooLarge;
+    case 'gate_plate_already_registered':
+      return l10n.gateErrorPlateRegistered;
+    case 'gate_model_unavailable':
+      return l10n.gateErrorUnavailable;
+    case 'gate_device_revoked':
+      return l10n.gateReaderDeviceRevoked;
+    case 'gate_device_expired':
+      return l10n.gateReaderDeviceExpired;
+    case 'gate_device_unauthenticated':
+      return l10n.gateReaderDeviceInvalid;
+    case 'gate_recognition_throttled':
+      return l10n.gateReaderThrottled;
     case 'server_error':
     case 'schema_error':
       return l10n.errServer;

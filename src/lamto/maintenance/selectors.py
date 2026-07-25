@@ -86,6 +86,13 @@ def resident_report_timeline(report):
             }
         )
     info = report.info_requests.filter(resolved_at__isnull=True).first()
+    from lamto.finance.models import PublishedLedgerEntry
+
+    ledger_entry_ids = list(
+        PublishedLedgerEntry.objects.filter(case__reports=report)
+        .order_by("published_at", "pk")
+        .values_list("pk", flat=True)
+    )
     return {
         "id": report.pk,
         "text": report.text,
@@ -110,6 +117,7 @@ def resident_report_timeline(report):
             for rp in report.photos.select_related("version").order_by("pk")
         ],
         "cases": cases,
+        "ledger_entry_ids": ledger_entry_ids,
     }
 
 

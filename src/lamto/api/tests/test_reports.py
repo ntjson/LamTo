@@ -160,6 +160,7 @@ class ReportCreateTests(TestCase):
         body = detail.json()
         assert body["triage_status"] == "PENDING"
         assert body["cases"] == []
+        assert body["ledger_entry_ids"] == []
         # A stranger's report id is 404 for this resident.
         from django.contrib.auth import get_user_model
 

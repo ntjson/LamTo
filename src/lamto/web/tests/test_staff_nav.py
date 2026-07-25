@@ -2,6 +2,7 @@ import time
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django_otp import DEVICE_ID_SESSION_KEY
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -50,6 +51,14 @@ class ManagementShellTests(TestCase):
             [str(item["label"]) for item in finance_nav_items_for(self.membership)],
             ["Proposals", "Settlements", "Fund"],
         )
+
+    def test_base_template_uses_the_product_identity(self):
+        html = render_to_string("web/base.html")
+
+        self.assertIn('rel="icon"', html)
+        self.assertIn('lamto-mark.png', html)
+        self.assertIn('alt=""', html)
+        self.assertIn('LÀM TỔ', html)
 
     def test_non_management_user_is_denied_staff_home(self):
         resident = get_user_model().objects.create_user(

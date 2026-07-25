@@ -19,42 +19,45 @@ class _MockAdapter extends Mock implements HttpClientAdapter {}
 void main() {
   setUpAll(() => registerFallbackValue(RequestOptions(path: '/')));
 
-  test('injects X-LamTo-Occupancy only on building-scoped paths when set', () async {
-    final holder = OccupancyHolder()..occupancyId = 42;
-    final adapter = _MockAdapter();
-    final dio = buildDio(
-      store: _FakeStore(),
-      occupancy: holder,
-      onUnauthorized: () {},
-      baseUrl: 'http://x',
-    );
-    dio.httpClientAdapter = adapter;
-
-    String? seen;
-    when(() => adapter.fetch(any(), any(), any())).thenAnswer((inv) async {
-      seen = (inv.positionalArguments[0] as RequestOptions)
-          .headers['X-LamTo-Occupancy']
-          ?.toString();
-      return ResponseBody.fromString(
-        '{}',
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
+  test(
+    'injects X-LamTo-Occupancy only on building-scoped paths when set',
+    () async {
+      final holder = OccupancyHolder()..occupancyId = 42;
+      final adapter = _MockAdapter();
+      final dio = buildDio(
+        store: _FakeStore(),
+        occupancy: holder,
+        onUnauthorized: () {},
+        baseUrl: 'http://x',
       );
-    });
+      dio.httpClientAdapter = adapter;
 
-    await dio.get<dynamic>('/api/v1/me');
-    expect(seen, isNull);
+      String? seen;
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((inv) async {
+        seen = (inv.positionalArguments[0] as RequestOptions)
+            .headers['X-LamTo-Occupancy']
+            ?.toString();
+        return ResponseBody.fromString(
+          '{}',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
 
-    await dio.get<dynamic>('/api/v1/ledger');
-    expect(seen, '42');
+      await dio.get<dynamic>('/api/v1/me');
+      expect(seen, isNull);
 
-    holder.occupancyId = null;
-    seen = 'sentinel';
-    await dio.get<dynamic>('/api/v1/ledger');
-    expect(seen, isNull);
-  });
+      await dio.get<dynamic>('/api/v1/ledger');
+      expect(seen, '42');
+
+      holder.occupancyId = null;
+      seen = 'sentinel';
+      await dio.get<dynamic>('/api/v1/ledger');
+      expect(seen, isNull);
+    },
+  );
 
   test('isBuildingScopedPath allowlist', () {
     expect(isBuildingScopedPath('/api/v1/ledger'), isTrue);

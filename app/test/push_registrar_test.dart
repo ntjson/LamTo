@@ -53,10 +53,12 @@ class _FakeRepo implements TransparencyRepository {
     String appVersion = '',
   }) async {
     registered.add((installId, fcmToken));
-    return Device((b) => b
-      ..installId = installId
-      ..platform = platform
-      ..active = true);
+    return Device(
+      (b) => b
+        ..installId = installId
+        ..platform = platform
+        ..active = true,
+    );
   }
 
   @override
@@ -72,7 +74,6 @@ class _FakeRepo implements TransparencyRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
-
 
 class _OrderTrackingRepo implements TransparencyRepository {
   _OrderTrackingRepo(this._inner, this.order);
@@ -118,7 +119,10 @@ void main() {
     final repo = _FakeRepo();
     final store = InstallIdStore();
     final registrar = PushRegistrar(
-        tokenSource: source, repository: repo, installIdStore: store);
+      tokenSource: source,
+      repository: repo,
+      installIdStore: store,
+    );
 
     await registrar.registerAfterConsent();
     await registrar.registerAfterConsent(); // idempotent upsert
@@ -144,23 +148,26 @@ void main() {
     expect(repo.registered, isEmpty);
   });
 
-  test('token refresh re-registers; deregister deactivates the install',
-      () async {
-    final source = _FakeSource();
-    final repo = _FakeRepo();
-    final registrar = PushRegistrar(
+  test(
+    'token refresh re-registers; deregister deactivates the install',
+    () async {
+      final source = _FakeSource();
+      final repo = _FakeRepo();
+      final registrar = PushRegistrar(
         tokenSource: source,
         repository: repo,
-        installIdStore: InstallIdStore());
-    await registrar.registerAfterConsent();
-    registrar.watchTokenRefresh();
-    source.refresh.add('tok-2');
-    await Future<void>.delayed(Duration.zero);
-    expect(repo.registered.last.$2, 'tok-2');
+        installIdStore: InstallIdStore(),
+      );
+      await registrar.registerAfterConsent();
+      registrar.watchTokenRefresh();
+      source.refresh.add('tok-2');
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.registered.last.$2, 'tok-2');
 
-    await registrar.deregister();
-    expect(repo.deactivated.single, repo.registered.first.$1);
-  });
+      await registrar.deregister();
+      expect(repo.deactivated.single, repo.registered.first.$1);
+    },
+  );
 
   test('A4: OS permission requested only once per install', () async {
     final source = _FakeSource();
@@ -183,31 +190,36 @@ void main() {
     expect(prefs.getBool(PushPrefsKeys.permissionRequested(installId)), isTrue);
   });
 
-  test('A4: denied once never re-prompts; later OS grant can register',
-      () async {
-    final source = _FakeSource(permission: PushPermissionResult.denied);
-    final repo = _FakeRepo();
-    final registrar = PushRegistrar(
-      tokenSource: source,
-      repository: repo,
-      installIdStore: InstallIdStore(),
-    );
+  test(
+    'A4: denied once never re-prompts; later OS grant can register',
+    () async {
+      final source = _FakeSource(permission: PushPermissionResult.denied);
+      final repo = _FakeRepo();
+      final registrar = PushRegistrar(
+        tokenSource: source,
+        repository: repo,
+        installIdStore: InstallIdStore(),
+      );
 
-    await registrar.registerAfterConsent();
-    await registrar.registerAfterConsent(); // still denied
-    expect(source.requestCount, 1);
-    expect(repo.registered, isEmpty);
+      await registrar.registerAfterConsent();
+      await registrar.registerAfterConsent(); // still denied
+      expect(source.requestCount, 1);
+      expect(repo.registered, isEmpty);
 
-    // User enables notifications in system settings: still no OS re-prompt.
-    source.permission = PushPermissionResult.granted;
-    await registrar.registerAfterConsent();
-    expect(source.requestCount, 1);
-    expect(repo.registered, hasLength(1));
+      // User enables notifications in system settings: still no OS re-prompt.
+      source.permission = PushPermissionResult.granted;
+      await registrar.registerAfterConsent();
+      expect(source.requestCount, 1);
+      expect(repo.registered, hasLength(1));
 
-    final prefs = await SharedPreferences.getInstance();
-    final installId = repo.registered.first.$1;
-    expect(prefs.getBool(PushPrefsKeys.permissionRequested(installId)), isTrue);
-  });
+      final prefs = await SharedPreferences.getInstance();
+      final installId = repo.registered.first.$1;
+      expect(
+        prefs.getBool(PushPrefsKeys.permissionRequested(installId)),
+        isTrue,
+      );
+    },
+  );
 
   test('I1: unsupported does not set permission-requested flag', () async {
     final store = InstallIdStore();
@@ -228,50 +240,58 @@ void main() {
     expect(prefs.getBool(requestedKey), isNull);
   });
 
-  test('I1: real deny burns permission-requested flag (no re-prompt)', () async {
-    final store = InstallIdStore();
-    final installId = await store.get();
-    final prefs = await SharedPreferences.getInstance();
-    final requestedKey = PushPrefsKeys.permissionRequested(installId);
+  test(
+    'I1: real deny burns permission-requested flag (no re-prompt)',
+    () async {
+      final store = InstallIdStore();
+      final installId = await store.get();
+      final prefs = await SharedPreferences.getInstance();
+      final requestedKey = PushPrefsKeys.permissionRequested(installId);
 
-    final source = _FakeSource(permission: PushPermissionResult.denied);
-    final registrar = PushRegistrar(
-      tokenSource: source,
-      repository: _FakeRepo(),
-      installIdStore: store,
-    );
-    await registrar.registerAfterConsent();
-    await registrar.registerAfterConsent();
-    expect(source.requestCount, 1);
-    expect(prefs.getBool(requestedKey), isTrue);
-  });
+      final source = _FakeSource(permission: PushPermissionResult.denied);
+      final registrar = PushRegistrar(
+        tokenSource: source,
+        repository: _FakeRepo(),
+        installIdStore: store,
+      );
+      await registrar.registerAfterConsent();
+      await registrar.registerAfterConsent();
+      expect(source.requestCount, 1);
+      expect(prefs.getBool(requestedKey), isTrue);
+    },
+  );
 
-  test('I1: after unsupported, a later granted consult can still prompt + register',
-      () async {
-    final source = _FakeSource(permission: PushPermissionResult.unsupported);
-    final repo = _FakeRepo();
-    final registrar = PushRegistrar(
-      tokenSource: source,
-      repository: repo,
-      installIdStore: InstallIdStore(),
-    );
+  test(
+    'I1: after unsupported, a later granted consult can still prompt + register',
+    () async {
+      final source = _FakeSource(permission: PushPermissionResult.unsupported);
+      final repo = _FakeRepo();
+      final registrar = PushRegistrar(
+        tokenSource: source,
+        repository: repo,
+        installIdStore: InstallIdStore(),
+      );
 
-    await registrar.registerAfterConsent();
-    expect(source.requestCount, 1);
-    expect(repo.registered, isEmpty);
+      await registrar.registerAfterConsent();
+      expect(source.requestCount, 1);
+      expect(repo.registered, isEmpty);
 
-    // Production build with Firebase becomes available — OS may be asked once.
-    source.permission = PushPermissionResult.granted;
-    source.token = 'tok-prod';
-    await registrar.registerAfterConsent();
-    expect(source.requestCount, 2);
-    expect(repo.registered, hasLength(1));
-    expect(repo.registered.first.$2, 'tok-prod');
+      // Production build with Firebase becomes available — OS may be asked once.
+      source.permission = PushPermissionResult.granted;
+      source.token = 'tok-prod';
+      await registrar.registerAfterConsent();
+      expect(source.requestCount, 2);
+      expect(repo.registered, hasLength(1));
+      expect(repo.registered.first.$2, 'tok-prod');
 
-    final prefs = await SharedPreferences.getInstance();
-    final installId = repo.registered.first.$1;
-    expect(prefs.getBool(PushPrefsKeys.permissionRequested(installId)), isTrue);
-  });
+      final prefs = await SharedPreferences.getInstance();
+      final installId = repo.registered.first.$1;
+      expect(
+        prefs.getBool(PushPrefsKeys.permissionRequested(installId)),
+        isTrue,
+      );
+    },
+  );
 
   test('A5: successful deregister clears any pending retry key', () async {
     final source = _FakeSource();
@@ -318,8 +338,7 @@ void main() {
 
   test('I2: deregister timeout takes pending path and completes', () async {
     final source = _FakeSource();
-    final repo = _FakeRepo()
-      ..deactivateDelay = const Duration(seconds: 30);
+    final repo = _FakeRepo()..deactivateDelay = const Duration(seconds: 30);
     final registrar = PushRegistrar(
       tokenSource: source,
       repository: repo,
@@ -365,18 +384,21 @@ void main() {
     expect(prefs.getString(PushPrefsKeys.pendingDeregister), 'install-xyz');
   });
 
-  test('A6: FirebasePushTokenSource degrades without platform config', () async {
-    final source = FirebasePushTokenSource();
-    // No google-services.json / GoogleService-Info.plist in this environment.
-    expect(
-      await source.requestPermission(),
-      PushPermissionResult.unsupported,
-    );
-    expect(await source.getToken(), isNull);
-    expect(await source.initialMessageData(), isNull);
-    await expectLater(source.onTokenRefresh, emitsDone);
-    await expectLater(source.onMessageOpened, emitsDone);
-  });
+  test(
+    'A6: FirebasePushTokenSource degrades without platform config',
+    () async {
+      final source = FirebasePushTokenSource();
+      // No google-services.json / GoogleService-Info.plist in this environment.
+      expect(
+        await source.requestPermission(),
+        PushPermissionResult.unsupported,
+      );
+      expect(await source.getToken(), isNull);
+      expect(await source.initialMessageData(), isNull);
+      await expectLater(source.onTokenRefresh, emitsDone);
+      await expectLater(source.onMessageOpened, emitsDone);
+    },
+  );
 
   test('ensureRegisteredIfConsented re-registers without re-prompt', () async {
     final source = _FakeSource();
@@ -411,59 +433,62 @@ void main() {
     expect(repo.registered, isEmpty);
   });
 
-  test('onAuthenticatedSession sequences deactivate then register for pending install',
-      () async {
-    final source = _FakeSource();
-    final repo = _FakeRepo();
-    final store = InstallIdStore();
-    final installId = await store.get();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(PushPrefsKeys.permissionRequested(installId), true);
-    await prefs.setString(PushPrefsKeys.pendingDeregister, installId);
+  test(
+    'onAuthenticatedSession sequences deactivate then register for pending install',
+    () async {
+      final source = _FakeSource();
+      final repo = _FakeRepo();
+      final store = InstallIdStore();
+      final installId = await store.get();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(PushPrefsKeys.permissionRequested(installId), true);
+      await prefs.setString(PushPrefsKeys.pendingDeregister, installId);
 
-    // Slow deactivate so a race would let register win first if parallel.
-    repo.deactivateDelay = const Duration(milliseconds: 80);
-    final order = <String>[];
-    final tracking = _OrderTrackingRepo(repo, order);
+      // Slow deactivate so a race would let register win first if parallel.
+      repo.deactivateDelay = const Duration(milliseconds: 80);
+      final order = <String>[];
+      final tracking = _OrderTrackingRepo(repo, order);
 
-    final registrar = PushRegistrar(
-      tokenSource: source,
-      repository: tracking,
-      installIdStore: store,
-      deregisterTimeout: const Duration(seconds: 2),
-    );
-    await registrar.onAuthenticatedSession();
+      final registrar = PushRegistrar(
+        tokenSource: source,
+        repository: tracking,
+        installIdStore: store,
+        deregisterTimeout: const Duration(seconds: 2),
+      );
+      await registrar.onAuthenticatedSession();
 
-    expect(order, ['deactivate', 'register']);
-    expect(tracking.registered, hasLength(1));
-    expect(tracking.deactivated, [installId]);
-    // Pending cleared so a later session cannot deactivate after register.
-    expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
-  });
+      expect(order, ['deactivate', 'register']);
+      expect(tracking.registered, hasLength(1));
+      expect(tracking.deactivated, [installId]);
+      // Pending cleared so a later session cannot deactivate after register.
+      expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
+    },
+  );
 
-  test('onAuthenticatedSession clears sticky pending when re-registering same install',
-      () async {
-    final source = _FakeSource();
-    final repo = _FakeRepo();
-    final store = InstallIdStore();
-    final installId = await store.get();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(PushPrefsKeys.permissionRequested(installId), true);
-    await prefs.setString(PushPrefsKeys.pendingDeregister, installId);
-    repo.deactivateError = Exception('still offline');
+  test(
+    'onAuthenticatedSession clears sticky pending when re-registering same install',
+    () async {
+      final source = _FakeSource();
+      final repo = _FakeRepo();
+      final store = InstallIdStore();
+      final installId = await store.get();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(PushPrefsKeys.permissionRequested(installId), true);
+      await prefs.setString(PushPrefsKeys.pendingDeregister, installId);
+      repo.deactivateError = Exception('still offline');
 
-    final registrar = PushRegistrar(
-      tokenSource: source,
-      repository: repo,
-      installIdStore: store,
-      deregisterTimeout: const Duration(milliseconds: 50),
-    );
-    await registrar.onAuthenticatedSession();
+      final registrar = PushRegistrar(
+        tokenSource: source,
+        repository: repo,
+        installIdStore: store,
+        deregisterTimeout: const Duration(milliseconds: 50),
+      );
+      await registrar.onAuthenticatedSession();
 
-    // Register still happened via upsert path.
-    expect(repo.registered, hasLength(1));
-    // Pending for this install must not stick (would kill push next bootstrap).
-    expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
-  });
-
+      // Register still happened via upsert path.
+      expect(repo.registered, hasLength(1));
+      // Pending for this install must not stick (would kill push next bootstrap).
+      expect(prefs.getString(PushPrefsKeys.pendingDeregister), isNull);
+    },
+  );
 }

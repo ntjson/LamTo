@@ -5,16 +5,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2f3a8f">
-  <meta name="description" content="LamTo — maintenance accountability for residents">
-  <title>{% block title %}LamTo{% endblock %}</title>
+  <meta name="description" content="LÀM TỔ — maintenance accountability for residents">
+  <title>{% block title %}LÀM TỔ{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{% static 'web/brand/favicon.png' %}">
   <link rel="stylesheet" href="{% static 'web/app.css' %}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header" role="banner">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">◆</span>
-      <span class="brand-name">LamTo</span>
+      <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="">
+      <span class="brand-name">LÀM TỔ</span>
     </div>
     {% if occupancy %}
     <p class="building-label">{{ occupancy.unit.building.name }} · Unit {{ occupancy.unit.label }}</p>

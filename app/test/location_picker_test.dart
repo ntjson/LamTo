@@ -7,35 +7,35 @@ import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 Location _loc(int id, String name, {int? parent}) => Location(
-      (b) => b
-        ..id = id
-        ..name = name
-        ..parentId = parent,
-    );
+  (b) => b
+    ..id = id
+    ..name = name
+    ..parentId = parent,
+);
 
 Future<Location?> _open(WidgetTester tester, List<Location> locations) async {
   Location? picked;
-  await tester.pumpWidget(ProviderScope(
-    overrides: [
-      locationsProvider.overrideWith((ref) async => locations),
-    ],
-    child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('vi'),
-      home: Builder(
-        builder: (context) => ElevatedButton(
-          onPressed: () async {
-            picked = await Navigator.push<Location>(
-              context,
-              MaterialPageRoute(builder: (_) => const LocationPickerScreen()),
-            );
-          },
-          child: const Text('open'),
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [locationsProvider.overrideWith((ref) async => locations)],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('vi'),
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () async {
+              picked = await Navigator.push<Location>(
+                context,
+                MaterialPageRoute(builder: (_) => const LocationPickerScreen()),
+              );
+            },
+            child: const Text('open'),
+          ),
         ),
       ),
     ),
-  ));
+  );
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
   return picked;
@@ -50,12 +50,10 @@ void main() {
     expect(find.text('open'), findsOneWidget);
   });
 
-  testWidgets('parent drills down and "choose this area" selects it',
-      (tester) async {
-    await _open(tester, [
-      _loc(1, 'Tòa A'),
-      _loc(2, 'Thang máy 2', parent: 1),
-    ]);
+  testWidgets('parent drills down and "choose this area" selects it', (
+    tester,
+  ) async {
+    await _open(tester, [_loc(1, 'Tòa A'), _loc(2, 'Thang máy 2', parent: 1)]);
     await tester.tap(find.text('Tòa A'));
     await tester.pumpAndSettle();
     expect(find.text('Thang máy 2'), findsOneWidget);

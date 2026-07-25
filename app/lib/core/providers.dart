@@ -24,9 +24,12 @@ final registrationTokenStoreProvider = Provider<TokenStore>(
 final registrationStatusStoreProvider = Provider<RegistrationStatusStore>(
   (ref) => RegistrationStatusStore(ref.watch(registrationTokenStoreProvider)),
 );
-final occupancyHolderProvider =
-    Provider<OccupancyHolder>((ref) => OccupancyHolder());
-final occupancyStoreProvider = Provider<OccupancyStore>((ref) => OccupancyStore());
+final occupancyHolderProvider = Provider<OccupancyHolder>(
+  (ref) => OccupancyHolder(),
+);
+final occupancyStoreProvider = Provider<OccupancyStore>(
+  (ref) => OccupancyStore(),
+);
 
 /// Feature providers that cache occupancy-scoped data MUST `ref.watch` this
 /// so they rebuild when occupancy changes (clarification #2).
@@ -59,12 +62,16 @@ final authRepositoryProvider = Provider<AuthRepository>(
 final registrationRepositoryProvider = Provider<RegistrationRepository>(
   (ref) => RegistrationRepository(ref.watch(dioProvider)),
 );
-final gateRepositoryProvider = Provider<GateRepository>((ref) => DioGateRepository(ref.watch(dioProvider)));
+final gateRepositoryProvider = Provider<GateRepository>(
+  (ref) => DioGateRepository(ref.watch(dioProvider)),
+);
 
-final pushTokenSourceProvider =
-    Provider<PushTokenSource>((ref) => FirebasePushTokenSource());
-final installIdStoreProvider =
-    Provider<InstallIdStore>((ref) => InstallIdStore());
+final pushTokenSourceProvider = Provider<PushTokenSource>(
+  (ref) => FirebasePushTokenSource(),
+);
+final installIdStoreProvider = Provider<InstallIdStore>(
+  (ref) => InstallIdStore(),
+);
 final pushRegistrarProvider = Provider<PushRegistrar>(
   (ref) => PushRegistrar(
     tokenSource: ref.watch(pushTokenSourceProvider),

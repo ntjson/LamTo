@@ -27,6 +27,7 @@ class AuthenticatedImage extends ConsumerStatefulWidget {
 class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
   Future<Response<List<int>>>? _future;
   String? _url;
+
   /// Bumped on each explicit retry so FutureBuilder sees a new future.
   int _retryToken = 0;
 

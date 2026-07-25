@@ -34,8 +34,16 @@ class _Reports implements ReportsRepository {
 
 class _Repo implements TransparencyRepository {
   final announcements = <NotificationFeed>[
-    _announcement(2, 'Mất nước tầng 8', 'Tạm ngừng cấp nước từ 14:00 đến 16:00.'),
-    _announcement(1, 'Bảo trì thang máy', 'Thang máy B bảo trì vào sáng thứ Bảy.'),
+    _announcement(
+      2,
+      'Mất nước tầng 8',
+      'Tạm ngừng cấp nước từ 14:00 đến 16:00.',
+    ),
+    _announcement(
+      1,
+      'Bảo trì thang máy',
+      'Thang máy B bảo trì vào sáng thứ Bảy.',
+    ),
   ];
   final reads = <int>[];
   final queries = <(String?, bool?)>[];
@@ -164,29 +172,30 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('edited unread delivery resurfaces and absent delivery withdraws', (
-    tester,
-  ) async {
-    final repo = _Repo();
-    await _pumpHome(tester, repo);
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(HomeScreen)),
-    );
+  testWidgets(
+    'edited unread delivery resurfaces and absent delivery withdraws',
+    (tester) async {
+      final repo = _Repo();
+      await _pumpHome(tester, repo);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(HomeScreen)),
+      );
 
-    repo.reads.add(2);
-    repo.announcements[0] = _announcement(
-      2,
-      'Mất nước tầng 8 - cập nhật',
-      'Thời gian mới: 15:00 đến 17:00.',
-    );
-    repo.reads.remove(2);
-    container.invalidate(latestAnnouncementProvider);
-    await tester.pumpAndSettle();
-    expect(find.text('Mất nước tầng 8 - cập nhật'), findsOneWidget);
+      repo.reads.add(2);
+      repo.announcements[0] = _announcement(
+        2,
+        'Mất nước tầng 8 - cập nhật',
+        'Thời gian mới: 15:00 đến 17:00.',
+      );
+      repo.reads.remove(2);
+      container.invalidate(latestAnnouncementProvider);
+      await tester.pumpAndSettle();
+      expect(find.text('Mất nước tầng 8 - cập nhật'), findsOneWidget);
 
-    repo.announcements.clear();
-    container.invalidate(latestAnnouncementProvider);
-    await tester.pumpAndSettle();
-    expect(find.text('Mất nước tầng 8 - cập nhật'), findsNothing);
-  });
+      repo.announcements.clear();
+      container.invalidate(latestAnnouncementProvider);
+      await tester.pumpAndSettle();
+      expect(find.text('Mất nước tầng 8 - cập nhật'), findsNothing);
+    },
+  );
 }
