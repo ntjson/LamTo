@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import DocumentVersion
@@ -22,12 +23,12 @@ class InsertOnlyModel(models.Model):
 
 class Proposal(models.Model):
     class Status(models.TextChoices):
-        DRAFT = "DRAFT", "Draft"
-        PUBLISHED = "PUBLISHED", "Published"
-        NOT_PROCEEDING = "NOT_PROCEEDING", "Not proceeding"
-        IN_PROGRESS = "IN_PROGRESS", "In progress"
-        COMPLETED = "COMPLETED", "Completed"
-        CLOSED = "CLOSED", "Closed"
+        DRAFT = "DRAFT", _("Draft")
+        PUBLISHED = "PUBLISHED", _("Published")
+        NOT_PROCEEDING = "NOT_PROCEEDING", _("Not proceeding")
+        IN_PROGRESS = "IN_PROGRESS", _("In progress")
+        COMPLETED = "COMPLETED", _("Completed")
+        CLOSED = "CLOSED", _("Closed")
 
     case = models.OneToOneField(MaintenanceCase, null=True, blank=True, on_delete=models.PROTECT, related_name="proposal")
     building = models.ForeignKey("accounts.Building", on_delete=models.PROTECT, related_name="proposals")

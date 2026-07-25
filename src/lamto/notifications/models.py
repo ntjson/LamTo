@@ -1,14 +1,15 @@
 from django.conf import settings
 from django.core.validators import MaxLengthValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import Building
 
 
 class Announcement(models.Model):
     class State(models.TextChoices):
-        PUBLISHED = "PUBLISHED", "Published"
-        WITHDRAWN = "WITHDRAWN", "Withdrawn"
+        PUBLISHED = "PUBLISHED", _("Published")
+        WITHDRAWN = "WITHDRAWN", _("Withdrawn")
 
     building = models.ForeignKey(
         Building,

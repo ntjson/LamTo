@@ -151,7 +151,8 @@ def test_reject_requires_non_blank_reason(client):
 
     request.refresh_from_db()
     assert response.status_code == 200
-    assert b"Rejection reason is required" in response.content
+    body = response.content.decode()
+    assert "Rejection reason is required" in body or "Cần lý do từ chối" in body
     assert request.status == RegistrationRequest.Status.PENDING
 
 
@@ -165,7 +166,8 @@ def test_duplicate_approval_is_safe(client):
     response = client.post(url, follow=True)
 
     assert User.objects.filter(phone="0901234567").count() == 1
-    assert b"already been decided" in response.content
+    body = response.content.decode()
+    assert "already been decided" in body or "đã được quyết định" in body
     assert response.redirect_chain[-1][0] == reverse(
         "web:staff-registration-detail", args=[request.pk]
     )

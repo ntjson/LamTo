@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.utils.translation import gettext as _
 
 from lamto.notifications.announcements import (
     AnnouncementConflict,
@@ -10,8 +11,11 @@ from lamto.notifications.announcements import (
     withdraw_announcement,
 )
 from lamto.notifications.models import Announcement
+from django.utils.translation import gettext_lazy as _lazy
+
 from lamto.web.forms.announcements import AnnouncementForm
 from lamto.web.staff import require_management_context, staff_context
+from lamto.web.views.staff_common import prepare_record_list
 
 
 def _announcement_for(membership, announcement_id):
@@ -37,27 +41,40 @@ def _render_detail(request, membership, memberships, announcement, form=None):
     )
 
 
+def _announcement_list_context(request, membership, memberships, form):
+    qs = (
+        Announcement.objects.filter(building_id=membership.building_id)
+        .select_related("created_by", "updated_by")
+    )
+    list_meta = prepare_record_list(
+        request,
+        qs,
+        search_fields=("title", "body", "state"),
+        sorts=(
+            ("", _lazy("Newest first"), ("-created_at", "-pk")),
+            ("oldest", _lazy("Oldest first"), ("created_at", "pk")),
+        ),
+    )
+    return staff_context(
+        request,
+        membership,
+        memberships,
+        nav_active="announcements",
+        building_active="announcements",
+        announcements=list_meta["page"].object_list,
+        list_meta=list_meta,
+        form=form,
+    )
+
+
 @login_required
 @require_GET
 def announcement_list(request):
     membership, memberships = require_management_context(request)
-    announcements = (
-        Announcement.objects.filter(building_id=membership.building_id)
-        .select_related("created_by", "updated_by")
-        .order_by("-created_at", "-pk")
-    )
-    form = AnnouncementForm()
     return render(
         request,
         "web/staff/announcements/list.html",
-        staff_context(
-            request,
-            membership,
-            memberships,
-            nav_active="announcements",
-            announcements=announcements,
-            form=form,
-        ),
+        _announcement_list_context(request, membership, memberships, AnnouncementForm()),
     )
 
 
@@ -73,24 +90,12 @@ def announcement_create(request):
             form.cleaned_data["title"],
             form.cleaned_data["body"],
         )
-        messages.success(request, "Announcement published.")
+        messages.success(request, _("Announcement published."))
         return redirect("web:staff-announcement-detail", announcement.pk)
-    announcements = (
-        Announcement.objects.filter(building_id=membership.building_id)
-        .select_related("created_by", "updated_by")
-        .order_by("-created_at", "-pk")
-    )
     return render(
         request,
         "web/staff/announcements/list.html",
-        staff_context(
-            request,
-            membership,
-            memberships,
-            nav_active="announcements",
-            announcements=announcements,
-            form=form,
-        ),
+        _announcement_list_context(request, membership, memberships, form),
     )
 
 
@@ -131,9 +136,9 @@ def announcement_edit(request, announcement_id):
             body=form.cleaned_data["body"],
         )
     except AnnouncementConflict:
-        messages.error(request, "This announcement changed since you opened it.")
+        messages.error(request, _("This announcement changed since you opened it."))
     else:
-        messages.success(request, "Announcement updated.")
+        messages.success(request, _("Announcement updated."))
     return redirect("web:staff-announcement-detail", announcement.pk)
 
 
@@ -145,7 +150,7 @@ def announcement_withdraw(request, announcement_id):
     try:
         expected_revision = int(request.POST.get("expected_revision", ""))
     except ValueError:
-        messages.error(request, "Revision is required.")
+        messages.error(request, _("Revision is required."))
         return redirect("web:staff-announcement-detail", announcement.pk)
     try:
         withdraw_announcement(
@@ -154,7 +159,7 @@ def announcement_withdraw(request, announcement_id):
             expected_revision=expected_revision,
         )
     except AnnouncementConflict:
-        messages.error(request, "This announcement changed since you opened it.")
+        messages.error(request, _("This announcement changed since you opened it."))
     else:
-        messages.success(request, "Announcement withdrawn.")
+        messages.success(request, _("Announcement withdrawn."))
     return redirect("web:staff-announcement-detail", announcement.pk)

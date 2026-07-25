@@ -203,7 +203,7 @@ def proposal_detail(request, pk):
                 else:
                     messages.error(request, str(error))
             else:
-                messages.success(request, "Proposal updated.")
+                messages.success(request, _("Proposal updated."))
                 return redirect("web:proposal-detail", pk=proposal.pk)
             if action == "decide":
                 return redirect("web:proposal-detail", pk=proposal.pk)
@@ -237,7 +237,9 @@ def proposal_detail(request, pk):
             publication_problem=publication_problem,
             publication_snapshot=publication_snapshot,
             progress_form=progress_form,
-            accountability_stages=accountability_chain_for(proposal),
+            accountability_stages=accountability_chain_for(
+                proposal, publication_pending=publication_pending
+            ),
         ),
     )
 
@@ -255,7 +257,7 @@ def proposal_create(request, pk):
     if request.method == "POST":
         require_recent_auth(request)
     if not spending_proposal_cases().filter(pk=case.pk).exists():
-        messages.error(request, "This case is not eligible for a spending proposal.")
+        messages.error(request, _("This case is not eligible for a spending proposal."))
         return redirect("web:case-detail", pk=case.pk)
     existing = (
         Proposal.objects.filter(case=case)
@@ -263,7 +265,7 @@ def proposal_create(request, pk):
         .first()
     )
     if existing is not None and existing.current_version_id is not None:
-        messages.info(request, "A proposal has already been submitted for this case.")
+        messages.info(request, _("A proposal has already been submitted for this case."))
         return redirect("web:proposal-detail", pk=existing.pk)
 
     create_form = CreateProposalForm(request.POST or None, request.FILES or None)
@@ -290,7 +292,7 @@ def proposal_create(request, pk):
                 _delete_storage_blob(original.storage_key, original.provider_version_id or "")
             create_form.add_error(None, error)
         else:
-            messages.success(request, "Proposal published.")
+            messages.success(request, _("Proposal published."))
             return redirect("web:proposal-detail", pk=proposal.pk)
 
     return render(
@@ -337,7 +339,7 @@ def standalone_proposal_create(request):
                     _delete_storage_blob(original.storage_key, original.provider_version_id or "")
                 form.add_error(None, error)
             else:
-                messages.success(request, "Proposal published.")
+                messages.success(request, _("Proposal published."))
                 return redirect("web:proposal-detail", pk=proposal.pk)
     return render(request, "web/staff/proposal_create.html", staff_context(
         request, membership, memberships, nav_active="finance", finance_active="proposals",

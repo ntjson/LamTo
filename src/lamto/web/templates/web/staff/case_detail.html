@@ -32,6 +32,16 @@
         <div><dt>{% trans "Location" %}</dt><dd>{{ report.location_path_snapshot }}</dd></div>
         <div><dt>{% trans "Status" %}</dt><dd>{{ report.get_status_display }}</dd></div>
       </dl>
+      {% if report_photos %}
+      <div class="workflow-section">
+        <h2>{% trans "Report photos" %}</h2>
+        <ul class="evidence-thumbs">
+          {% for photo in report_photos %}
+          <li><a href="{% url 'web:staff-document' photo.version_id %}" class="evidence-thumb">{{ photo.version.filename }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
       {% if report.declined_reason %}<p><strong>{% trans "Decline reason" %}:</strong> {{ report.declined_reason }}</p>{% endif %}
       {% if open_info_request %}<p><strong>{% trans "Information requested" %}:</strong> {{ open_info_request.message }}{% if open_info_request.reply_text %}<br>{{ open_info_request.reply_text }}{% endif %}</p>{% endif %}
       {% endif %}
@@ -64,9 +74,16 @@
         <h2>{% trans "Progress" %}</h2>
         <ul class="task-list">
           {% for update in updates %}
-          <li>
+          <li class="task-list-item">
             <strong>{{ update.cause }}</strong> — {{ update.result }}<br>
             <span class="hint">{% if update.author %}{{ update.author }}{% else %}—{% endif %} · {{ update.created_at|staff_datetime }}</span>
+            {% if update.evidence_links.all %}
+            <ul class="evidence-thumbs">
+              {% for link in update.evidence_links.all %}
+              <li><a href="{% url 'web:staff-document' link.version_id %}" class="evidence-thumb">{{ link.get_kind_display }}: {{ link.version.filename }}</a></li>
+              {% endfor %}
+            </ul>
+            {% endif %}
           </li>
           {% empty %}
           <li class="empty-state"><p>{% trans "No progress updates yet." %}</p></li>
@@ -114,7 +131,8 @@
       {% endif %}
       {% if case.completed_at %}
       <div class="workflow-section">
-        <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% blocktrans with ts=case.completed_at|staff_datetime %}Case completed — {{ ts }}. No further action is required.{% endblocktrans %}</p>
+        <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "Completed" %}</p>
+        <p class="hint">{% blocktrans with ts=case.completed_at|staff_datetime %}Finished {{ ts }}. No further action is required.{% endblocktrans %}</p>
       </div>
       {% elif work_form %}
       <div class="workflow-section">

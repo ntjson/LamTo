@@ -11,9 +11,9 @@
     <ul class="task-list">
       {% for x in devices %}
       <li><article class="task-row">
-        <strong class="task-action">{% trans "Manage reader" %}</strong>
-        <span class="task-subject">{{ x.label }} · {{ x.get_direction_display }}</span>
-        <span class="task-meta">{% if x.active %}{% trans "Active" %}{% else %}{% trans "Inactive" %}{% endif %} · {% trans "Last seen" %}: {% if x.last_seen_hour %}{{ x.last_seen_hour }}{% else %}{% trans "Never" %}{% endif %}</span>
+        <strong class="task-action">{{ x.label }}</strong>
+        <span class="task-subject">{{ x.get_direction_display }} · {% if x.active %}{% trans "Active" %}{% else %}{% trans "Inactive" %}{% endif %}</span>
+        <span class="task-meta">{% trans "Last seen" %}: {% if x.last_seen_hour %}{{ x.last_seen_hour }}{% else %}{% trans "Never" %}{% endif %}</span>
         <div>{% for credential in x.credentials.all %}<p>{% if credential.revoked_at %}{% trans "Credential revoked" %}{% elif credential.expires_at %}{% blocktrans with expiry=credential.expires_at %}Credential expires {{ expiry }}{% endblocktrans %}{% else %}{% trans "Credential active" %}{% endif %}</p><form method="post" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="revoke"><input type="hidden" name="credential" value="{{ credential.pk }}"><button class="button button-secondary">{% trans "Revoke credential" %}</button></form>{% empty %}<p class="hint">{% trans "No credentials." %}</p>{% endfor %}<form method="post" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="rotate"><input type="hidden" name="device" value="{{ x.pk }}"><button class="button button-secondary">{% trans "Rotate credential" %}</button></form></div>
       </article></li>
       {% empty %}<li class="empty-state">{% trans "No readers registered." %}</li>{% endfor %}

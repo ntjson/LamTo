@@ -2,6 +2,7 @@ import secrets
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import Building
 from lamto.documents.models import DocumentVersion
@@ -14,9 +15,9 @@ def new_reference() -> str:
 
 class Bill(models.Model):
     class Status(models.TextChoices):
-        ISSUED = "ISSUED", "Issued"
-        PAID = "PAID", "Paid"
-        VOID = "VOID", "Void"
+        ISSUED = "ISSUED", _("Issued")
+        PAID = "PAID", _("Paid")
+        VOID = "VOID", _("Void")
 
     class PaymentSource(models.TextChoices):
         SELF_ATTESTED_DEMO = "SELF_ATTESTED_DEMO", "Resident self-attested (demo)"

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from .managers import UserManager
 
@@ -73,10 +74,10 @@ class ManagementMembership(models.Model):
 
 class RegistrationRequest(models.Model):
     class Status(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        APPROVED = "APPROVED", "Approved"
-        REJECTED = "REJECTED", "Rejected"
-        EXPIRED = "EXPIRED", "Expired"
+        PENDING = "PENDING", _("Pending")
+        APPROVED = "APPROVED", _("Approved")
+        REJECTED = "REJECTED", _("Rejected")
+        EXPIRED = "EXPIRED", _("Expired")
 
     full_name = models.CharField(max_length=150)
     phone = models.CharField(max_length=32)

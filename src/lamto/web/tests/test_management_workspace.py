@@ -51,10 +51,12 @@ class ManagementWorkspaceTests(TestCase):
             "case-list",
             "proposal-list",
             "settlement-list",
+            "export-home",
             "audit-export",
             "fund-home",
             "ops-health",
             "pilot-metrics",
+            "standalone-proposal-create",
         ):
             with self.subTest(name=name):
                 self.assertEqual(

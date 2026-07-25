@@ -61,8 +61,12 @@ def test_history_is_building_scoped_newest_first_with_audit_fields(client):
     response = client.get(reverse("web:staff-announcement-list"))
 
     assert list(response.context["announcements"]) == [newer, older]
-    for value in ("Withdrawn", "Published", "Revision 2", manager.email):
-        assert value.encode() in response.content
+    content = response.content.decode()
+    assert manager.email in content
+    assert "Revision 2" in content or "Phiên bản 2" in content
+    # State labels are translated under LANGUAGE_CODE=vi.
+    assert "Withdrawn" in content or "Đã rút" in content
+    assert "Published" in content or "Đã công bố" in content
     assert b"Other" not in response.content
     assert older.created_at.strftime("%Y").encode() in response.content
 
@@ -142,7 +146,8 @@ def test_stale_edit_reports_conflict_and_preserves_newer_content(client):
         "Current body",
         2,
     )
-    assert b"changed since you opened it" in response.content
+    body = response.content.decode()
+    assert "changed since you opened it" in body or "đã thay đổi kể từ khi bạn mở" in body
 
 
 def test_withdraw_requires_post_and_csrf(client):
@@ -179,7 +184,11 @@ def test_withdrawn_detail_has_no_actions_and_remains_in_history(client):
 
 
 @override_settings(PUSH_ENABLED=True)
-def test_announcement_management_to_resident_api_lifecycle(client):
+def test_announcement_management_to_resident_api_lifecycle(client, monkeypatch):
+    monkeypatch.setattr(
+        "lamto.notifications.services.send_push",
+        lambda *args, **kwargs: "msg-test",
+    )
     building, manager = setup_manager(client)
     unit = Unit.objects.create(building=building, label="101")
     second_unit = Unit.objects.create(building=building, label="102")
@@ -277,7 +286,11 @@ def test_announcement_management_to_resident_api_lifecycle(client):
     stale = client.post(withdraw_url, {"expected_revision": 1}, follow=True)
     announcement.refresh_from_db()
     assert announcement.state == Announcement.State.PUBLISHED
-    assert b"changed since you opened it" in stale.content
+    stale_body = stale.content.decode()
+    assert (
+        "changed since you opened it" in stale_body
+        or "đã thay đổi kể từ khi bạn mở" in stale_body
+    )
 
     assert client.post(withdraw_url, {"expected_revision": 2}).status_code == 302
     announcement.refresh_from_db()

@@ -1,22 +1,47 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n %}
+{% load i18n staff_extras %}
 {% block title %}{% trans "Announcements" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  <h1>{% trans "Announcements" %}</h1>
-  <p class="hint">{% blocktrans with building=membership.building.name %}Notices for {{ building }}.{% endblocktrans %}</p>
-  <form method="post" action="{% url 'web:staff-announcement-create' %}" data-busy-on-submit>
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="button">{% trans "Publish announcement" %}</button>
-  </form>
+<section class="panel" aria-labelledby="announcements-heading">
+  <div class="panel-header">
+    <div>
+      <h1 id="announcements-heading">{% trans "Announcements" %}</h1>
+      <p class="hint">{% blocktrans with building=membership.building.name %}Notices for {{ building }}.{% endblocktrans %}</p>
+    </div>
+    <a class="button button-primary" href="#publish-announcement">{% trans "Publish announcement" %}</a>
+  </div>
+
+  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=_("Search announcements") search_placeholder=_("Title or body…") %}
+
   <ul class="task-list">
     {% for announcement in announcements %}
-    <li><a class="task-row" href="{% url 'web:staff-announcement-detail' announcement.pk %}">
-      <span class="task-action">{{ announcement.title }}</span>
-      <span class="task-subject">{{ announcement.get_state_display }} · {% trans "Revision" %} {{ announcement.revision }} · {{ announcement.created_by }} · {{ announcement.created_at }} · {{ announcement.updated_by }} · {{ announcement.updated_at }}</span>
-    </a></li>
-    {% empty %}<li>{% trans "No announcements have been published." %}</li>{% endfor %}
+    <li>
+      <a class="task-row" href="{% url 'web:staff-announcement-detail' announcement.pk %}">
+        <span class="task-action">{{ announcement.get_state_display }}</span>
+        <span class="task-subject">{{ announcement.title }} · {% trans "Revision" %} {{ announcement.revision }} · {{ announcement.created_by }} · {{ announcement.created_at|staff_datetime }}</span>
+      </a>
+    </li>
+    {% empty %}
+    <li class="empty-state">
+      <p>{% if list_meta.query %}{% trans "No announcements match your search." %}{% else %}{% trans "No announcements have been published." %}{% endif %}</p>
+    </li>
+    {% endfor %}
   </ul>
+  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=_("Announcement pages") %}
+
+  <details class="workflow-section" id="publish-announcement">
+    <summary class="button button-secondary">{% trans "Publish an announcement" %}</summary>
+    <form method="post" action="{% url 'web:staff-announcement-create' %}" class="stack-form" data-busy-on-submit>
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="button button-primary">{% trans "Publish announcement" %}</button>
+    </form>
+  </details>
 </section>
 {% endblock %}

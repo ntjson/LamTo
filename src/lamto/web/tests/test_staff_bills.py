@@ -310,8 +310,9 @@ def test_detail_shows_qr_and_honest_resident_reported_copy_when_paid(client):
     )
     paid = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
 
-    assert b"resident-reported" in paid.content.lower()
-    assert b"not bank-verified" in paid.content.lower()
+    paid_body = paid.content.decode().lower()
+    assert "resident-reported" in paid_body or "cư dân tự báo" in paid_body
+    assert "not bank-verified" in paid_body or "chưa xác minh ngân hàng" in paid_body
 
 
 def test_void_marks_bill_void(client):

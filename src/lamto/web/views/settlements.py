@@ -4,6 +4,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
+from django.utils.translation import gettext as _
 
 from lamto.accounts.security import require_recent_auth
 from lamto.documents.models import Document
@@ -52,7 +53,7 @@ def settlement_record_transfer(request, pk):
             if not form.errors:
                 form.add_error("proof", "Selected evidence is no longer available.")
         else:
-            messages.success(request, "Transfer evidence recorded.")
+            messages.success(request, _("Transfer evidence recorded."))
             return redirect("web:settlement-detail", pk=settlement.pk)
     return render(request, "web/staff/settlement_detail.html", _context(request, membership, memberships, proposal=proposal, transfer_form=form, transfer_mode=True))
 
@@ -84,7 +85,7 @@ def settlement_record_ack(request, pk):
             if not form.errors:
                 form.add_error("proof", "Selected evidence is no longer available.")
         else:
-            messages.success(request, "Acknowledgement recorded; settlement anchored.")
+            messages.success(request, _("Acknowledgement recorded; settlement anchored."))
             return redirect("web:settlement-detail", pk=settlement.pk)
     return render(request, "web/staff/settlement_detail.html", _context(request, membership, memberships, settlement=settlement, ack_form=form, ack_mode=True))
 

@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n %}
+{% load i18n staff_extras %}
 {% block title %}{% trans "Gate activity" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel">
@@ -7,10 +7,9 @@
   <ul class="task-list">
     {% for x in events %}
     <li><article class="task-row">
-      <strong class="task-action">{% trans "Deleted within 24 hours" %}</strong>
-      <span class="task-subject">{% if x.matched_occupancy %}{{ x.matched_occupancy.user.display_name }} · {{ x.matched_occupancy.unit.label }}{% else %}{% trans "Unrecognized" %}{% endif %}{% if x.normalized_plate_text %} · {{ x.normalized_plate_text }}{% endif %}</span>
-      <span>{{ x.get_kind_display }}{% if x.match_score is not None %} · {% trans "Score" %} {{ x.match_score }}{% endif %}</span>
-      <span class="task-meta">{{ x.occurred_at }} · {{ x.device.label }} · {{ x.get_direction_display }}</span>
+      <strong class="task-action">{% if x.matched_occupancy %}{{ x.matched_occupancy.user.display_name }}{% else %}{% trans "Unrecognized" %}{% endif %}</strong>
+      <span class="task-subject">{{ x.get_kind_display }}{% if x.matched_occupancy %} · {{ x.matched_occupancy.unit.label }}{% endif %}{% if x.normalized_plate_text %} · {{ x.normalized_plate_text }}{% endif %}{% if x.match_score is not None %} · {% trans "Score" %} {{ x.match_score }}{% endif %}</span>
+      <span class="task-meta"><span>{{ x.occurred_at|staff_datetime }} · {{ x.device.label }} · {{ x.get_direction_display }}</span><span class="hint">{% trans "Deleted within 24 hours" %}</span></span>
     </article></li>
     {% empty %}<li class="empty-state">{% trans "No activity remains in the 24-hour window." %}</li>{% endfor %}
   </ul>

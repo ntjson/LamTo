@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import csv
-import io
 from datetime import datetime, timezone as dt_timezone
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import StreamingHttpResponse
+from django.shortcuts import render
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET
 
 from lamto.audit.models import AuditEvent
@@ -15,10 +16,17 @@ from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import MaintenanceFundEntry, VerificationObservation
-from lamto.web.staff import require_management_context
+from lamto.web.staff import require_management_context, staff_context
 
 
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+EXPORT_KINDS = (
+    ("audit_events", _("Audit events")),
+    ("fund_entries", _("Fund entries")),
+    ("documents", _("Documents")),
+    ("outbox", _("Evidence outbox")),
+)
 
 
 def neutralize_cell(value) -> str:
@@ -44,6 +52,39 @@ def _csv_stream(header: list[str], rows):
         yield writer.writerow([neutralize_cell(c) for c in row])
 
 
+def _kind_counts(building_id: int) -> dict[str, int]:
+    return {
+        "audit_events": AuditEvent.objects.filter(membership__building_id=building_id).count(),
+        "fund_entries": MaintenanceFundEntry.objects.filter(fund__building_id=building_id).count(),
+        "documents": DocumentVersion.objects.filter(document__building_id=building_id).count(),
+        "outbox": BlockchainOutboxEvent.objects.filter(building_id=building_id).count(),
+    }
+
+
+@login_required
+@require_GET
+def export_home(request):
+    """Chooser page for the four auditor CSV exports."""
+    membership, memberships = require_management_context(request)
+    counts = _kind_counts(membership.building_id)
+    kinds = [
+        {"key": key, "label": label, "count": counts.get(key, 0)}
+        for key, label in EXPORT_KINDS
+    ]
+    return render(
+        request,
+        "web/staff/exports.html",
+        staff_context(
+            request,
+            membership,
+            memberships,
+            nav_active="ops",
+            ops_active="exports",
+            export_kinds=kinds,
+        ),
+    )
+
+
 @login_required
 @require_GET
 def audit_export(request):
@@ -52,6 +93,8 @@ def audit_export(request):
 
     building_id = membership.building_id
     kind = (request.GET.get("kind") or "audit_events").strip()
+    if kind not in {k for k, _ in EXPORT_KINDS} and kind != "observations":
+        kind = "audit_events"
 
     try:
         if kind == "fund_entries":

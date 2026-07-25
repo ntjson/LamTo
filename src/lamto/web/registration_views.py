@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
+from django.utils.translation import gettext as _
 
 from lamto.accounts.models import RegistrationRequest
 from lamto.accounts.registration import (
@@ -9,7 +10,10 @@ from lamto.accounts.registration import (
     approve_registration,
     reject_registration,
 )
+from django.utils.translation import gettext_lazy as _lazy
+
 from lamto.web.staff import require_management_context, staff_context
+from lamto.web.views.staff_common import prepare_record_list
 
 
 def _detail_response(request, membership, memberships, registration):
@@ -21,6 +25,7 @@ def _detail_response(request, membership, memberships, registration):
             membership,
             memberships,
             nav_active="registrations",
+            building_active="registrations",
             registration=registration,
         ),
     )
@@ -30,10 +35,19 @@ def _detail_response(request, membership, memberships, registration):
 @require_GET
 def registration_list(request):
     membership, memberships = require_management_context(request)
-    registrations = RegistrationRequest.objects.filter(
+    qs = RegistrationRequest.objects.filter(
         building_id=membership.building_id,
         status=RegistrationRequest.Status.PENDING,
-    ).select_related("unit", "building").order_by("created_at")
+    ).select_related("unit", "building")
+    list_meta = prepare_record_list(
+        request,
+        qs,
+        search_fields=("full_name", "phone", "email", "unit__label"),
+        sorts=(
+            ("", _lazy("Oldest first"), ("created_at", "pk")),
+            ("newest", _lazy("Newest first"), ("-created_at", "-pk")),
+        ),
+    )
     return render(
         request,
         "web/staff/registrations/list.html",
@@ -42,7 +56,9 @@ def registration_list(request):
             membership,
             memberships,
             nav_active="registrations",
-            registrations=registrations,
+            building_active="registrations",
+            registrations=list_meta["page"].object_list,
+            list_meta=list_meta,
         ),
     )
 
@@ -72,9 +88,9 @@ def registration_approve(request, request_id):
     try:
         approve_registration(request_id=request_id, actor=request.user)
     except RegistrationConflict:
-        messages.error(request, "This registration has already been decided.")
+        messages.error(request, _("This registration has already been decided."))
         return redirect("web:staff-registration-detail", request_id)
-    messages.success(request, "Registration approved.")
+    messages.success(request, _("Registration approved."))
     return redirect("web:staff-registration-list")
 
 
@@ -89,12 +105,12 @@ def registration_reject(request, request_id):
     )
     reason = request.POST.get("reason", "").strip()
     if not reason:
-        messages.error(request, "Rejection reason is required.")
+        messages.error(request, _("Rejection reason is required."))
         return _detail_response(request, membership, memberships, registration)
     try:
         reject_registration(request_id=request_id, actor=request.user, reason=reason)
     except RegistrationConflict:
-        messages.error(request, "This registration has already been decided.")
+        messages.error(request, _("This registration has already been decided."))
         return redirect("web:staff-registration-detail", request_id)
-    messages.success(request, "Registration rejected.")
+    messages.success(request, _("Registration rejected."))
     return redirect("web:staff-registration-list")

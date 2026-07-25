@@ -520,8 +520,13 @@ button.button:disabled {
   border-top: 1px solid var(--color-border);
 }
 
-.task-list li {
+.task-list > li {
   border-bottom: 1px solid var(--color-border);
+}
+
+.task-list-item,
+.task-list > li:not(.empty-state) {
+  padding: var(--space-3) 0;
 }
 
 .task-row {
@@ -580,8 +585,12 @@ button.button:disabled {
 }
 
 .empty-state {
-  max-width: 65ch;
   padding: var(--space-6) 0;
+}
+
+.empty-state > p,
+.empty-state > h2 {
+  max-width: 65ch;
 }
 
 .field {
@@ -686,7 +695,7 @@ code {
   }
 
   .record-layout {
-    grid-template-columns: minmax(0, 0.9fr) minmax(20rem, 1.1fr);
+    grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.8fr);
   }
 
   .detail-list.detail-list-wide {
@@ -748,23 +757,32 @@ code {
 }
 
 
+.sub-nav,
 .finance-nav,
-.gate-nav {
+.gate-nav,
+.building-nav,
+.ops-nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
 
+.sub-nav,
 .finance-nav,
-.gate-nav {
+.gate-nav,
+.building-nav,
+.ops-nav {
   padding: var(--space-2) var(--space-4);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
+.sub-nav a,
 .finance-nav a,
 .gate-nav a,
+.building-nav a,
+.ops-nav a,
 .back-link {
   min-height: var(--touch);
   display: inline-flex;
@@ -772,22 +790,34 @@ code {
   font-weight: 600;
 }
 
+.sub-nav a,
 .finance-nav a,
-.gate-nav a {
+.gate-nav a,
+.building-nav a,
+.ops-nav a {
   padding: var(--space-1) var(--space-3);
   border-radius: 999px;
   text-decoration: none;
 }
 
+.sub-nav a:hover,
 .finance-nav a:hover,
-.gate-nav a:hover {
+.gate-nav a:hover,
+.building-nav a:hover,
+.ops-nav a:hover {
   background: var(--color-bg);
 }
 
+.sub-nav a.is-active,
+.sub-nav a.is-active:hover,
 .finance-nav a.is-active,
 .finance-nav a.is-active:hover,
 .gate-nav a.is-active,
-.gate-nav a.is-active:hover {
+.gate-nav a.is-active:hover,
+.building-nav a.is-active,
+.building-nav a.is-active:hover,
+.ops-nav a.is-active,
+.ops-nav a.is-active:hover {
   background: var(--color-brand);
   color: var(--color-brand-ink);
 }
@@ -939,7 +969,19 @@ code {
 }
 
 /* Fund balance chart (staff fund page + action inbox card) */
-.chart-box { position: relative; height: 260px; }
+.chart-box { position: relative; height: 260px; min-width: 0; }
 .chart-box-compact { height: 140px; }
 .range-toggle { display: flex; gap: 8px; }
-a.fund-chart-link { display: block; color: inherit; text-decoration: none; }
+
+.hash-block { word-break: break-all; }
+.stack-form-follow { margin-top: var(--space-4); }
+.inline-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.evidence-thumbs { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.evidence-thumb { display: inline-block; padding: var(--space-1) var(--space-2); border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-muted); }
+.bill-qr { max-width: 16rem; }
+.bill-qr svg { width: 100%; height: auto; display: block; }
+.health-detail { color: var(--color-muted); max-width: 65ch; }
+.brand-name { font-weight: 700; letter-spacing: 0.02em; }
+.flash-messages { margin-bottom: var(--space-4); }
+
+/* dark-* tokens are resident-app only; web staff has no prefers-color-scheme theme. */

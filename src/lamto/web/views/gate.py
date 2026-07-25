@@ -4,6 +4,7 @@ from django.core.files.storage import storages
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
+from django.utils.translation import gettext
 
 from lamto.gate.devices import issue_credential, revoke_credential, rotate_credential
 from lamto.gate.models import FaceEnrollment, GateDevice, GateDeviceCredential, GateEvent, PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
@@ -43,7 +44,7 @@ def gate_face_decide(request, pk):
         if decision == "approve": approve_face(enrollment, membership)
         elif decision == "reject": reject_face(enrollment, membership, request.POST.get("note", ""))
         elif decision == "revoke": revoke_face(enrollment, membership)
-        else: messages.error(request, "Unknown decision.")
+        else: messages.error(request, gettext("Unknown decision."))
     except ReviewNotPossible as error: messages.error(request, str(error))
     return redirect(request.POST.get("next") or "web:gate-queue")
 
@@ -78,10 +79,12 @@ def gate_devices(request):
             label = request.POST.get("label", "").strip()
             direction = request.POST.get("direction")
             if not label or direction not in GateDevice.Direction.values:
-                messages.error(request, "Enter a reader label and select a valid direction.")
+                messages.error(request, gettext("Enter a reader label and select a valid direction."))
             else:
-                device = GateDevice.objects.create(building=membership.building, label=label, direction=direction); _, issued_token = issue_credential(device, membership)
-        elif action == "rotate": _, issued_token = rotate_credential(get_object_or_404(GateDevice, pk=request.POST.get("device"), building=membership.building), membership)
+                device = GateDevice.objects.create(building=membership.building, label=label, direction=direction)
+                _cred, issued_token = issue_credential(device, membership)
+        elif action == "rotate":
+            _cred, issued_token = rotate_credential(get_object_or_404(GateDevice, pk=request.POST.get("device"), building=membership.building), membership)
         elif action == "revoke": revoke_credential(get_object_or_404(GateDeviceCredential, pk=request.POST.get("credential"), device__building=membership.building), membership)
     return render(request, "web/staff/gate_devices.html", _context(request, membership, memberships, gate_active="devices", devices=GateDevice.objects.filter(building=membership.building).prefetch_related("credentials"), directions=GateDevice.Direction.choices, issued_token=issued_token))
 

@@ -12,6 +12,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.utils.translation import gettext as _
 
 from lamto.accounts.mfa import (
     begin_totp_enrollment,
@@ -103,7 +104,7 @@ class SecureLoginView(LoginView):
 @require_http_methods(["GET", "POST"])
 def mfa_setup(request):
     if confirmed_totp_devices(request.user).exists() and user_is_otp_verified(request):
-        messages.info(request, "MFA is already configured.")
+        messages.info(request, _("MFA is already configured."))
         return redirect("web:staff-home")
 
     device = pending_totp_device(request.user)
@@ -119,9 +120,9 @@ def mfa_setup(request):
             try:
                 confirm_totp_enrollment(request.user, token, request=request)
             except ValidationError as error:
-                messages.error(request, "; ".join(error.messages) if hasattr(error, "messages") else str(error))
+                messages.error(request, _("; ").join(error.messages) if hasattr(error, "messages") else str(error))
             else:
-                messages.success(request, "Authenticator enrolled.")
+                messages.success(request, _("Authenticator enrolled."))
                 next_url = request.POST.get("next") or request.GET.get("next") or reverse("web:staff-home")
                 return redirect(next_url)
         device = pending_totp_device(request.user) or device
@@ -152,9 +153,9 @@ def mfa_verify(request):
         except PermissionDenied as error:
             messages.error(request, str(error))
         except ValidationError as error:
-            messages.error(request, "; ".join(error.messages) if hasattr(error, "messages") else str(error))
+            messages.error(request, _("; ").join(error.messages) if hasattr(error, "messages") else str(error))
         else:
-            messages.success(request, "MFA verified.")
+            messages.success(request, _("MFA verified."))
             next_url = request.POST.get("next") or request.GET.get("next") or reverse("web:staff-home")
             return redirect(next_url)
 
@@ -174,9 +175,9 @@ def reauth(request):
         except PermissionDenied as error:
             messages.error(request, str(error))
         except ValidationError as error:
-            messages.error(request, "; ".join(error.messages) if hasattr(error, "messages") else str(error))
+            messages.error(request, _("; ").join(error.messages) if hasattr(error, "messages") else str(error))
         else:
-            messages.success(request, "Re-authentication successful.")
+            messages.success(request, _("Re-authentication successful."))
             return redirect(next_url)
     return render(request, "web/security/reauth.html", {"next": next_url})
 
@@ -189,7 +190,7 @@ def mfa_revoke_device(request, device_id: int):
     except ValidationError as error:
         messages.error(request, str(error))
     else:
-        messages.success(request, "Authenticator device revoked.")
+        messages.success(request, _("Authenticator device revoked."))
         revoke_session(request)
         return redirect("login")
     return redirect("web:mfa-setup")

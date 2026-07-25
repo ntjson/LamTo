@@ -40,16 +40,14 @@ class ManagementShellTests(TestCase):
             "Inbox",
             "Cases",
             "Finance",
-            "Exports",
-            "Gate",
+            "Building",
             "Ops",
-            "Registrations",
-            "Announcements",
         ):
             self.assertIn(label, labels)
+        self.assertEqual(len(labels), 5)
         self.assertEqual(
             [str(item["label"]) for item in finance_nav_items_for(self.membership)],
-            ["Proposals", "Settlements", "Fund"],
+            ["Proposals", "New proposal", "Settlements", "Fund"],
         )
         self.assertEqual(
             [str(item["label"]) for item in gate_nav_items_for(self.membership)],

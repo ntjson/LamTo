@@ -183,8 +183,19 @@ class ListPatternTests(TestCase):
         )
         self.assertNotContains(review, f"Proposal #{draft.pk}")
         self.assertContains(review, f"Proposal #{in_review.pk}")
-        self.assertContains(review, '<label for="record-filter">Status')
-        for label in ("Draft", "Published", "Not proceeding", "In progress", "Completed", "Closed"):
-            self.assertContains(review, label)
+        self.assertIn('id="record-filter"', review.content.decode())
+        self.assertTrue(
+            'Status' in review.content.decode() or 'Trạng thái' in review.content.decode()
+        )
+        body = review.content.decode()
+        for en, vi in (
+            ("Draft", "Nháp"),
+            ("Published", "Đã công bố"),
+            ("Not proceeding", "Không triển khai"),
+            ("In progress", "Đang thực hiện"),
+            ("Completed", "Hoàn tất"),
+            ("Closed", "Đã đóng"),
+        ):
+            self.assertTrue(en in body or vi in body, en)
         self.assertNotContains(review, "Review and decide")
         self.assertNotContains(review, "Authorized")

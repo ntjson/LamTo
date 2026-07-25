@@ -163,9 +163,17 @@ USE_I18N = True
 
 USE_TZ = True
 
+# vi format has THOUSAND_SEPARATOR="." but NUMBER_GROUPING is unset (0); without
+# these, intcomma returns bare digits under LANGUAGE_CODE=vi.
+USE_THOUSAND_SEPARATOR = True
+NUMBER_GROUPING = 3
+# Negatives keep the ASCII minus with locale grouping (e.g. vi: -1.000.000).
+
 # Shared staff/resident datetime display (day-first, 24h, Asia/Ho_Chi_Minh).
 SHORT_DATETIME_FORMAT = r"d/m/Y H:i"
 DATETIME_FORMAT = r"d/m/Y H:i"
+DATE_FORMAT = r"d/m/Y"
+SHORT_DATE_FORMAT = r"d/m/Y"
 
 
 # Static files (CSS, JavaScript, Images)

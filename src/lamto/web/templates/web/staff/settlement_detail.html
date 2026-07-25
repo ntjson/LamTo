@@ -89,9 +89,9 @@
           <span class="status status-warning"><span class="status-icon" aria-hidden="true">●</span> {% trans "Awaiting acknowledgement" %}</span>
           {% endif %}
         </dd></div>
-        <div><dt>{% trans "Transfer evidence" %}</dt><dd>{{ settlement.transfer.filename }}</dd></div>
+        <div><dt>{% trans "Transfer evidence" %}</dt><dd>{% if settlement.transfer_id %}<a href="{% url 'web:staff-document' settlement.transfer_id %}">{{ settlement.transfer.filename }}</a>{% else %}{% trans "Not recorded yet" %}{% endif %}</dd></div>
         <div><dt>{% blocktrans with kind=settlement.get_ack_kind_display %}Acknowledgement ({{ kind }}){% endblocktrans %}</dt><dd>
-          {% if settlement.ack %}{{ settlement.ack.filename }}{% else %}{% trans "Not recorded yet" %}{% endif %}
+          {% if settlement.ack_id %}<a href="{% url 'web:staff-document' settlement.ack_id %}">{{ settlement.ack.filename }}</a>{% else %}{% trans "Not recorded yet" %}{% endif %}
         </dd></div>
       </dl>
 

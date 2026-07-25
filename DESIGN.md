@@ -179,7 +179,7 @@ Neutral surfaces dominate. Accountability Indigo is reserved for primary actions
 - **Record Ink** (`ink`): Primary copy, financial amounts, and the staff navigation surface. Money is Record Ink, never muted.
 - **Quiet Ink** (`muted`): Secondary labels and metadata. Meets AA on both Clear Ground and Working Surface.
 - **Border Mist** (`border`): Dividers, input strokes, and flat container boundaries.
-- **Night Ground / Surface / Ink / Quiet Ink / Border** (`dark-*`): The first-class dark appearance for the Flutter app.
+- **Night Ground / Surface / Ink / Quiet Ink / Border** (`dark-*`): The first-class dark appearance for the Flutter app only. The Management web workspace does not ship a `prefers-color-scheme` theme; these tokens are not applied on web.
 
 ### Semantic
 
@@ -226,7 +226,9 @@ Night has its own semantic set (`dark-success` through `dark-info-bg`): deep tin
 
 **The Vietnamese-First Rule.** Resident type scales with the system and preserves enough leading for Vietnamese diacritics at every supported size. Resident copy is keyed from machine codes, never from server-supplied display strings.
 
-**The Tabular Column Rule.** Tabular figures only pay off when the column is end-aligned. Any amount in a scannable column is end-aligned once the row becomes a grid; stacked mobile rows stay start-aligned.
+**The Management Locale Rule.** The Management workspace ships in Vietnamese (`LANGUAGE_CODE = "vi"`). Staff templates, flash messages, nav labels, and TextChoices displays are translated through `locale/vi/LC_MESSAGES/`. The brand badge reads "LamTo Management" / "LamTo Quản lý", not HR. Money uses locale thousand separators (`USE_THOUSAND_SEPARATOR` + `NUMBER_GROUPING = 3`); negatives keep an ASCII minus with grouping (e.g. `-1.000.000`).
+
+**The Tabular Column Rule.** Tabular figures only pay off when the column is end-aligned. Any amount in a scannable column is end-aligned once the row becomes a grid; stacked mobile rows stay start-aligned. Money chart series use brand/info colours for flow volume — never success/error, which are reserved for evidence state.
 
 ## 4. Elevation
 

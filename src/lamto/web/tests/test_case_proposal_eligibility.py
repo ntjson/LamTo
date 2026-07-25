@@ -67,4 +67,8 @@ class CaseProposalEligibilityTests(TestCase):
         for case, offered in ((eligible, True), (private, False), (no_spend, False)):
             response = self.client.get(reverse("web:case-detail", kwargs={"pk": case.pk}))
             self.assertEqual(response.status_code, 200)
-            self.assertEqual("Create spending proposal" in response.content.decode(), offered)
+            body = response.content.decode()
+        has_create = (
+            "Create spending proposal" in body or "Tạo đề xuất chi" in body
+        )
+        self.assertEqual(has_create, offered)

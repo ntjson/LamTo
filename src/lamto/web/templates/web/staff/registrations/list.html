@@ -1,14 +1,32 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n %}
+{% load i18n staff_extras %}
 {% block title %}{% trans "Registrations" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  <h1>{% trans "Pending registrations" %}</h1>
-  <p class="hint">{% blocktrans with building=membership.building.name %}Resident requests for {{ building }}.{% endblocktrans %}</p>
+<section class="panel" aria-labelledby="registrations-heading">
+  <div class="panel-header">
+    <div>
+      <h1 id="registrations-heading">{% trans "Pending registrations" %}</h1>
+      <p class="hint">{% blocktrans with building=membership.building.name %}Resident requests for {{ building }}.{% endblocktrans %}</p>
+    </div>
+  </div>
+
+  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=_("Search registrations") search_placeholder=_("Name, phone, or unit…") %}
+
   <ul class="task-list">
     {% for registration in registrations %}
-    <li><a class="task-row" href="{% url 'web:staff-registration-detail' registration.pk %}"><span class="task-action">{{ registration.full_name }}</span><span class="task-subject">{{ registration.unit.label }} · {{ registration.phone }}</span></a></li>
-    {% empty %}<li>{% trans "No registrations are waiting for review." %}</li>{% endfor %}
+    <li>
+      <a class="task-row" href="{% url 'web:staff-registration-detail' registration.pk %}">
+        <span class="task-action">{% trans "Review" %}</span>
+        <span class="task-subject">{{ registration.full_name }} · {{ registration.unit.label }} · {{ registration.phone }}</span>
+        <span class="task-meta"><span>{{ registration.created_at|staff_datetime }}</span></span>
+      </a>
+    </li>
+    {% empty %}
+    <li class="empty-state">
+      <p>{% if list_meta.query %}{% trans "No registrations match your search." %}{% else %}{% trans "No registrations are waiting for review." %}{% endif %}</p>
+    </li>
+    {% endfor %}
   </ul>
+  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=_("Registration pages") %}
 </section>
 {% endblock %}

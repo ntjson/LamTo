@@ -1,27 +1,52 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize i18n %}
+{% load humanize i18n staff_extras %}
 {% block title %}{% trans "Bills" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  <h1>{% trans "Bills" %}</h1>
-  <p class="hint">{% blocktrans with building=membership.building.name %}Resident bills for {{ building }}.{% endblocktrans %}</p>
-  <form method="post" action="{% url 'web:staff-bill-create' %}" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-    <button type="submit" class="button">{% trans "Issue bill" %}</button>
-  </form>
+<section class="panel" aria-labelledby="bills-heading">
+  <div class="panel-header">
+    <div>
+      <h1 id="bills-heading">{% trans "Bills" %}</h1>
+      <p class="hint">{% blocktrans with building=membership.building.name %}Resident bills for {{ building }}.{% endblocktrans %}</p>
+    </div>
+    <a class="button button-primary" href="#issue-bill">{% trans "Issue bill" %}</a>
+  </div>
+
+  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=_("Search bills") search_placeholder=_("Title, resident, or status…") %}
+
   <ul class="task-list">
     {% for bill in bills %}
     <li>
       <a class="task-row" href="{% url 'web:staff-bill-detail' bill.pk %}">
-        <span class="task-action">{{ bill.title }}</span>
-        <span class="task-subject">{{ bill.get_status_display }} · {{ bill.resident }} · {{ bill.issued_at }}</span>
+        <span class="task-action">{{ bill.get_status_display }}</span>
+        <span class="task-subject">{{ bill.title }} · {{ bill.resident }} · {{ bill.issued_at|staff_datetime }}</span>
         <span class="task-amount">{{ bill.amount_vnd|intcomma }} VND</span>
         <span class="task-meta"></span>
       </a>
     </li>
-    {% empty %}<li>{% trans "No bills have been issued." %}</li>{% endfor %}
+    {% empty %}
+    <li class="empty-state">
+      <p>{% if list_meta.query %}{% trans "No bills match your search." %}{% else %}{% trans "No bills have been issued." %}{% endif %}</p>
+      {% if list_meta.query %}<p class="hint"><a href="{% url 'web:staff-bill-list' %}">{% trans "Clear filters" %}</a></p>{% endif %}
+    </li>
+    {% endfor %}
   </ul>
+  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=_("Bill pages") %}
+
+  <details class="workflow-section" id="issue-bill">
+    <summary class="button button-secondary">{% trans "Issue a bill" %}</summary>
+    <form method="post" action="{% url 'web:staff-bill-create' %}" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="button button-primary">{% trans "Issue bill" %}</button>
+    </form>
+  </details>
 </section>
 {% endblock %}

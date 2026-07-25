@@ -30,21 +30,26 @@
         type: "bar",
         label: canvas.dataset.labelInflows || "Inflows",
         data: points.map(function (p) { return p.inflows_vnd; }),
-        backgroundColor: color("--color-success"),
+        backgroundColor: color("--color-info"),
         order: 1,
       },
       {
         type: "bar",
         label: canvas.dataset.labelOutflows || "Outflows",
         data: points.map(function (p) { return p.outflows_vnd; }),
-        backgroundColor: color("--color-error"),
+        backgroundColor: color("--color-brand"),
         order: 1,
       }
     );
   }
   new Chart(canvas, {
     data: {
-      labels: points.map(function (p) { return p.period_start; }),
+      labels: points.map(function (p) {
+        var raw = String(p.period_start || "");
+        // period_start is ISO date; show d/m/Y to match staff_datetime day-first.
+        var m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return m ? m[3] + "/" + m[2] + "/" + m[1] : raw;
+      }),
       datasets: datasets,
     },
     options: {

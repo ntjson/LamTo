@@ -298,6 +298,41 @@ def _related_or_none(obj, attr: str):
         return None
 
 
+def _publication_still_pending(entry, proposal, settlement) -> bool:
+    """True until an outbox event is chain-confirmed (LOCAL_SIGNED stays pending)."""
+    from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
+
+    events = []
+    if entry is not None:
+        for attr in ("settlement", "proposal"):
+            related = _related_or_none(entry, attr)
+            if related is not None:
+                event = _related_or_none(related, "outbox_event")
+                if event is None and attr == "proposal":
+                    version = _related_or_none(related, "current_version")
+                    event = _related_or_none(version, "outbox_event") if version else None
+                if event is not None:
+                    events.append(event)
+    if settlement is not None:
+        event = _related_or_none(settlement, "outbox_event")
+        if event is not None:
+            events.append(event)
+    if proposal is not None:
+        version = _related_or_none(proposal, "current_version")
+        event = _related_or_none(version, "outbox_event") if version else None
+        if event is not None:
+            events.append(event)
+    if not events:
+        return True
+    for event in events:
+        level = getattr(event, "evidence_level", None) or ""
+        status = getattr(event, "status", None) or ""
+        if level == EvidenceLevel.CHAIN_CONFIRMED or status == BlockchainOutboxEvent.Status.CONFIRMED:
+            continue
+        return True
+    return False
+
+
 def resolve_accountability_stage(
     source=None,
     *,
@@ -330,9 +365,6 @@ def resolve_accountability_stage(
         elif isinstance(source, MaintenanceCase):
             case = source
 
-    if entry is not None:
-        return None, False, False
-
     if proposal is None and settlement is not None:
         proposal = settlement.proposal
     if case is None and proposal is not None:
@@ -341,12 +373,21 @@ def resolve_accountability_stage(
         proposal = _related_or_none(case, "proposal")
     if settlement is None and proposal is not None:
         settlement = _related_or_none(proposal, "settlement")
+    if entry is None and proposal is not None:
+        entry = _related_or_none(proposal, "published_ledger_entry")
+    if entry is None and case is not None:
+        entry = PublishedLedgerEntry.objects.filter(case=case).first()
+
+    # Publication is complete only when the anchor is chain-confirmed — a ledger
+    # row alone is not enough (matches evidence_level, not a verified boolean).
+    if entry is not None or published is True:
+        if publication_pending is None:
+            publication_pending = _publication_still_pending(entry, proposal, settlement)
+        if publication_pending:
+            return "publication", False, True
+        return None, False, False
 
     if case is not None:
-        if published is None:
-            published = PublishedLedgerEntry.objects.filter(case=case).exists()
-        if published:
-            return None, False, False
         if settlement is not None and settlement.settled_at is not None:
             return "publication", False, False
         proposal_status = getattr(proposal, "status", None) if proposal else None
@@ -359,10 +400,6 @@ def resolve_accountability_stage(
         return ("settlement", False, False) if case.completed_at else ("work", False, False)
 
     if proposal is not None:
-        if published is None:
-            published = PublishedLedgerEntry.objects.filter(proposal=proposal).exists()
-        if published:
-            return None, False, False
         if settlement is not None and settlement.settled_at is not None:
             return "publication", False, False
         if proposal.status in _PROPOSAL_AUTHORIZED:

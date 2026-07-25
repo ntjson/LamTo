@@ -16,6 +16,7 @@ from lamto.web.registration_views import (
     registration_reject,
 )
 from lamto.web.views import (
+    documents,
     exports,
     fund,
     gate,
@@ -91,7 +92,19 @@ urlpatterns = [
     path("s/settlements/<int:pk>/ack/", settlements.settlement_record_ack, name="settlement-record-ack"),
     path("s/settlements/<int:pk>/", settlements.settlement_detail, name="settlement-detail"),
     # Exports
+    path("s/exports/", exports.export_home, name="export-home"),
     path("s/audit/export/", exports.audit_export, name="audit-export"),
+    # Documents (staff evidence download)
+    path(
+        "s/documents/<int:version_id>/",
+        documents.staff_document_redirect,
+        name="staff-document",
+    ),
+    path(
+        "s/documents/d/<str:token>/",
+        documents.staff_document_download,
+        name="staff-document-download",
+    ),
     # Fund
     path("s/fund/", fund.fund_home, name="fund-home"),
     path("s/fund/record/", fund.fund_record, name="fund-record"),

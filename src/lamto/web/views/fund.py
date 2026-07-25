@@ -122,7 +122,7 @@ def fund_record(request):
             else:
                 raise
         else:
-            messages.success(request, "Fund source recorded; awaiting verification.")
+            messages.success(request, _("Fund source recorded; awaiting verification."))
             return redirect("web:fund-home")
 
     return render(
@@ -165,7 +165,7 @@ def fund_verify(request, pk):
             else:
                 raise
         else:
-            messages.success(request, "Fund source verified.")
+            messages.success(request, _("Fund source verified."))
             return redirect("web:fund-home")
 
     return render(

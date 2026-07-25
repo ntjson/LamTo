@@ -71,6 +71,7 @@ STAFF_CASES = {
     "web:staff-announcement-withdraw": ("announcement_pk", "POST"),
     "web:staff-bill-detail": ("bill_pk", "GET"),
     "web:staff-bill-void": ("bill_pk", "POST"),
+    "web:staff-document": ("document_version_pk", "GET"),
 }
 STAFF_FORBIDDEN_CASES = set()
 
@@ -274,6 +275,7 @@ class CrossBuildingAccessTests(TestCase):
             sha256="0" * 64,
             uploader=cls.seed_b.management_memberships[0].user,
         )
+        cls.b["document_version_pk"] = bill_version.pk
         cls.b["bill_pk"] = Bill.objects.create(
             building=b_building,
             resident=cls.seed_b.residents[0],
@@ -352,17 +354,13 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_nine_areas_and_non_manager_is_denied(self):
+    def test_management_has_five_areas_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
         assert [item["active_key"] for item in nav_items_for(manager)] == [
             "inbox",
             "cases",
             "finance",
-            "exports",
-            "gate",
-            "registrations",
-            "announcements",
-            "bills",
+            "building",
             "ops",
         ]
         self._management_login()

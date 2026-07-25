@@ -241,6 +241,7 @@ def ops_health(request):
             membership,
             memberships,
             nav_active="ops",
+            ops_active="health",
             health=snapshot,
             panel="health",
         ),
@@ -265,12 +266,13 @@ def pilot_metrics(request):
         return JsonResponse(metrics)
     return render(
         request,
-        "web/staff/shell.html",
+        "web/staff/ops_metrics.html",
         staff_context(
             request,
             membership,
             memberships,
             nav_active="ops",
+            ops_active="metrics",
             metrics=metrics,
             panel="metrics",
         ),

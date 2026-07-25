@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import Building, ManagementMembership
 from lamto.documents.models import DocumentVersion
@@ -19,11 +20,11 @@ class MaintenanceFund(models.Model):
 
 class MaintenanceFundEntry(InsertOnlyModel):
     class EntryType(models.TextChoices):
-        OPENING_BALANCE = "OPENING_BALANCE", "Opening balance"
-        INFLOW = "INFLOW", "Inflow"
-        OUTFLOW = "OUTFLOW", "Outflow"
-        REVERSAL = "REVERSAL", "Reversal"
-        REPLACEMENT = "REPLACEMENT", "Replacement"
+        OPENING_BALANCE = "OPENING_BALANCE", _("Opening balance")
+        INFLOW = "INFLOW", _("Inflow")
+        OUTFLOW = "OUTFLOW", _("Outflow")
+        REVERSAL = "REVERSAL", _("Reversal")
+        REPLACEMENT = "REPLACEMENT", _("Replacement")
 
     fund = models.ForeignKey(
         MaintenanceFund, on_delete=models.PROTECT, related_name="entries"

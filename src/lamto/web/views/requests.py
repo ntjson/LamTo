@@ -10,6 +10,7 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.text import Truncator
 from django.views.decorators.http import require_GET, require_http_methods
+from django.utils.translation import gettext as _
 
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document
@@ -199,24 +200,24 @@ def report_detail(request, pk):
                     )
                     messages.success(
                         request,
-                        "Triage confirmed. Start work to assign the repair.",
+                        _("Triage confirmed. Start work to assign the repair."),
                     )
                     return redirect("web:case-detail", pk=case.pk)
         elif action == "request_info" and info_form.is_valid():
             try:
                 request_information(report, request.user, info_form.cleaned_data["message"])
             except ValidationError as error:
-                messages.error(request, "Information request was not sent. " + "; ".join(error.messages) + " The report was not changed — review the message and try again.")
+                messages.error(request, _("Information request was not sent. %(detail)s The report was not changed — review the message and try again.") % {"detail": "; ".join(error.messages)})
             else:
-                messages.success(request, "Information requested.")
+                messages.success(request, _("Information requested."))
             return redirect("web:staff-report-detail", pk=report.pk)
         elif action == "decline" and decline_form.is_valid():
             try:
                 decline_report(report, request.user, decline_form.cleaned_data["reason"])
             except ValidationError as error:
-                messages.error(request, "Request was not declined. " + "; ".join(error.messages) + " The report was not changed — review the reason and try again.")
+                messages.error(request, _("Request was not declined. %(detail)s The report was not changed — review the reason and try again.") % {"detail": "; ".join(error.messages)})
             else:
-                messages.success(request, "Request declined.")
+                messages.success(request, _("Request declined."))
             return redirect("web:staff-report-detail", pk=report.pk)
 
     return render(
@@ -238,6 +239,7 @@ def report_detail(request, pk):
             decline_form=decline_form,
             terminal=report.status in TERMINAL_STATUSES,
             open_info_request=report.info_requests.filter(resolved_at__isnull=True).first(),
+            report_photos=report.photos.select_related("version").all(),
             suggestion=suggestion,
             suggestion_raw_json=(
                 json.dumps(suggestion.raw_response, indent=2, ensure_ascii=False)
@@ -264,9 +266,9 @@ def case_detail(request, pk):
             try:
                 start_case_work(case, request.user)
             except (ValidationError, PermissionDenied) as error:
-                messages.error(request, "Work was not started. " + "; ".join(getattr(error, "messages", [str(error)])) + " The case was not changed — try again.")
+                messages.error(request, _("Work was not started. %(detail)s The case was not changed — try again.") % {"detail": "; ".join(getattr(error, "messages", [str(error)]))})
             else:
-                messages.success(request, "Case work started.")
+                messages.success(request, _("Case work started."))
             return redirect("web:case-detail", pk=case.pk)
         if action in {"publish_progress", "complete_work"}:
             work_form = ProgressUpdateForm(request.POST, request.FILES, building_id=building_id, uploader_id=request.user.pk)
@@ -293,7 +295,10 @@ def case_detail(request, pk):
                     else:
                         raise
                 else:
-                    messages.success(request, "Case work completed." if action == "complete_work" else "Progress published.")
+                    messages.success(
+                        request,
+                        _("Case work completed.") if action == "complete_work" else _("Progress published."),
+                    )
                     return redirect("web:case-detail", pk=case.pk)
 
     if work_form is None:
@@ -312,8 +317,11 @@ def case_detail(request, pk):
             form=None,
             work_form=work_form,
             legacy_items=[],
-            updates=case.updates.order_by("-created_at"),
+            updates=case.updates.prefetch_related("evidence_links__version").order_by("-created_at"),
             ratings=case.completion_ratings.select_related("resident").order_by("created_at"),
+            report_photos=(
+                report.photos.select_related("version").all() if report is not None else []
+            ),
             can_create_proposal=(
                 not hasattr(case, "proposal")
                 and spending_proposal_cases().filter(pk=case.pk).exists()

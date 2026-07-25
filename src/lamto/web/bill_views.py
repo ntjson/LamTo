@@ -5,15 +5,19 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST
+from django.utils.translation import gettext as _
 
 from lamto.accounts.models import ResidentOccupancy
 from lamto.billing.models import Bill
 from lamto.billing.qr import bill_qr_svg
 from lamto.billing.services import BillError, issue_bill, void_bill
 from lamto.documents.models import Document
+from django.utils.translation import gettext_lazy as _lazy
+
 from lamto.web.forms.bills import BillForm, VoidBillForm
 from lamto.web.staff import require_management_context, staff_context
 from lamto.web.staff_documents import _delete_storage_blob, upload_document
+from lamto.web.views.staff_common import prepare_record_list
 
 
 def _resident_choices(building_id):
@@ -51,6 +55,29 @@ def _bill_for(membership, pk):
     )
 
 
+def _bill_list_context(request, membership, memberships, form):
+    list_meta = prepare_record_list(
+        request,
+        _bills_for(membership.building_id),
+        search_fields=("title", "resident__display_name", "resident__email", "status"),
+        sorts=(
+            ("", _lazy("Newest first"), ("-issued_at", "-pk")),
+            ("oldest", _lazy("Oldest first"), ("issued_at", "pk")),
+            ("amount", _lazy("Amount"), ("-amount_vnd", "-pk")),
+        ),
+    )
+    return staff_context(
+        request,
+        membership,
+        memberships,
+        nav_active="bills",
+        building_active="bills",
+        bills=list_meta["page"].object_list,
+        list_meta=list_meta,
+        form=form,
+    )
+
+
 @login_required
 @require_GET
 def bill_list(request):
@@ -59,14 +86,7 @@ def bill_list(request):
     return render(
         request,
         "web/staff/bills/list.html",
-        staff_context(
-            request,
-            membership,
-            memberships,
-            nav_active="bills",
-            bills=_bills_for(membership.building_id),
-            form=form,
-        ),
+        _bill_list_context(request, membership, memberships, form),
     )
 
 
@@ -104,19 +124,12 @@ def bill_create(request):
                 )
             form.add_error(None, str(error))
         else:
-            messages.success(request, "Bill issued.")
+            messages.success(request, _("Bill issued."))
             return redirect("web:staff-bill-list")
     return render(
         request,
         "web/staff/bills/list.html",
-        staff_context(
-            request,
-            membership,
-            memberships,
-            nav_active="bills",
-            bills=_bills_for(membership.building_id),
-            form=form,
-        ),
+        _bill_list_context(request, membership, memberships, form),
     )
 
 
@@ -156,5 +169,5 @@ def bill_void(request, pk):
     except BillError as error:
         messages.error(request, str(error))
     else:
-        messages.success(request, "Bill voided.")
+        messages.success(request, _("Bill voided."))
     return redirect("web:staff-bill-detail", bill.pk)
