@@ -137,7 +137,7 @@ class FundHomeTests(TestCase):
         resp = self.client.get(reverse("web:fund-home"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Quỹ bảo trì")           # Maintenance fund
-        self.assertContains(resp, "Bút toán đã xác minh")  # Verified entries
+        self.assertContains(resp, "<h2>Bút toán đã xác minh</h2>")  # Verified entries
         # The seeded opening balance is a verified entry.
         self.assertContains(resp, "Số dư đầu kỳ")          # Opening balance
 

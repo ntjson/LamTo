@@ -55,8 +55,12 @@ SRC_ROOT = pathlib.Path(settings.BASE_DIR)
 
 TRANS_TAG = re.compile(r"""\{%\s*trans(?:late)?\s+(["'])(.+?)\1""")
 # Longest-first alternation: `gettext` would otherwise shadow `gettext_lazy`.
-# The trailing class allows `)`, `,`, `}` and `]` so a call nested in a dict or
-# list literal is still matched — e.g. ValidationError({"field": _("...")}).
+# The trailing class allows `)`, `,`, `}` and `]`. `)` closes an ordinary
+# call — including a nested one, e.g. the `_(`'s own paren in
+# ValidationError({"field": _("...")}) — and `,` covers a string followed by
+# more arguments, e.g. ngettext's singular before its plural. `}`/`]` are
+# extra headroom for other nested-literal shapes: a harmless superset, since
+# a wider class can only match more, never hide a leak.
 PY_CALL = re.compile(
     r"""\b(?:gettext_lazy|gettext|ngettext|_)\(\s*(["'])(.+?)\1\s*[,)}\]]"""
 )
@@ -122,10 +126,12 @@ class CatalogCurrentTests(SimpleTestCase):
     {% trans %} tag or a _() call and never runs makemessages, so the string
     has no msgid at all and silently renders English under vi.
 
-    Known limits, accepted: {% blocktrans %} blocks, calls split across lines,
-    and strings built at runtime are not covered. Full coverage needs xgettext,
-    which is not installed here. This is a deliberate 90% check, not a
-    replacement for makemessages.
+    Known limits, accepted: {% blocktrans %} blocks, calls split across
+    lines, strings built at runtime, pgettext/npgettext calls, the
+    gettext_noop/ngettext_lazy/pgettext_lazy wrappers, and ngettext's plural
+    msgid are not covered. Full coverage needs xgettext, which is not
+    installed here. This is a deliberate 90% check, not a replacement for
+    makemessages.
     """
 
     def _missing(self):
@@ -139,14 +145,27 @@ class CatalogCurrentTests(SimpleTestCase):
                 if match.group(2) not in msgids:
                     missing.append((str(path), match.group(2)))
         for path in SRC_ROOT.rglob("*.py"):
-            if "/tests/" in str(path) or "/migrations/" in str(path):
+            # Relative to SRC_ROOT, not `"/tests/" in str(path)`: an absolute
+            # checkout path containing "tests" (e.g. /home/ci/tests/lamto)
+            # would otherwise match on the prefix and skip every .py file.
+            if {"tests", "migrations"} & set(path.relative_to(SRC_ROOT).parts):
                 continue
             scanned += 1
             text = path.read_text(encoding="utf-8")
             for match in PY_CALL.finditer(text):
                 if match.group(2) not in msgids:
                     missing.append((str(path), match.group(2)))
-        assert scanned, f"SRC_ROOT scanned no .html/.py files; SRC_ROOT is wrong: {SRC_ROOT}"
+        # `scanned` is ~210 (~170 .py + ~40 .html) on the current tree. A bare
+        # `assert scanned` only catches zero; it would stay truthy through a
+        # drastically truncated scan (e.g. SRC_ROOT resolving one level too
+        # deep). 150 is comfortably below the real count, so normal file
+        # churn won't trip it, but far above zero, so a truncated scan still
+        # does.
+        assert scanned > 150, (
+            f"only {scanned} .html/.py file(s) scanned under {SRC_ROOT}, "
+            f"expected well over 150; the scan looks drastically truncated, "
+            f"not just missing a file or two"
+        )
         return missing
 
     def test_every_translatable_literal_has_a_msgid(self):
