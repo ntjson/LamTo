@@ -65,6 +65,9 @@ PY_CALL = re.compile(
 def po_entries(path):
     """Parse a .po file into entries, joining multi-line msgid/msgstr strings.
 
+    A msgid_plural line gets its own key rather than being appended onto
+    msgid, so an entry may carry msgid_plural alongside msgid/msgstr/fuzzy.
+
     Standard library only, deliberately: the guard must run wherever pytest
     runs, and this repository has no gettext toolchain installed.
     """
@@ -85,7 +88,8 @@ def po_entries(path):
             continue
         match = re.match(r'(msgid|msgstr|msgid_plural|msgstr\[\d+\])\s+"(.*)"$', line)
         if match:
-            key = "msgstr" if match.group(1).startswith("msgstr") else "msgid"
+            key = "msgstr" if match.group(1).startswith("msgstr") else match.group(1)
+            current.setdefault(key, "")
             current[key] += match.group(2)
             continue
         if line.startswith('"') and line.endswith('"') and key:
@@ -127,7 +131,9 @@ class CatalogCurrentTests(SimpleTestCase):
     def _missing(self):
         msgids = {e["msgid"] for e in po_entries(PO_PATH)}
         missing = []
+        scanned = 0
         for path in SRC_ROOT.rglob("*.html"):
+            scanned += 1
             text = path.read_text(encoding="utf-8")
             for match in TRANS_TAG.finditer(text):
                 if match.group(2) not in msgids:
@@ -135,10 +141,12 @@ class CatalogCurrentTests(SimpleTestCase):
         for path in SRC_ROOT.rglob("*.py"):
             if "/tests/" in str(path) or "/migrations/" in str(path):
                 continue
+            scanned += 1
             text = path.read_text(encoding="utf-8")
             for match in PY_CALL.finditer(text):
                 if match.group(2) not in msgids:
                     missing.append((str(path), match.group(2)))
+        assert scanned, f"SRC_ROOT scanned no .html/.py files; SRC_ROOT is wrong: {SRC_ROOT}"
         return missing
 
     def test_every_translatable_literal_has_a_msgid(self):
