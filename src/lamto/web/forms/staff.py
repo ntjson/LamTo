@@ -254,7 +254,7 @@ class NotificationPreferenceForm(forms.Form):
 
     def save(self):
         if self.user is None:
-            raise ValidationError("User is required.")
+            raise ValidationError(_("User is required."))
         from lamto.notifications.services import RESIDENT_PUSH_EVENT_CODES
 
         for code, _label in PREFERENCE_EVENT_CHOICES:

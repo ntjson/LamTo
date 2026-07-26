@@ -3,6 +3,7 @@ import hashlib
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from lamto.audit.services import record_audit
 from lamto.documents.access import _read_stored_version
@@ -138,7 +139,7 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
         if entry is None:
             from django.core.exceptions import ValidationError
 
-            raise ValidationError("Published ledger entry does not exist.")
+            raise ValidationError(_("Published ledger entry does not exist."))
 
         proposal = entry.proposal
         version = proposal.current_version

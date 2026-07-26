@@ -122,7 +122,7 @@ def confirm_payment(bill, *, source, actor, reference) -> Bill:
         and actor.pk != locked.resident_id
     ):
         raise BillActorError(
-            "Self-attested payment must be confirmed by the bill resident."
+            _("Self-attested payment must be confirmed by the bill resident.")
         )
     if locked.status == Bill.Status.PAID:
         return locked

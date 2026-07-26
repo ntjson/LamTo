@@ -85,7 +85,7 @@ def confirm_totp_enrollment(user, token: str, *, request=None) -> TOTPDevice:
 def verify_totp_for_session(user, token: str, *, request) -> TOTPDevice:
     """Verify a TOTP token, bind the device to the session, rotate session key."""
     if request is None:
-        raise ValidationError("Request is required.")
+        raise ValidationError(_("Request is required."))
     account = getattr(user, "email", "") or ""
     ip = client_ip(request)
     devices = list(confirmed_totp_devices(user))

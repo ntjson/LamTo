@@ -259,13 +259,12 @@ def test_bill_amounts_use_grouped_vnd_format(client):
     resident = User.objects.create_user(email="resident@x.test", password="pw")
     ResidentOccupancy.objects.create(user=resident, unit=unit)
     bill = _issue(building, manager, resident, "vnd-format")
-    client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
 
     listing = client.get(reverse("web:staff-bill-list"))
     detail = client.get(reverse("web:staff-bill-detail", args=[bill.pk]))
 
-    assert b'<span class="task-amount">250,000 VND</span>' in listing.content
-    assert b"250,000 VND" in detail.content
+    assert b'<span class="task-amount">250.000 VND</span>' in listing.content
+    assert b"250.000 VND" in detail.content
 
 
 def test_bill_qr_svg_encodes_lamto_bill_payload():

@@ -2621,3 +2621,21 @@ msgstr "Xác minh là bước ký duyệt để nguồn này được tính vào
 msgid "Signed out. This computer no longer holds your session."
 msgstr "Đã đăng xuất. Máy tính này không còn giữ phiên làm việc của bạn."
 
+msgid "Fund evidence must be clean, safe, and in the fund building."
+msgstr "Bằng chứng quỹ phải sạch (đã quét an toàn) và thuộc tòa nhà của quỹ."
+
+msgid "Published ledger entry does not exist."
+msgstr "Bút toán sổ cái đã công bố không tồn tại."
+
+msgid "Fund entries cannot be future-dated."
+msgstr "Bút toán quỹ không được ghi ngày trong tương lai."
+
+msgid "Self-attested payment must be confirmed by the bill resident."
+msgstr "Thanh toán tự xác nhận phải do cư dân của hóa đơn xác nhận."
+
+msgid "User is required."
+msgstr "Cần có người dùng."
+
+msgid "Request is required."
+msgstr "Cần có yêu cầu."
+

@@ -3,7 +3,6 @@ import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -129,7 +128,6 @@ class FundHomeTests(TestCase):
         session[RECENT_REAUTH_KEY] = time.time()
         session["active_management_id"] = membership.pk
         session.save()
-        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
         return membership
 
     def test_fund_home_shows_balance_entries_and_pending(self):
@@ -138,10 +136,10 @@ class FundHomeTests(TestCase):
         self._login(seed, "fund_recorder")
         resp = self.client.get(reverse("web:fund-home"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Maintenance fund")
-        self.assertContains(resp, "Verified entries")
+        self.assertContains(resp, "Quỹ bảo trì")           # Maintenance fund
+        self.assertContains(resp, "<h2>Bút toán đã xác minh</h2>")  # Verified entries
         # The seeded opening balance is a verified entry.
-        self.assertContains(resp, "Opening balance")
+        self.assertContains(resp, "Số dư đầu kỳ")          # Opening balance
 
     def test_verified_fund_rows_lead_with_record_state(self):
         seed = seed_pilot_world(building_name="Fund Row B", email_prefix="fhr")
@@ -149,7 +147,7 @@ class FundHomeTests(TestCase):
 
         resp = self.client.get(reverse("web:fund-home"))
 
-        self.assertContains(resp, '<span class="task-action">Verified entry</span>')
+        self.assertContains(resp, '<span class="task-action">Bút toán đã xác minh</span>')
 
     @patch("lamto.web.views.fund.pending_fund_verification_entries")
     @patch("lamto.web.views.fund.pending_reconciliation_proposals")
@@ -173,7 +171,7 @@ class FundHomeTests(TestCase):
 
         resp = self.client.get(reverse("web:fund-home"))
 
-        self.assertEqual(resp.content.count(b"Prepare publication"), 1)
+        self.assertEqual(resp.content.count("Chuẩn bị công bố".encode()), 1)
 
     def test_fund_home_renders_chart_and_window_stats(self):
         seed = seed_pilot_world(building_name="Fund Chart B", email_prefix="fch")
@@ -181,10 +179,10 @@ class FundHomeTests(TestCase):
         resp = self.client.get(reverse("web:fund-home"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'id="fund-chart-data"')
-        self.assertContains(resp, "Opening balance")
-        self.assertContains(resp, "Closing balance")
-        self.assertContains(resp, "Total inflows")
-        self.assertContains(resp, "Total outflows")
+        self.assertContains(resp, "Số dư đầu kỳ")   # Opening balance
+        self.assertContains(resp, "Số dư cuối kỳ")  # Closing balance
+        self.assertContains(resp, "Tổng thu")       # Total inflows
+        self.assertContains(resp, "Tổng chi")       # Total outflows
         self.assertEqual(resp.context["chart_range"], "6m")
         self.assertEqual(len(resp.context["chart_points"]), 6)
         first = resp.context["chart_points"][0]

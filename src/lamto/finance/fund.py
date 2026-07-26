@@ -67,7 +67,7 @@ def _require_evidence(evidence, building_id, *, lock=False):
         or version.scan_status != DocumentVersion.ScanStatus.CLEAN
     ):
         raise ValidationError(
-            "Fund evidence must be clean, safe, and in the fund building."
+            _("Fund evidence must be clean, safe, and in the fund building.")
         )
     return version
 
