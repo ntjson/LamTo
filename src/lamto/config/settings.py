@@ -147,12 +147,17 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 # Vietnamese-first product surface; English msgids remain the translation source.
+#
+# `en` is deliberately absent from LANGUAGES. LocaleMiddleware negotiates against
+# this list, so listing `en` let an English browser (or an `en` language cookie)
+# resolve to the untranslated msgids and render the whole workspace in English.
+# With only `vi` available, negotiation has nowhere else to go. Do not add `en`
+# back as a debugging convenience — use translation.override("en") in tests.
 
 LANGUAGE_CODE = "vi"
 
 LANGUAGES = [
     ("vi", "Tiếng Việt"),
-    ("en", "English"),
 ]
 
 LOCALE_PATHS = [BASE_DIR.parent.parent / "locale"]
