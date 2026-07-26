@@ -14,6 +14,11 @@
         <span class="task-meta"><span>{% blocktrans count counter=kind.count %}{{ counter }} row{% plural %}{{ counter }} rows{% endblocktrans %}</span></span>
       </a>
     </li>
+    {% empty %}
+    <li class="empty-state">
+      <p>{% trans "No export types are available yet." %}</p>
+      <p class="hint">{% trans "Exports appear once the building has records to audit." %}</p>
+    </li>
     {% endfor %}
   </ul>
 </section>

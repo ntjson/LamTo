@@ -1,7 +1,7 @@
 """Regression tests for residual tenancy-hardening review minors."""
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from lamto.accounts.models import Building, ResidentOccupancy, Unit
@@ -38,6 +38,7 @@ class FailedOutboxBuildingKeyTests(TestCase):
         assert "building_id" in sql or "building" in sql.lower()
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class LoginLabelTests(TestCase):
     def test_login_form_label_is_email_or_phone(self):
         form = PhoneOrEmailAuthenticationForm()

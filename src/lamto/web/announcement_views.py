@@ -41,7 +41,7 @@ def _render_detail(request, membership, memberships, announcement, form=None):
     )
 
 
-def _announcement_list_context(request, membership, memberships, form):
+def _announcement_list_context(request, membership, memberships):
     qs = (
         Announcement.objects.filter(building_id=membership.building_id)
         .select_related("created_by", "updated_by")
@@ -63,7 +63,6 @@ def _announcement_list_context(request, membership, memberships, form):
         building_active="announcements",
         announcements=list_meta["page"].object_list,
         list_meta=list_meta,
-        form=form,
     )
 
 
@@ -74,28 +73,38 @@ def announcement_list(request):
     return render(
         request,
         "web/staff/announcements/list.html",
-        _announcement_list_context(request, membership, memberships, AnnouncementForm()),
+        _announcement_list_context(request, membership, memberships),
     )
 
 
 @login_required
-@require_POST
+@require_http_methods(["GET", "POST"])
 def announcement_create(request):
     membership, memberships = require_management_context(request)
-    form = AnnouncementForm(request.POST)
-    if form.is_valid():
-        announcement = publish_announcement(
-            request.user,
-            membership.building_id,
-            form.cleaned_data["title"],
-            form.cleaned_data["body"],
-        )
-        messages.success(request, _("Announcement published."))
-        return redirect("web:staff-announcement-detail", announcement.pk)
+    if request.method == "GET":
+        form = AnnouncementForm()
+    else:
+        form = AnnouncementForm(request.POST)
+        if form.is_valid():
+            announcement = publish_announcement(
+                request.user,
+                membership.building_id,
+                form.cleaned_data["title"],
+                form.cleaned_data["body"],
+            )
+            messages.success(request, _("Announcement published."))
+            return redirect("web:staff-announcement-detail", announcement.pk)
     return render(
         request,
-        "web/staff/announcements/list.html",
-        _announcement_list_context(request, membership, memberships, form),
+        "web/staff/announcements/create.html",
+        staff_context(
+            request,
+            membership,
+            memberships,
+            nav_active="announcements",
+            building_active="announcements",
+            form=form,
+        ),
     )
 
 

@@ -25,6 +25,7 @@ pytestmark = pytest.mark.django_db
 
 
 @override_settings(PUSH_ENABLED=False)
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 def test_full_bill_lifecycle():
     building = Building.objects.create(name="Tower A")
     manager = User.objects.create_user(email="m@x.test", password="secret")

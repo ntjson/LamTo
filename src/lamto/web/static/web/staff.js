@@ -25,10 +25,17 @@
     var strings = window.lamtoI18n || {};
     var value = button.getAttribute("data-copy");
     var original = button.textContent;
+    var originalLabel = button.getAttribute("aria-label");
     var done = function (message) {
       button.textContent = message;
+      button.setAttribute("aria-label", message);
       window.setTimeout(function () {
         button.textContent = original;
+        if (originalLabel) {
+          button.setAttribute("aria-label", originalLabel);
+        } else {
+          button.removeAttribute("aria-label");
+        }
       }, 2000);
     };
     if (!navigator.clipboard) {
@@ -48,4 +55,11 @@
   document.querySelectorAll("ul.errorlist").forEach(function (el) {
     el.setAttribute("role", "alert");
   });
+
+  // Every mutation is a full page navigation; nothing announces the outcome
+  // unless focus lands on the flash region.
+  var flash = document.querySelector(".flash-messages");
+  if (flash) {
+    flash.focus();
+  }
 })();

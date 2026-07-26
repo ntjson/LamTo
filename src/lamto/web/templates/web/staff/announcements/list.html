@@ -8,10 +8,12 @@
       <h1 id="announcements-heading">{% trans "Announcements" %}</h1>
       <p class="hint">{% blocktrans with building=membership.building.name %}Notices for {{ building }}.{% endblocktrans %}</p>
     </div>
-    <a class="button button-primary" href="#publish-announcement">{% trans "Publish announcement" %}</a>
+    <a class="button button-primary" href="{% url 'web:staff-announcement-create' %}">{% trans "Publish announcement" %}</a>
   </div>
 
-  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=_("Search announcements") search_placeholder=_("Title or body…") %}
+  {% translate "Search announcements" as search_label %}
+  {% translate "Title or body…" as search_placeholder %}
+  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=search_label search_placeholder=search_placeholder %}
 
   <ul class="task-list">
     {% for announcement in announcements %}
@@ -24,24 +26,11 @@
     {% empty %}
     <li class="empty-state">
       <p>{% if list_meta.query %}{% trans "No announcements match your search." %}{% else %}{% trans "No announcements have been published." %}{% endif %}</p>
+      {% if list_meta.query %}<p class="hint"><a class="text-link" href="{% url 'web:staff-announcement-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Publish the first notice with Publish announcement." %}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>
-  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=_("Announcement pages") %}
-
-  <details class="workflow-section" id="publish-announcement">
-    <summary class="button button-secondary">{% trans "Publish an announcement" %}</summary>
-    <form method="post" action="{% url 'web:staff-announcement-create' %}" class="stack-form" data-busy-on-submit>
-      {% csrf_token %}
-      {% for field in form %}
-      <div class="field">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
-      </div>
-      {% endfor %}
-      <button type="submit" class="button button-primary">{% trans "Publish announcement" %}</button>
-    </form>
-  </details>
+  {% translate "Announcement pages" as pagination_label %}
+  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=pagination_label %}
 </section>
 {% endblock %}

@@ -60,14 +60,17 @@ def test_fund_form_partials_do_not_inject_page_headings():
 
 
 @override_settings(LANGUAGE_CODE="en")
-def test_full_navigation_messages_use_named_content_not_live_region_semantics():
+def test_full_navigation_messages_are_a_focusable_named_status_region():
+    # Every mutation is a full page navigation, so the flash region is a named
+    # status region that receives focus on load (staff.js) to be announced.
     html = render_to_string(
         "web/staff/shell.html",
         {"messages": ["Saved"], "nav_items": [], "membership": None},
     )
     parsed = _parse(html)
 
-    assert "status" not in parsed.roles
+    assert "status" in parsed.roles
+    assert 'tabindex="-1"' in html
     assert 'aria-labelledby="messages-heading"' in html
     assert '<h2 id="messages-heading" class="sr-only">Messages</h2>' in html
 

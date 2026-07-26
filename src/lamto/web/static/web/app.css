@@ -1,5 +1,5 @@
 :root {
-  --color-bg: #f6f7fb;
+  --color-bg: #e9edf6;
   --color-surface: #ffffff;
   --color-surface-muted: #eef1f8;
   --color-ink: #1c2434;
@@ -8,7 +8,7 @@
   --color-brand-hover: #273178;
   --color-brand-active: #202864;
   --color-brand-ink: #ffffff;
-  --color-border: #d7dce8;
+  --color-border: #a3aec6;
   --color-control-border: #8a8fa8;
   --color-focus: #0b57d0;
   --color-focus-on-dark: #ffffff;
@@ -302,8 +302,29 @@ h3 {
   border-top: 0;
 }
 
+/* The primary-action emphasis survives even when the section leads its column. */
+.record-action > .workflow-section.workflow-primary:first-child {
+  border-top: 2px solid var(--color-brand);
+  padding-top: var(--space-5);
+}
+
 .workflow-section > h2 {
   margin-top: 0;
+}
+
+/* Secondary workflows fold behind a native disclosure; the heading stays inline
+   with the marker so the summary reads as one control. */
+details.workflow-section > summary {
+  cursor: pointer;
+}
+
+details.workflow-section > summary > h2 {
+  display: inline;
+  margin: 0;
+}
+
+details.workflow-section[open] > summary {
+  margin-bottom: var(--space-4);
 }
 
 .workflow-section > .status {
@@ -327,6 +348,17 @@ h3 {
   cursor: pointer;
 }
 
+/* display: flex suppresses ::marker in Chromium; the disclosure affordance
+   comes back as an explicit glyph. */
+.technical-proof summary::before {
+  content: "▸";
+  margin-right: var(--space-2);
+}
+
+.technical-proof[open] > summary::before {
+  content: "▾";
+}
+
 .technical-proof pre {
   overflow: auto;
   white-space: pre-wrap;
@@ -344,6 +376,15 @@ h3 {
   padding: 0 var(--space-4);
 }
 
+/* A consequence is a fact to read before acting, not a failure: quiet tonal
+   block, no semantic role. */
+.consequence-note {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+
 /* The one pill vocabulary: semantic status and deadline tone share the shape. */
 .status,
 .deadline-badge {
@@ -354,6 +395,11 @@ h3 {
   padding: 0.2rem 0.65rem;
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+/* A deadline is one token; it never breaks mid-date. */
+.deadline-badge {
+  white-space: nowrap;
 }
 
 .status-open,
@@ -386,8 +432,7 @@ a.status {
   text-decoration: none;
 }
 
-.button,
-button.button {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -440,8 +485,7 @@ button.button {
   border-color: var(--color-brand);
 }
 
-.button:disabled,
-button.button:disabled {
+.button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
@@ -462,6 +506,23 @@ button.button:disabled {
   display: grid;
   gap: var(--space-2);
   margin: 0;
+}
+
+/* Consent rows: the checkbox sits beside its label, box first. */
+.stack-form > p:has(> input[type="checkbox"]) {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+
+.stack-form > p:has(> input[type="checkbox"]) > input[type="checkbox"] {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 0.2rem;
+}
+
+.stack-form > p:has(> input[type="checkbox"]) > label {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .membership-form {
@@ -604,7 +665,7 @@ button.button:disabled {
 }
 
 .input,
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
   width: 100%;
@@ -614,6 +675,14 @@ textarea {
   border-radius: 10px;
   font: inherit;
   background: var(--color-surface);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--color-brand);
 }
 
 input::placeholder,
@@ -651,6 +720,12 @@ textarea {
   width: 100%;
   margin: 0;
   padding: 0;
+}
+
+/* The region receives focus programmatically after a mutation; it is not a
+   tab stop, so the message block itself is the indicator. */
+.flash-messages:focus {
+  outline: none;
 }
 
 .message {
@@ -696,6 +771,11 @@ code {
 
   .record-layout {
     grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.8fr);
+  }
+
+  /* Triage: the prefilled form is the working surface, so it takes the width. */
+  .record-layout-triage {
+    grid-template-columns: minmax(16rem, 0.9fr) minmax(0, 1.1fr);
   }
 
   .detail-list.detail-list-wide {
@@ -977,7 +1057,7 @@ code {
 .stack-form-follow { margin-top: var(--space-4); }
 .inline-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
 .evidence-thumbs { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.evidence-thumb { display: inline-block; padding: var(--space-1) var(--space-2); border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-muted); }
+.evidence-thumb { display: inline-flex; align-items: center; min-height: var(--touch); padding: var(--space-1) var(--space-2); border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-muted); }
 .bill-qr { max-width: 16rem; }
 .bill-qr svg { width: 100%; height: auto; display: block; }
 .health-detail { color: var(--color-muted); max-width: 65ch; }

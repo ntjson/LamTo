@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.safestring import mark_safe
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.utils.translation import gettext as _
 
 from lamto.accounts.models import ResidentOccupancy
@@ -55,7 +55,7 @@ def _bill_for(membership, pk):
     )
 
 
-def _bill_list_context(request, membership, memberships, form):
+def _bill_list_context(request, membership, memberships):
     list_meta = prepare_record_list(
         request,
         _bills_for(membership.building_id),
@@ -74,7 +74,6 @@ def _bill_list_context(request, membership, memberships, form):
         building_active="bills",
         bills=list_meta["page"].object_list,
         list_meta=list_meta,
-        form=form,
     )
 
 
@@ -82,19 +81,31 @@ def _bill_list_context(request, membership, memberships, form):
 @require_GET
 def bill_list(request):
     membership, memberships = require_management_context(request)
-    form = BillForm(resident_choices=_resident_choices(membership.building_id))
     return render(
         request,
         "web/staff/bills/list.html",
-        _bill_list_context(request, membership, memberships, form),
+        _bill_list_context(request, membership, memberships),
     )
 
 
 @login_required
-@require_POST
+@require_http_methods(["GET", "POST"])
 def bill_create(request):
     membership, memberships = require_management_context(request)
     choices = _resident_choices(membership.building_id)
+    if request.method == "GET":
+        return render(
+            request,
+            "web/staff/bills/create.html",
+            staff_context(
+                request,
+                membership,
+                memberships,
+                nav_active="bills",
+                building_active="bills",
+                form=BillForm(resident_choices=choices),
+            ),
+        )
     form = BillForm(request.POST, request.FILES, resident_choices=choices)
     if form.is_valid():
         document = None
@@ -128,8 +139,15 @@ def bill_create(request):
             return redirect("web:staff-bill-list")
     return render(
         request,
-        "web/staff/bills/list.html",
-        _bill_list_context(request, membership, memberships, form),
+        "web/staff/bills/create.html",
+        staff_context(
+            request,
+            membership,
+            memberships,
+            nav_active="bills",
+            building_active="bills",
+            form=form,
+        ),
     )
 
 

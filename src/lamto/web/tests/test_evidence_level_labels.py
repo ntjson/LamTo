@@ -29,6 +29,7 @@ _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-evidence-labels-")
         },
     }
 )
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class EvidenceLevelLabelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -52,7 +53,7 @@ class EvidenceLevelLabelTests(TestCase):
 
     def test_staff_label_is_three_way(self):
         version = self.entry.proposal.current_version
-        self.assertEqual(version.verification_label, "Blockchain anchored")
+        self.assertEqual(version.verification_label, "Chain confirmed")
 
         BlockchainOutboxEvent.objects.filter(pk__in=self._proposal_event_ids()).update(
             status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None
@@ -64,7 +65,7 @@ class EvidenceLevelLabelTests(TestCase):
             status=BlockchainOutboxEvent.Status.PENDING
         )
         version.outbox_event.refresh_from_db()
-        self.assertEqual(version.verification_label, "Pending blockchain anchoring")
+        self.assertEqual(version.verification_label, "Pending anchoring")
 
     def test_staff_label_mismatch_is_distinct(self):
         version = self.entry.proposal.current_version
@@ -73,7 +74,7 @@ class EvidenceLevelLabelTests(TestCase):
         )
         version.outbox_event.refresh_from_db()
         label = version.verification_label
-        self.assertEqual(label, "Anchoring mismatch detected")
+        self.assertEqual(label, "Mismatch detected")
 
     def test_outbox_export_carries_evidence_level_verbatim(self):
         BlockchainOutboxEvent.objects.filter(

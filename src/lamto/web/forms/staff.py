@@ -16,7 +16,7 @@ from lamto.notifications.services import PREFERENCE_EVENT_CHOICES
 class MembershipSwitchForm(forms.Form):
     membership = forms.ModelChoiceField(
         queryset=ManagementMembership.objects.none(),
-        label="Active membership",
+        label=_("Active membership"),
     )
 
     def __init__(self, *args, memberships=None, **kwargs):
@@ -25,51 +25,62 @@ class MembershipSwitchForm(forms.Form):
 
 
 class ConfirmTriageForm(forms.Form):
-    category = forms.CharField(max_length=128, widget=forms.TextInput(attrs={"class": "input"}))
+    category = forms.CharField(
+        max_length=128, label=_("Category"), widget=forms.TextInput(attrs={"class": "input"})
+    )
     urgency = forms.ChoiceField(
         # Must match lamto.maintenance.ai.URGENCIES / confirm_triage.
         choices=[
-            ("LOW", "Low"),
-            ("MEDIUM", "Medium"),
-            ("HIGH", "High"),
+            ("LOW", _("Low")),
+            ("MEDIUM", _("Medium")),
+            ("HIGH", _("High")),
         ],
+        label=_("Urgency"),
         widget=forms.Select(attrs={"class": "input"}),
     )
     location = forms.ModelChoiceField(
         queryset=BuildingLocation.objects.none(),
+        label=_("Location"),
         widget=forms.Select(attrs={"class": "input"}),
     )
     department = forms.CharField(
         max_length=128,
-        label="Management queue",
+        label=_("Management queue"),
         widget=forms.TextInput(attrs={"class": "input"}),
     )
     deadline_minutes = forms.TypedChoiceField(
         choices=[
-            (60, "1 hour"),
-            (240, "4 hours"),
-            (480, "8 hours"),
-            (1440, "1 day"),
-            (2880, "2 days"),
-            (4320, "3 days"),
-            (10080, "1 week"),
+            (60, _("1 hour")),
+            (240, _("4 hours")),
+            (480, _("8 hours")),
+            (1440, _("1 day")),
+            (2880, _("2 days")),
+            (4320, _("3 days")),
+            (10080, _("1 week")),
         ],
         coerce=int,
         widget=forms.Select(attrs={"class": "input"}),
-        label="Deadline",
+        label=_("Deadline"),
     )
 
     def __init__(self, *args, building_id=None, extra_deadline_minutes=None, **kwargs):
         super().__init__(*args, **kwargs)
         if building_id is not None:
-            self.fields["location"].queryset = BuildingLocation.objects.filter(
+            locations = BuildingLocation.objects.filter(
                 building_id=building_id, active=True
             ).order_by("name")
+            self.fields["location"].queryset = locations
+            # One real choice for a required field is not a decision to ask for.
+            if not self.is_bound and not self.initial.get("location") and locations.count() == 1:
+                self.initial["location"] = locations.first().pk
         if extra_deadline_minutes is not None:
             choices = list(self.fields["deadline_minutes"].choices)
-            if not any(int(v) == extra_deadline_minutes for v, _ in choices):
+            if not any(int(v) == extra_deadline_minutes for v, _label in choices):
                 self.fields["deadline_minutes"].choices = [
-                    (extra_deadline_minutes, f"{extra_deadline_minutes} minutes"),
+                    (
+                        extra_deadline_minutes,
+                        _("%(minutes)s minutes") % {"minutes": extra_deadline_minutes},
+                    ),
                     *choices,
                 ]
 
@@ -86,14 +97,14 @@ class ConfirmTriageForm(forms.Form):
 
 
 class InfoRequestForm(forms.Form):
-    message = forms.CharField(widget=forms.Textarea, label="What information is missing?")
+    message = forms.CharField(widget=forms.Textarea, label=_("What information is missing?"))
 
 
 class DeclineReportForm(forms.Form):
-    reason = forms.CharField(widget=forms.Textarea, label="Reason shown to the resident")
+    reason = forms.CharField(widget=forms.Textarea, label=_("Reason shown to the resident"))
     confirm = forms.BooleanField(
         required=True,
-        label="I understand this decline will be sent to the resident and cannot be undone.",
+        label=_("I understand this decline will be sent to the resident and cannot be undone."),
     )
 
 
@@ -164,7 +175,7 @@ class RecordSettlementTransferForm(forms.Form):
 
 
 class RecordSettlementAcknowledgementForm(forms.Form):
-    event_id = forms.CharField(max_length=66, widget=forms.HiddenInput())
+    event_id = forms.CharField(max_length=66, label=_("Event ID"), widget=forms.HiddenInput())
     proof = forms.ChoiceField(choices=(), required=False, label=_("Existing payment proof"), widget=forms.Select(attrs={"class": "input"}))
     proof_upload = forms.FileField(required=False, label=_("Upload new payment proof"), widget=forms.ClearableFileInput(attrs={"class": "input"}))
 
@@ -192,14 +203,14 @@ class NotificationPreferenceForm(forms.Form):
         push_prefs = {p.event_code: p.push_enabled for p in existing}
         for code, label in PREFERENCE_EVENT_CHOICES:
             self.fields[f"email_{code}"] = forms.BooleanField(
-                label=f"Email: {label}",
+                label=_("Email: %(event)s") % {"event": label},
                 required=False,
                 initial=email_prefs.get(code, True),
             )
             if code not in RESIDENT_PUSH_EVENT_CODES:
                 continue
             self.fields[f"push_{code}"] = forms.BooleanField(
-                label=f"Push: {label}",
+                label=_("Push: %(event)s") % {"event": label},
                 required=False,
                 initial=push_prefs.get(code, True),
             )
@@ -255,10 +266,15 @@ class RecordFundSourceForm(forms.Form):
 
     entry_type = forms.ChoiceField(
         choices=[
-            (MaintenanceFundEntry.EntryType.OPENING_BALANCE, "Opening balance"),
-            (MaintenanceFundEntry.EntryType.INFLOW, "Inflow"),
+            (MaintenanceFundEntry.EntryType.OPENING_BALANCE, _("Opening balance")),
+            (MaintenanceFundEntry.EntryType.INFLOW, _("Inflow")),
         ],
+        label=_("Entry type"),
         widget=forms.Select(attrs={"class": "input"}),
     )
-    amount_vnd = forms.IntegerField(min_value=1, widget=forms.NumberInput(attrs={"class": "input"}))
-    evidence = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    amount_vnd = forms.IntegerField(
+        min_value=1, label=_("Amount (VND)"), widget=forms.NumberInput(attrs={"class": "input"})
+    )
+    evidence = forms.FileField(
+        label=_("Evidence"), widget=forms.ClearableFileInput(attrs={"class": "input"})
+    )

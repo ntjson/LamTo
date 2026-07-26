@@ -281,9 +281,7 @@ msgstr "Xác minh ứng dụng xác thực"
 msgid "Set up authenticator (TOTP)"
 msgstr "Thiết lập xác thực (TOTP)"
 
-msgid ""
-"Scan this configuration with your authenticator app, then enter a 6-digit"
-" code."
+msgid "Scan this configuration with your authenticator app, then enter a 6-digit code."
 msgstr "Quét cấu hình này bằng ứng dụng xác thực, rồi nhập mã 6 chữ số."
 
 msgid "Enter the current code from your authenticator app."
@@ -307,12 +305,8 @@ msgstr "Xác thực lại"
 msgid "Confirm it is you"
 msgstr "Xác nhận là bạn"
 
-msgid ""
-"Sensitive financial actions require password and authenticator code "
-"within the last five minutes."
-msgstr ""
-"Thao tác tài chính nhạy cảm yêu cầu mật khẩu và mã xác thực trong năm "
-"phút gần nhất."
+msgid "Sensitive financial actions require password and authenticator code within the last five minutes."
+msgstr "Thao tác tài chính nhạy cảm yêu cầu mật khẩu và mã xác thực trong năm phút gần nhất."
 
 msgid "Password"
 msgstr "Mật khẩu"
@@ -344,12 +338,8 @@ msgstr "Xem quỹ"
 msgid "Task group"
 msgstr "Nhóm việc"
 
-msgid ""
-"Voiding closes this bill and cannot be undone. Confirm the bill and "
-"reason before continuing."
-msgstr ""
-"Việc hủy sẽ đóng hóa đơn và không thể hoàn tác. Hãy xác nhận hóa đơn và "
-"lý do trước khi tiếp tục."
+msgid "Voiding closes this bill and cannot be undone. Confirm the bill and reason before continuing."
+msgstr "Việc hủy sẽ đóng hóa đơn và không thể hoàn tác. Hãy xác nhận hóa đơn và lý do trước khi tiếp tục."
 
 msgid "Urgency"
 msgstr "Mức khẩn"
@@ -428,12 +418,8 @@ msgstr "Chưa đăng ký đầu đọc."
 msgid "Gate activity"
 msgstr "Hoạt động cổng"
 
-msgid ""
-"Complete gate event rows are deleted within 24 hours. No durable movement"
-" history exists."
-msgstr ""
-"Toàn bộ dòng sự kiện cổng bị xóa trong 24 giờ. Không có lịch sử di chuyển"
-" lâu dài."
+msgid "Complete gate event rows are deleted within 24 hours. No durable movement history exists."
+msgstr "Toàn bộ dòng sự kiện cổng bị xóa trong 24 giờ. Không có lịch sử di chuyển lâu dài."
 
 msgid "Deleted within 24 hours"
 msgstr "Xóa trong 24 giờ"
@@ -501,16 +487,10 @@ msgstr "Thu hồi biển số"
 msgid "No approved plates."
 msgstr "Không có biển số đã duyệt."
 
-msgid ""
-"Publishing freezes the amount, contractor, scope, schedule, and quotation"
-" evidence. The published proposal cannot be edited."
-msgstr ""
-"Việc công bố sẽ cố định số tiền, nhà thầu, phạm vi, lịch trình và bằng "
-"chứng báo giá. Đề xuất đã công bố không thể chỉnh sửa."
+msgid "Publishing freezes the amount, contractor, scope, schedule, and quotation evidence. The published proposal cannot be edited."
+msgstr "Việc công bố sẽ cố định số tiền, nhà thầu, phạm vi, lịch trình và bằng chứng báo giá. Đề xuất đã công bố không thể chỉnh sửa."
 
-msgid ""
-"The amount, contractor, scope, schedule, and quotation evidence are "
-"frozen."
+msgid "The amount, contractor, scope, schedule, and quotation evidence are frozen."
 msgstr "Số tiền, nhà thầu, phạm vi, lịch và bằng chứng báo giá đã bị đóng băng."
 
 msgid "Maintenance case"
@@ -522,12 +502,8 @@ msgstr "Ảnh chụp đã ký"
 msgid "Publish settled expense"
 msgstr "Công bố chi phí đã thanh toán"
 
-msgid ""
-"Publishing adds this settled expense to the resident ledger. Verify the "
-"frozen proposal and settlement evidence before continuing."
-msgstr ""
-"Công bố sẽ thêm chi phí đã thanh toán vào sổ cái cư dân. Kiểm tra đề xuất"
-" đã đóng băng và bằng chứng thanh toán trước khi tiếp tục."
+msgid "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing."
+msgstr "Công bố sẽ thêm chi phí đã thanh toán vào sổ cái cư dân. Kiểm tra đề xuất đã đóng băng và bằng chứng thanh toán trước khi tiếp tục."
 
 msgid "Decide whether to proceed"
 msgstr "Quyết định có triển khai"
@@ -553,12 +529,8 @@ msgstr "Hoàn thành công việc"
 msgid "Evidence anchoring failed"
 msgstr "Neo bằng chứng thất bại"
 
-msgid ""
-"The signed proposal is saved, but anchoring failed. Review Operations "
-"health before retrying any action."
-msgstr ""
-"Đề xuất đã ký được lưu nhưng neo thất bại. Xem sức khỏe vận hành trước "
-"khi thử lại."
+msgid "The signed proposal is saved, but anchoring failed. Review Operations health before retrying any action."
+msgstr "Đề xuất đã ký được lưu nhưng neo thất bại. Xem sức khỏe vận hành trước khi thử lại."
 
 msgid "Review Operations health"
 msgstr "Xem sức khỏe vận hành"
@@ -566,12 +538,8 @@ msgstr "Xem sức khỏe vận hành"
 msgid "Evidence mismatch detected"
 msgstr "Phát hiện bằng chứng không khớp"
 
-msgid ""
-"The saved proposal does not match independently observed evidence. Stop "
-"and review Operations health."
-msgstr ""
-"Đề xuất đã lưu không khớp bằng chứng quan sát độc lập. Dừng và xem sức "
-"khỏe vận hành."
+msgid "The saved proposal does not match independently observed evidence. Stop and review Operations health."
+msgstr "Đề xuất đã lưu không khớp bằng chứng quan sát độc lập. Dừng và xem sức khỏe vận hành."
 
 msgid "Review settlement"
 msgstr "Xem thanh toán"
@@ -654,12 +622,8 @@ msgstr "Địa chỉ có thể không chính xác hoặc trang không còn tồn
 msgid "Something went wrong"
 msgstr "Đã xảy ra lỗi"
 
-msgid ""
-"The request could not be completed. Your last action may not have been "
-"saved. Check the record before trying again, or return to sign in."
-msgstr ""
-"Không thể hoàn tất yêu cầu. Hành động cuối của bạn có thể chưa được lưu. "
-"Hãy kiểm tra bản ghi trước khi thử lại hoặc quay về đăng nhập."
+msgid "The request could not be completed. Your last action may not have been saved. Check the record before trying again, or return to sign in."
+msgstr "Không thể hoàn tất yêu cầu. Hành động cuối của bạn có thể chưa được lưu. Hãy kiểm tra bản ghi trước khi thử lại hoặc quay về đăng nhập."
 
 #, python-format
 msgid "%(count)d entries"
@@ -696,9 +660,6 @@ msgstr "Vụ việc này đã có đề xuất."
 
 msgid "Accountability chain"
 msgstr "Chuỗi trách nhiệm"
-
-msgid "Acknowledgement ({{ kind }})"
-msgstr "Xác nhận ({{ kind }})"
 
 msgid "Acknowledgement recorded; settlement anchored."
 msgstr "Đã ghi nhận xác nhận; thanh toán đã neo."
@@ -796,12 +757,6 @@ msgstr "Bị chặn"
 msgid "Building"
 msgstr "Tòa nhà"
 
-msgid "Case #{{ id }}"
-msgstr "Vụ việc #{{ id }}"
-
-msgid "Case category (locked on this proposal): {{ category }}"
-msgstr "Danh mục vụ việc (khóa trên đề xuất này): {{ category }}"
-
 msgid "Case work completed."
 msgstr "Đã hoàn thành công việc vụ việc."
 
@@ -835,14 +790,8 @@ msgstr "Sao chép"
 msgid "Copy failed. Select the value and copy it manually."
 msgstr "Sao chép thất bại. Hãy chọn giá trị và sao chép thủ công."
 
-msgid "Copy {{ l }}"
-msgstr "Sao chép {{ l }}"
-
 msgid "Create proposal"
 msgstr "Tạo đề xuất"
-
-msgid "Create proposal · Case #{{ id }}"
-msgstr "Tạo đề xuất · Vụ việc #{{ id }}"
 
 msgid "Create spending proposal"
 msgstr "Tạo đề xuất chi"
@@ -865,9 +814,7 @@ msgstr "Lý do từ chối"
 msgid "Decline request"
 msgstr "Từ chối yêu cầu"
 
-msgid ""
-"Declining sends this reason to the resident and closes the report. This "
-"cannot be undone."
+msgid "Declining sends this reason to the resident and closes the report. This cannot be undone."
 msgstr "Từ chối sẽ gửi lý do cho cư dân và đóng báo cáo. Không thể hoàn tác."
 
 msgid "Delivery status"
@@ -882,12 +829,8 @@ msgstr "Tài liệu"
 msgid "Download"
 msgstr "Tải xuống"
 
-msgid ""
-"Download auditor CSVs for this building. Each file is formula-neutralized"
-" and hashed only — never raw document bytes."
-msgstr ""
-"Tải CSV kiểm toán cho tòa nhà này. Mỗi tệp đã vô hiệu hóa công thức và "
-"chỉ gồm băm — không bao gồm byte tài liệu thô."
+msgid "Download auditor CSVs for this building. Each file is formula-neutralized and hashed only — never raw document bytes."
+msgstr "Tải CSV kiểm toán cho tòa nhà này. Mỗi tệp đã vô hiệu hóa công thức và chỉ gồm băm — không bao gồm byte tài liệu thô."
 
 msgid "Due date"
 msgstr "Hạn thanh toán"
@@ -925,9 +868,6 @@ msgstr "Hết hạn"
 msgid "Exports"
 msgstr "Xuất dữ liệu"
 
-msgid "Finished {{ ts }}. No further action is required."
-msgstr "Hoàn tất {{ ts }}. Không cần thao tác thêm."
-
 msgid "Fund entries"
 msgstr "Bút toán quỹ"
 
@@ -953,12 +893,8 @@ msgid "Inflows (30d)"
 msgstr "Thu vào (30 ngày)"
 
 #, python-format
-msgid ""
-"Information request was not sent. %(detail)s The report was not changed —"
-" review the message and try again."
-msgstr ""
-"Yêu cầu thông tin chưa gửi. %(detail)s Báo cáo không đổi — xem lại nội "
-"dung và thử lại."
+msgid "Information request was not sent. %(detail)s The report was not changed — review the message and try again."
+msgstr "Yêu cầu thông tin chưa gửi. %(detail)s Báo cáo không đổi — xem lại nội dung và thử lại."
 
 msgid "Information requested"
 msgstr "Đã yêu cầu thông tin"
@@ -968,9 +904,6 @@ msgstr "Đã yêu cầu bổ sung thông tin."
 
 msgid "Integrity mismatches"
 msgstr "Không khớp toàn vẹn"
-
-msgid "Interpreted location: {{ loc }}"
-msgstr "Vị trí diễn giải: {{ loc }}"
 
 msgid "Issue a bill"
 msgstr "Phát hành hóa đơn"
@@ -1023,19 +956,11 @@ msgstr "Mới nhất trước"
 msgid "Next"
 msgstr "Sau"
 
-msgid ""
-"No action is assigned to this membership. Review the proposal summary and"
-" return to the action inbox."
-msgstr ""
-"Không có thao tác cho tư cách thành viên này. Xem tóm tắt đề xuất và quay"
-" lại hộp việc."
+msgid "No action is assigned to this membership. Review the proposal summary and return to the action inbox."
+msgstr "Không có thao tác cho tư cách thành viên này. Xem tóm tắt đề xuất và quay lại hộp việc."
 
-msgid ""
-"No action is assigned to this membership. Review the settlement summary "
-"and return to the action inbox."
-msgstr ""
-"Không có thao tác cho tư cách thành viên này. Xem tóm tắt thanh toán và "
-"quay lại hộp việc."
+msgid "No action is assigned to this membership. Review the settlement summary and return to the action inbox."
+msgstr "Không có thao tác cho tư cách thành viên này. Xem tóm tắt thanh toán và quay lại hộp việc."
 
 msgid "No announcements have been published."
 msgstr "Chưa công bố thông báo nào."
@@ -1058,12 +983,8 @@ msgstr "Không có lỗi hiện tại"
 msgid "No deadline set"
 msgstr "Chưa đặt hạn"
 
-msgid ""
-"No further action is required from this membership while confirmation is "
-"pending. The accountability chain above shows the same state."
-msgstr ""
-"Không cần thao tác thêm từ tư cách thành viên này khi đang chờ xác nhận. "
-"Chuỗi trách nhiệm ở trên thể hiện cùng trạng thái."
+msgid "No further action is required from this membership while confirmation is pending. The accountability chain above shows the same state."
+msgstr "Không cần thao tác thêm từ tư cách thành viên này khi đang chờ xác nhận. Chuỗi trách nhiệm ở trên thể hiện cùng trạng thái."
 
 msgid "No matching tasks"
 msgstr "Không có việc khớp bộ lọc"
@@ -1080,9 +1001,6 @@ msgstr "Chưa có cập nhật tiến độ."
 msgid "No quotation files linked"
 msgstr "Chưa liên kết tệp báo giá"
 
-msgid "No records match “{{ q }}”. Clear the search to see every record."
-msgstr "Không có bản ghi khớp “{{ q }}”. Xóa tìm kiếm để xem mọi bản ghi."
-
 msgid "No registrations are waiting for review."
 msgstr "Không có đăng ký đang chờ duyệt."
 
@@ -1092,22 +1010,11 @@ msgstr "Không có đăng ký khớp tìm kiếm."
 msgid "No settlements recorded yet."
 msgstr "Chưa ghi nhận thanh toán nào."
 
-msgid ""
-"No successful purge in the last {{ hours }} hours. Gate events may be "
-"past their retention window."
-msgstr ""
-"Không có lần dọn thành công trong {{ hours }} giờ qua. Sự kiện cổng có "
-"thể quá hạn lưu."
-
 msgid "No verified entries."
 msgstr "Không có bút toán đã xác minh."
 
-msgid ""
-"Non-authoritative pilot numbers for this building. They do not drive "
-"workflow decisions."
-msgstr ""
-"Chỉ số thí điểm không mang tính thẩm quyền cho tòa nhà này. Chúng không "
-"điều khiển quy trình."
+msgid "Non-authoritative pilot numbers for this building. They do not drive workflow decisions."
+msgstr "Chỉ số thí điểm không mang tính thẩm quyền cho tòa nhà này. Chúng không điều khiển quy trình."
 
 msgid "Not available"
 msgstr "Không có"
@@ -1127,9 +1034,6 @@ msgstr "Chưa bắt đầu"
 msgid "Note"
 msgstr "Ghi chú"
 
-msgid "Notices for {{ building }}."
-msgstr "Thông báo cho {{ building }}."
-
 msgid "Notification failures"
 msgstr "Lỗi thông báo"
 
@@ -1145,12 +1049,8 @@ msgstr "Tuổi mục chờ lâu nhất"
 msgid "Open reports"
 msgstr "Báo cáo mở"
 
-msgid ""
-"Open resident reports awaiting triage, and active maintenance cases with "
-"their next step and deadline."
-msgstr ""
-"Báo cáo cư dân chờ phân loại, và vụ việc bảo trì đang mở với bước tiếp "
-"theo và hạn."
+msgid "Open resident reports awaiting triage, and active maintenance cases with their next step and deadline."
+msgstr "Báo cáo cư dân chờ phân loại, và vụ việc bảo trì đang mở với bước tiếp theo và hạn."
 
 msgid "Operational status for Management users in this building."
 msgstr "Trạng thái vận hành cho người Quản lý tại tòa nhà này."
@@ -1160,9 +1060,6 @@ msgstr "Sức khỏe vận hành"
 
 msgid "Outflows (30d)"
 msgstr "Chi ra (30 ngày)"
-
-msgid "Page {{ n }} of {{ total }}"
-msgstr "Trang {{ n }} / {{ total }}"
 
 msgid "Paid"
 msgstr "Đã thanh toán"
@@ -1176,12 +1073,8 @@ msgstr "Thanh toán"
 msgid "Payment QR (demo)"
 msgstr "QR thanh toán (demo)"
 
-msgid ""
-"Payment evidence for completed proposals, from transfer through payee "
-"acknowledgement."
-msgstr ""
-"Bằng chứng thanh toán cho đề xuất hoàn tất, từ chuyển khoản đến xác nhận "
-"người nhận."
+msgid "Payment evidence for completed proposals, from transfer through payee acknowledgement."
+msgstr "Bằng chứng thanh toán cho đề xuất hoàn tất, từ chuyển khoản đến xác nhận người nhận."
 
 msgid "Pending items"
 msgstr "Mục đang chờ"
@@ -1215,9 +1108,6 @@ msgstr "Tiến độ"
 
 msgid "Progress published."
 msgstr "Đã công bố tiến độ."
-
-msgid "Proposal #{{ id }}"
-msgstr "Đề xuất #{{ id }}"
 
 msgid "Proposal publication"
 msgstr "Công bố đề xuất"
@@ -1267,9 +1157,6 @@ msgstr "Đánh giá"
 msgid "Re-authentication successful."
 msgstr "Xác thực lại thành công."
 
-msgid "Record acknowledgement for settlement #{{ id }}"
-msgstr "Ghi nhận xác nhận cho thanh toán #{{ id }}"
-
 msgid "Record source"
 msgstr "Ghi nguồn"
 
@@ -1278,9 +1165,6 @@ msgstr "Ghi nhận xác nhận người nhận"
 
 msgid "Record transfer"
 msgstr "Ghi nhận chuyển khoản"
-
-msgid "Record transfer for proposal #{{ id }}"
-msgstr "Ghi nhận chuyển khoản cho đề xuất #{{ id }}"
 
 msgid "Recorded"
 msgstr "Đã ghi"
@@ -1303,9 +1187,6 @@ msgstr "Cần lý do từ chối."
 msgid "Report"
 msgstr "Báo cáo"
 
-msgid "Report #{{ id }}"
-msgstr "Báo cáo #{{ id }}"
-
 msgid "Report photos"
 msgstr "Ảnh báo cáo"
 
@@ -1316,27 +1197,14 @@ msgid "Request information"
 msgstr "Yêu cầu thông tin"
 
 #, python-format
-msgid ""
-"Request was not declined. %(detail)s The report was not changed — review "
-"the reason and try again."
-msgstr ""
-"Yêu cầu chưa bị từ chối. %(detail)s Báo cáo không đổi — xem lại lý do và "
-"thử lại."
+msgid "Request was not declined. %(detail)s The report was not changed — review the reason and try again."
+msgstr "Yêu cầu chưa bị từ chối. %(detail)s Báo cáo không đổi — xem lại lý do và thử lại."
 
 msgid "Resident"
 msgstr "Cư dân"
 
-msgid "Resident bills for {{ building }}."
-msgstr "Hóa đơn cư dân cho {{ building }}."
-
-msgid "Resident requests for {{ building }}."
-msgstr "Yêu cầu cư dân cho {{ building }}."
-
 msgid "Resident-reported, not bank-verified"
 msgstr "Cư dân tự báo, chưa xác minh ngân hàng"
-
-msgid "Review aging delivery queue (oldest {{ age }}s)"
-msgstr "Xem hàng đợi giao đang già (cũ nhất {{ age }}s)"
 
 msgid "Review missing chain confirmation"
 msgstr "Xem xác nhận chuỗi còn thiếu"
@@ -1356,9 +1224,6 @@ msgstr "Đã tất toán"
 msgid "Settlement"
 msgstr "Thanh toán"
 
-msgid "Settlement #{{ id }}"
-msgstr "Thanh toán #{{ id }}"
-
 msgid "Settlements"
 msgstr "Thanh toán"
 
@@ -1371,17 +1236,11 @@ msgstr "Băm ảnh chụp"
 msgid "Sort by"
 msgstr "Sắp xếp theo"
 
-msgid ""
-"Source entries recorded but not yet verified — your primary job on this "
-"fund."
+msgid "Source entries recorded but not yet verified — your primary job on this fund."
 msgstr "Bút toán nguồn đã ghi nhưng chưa xác minh — việc chính trên quỹ này."
 
-msgid ""
-"Spending proposals for this building, from draft through publication. "
-"Each row shows the next step."
-msgstr ""
-"Đề xuất chi cho tòa nhà này, từ nháp đến công bố. Mỗi dòng hiện bước tiếp"
-" theo."
+msgid "Spending proposals for this building, from draft through publication. Each row shows the next step."
+msgstr "Đề xuất chi cho tòa nhà này, từ nháp đến công bố. Mỗi dòng hiện bước tiếp theo."
 
 msgid "Stale"
 msgstr "Lỗi thời"
@@ -1398,31 +1257,16 @@ msgstr "Trạng thái"
 msgid "Submitted"
 msgstr "Đã gửi"
 
-msgid ""
-"Suggests <strong>{{ cat }}</strong>, <strong>{{ urg }}</strong> urgency, "
-"<strong>{{ dept }}</strong> queue, due in <strong>{{ mins }} "
-"minutes</strong>."
-msgstr ""
-"Gợi ý <strong>{{ cat }}</strong>, mức khẩn <strong>{{ urg }}</strong>, "
-"hàng đợi <strong>{{ dept }}</strong>, hạn trong <strong>{{ mins }} "
-"phút</strong>."
-
 msgid "Switch"
 msgstr "Đổi"
 
 msgid "Switch building"
 msgstr "Đổi tòa nhà"
 
-msgid ""
-"The form on the right is prefilled from this suggestion. Select a "
-"location, change any field if needed, then confirm."
-msgstr ""
-"Biểu mẫu bên phải được điền sẵn từ gợi ý này. Chọn vị trí, sửa nếu cần, "
-"rồi xác nhận."
+msgid "The form on the right is prefilled from this suggestion. Select a location, change any field if needed, then confirm."
+msgstr "Biểu mẫu bên phải được điền sẵn từ gợi ý này. Chọn vị trí, sửa nếu cần, rồi xác nhận."
 
-msgid ""
-"The transfer is on record. Settlement completes once the payee's "
-"acknowledgement is filed."
+msgid "The transfer is on record. Settlement completes once the payee's acknowledgement is filed."
 msgstr "Chuyển khoản đã ghi nhận. Thanh toán hoàn tất khi có xác nhận người nhận."
 
 msgid "There is nothing for this membership to act on now."
@@ -1515,37 +1359,15 @@ msgstr "Rút thông báo"
 msgid "Withdrawn"
 msgstr "Đã rút"
 
-msgid "Work assigned to Management at {{ building }}."
-msgstr "Công việc giao cho Quản lý tại {{ building }}."
-
 #, python-format
 msgid "Work was not started. %(detail)s The case was not changed — try again."
 msgstr "Công việc chưa bắt đầu. %(detail)s Vụ việc không đổi — thử lại."
 
-msgid ""
-"You signed preparation for proposal #{{ id }}. A publication snapshot is "
-"on record, but independent confirmation has not finished yet."
-msgstr ""
-"Bạn đã ký chuẩn bị đề xuất #{{ id }}. Ảnh chụp công bố đã ghi nhận, nhưng"
-" xác nhận độc lập chưa xong."
-
-msgid "for “{{ q }}”"
-msgstr "cho “{{ q }}”"
-
 msgid "min"
 msgstr "phút"
 
-msgid "{{ operator }} accepted the suggestion as recorded."
-msgstr "{{ operator }} đã chấp nhận gợi ý như đã ghi."
-
-msgid "{{ operator }} changed from the suggestion:"
-msgstr "{{ operator }} đã thay đổi so với gợi ý:"
-
 msgid "{{ resident }}, unit {{ unit }}"
 msgstr "{{ resident }}, căn {{ unit }}"
-
-msgid "{{ s }} seconds"
-msgstr "{{ s }} giây"
 
 msgid "Outflow"
 msgstr "Chi ra"
@@ -1558,4 +1380,430 @@ msgstr "Đảo ngược"
 
 msgid "Replacement"
 msgstr "Thay thế"
+
+#, python-format
+msgid "Acknowledgement (%(kind)s)"
+msgstr "Xác nhận (%(kind)s)"
+
+#, python-format
+msgid "Case #%(id)s"
+msgstr "Vụ việc #%(id)s"
+
+#, python-format
+msgid "Case category (locked on this proposal): %(category)s"
+msgstr "Danh mục vụ việc (khóa trên đề xuất này): %(category)s"
+
+#, python-format
+msgid "Copy %(l)s"
+msgstr "Sao chép %(l)s"
+
+#, python-format
+msgid "Create proposal · Case #%(id)s"
+msgstr "Tạo đề xuất · Vụ việc #%(id)s"
+
+#, python-format
+msgid "Finished %(ts)s. No further action is required."
+msgstr "Hoàn tất %(ts)s. Không cần thao tác thêm."
+
+#, python-format
+msgid "Interpreted location: %(loc)s"
+msgstr "Vị trí diễn giải: %(loc)s"
+
+#, python-format
+msgid "No records match “%(q)s”. Clear the search to see every record."
+msgstr "Không có bản ghi khớp “%(q)s”. Xóa tìm kiếm để xem mọi bản ghi."
+
+#, python-format
+msgid "No successful purge in the last %(hours)s hours. Gate events may be past their retention window."
+msgstr "Không có lần dọn thành công trong %(hours)s giờ qua. Sự kiện cổng có thể quá hạn lưu."
+
+#, python-format
+msgid "Notices for %(building)s."
+msgstr "Thông báo cho %(building)s."
+
+#, python-format
+msgid "Page %(n)s of %(total)s"
+msgstr "Trang %(n)s / %(total)s"
+
+#, python-format
+msgid "Proposal #%(id)s"
+msgstr "Đề xuất #%(id)s"
+
+#, python-format
+msgid "Record acknowledgement for settlement #%(id)s"
+msgstr "Ghi nhận xác nhận cho thanh toán #%(id)s"
+
+#, python-format
+msgid "Record transfer for proposal #%(id)s"
+msgstr "Ghi nhận chuyển khoản cho đề xuất #%(id)s"
+
+#, python-format
+msgid "Report #%(id)s"
+msgstr "Báo cáo #%(id)s"
+
+#, python-format
+msgid "Resident bills for %(building)s."
+msgstr "Hóa đơn cư dân cho %(building)s."
+
+#, python-format
+msgid "Resident requests for %(building)s."
+msgstr "Yêu cầu cư dân cho %(building)s."
+
+#, python-format
+msgid "Review aging delivery queue (oldest %(age)ss)"
+msgstr "Xem hàng đợi giao đang già (cũ nhất %(age)ss)"
+
+#, python-format
+msgid "Settlement #%(id)s"
+msgstr "Thanh toán #%(id)s"
+
+#, python-format
+msgid "Suggests <strong>%(cat)s</strong>, <strong>%(urg)s</strong> urgency, <strong>%(dept)s</strong> queue, due in <strong>%(mins)s minutes</strong>."
+msgstr "Gợi ý <strong>%(cat)s</strong>, mức khẩn <strong>%(urg)s</strong>, hàng đợi <strong>%(dept)s</strong>, hạn trong <strong>%(mins)s phút</strong>."
+
+#, python-format
+msgid "Work assigned to Management at %(building)s."
+msgstr "Công việc giao cho Quản lý tại %(building)s."
+
+#, python-format
+msgid "You signed preparation for proposal #%(id)s. A publication snapshot is on record, but independent confirmation has not finished yet."
+msgstr "Bạn đã ký chuẩn bị đề xuất #%(id)s. Ảnh chụp công bố đã ghi nhận, nhưng xác nhận độc lập chưa xong."
+
+#, python-format
+msgid "for “%(q)s”"
+msgstr "cho “%(q)s”"
+
+#, python-format
+msgid "%(operator)s accepted the suggestion as recorded."
+msgstr "%(operator)s đã chấp nhận gợi ý như đã ghi."
+
+#, python-format
+msgid "%(operator)s changed from the suggestion:"
+msgstr "%(operator)s đã thay đổi so với gợi ý:"
+
+#, python-format
+msgid "%(s)s seconds"
+msgstr "%(s)s giây"
+
+#, python-format
+msgid "%(minutes)s minutes"
+msgstr "%(minutes)s phút"
+
+msgid "1 day"
+msgstr "1 ngày"
+
+msgid "1 hour"
+msgstr "1 giờ"
+
+msgid "1 week"
+msgstr "1 tuần"
+
+msgid "2 days"
+msgstr "2 ngày"
+
+msgid "3 days"
+msgstr "3 ngày"
+
+msgid "4 hours"
+msgstr "4 giờ"
+
+msgid "8 hours"
+msgstr "8 giờ"
+
+msgid "Active case pages"
+msgstr "Trang vụ việc đang xử lý"
+
+msgid "After"
+msgstr "Sau"
+
+msgid "Announcement pages"
+msgstr "Trang thông báo"
+
+msgid "Before"
+msgstr "Trước"
+
+msgid "Bill pages"
+msgstr "Trang hóa đơn"
+
+msgid "Body"
+msgstr "Nội dung"
+
+#, python-format
+msgid "Case #%(id)s needs a spending proposal"
+msgstr "Vụ việc #%(id)s cần một đề xuất chi tiêu"
+
+#, python-format
+msgid "Case #%(id)s · %(category)s"
+msgstr "Vụ việc #%(id)s · %(category)s"
+
+msgid "Closed"
+msgstr "Đã đóng"
+
+msgid "Confirmed"
+msgstr "Đã xác nhận"
+
+msgid "Declined"
+msgstr "Đã từ chối"
+
+msgid "Draft"
+msgstr "Bản nháp"
+
+#, python-format
+msgid "Email: %(event)s"
+msgstr "Email: %(event)s"
+
+msgid "Entry"
+msgstr "Vào"
+
+msgid "Entry type"
+msgstr "Loại bút toán"
+
+#, python-format
+msgid "Event %(event_id)s… · %(error)s"
+msgstr "Sự kiện %(event_id)s… · %(error)s"
+
+msgid "Event ID"
+msgstr "Mã sự kiện"
+
+msgid "Exit"
+msgstr "Ra"
+
+msgid "Expired before review"
+msgstr "Hết hạn trước khi xem xét"
+
+msgid "Face"
+msgstr "Khuôn mặt"
+
+msgid "Failed"
+msgstr "Thất bại"
+
+msgid "Hash"
+msgstr "Mã băm"
+
+msgid "High"
+msgstr "Cao"
+
+msgid "I understand this decline will be sent to the resident and cannot be undone."
+msgstr "Tôi hiểu rằng từ chối này sẽ được gửi đến cư dân và không thể hoàn tác."
+
+msgid "ID, category, or name…"
+msgstr "Mã, danh mục hoặc tên…"
+
+msgid "In progress"
+msgstr "Đang thực hiện"
+
+msgid "In review"
+msgstr "Đang xem xét"
+
+#, python-format
+msgid "Issue a resident bill for %(building)s."
+msgstr "Phát hành hóa đơn cư dân cho %(building)s."
+
+#, python-format
+msgid "Ledger entry #%(id)s"
+msgstr "Bút toán sổ cái #%(id)s"
+
+msgid "Locally settled"
+msgstr "Đã ghi nhận cục bộ"
+
+msgid "Locally signed (anchoring disabled)"
+msgstr "Đã ký cục bộ (tắt ghi neo)"
+
+msgid "Low"
+msgstr "Thấp"
+
+msgid "Medium"
+msgstr "Trung bình"
+
+msgid "Mismatch detected"
+msgstr "Phát hiện không khớp"
+
+msgid "Name, phone, or unit…"
+msgstr "Tên, điện thoại hoặc căn hộ…"
+
+msgid "Needs information"
+msgstr "Cần thông tin"
+
+msgid "Needs manual triage"
+msgstr "Cần phân loại thủ công"
+
+msgid "No active cases."
+msgstr "Không có vụ việc đang xử lý."
+
+msgid "No open reports."
+msgstr "Không có báo cáo đang mở."
+
+msgid "No proposals need attention."
+msgstr "Không có đề xuất nào cần chú ý."
+
+msgid "Not proceeding"
+msgstr "Không tiến hành"
+
+msgid "Nothing needs attention here."
+msgstr "Không có gì cần chú ý ở đây."
+
+msgid "Open report pages"
+msgstr "Trang báo cáo đang mở"
+
+msgid "Open tasks"
+msgstr "Việc đang mở"
+
+msgid "Pages"
+msgstr "Trang"
+
+msgid "Pending anchoring"
+msgstr "Đang chờ ghi neo"
+
+msgid "Pending review"
+msgstr "Đang chờ xem xét"
+
+msgid "Plate"
+msgstr "Biển số"
+
+msgid "Processing"
+msgstr "Đang xử lý"
+
+#, python-format
+msgid "Proposal #%(id)s awaits a proceed decision"
+msgstr "Đề xuất #%(id)s đang chờ quyết định tiến hành"
+
+msgid "Proposed"
+msgstr "Đã đề xuất"
+
+#, python-format
+msgid "Publish a notice to residents of %(building)s."
+msgstr "Đăng thông báo đến cư dân của %(building)s."
+
+#, python-format
+msgid "Push: %(event)s"
+msgstr "Thông báo đẩy: %(event)s"
+
+msgid "Reason shown to the resident"
+msgstr "Lý do hiển thị cho cư dân"
+
+msgid "Registration pages"
+msgstr "Trang đăng ký"
+
+msgid "Search announcements"
+msgstr "Tìm thông báo"
+
+msgid "Search bills"
+msgstr "Tìm hóa đơn"
+
+msgid "Search records"
+msgstr "Tìm bản ghi"
+
+msgid "Search registrations"
+msgstr "Tìm đăng ký"
+
+msgid "Succeeded"
+msgstr "Thành công"
+
+msgid "Title or body…"
+msgstr "Tiêu đề hoặc nội dung…"
+
+msgid "Title, resident, or status…"
+msgstr "Tiêu đề, cư dân hoặc trạng thái…"
+
+msgid "Verified entry pages"
+msgstr "Trang bút toán đã xác minh"
+
+msgid "What information is missing?"
+msgstr "Thông tin nào còn thiếu?"
+
+msgid "hash"
+msgstr "mã băm"
+
+#, python-format
+msgid "%(counter)s quarantined file"
+msgid_plural "%(counter)s quarantined files"
+msgstr[0] "%(counter)s tệp bị cách ly"
+
+#, python-format
+msgid "%(counter)s row"
+msgid_plural "%(counter)s rows"
+msgstr[0] "%(counter)s dòng"
+
+#, python-format
+msgid "Review %(counter)s failed delivery"
+msgid_plural "Review %(counter)s failed deliveries"
+msgstr[0] "Xem xét %(counter)s lần gửi thất bại"
+
+#, python-format
+msgid "Review %(counter)s inactive device"
+msgid_plural "Review %(counter)s inactive devices"
+msgstr[0] "Xem xét %(counter)s thiết bị không hoạt động"
+
+#, python-format
+msgid "Review %(counter)s integrity mismatch"
+msgid_plural "Review %(counter)s integrity mismatches"
+msgstr[0] "Xem xét %(counter)s không khớp toàn vẹn"
+
+#, python-format
+msgid "Review %(counter)s notification failure"
+msgid_plural "Review %(counter)s notification failures"
+msgstr[0] "Xem xét %(counter)s thông báo thất bại"
+
+msgid "Email or phone"
+msgstr "Email hoặc số điện thoại"
+
+msgid "ID, contractor, or category…"
+msgstr "Mã, nhà thầu hoặc danh mục…"
+
+msgid "Search proposals"
+msgstr "Tìm đề xuất"
+
+msgid "Search reports and cases"
+msgstr "Tìm báo cáo và vụ việc"
+
+msgid "No records match your filters."
+msgstr "Không có bản ghi nào khớp với bộ lọc."
+
+msgid "No export types are available yet."
+msgstr "Chưa có loại xuất dữ liệu nào."
+
+msgid "Exports appear once the building has records to audit."
+msgstr "Mục xuất xuất hiện khi tòa nhà có bản ghi để kiểm toán."
+
+msgid "Publish the first notice with Publish announcement."
+msgstr "Đăng thông báo đầu tiên bằng nút Đăng thông báo."
+
+msgid "Create one with Issue bill."
+msgstr "Tạo hóa đơn đầu tiên bằng nút Phát hành hóa đơn."
+
+msgid "Residents appear here when they ask to join the building."
+msgstr "Cư dân xuất hiện ở đây khi họ xin gia nhập tòa nhà."
+
+msgid "Add an opening balance or inflow with Record source."
+msgstr "Thêm số dư đầu kỳ hoặc khoản thu bằng nút Ghi nguồn."
+
+msgid "Record a transfer on a completed proposal to start one."
+msgstr "Ghi nhận chuyển khoản trên một đề xuất đã hoàn tất để bắt đầu."
+
+msgid "Success:"
+msgstr "Thành công:"
+
+msgid "Error:"
+msgstr "Lỗi:"
+
+msgid "Warning:"
+msgstr "Chú ý:"
+
+msgid "Info:"
+msgstr "Thông tin:"
+
+msgid "Apply"
+msgstr "Áp dụng"
+
+msgid "Settlement record"
+msgstr "Hồ sơ thanh toán"
+
+msgid "Proposal record"
+msgstr "Hồ sơ đề xuất"
+
+msgid "Create standalone proposal"
+msgstr "Tạo đề xuất độc lập"
+
+msgid "A spending proposal without a maintenance case. Publication freezes it either way."
+msgstr "Đề xuất chi tiêu không gắn với vụ việc bảo trì. Công bố sẽ cố định đề xuất trong mọi trường hợp."
 

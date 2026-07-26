@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from django.utils import translation
@@ -19,6 +19,7 @@ from lamto.web.forms.staff import ConfirmTriageForm
 from lamto.web.forms.staff import ProgressUpdateForm, RecordSettlementAcknowledgementForm, RecordSettlementTransferForm
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class ManagementWorkspaceTests(TestCase):
     def test_triage_department_is_labeled_management_queue(self):
         self.assertEqual(ConfirmTriageForm().fields["department"].label, "Management queue")

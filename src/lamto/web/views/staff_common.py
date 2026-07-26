@@ -12,7 +12,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from lamto.finance.selectors import fund_series
-from lamto.web.action_inbox import action_items_for
+from lamto.web.action_inbox import ACTION_KIND_LABELS, action_items_for
 from lamto.web.staff import require_management_context, staff_context, switch_building_redirect
 
 
@@ -63,22 +63,6 @@ ACTION_GROUPS = (
     ("due_soon", _("Due soon")),
     ("exceptions", _("Exceptions")),
 )
-ACTION_KIND_LABELS = {
-    "registration": _("Resident registration"),
-    "manual_triage": _("Manual triage"),
-    "review_report": _("Report review"),
-    "deadline_risk": _("Deadline risk"),
-    "in_progress_case": _("Case in progress"),
-    "proposal_create": _("Proposal creation"),
-    "proposal_decision": _("Proposal decision"),
-    "settlement_transfer": _("Transfer recording"),
-    "settlement_ack": _("Acknowledgement recording"),
-    "integrity_mismatch": _("Integrity mismatch"),
-    "failed_outbox": _("Failed evidence anchor"),
-    "quarantined_upload": _("Quarantined upload"),
-}
-
-
 def _action_group(item):
     if item.kind in EXCEPTION_KINDS:
         return "exceptions"
@@ -294,7 +278,9 @@ def _related_or_none(obj, attr: str):
 
     try:
         return getattr(obj, attr)
-    except ObjectDoesNotExist:
+    except (ObjectDoesNotExist, AttributeError):
+        # AttributeError: not every record type carries every relation
+        # (e.g. Proposal has no outbox_event; only its current_version does).
         return None
 
 

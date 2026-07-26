@@ -45,6 +45,7 @@
       {% empty %}
       <li class="empty-state">
         <p>{% trans "No settlements recorded yet." %}</p>
+        <p class="hint">{% trans "Record a transfer on a completed proposal to start one." %}</p>
       </li>
       {% endfor %}
     </ul>
@@ -79,6 +80,7 @@
   <h1>{% blocktrans with id=settlement.pk %}Settlement #{{ id }}{% endblocktrans %}</h1>
   <div class="record-layout">
     <div class="record-summary">
+      <h2>{% trans "Settlement record" %}</h2>
       <dl class="detail-list detail-list-wide">
         <div><dt>{% trans "Payee" %}</dt><dd>{{ settlement.payee_name }}</dd></div>
         <div><dt>{% trans "Amount" %}</dt><dd>{{ settlement.amount_vnd|intcomma }} VND</dd></div>
@@ -94,6 +96,10 @@
           {% if settlement.ack_id %}<a href="{% url 'web:staff-document' settlement.ack_id %}">{{ settlement.ack.filename }}</a>{% else %}{% trans "Not recorded yet" %}{% endif %}
         </dd></div>
       </dl>
+
+      {% if accountability_stages %}
+      {% include "web/staff/_accountability_chain.html" %}
+      {% endif %}
 
       <details class="technical-proof">
         <summary>{% trans "Technical proof" %}</summary>

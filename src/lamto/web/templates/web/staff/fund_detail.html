@@ -28,13 +28,16 @@
   <div class="workflow-section" aria-labelledby="fund-chart-heading">
     <div class="panel-header">
       <h2 id="fund-chart-heading">{% trans "Balance over time" %}</h2>
-      <nav class="range-toggle" aria-label="{% trans 'Chart range' %}">
-        {% for key, label in chart_ranges %}
-        <a class="button {% if key == chart_range %}button-primary{% else %}button-secondary{% endif %}"
-           {% if key == chart_range %}aria-current="true"{% endif %}
-           href="?range={{ key }}">{{ label }}</a>
-        {% endfor %}
-      </nav>
+      <form method="get" class="queue-toolbar">
+        <label for="chart-range">{% trans "Chart range" %}
+          <select id="chart-range" name="range">
+            {% for key, label in chart_ranges %}
+            <option value="{{ key }}"{% if key == chart_range %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="button button-secondary">{% trans "Apply" %}</button>
+      </form>
     </div>
     <dl class="stat-grid">
       <div><dt>{% trans "Opening balance" %}</dt><dd>{{ window_opening_vnd|intcomma }} VND</dd></div>
@@ -111,16 +114,19 @@
         </div>
       </li>
       {% empty %}
-      <li class="empty-state"><p>{% trans "No verified entries." %}</p></li>
+      <li class="empty-state"><p>{% trans "No verified entries." %}</p><p class="hint">{% trans "Add an opening balance or inflow with Record source." %}</p></li>
       {% endfor %}
     </ul>
-    {% include "web/staff/_pagination.html" with list_meta=entries_list pagination_label=_("Verified entry pages") %}
+    {% translate "Verified entry pages" as pagination_label %}
+    {% include "web/staff/_pagination.html" with list_meta=entries_list pagination_label=pagination_label %}
   </div>
 
 </section>
 {% else %}
-<h1>{% if mode == "verify" %}{% blocktrans with id=entry.pk %}Verify fund source #{{ id }}{% endblocktrans %}{% else %}{% trans "Record fund source" %}{% endif %}</h1>
-{% include "web/staff/_fund_forms.html" %}
+<section class="panel">
+  <h1>{% if mode == "verify" %}{% blocktrans with id=entry.pk %}Verify fund source #{{ id }}{% endblocktrans %}{% else %}{% trans "Record fund source" %}{% endif %}</h1>
+  {% include "web/staff/_fund_forms.html" %}
+</section>
 {% endif %}
 {% endblock %}
 {% block extra_js %}

@@ -148,7 +148,7 @@ def case_list(request):
             report_list=report_list,
             case_items=case_items,
             case_list=case_list,
-            search_label="Search reports and cases",
+            search_label=_("Search reports and cases"),
             filters=filters,
             filters_active=valid_status or status in urgency_groups,
             filter_param="status",

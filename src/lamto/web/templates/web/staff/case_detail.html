@@ -10,21 +10,26 @@
       <p class="hint">{% trans "Open resident reports awaiting triage, and active maintenance cases with their next step and deadline." %}</p>
     </div>
   </div>
-  {% include "web/staff/_list_toolbar.html" with list_meta=case_list filters=filters filters_active=filters_active filter_param=filter_param filter_label=_("Urgency") %}
+  {% translate "Urgency" as urgency_filter_label %}
+  {% include "web/staff/_list_toolbar.html" with list_meta=case_list filters=filters filters_active=filters_active filter_param=filter_param filter_label=urgency_filter_label %}
   <div class="workflow-section">
     <h2>{% trans "Open reports" %}</h2>
-    {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label=_("Open report pages") empty_label=_("No open reports.") only %}
+    {% translate "Open report pages" as report_pages_label %}
+    {% translate "No open reports." as report_empty_label %}
+    {% include "web/staff/_list.html" with items=report_items list_meta=report_list pagination_label=report_pages_label empty_label=report_empty_label filters_active=filters_active only %}
   </div>
   <div class="workflow-section">
     <h2>{% trans "Active cases" %}</h2>
-    {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label=_("Active case pages") empty_label=_("No active cases.") only %}
+    {% translate "Active case pages" as case_pages_label %}
+    {% translate "No active cases." as case_empty_label %}
+    {% include "web/staff/_list.html" with items=case_items list_meta=case_list pagination_label=case_pages_label empty_label=case_empty_label filters_active=filters_active only %}
   </div>
 </section>
 {% else %}
 <section class="panel" aria-labelledby="detail-heading">
   <p><a class="back-link" href="{% url 'web:case-list' %}">{% trans "Back to cases" %}</a></p>
   <h1 id="detail-heading">{% if case %}{% blocktrans with id=case.pk %}Case #{{ id }}{% endblocktrans %}{% else %}{% blocktrans with id=report.pk %}Report #{{ id }}{% endblocktrans %}{% endif %}</h1>
-  <div class="record-layout">
+  <div class="record-layout{% if not case %} record-layout-triage{% endif %}">
     <div class="record-summary">
       {% if report %}
       <dl class="detail-list detail-list-wide">
@@ -48,7 +53,7 @@
       {% if case %}
       <dl class="detail-list detail-list-wide">
         <div><dt>{% trans "Category" %}</dt><dd>{{ case.category }}</dd></div>
-        <div><dt>{% trans "Urgency" %}</dt><dd>{{ case.urgency|title }}</dd></div>
+        <div><dt>{% trans "Urgency" %}</dt><dd>{{ case.urgency|staff_urgency }}</dd></div>
         <div><dt>{% trans "Management queue" %}</dt><dd>{{ case.department }}</dd></div>
         <div><dt>{% trans "Deadline" %}</dt><dd>{% if case.deadline_at %}{{ case.deadline_at|staff_datetime }}{% else %}{% trans "Not set" %}{% endif %}</dd></div>
       </dl>
@@ -101,7 +106,7 @@
       <div class="workflow-section">
         <h2>{% trans "Triage assistant suggestion" %}</h2>
         <p class="lede">
-          {% blocktrans with cat=suggestion.category urg=suggestion.urgency|title dept=suggestion.department mins=suggestion.deadline_minutes %}Suggests <strong>{{ cat }}</strong>, <strong>{{ urg }}</strong> urgency, <strong>{{ dept }}</strong> queue, due in <strong>{{ mins }} minutes</strong>.{% endblocktrans %}
+          {% blocktrans with cat=suggestion.category urg=suggestion.urgency|staff_urgency dept=suggestion.department mins=suggestion.deadline_minutes %}Suggests <strong>{{ cat }}</strong>, <strong>{{ urg }}</strong> urgency, <strong>{{ dept }}</strong> queue, due in <strong>{{ mins }} minutes</strong>.{% endblocktrans %}
         </p>
         {% if suggestion.interpreted_location %}<p class="hint">{% blocktrans with loc=suggestion.interpreted_location %}Interpreted location: {{ loc }}{% endblocktrans %}</p>{% endif %}
         {% if suggestion.missing_information %}<p class="hint">{% trans "Possibly missing:" %}</p><ul>{% for item in suggestion.missing_information %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
@@ -159,15 +164,15 @@
         </form>
       </div>
       {% if not terminal %}
-      <div class="workflow-section">
-        <h2>{% trans "Request information" %}</h2>
+      <details class="workflow-section">
+        <summary><h2>{% trans "Request information" %}</h2></summary>
         <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Request information' %}">{% csrf_token %}<input type="hidden" name="action" value="request_info">{{ info_form.as_p }}<button type="submit" class="button button-secondary">{% trans "Request information" %}</button></form>
-      </div>
-      <div class="workflow-section">
-        <h2>{% trans "Decline request" %}</h2>
-        <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "Declining sends this reason to the resident and closes the report. This cannot be undone." %}</p>
+      </details>
+      <details class="workflow-section">
+        <summary><h2>{% trans "Decline request" %}</h2></summary>
+        <p class="consequence-note">{% trans "Declining sends this reason to the resident and closes the report. This cannot be undone." %}</p>
         <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Decline request' %}">{% csrf_token %}<input type="hidden" name="action" value="decline">{{ decline_form.as_p }}<button type="submit" class="button button-secondary">{% trans "Decline request" %}</button></form>
-      </div>
+      </details>
       {% endif %}
       {% endif %}
     </div>

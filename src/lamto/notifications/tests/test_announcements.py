@@ -25,6 +25,7 @@ from lamto.notifications.models import (
 from lamto.notifications.services import process_due_notifications
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class AnnouncementTests(TestCase):
     @classmethod
     def setUpTestData(cls):

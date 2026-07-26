@@ -87,11 +87,11 @@
 
   <main id="main" class="site-main" role="main">
     {% if messages %}
-    <section class="flash-messages" aria-labelledby="messages-heading">
+    <section class="flash-messages" role="status" tabindex="-1" aria-labelledby="messages-heading">
       <h2 id="messages-heading" class="sr-only">{% trans "Messages" %}</h2>
       <ul class="messages">
       {% for message in messages %}
-      <li class="message message-{{ message.tags }}">{{ message }}</li>
+      <li class="message message-{{ message.tags }}"><span class="status-icon" aria-hidden="true">●</span> <strong>{% if "error" in message.tags %}{% trans "Error:" %}{% elif "warning" in message.tags %}{% trans "Warning:" %}{% elif "info" in message.tags %}{% trans "Info:" %}{% else %}{% trans "Success:" %}{% endif %}</strong> {{ message }}</li>
       {% endfor %}
       </ul>
     </section>

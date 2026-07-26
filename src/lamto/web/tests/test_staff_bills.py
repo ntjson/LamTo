@@ -174,7 +174,7 @@ def test_resident_choices_are_active_building_scoped_and_deduplicated(client):
     outsider = User.objects.create_user(email="other@x.test", password="pw")
     ResidentOccupancy.objects.create(user=outsider, unit=other_unit)
 
-    response = client.get(reverse("web:staff-bill-list"))
+    response = client.get(reverse("web:staff-bill-create"))
 
     assert list(response.context["form"].fields["resident"].choices) == [
         (str(active.pk), "active@x.test · 101")

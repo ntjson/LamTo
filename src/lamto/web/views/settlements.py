@@ -12,6 +12,7 @@ from lamto.finance.models import Proposal, Settlement
 from lamto.finance.settlements import record_acknowledgement, record_transfer
 from lamto.web.forms.staff import RecordSettlementAcknowledgementForm, RecordSettlementTransferForm
 from lamto.web.staff import require_management_context, staff_context
+from lamto.web.views.staff_common import accountability_chain_for
 from lamto.web.staff_documents import _delete_storage_blob, document_options, new_event_id, selected_document, upload_document
 
 
@@ -94,4 +95,14 @@ def settlement_record_ack(request, pk):
 def settlement_detail(request, pk):
     membership, memberships = require_management_context(request)
     settlement = get_object_or_404(Settlement.objects.select_related("proposal", "outbox_event", "transfer", "ack"), pk=pk, proposal__building_id=membership.building_id)
-    return render(request, "web/staff/settlement_detail.html", _context(request, membership, memberships, settlement=settlement))
+    return render(
+        request,
+        "web/staff/settlement_detail.html",
+        _context(
+            request,
+            membership,
+            memberships,
+            settlement=settlement,
+            accountability_stages=accountability_chain_for(settlement),
+        ),
+    )

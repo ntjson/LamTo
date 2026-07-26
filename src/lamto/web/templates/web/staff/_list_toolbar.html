@@ -1,7 +1,10 @@
 {% load i18n %}
+{% translate "Search records" as default_search_label %}
+{% translate "ID, category, or name…" as default_search_placeholder %}
+{% translate "Task type" as default_secondary_filter_label %}
 <form method="get" class="queue-toolbar" role="search">
-  <label for="record-search">{{ search_label|default:_("Search records") }}
-    <input id="record-search" name="q" value="{{ list_meta.query }}" placeholder="{{ search_placeholder|default:_('ID, category, or name…') }}">
+  <label for="record-search">{{ search_label|default:default_search_label }}
+    <input id="record-search" name="q" value="{{ list_meta.query }}" placeholder="{{ search_placeholder|default:default_search_placeholder }}">
   </label>
   {% if filters %}
   <label for="record-filter">{{ filter_label }}
@@ -14,7 +17,7 @@
   </label>
   {% endif %}
   {% if secondary_filters %}
-  <label for="record-filter-secondary">{{ secondary_filter_label|default:_("Task type") }}
+  <label for="record-filter-secondary">{{ secondary_filter_label|default:default_secondary_filter_label }}
     <select id="record-filter-secondary" name="{{ secondary_filter_param|default:'kind' }}">
       <option value="">{% trans "All task types" %}</option>
       {% for f in secondary_filters %}

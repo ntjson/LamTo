@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _lazy
 
 from lamto.accounts.models import ManagementMembership, RegistrationRequest
 from lamto.documents.models import QuarantinedUpload
@@ -28,6 +30,28 @@ from lamto.maintenance.models import (
     MaintenanceCase,
     TriageJob,
 )
+
+
+# One vocabulary for the inbox: the filter dropdown and the row titles read
+# from the same map, so a filter never returns rows under a different name.
+ACTION_KIND_LABELS = {
+    "registration": _lazy("Resident registration"),
+    "manual_triage": _lazy("Manual triage"),
+    "review_report": _lazy("Report review"),
+    "deadline_risk": _lazy("Deadline risk"),
+    "in_progress_case": _lazy("Case in progress"),
+    "proposal_create": _lazy("Proposal creation"),
+    "proposal_decision": _lazy("Proposal decision"),
+    "settlement_transfer": _lazy("Transfer recording"),
+    "settlement_ack": _lazy("Acknowledgement recording"),
+    "integrity_mismatch": _lazy("Integrity mismatch"),
+    "failed_outbox": _lazy("Failed evidence anchor"),
+    "quarantined_upload": _lazy("Quarantined upload"),
+}
+
+
+def _kind_title(kind: str) -> str:
+    return str(ACTION_KIND_LABELS[kind])
 
 
 @dataclass(frozen=True)
@@ -134,7 +158,7 @@ def _manual_triage_items(building_id: int) -> list[ActionItem]:
         items.append(
             ActionItem(
                 kind="manual_triage",
-                title="Manual triage",
+                title=_kind_title("manual_triage"),
                 summary=report.text[:120],
                 target_type="IssueReport",
                 target_id=report.pk,
@@ -148,7 +172,7 @@ def _manual_triage_items(building_id: int) -> list[ActionItem]:
 def _review_queue_items(building_id: int) -> list[ActionItem]:
     return [
         ActionItem(
-            kind="review_report", title=f"Review request #{report.pk}",
+            kind="review_report", title=_kind_title("review_report"),
             summary=report.text[:120], target_type="IssueReport", target_id=report.pk,
             url=reverse("web:staff-report-detail", kwargs={"pk": report.pk}), priority=11,
         )
@@ -172,8 +196,8 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
         items.append(
             ActionItem(
                 kind="deadline_risk",
-                title="Deadline risk",
-                summary=f"Case #{case.pk} · {case.category} due {case.deadline_at}",
+                title=_kind_title("deadline_risk"),
+                summary=_("Case #%(id)s · %(category)s") % {"id": case.pk, "category": case.category},
                 target_type="MaintenanceCase",
                 target_id=case.pk,
                 url=reverse("web:case-detail", kwargs={"pk": case.pk}),
@@ -185,8 +209,9 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
 
 
 def _in_progress_case_items(building_id: int) -> list[ActionItem]:
-    return [ActionItem(kind="in_progress_case", title="Case in progress",
-                       summary=f"Case #{case.pk} · {case.category}", target_type="MaintenanceCase",
+    return [ActionItem(kind="in_progress_case", title=_kind_title("in_progress_case"),
+                       summary=_("Case #%(id)s · %(category)s") % {"id": case.pk, "category": case.category},
+                       target_type="MaintenanceCase",
                        target_id=case.pk, url=reverse("web:case-detail", kwargs={"pk": case.pk}),
                        priority=20, deadline_at=case.deadline_at)
             for case in MaintenanceCase.objects.filter(
@@ -204,8 +229,8 @@ def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
         items.append(
             ActionItem(
                 kind="proposal_create",
-                title="Create proposal",
-                summary=f"Case #{case.pk} needs a spending proposal",
+                title=_kind_title("proposal_create"),
+                summary=_("Case #%(id)s needs a spending proposal") % {"id": case.pk},
                 target_type="MaintenanceCase",
                 target_id=case.pk,
                 url=reverse("web:proposal-create", kwargs={"pk": case.pk}),
@@ -217,8 +242,9 @@ def _proposal_create_candidates(building_id: int) -> list[ActionItem]:
 
 def _proposal_decision_items(building_id: int) -> list[ActionItem]:
     return [ActionItem(
-        kind="proposal_decision", title="Decide proposal",
-        summary=f"Proposal #{proposal.pk} awaits a proceed decision", target_type="Proposal",
+        kind="proposal_decision", title=_kind_title("proposal_decision"),
+        summary=_("Proposal #%(id)s awaits a proceed decision") % {"id": proposal.pk},
+        target_type="Proposal",
         target_id=proposal.pk, url=reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
         priority=16,
     ) for proposal in Proposal.objects.filter(
@@ -227,11 +253,11 @@ def _proposal_decision_items(building_id: int) -> list[ActionItem]:
 
 
 def _settlement_transfer_items(building_id: int) -> list[ActionItem]:
-    return [ActionItem(kind="settlement_transfer", title="Record transfer", summary=f"Proposal #{p.pk}", target_type="Proposal", target_id=p.pk, url=reverse("web:proposal-detail", kwargs={"pk": p.pk}), priority=16, amount_vnd=p.current_version.amount_vnd) for p in Proposal.objects.filter(building_id=building_id, status=Proposal.Status.COMPLETED, settlement__isnull=True).select_related("current_version")[:40]]
+    return [ActionItem(kind="settlement_transfer", title=_kind_title("settlement_transfer"), summary=_("Proposal #%(id)s") % {"id": p.pk}, target_type="Proposal", target_id=p.pk, url=reverse("web:proposal-detail", kwargs={"pk": p.pk}), priority=16, amount_vnd=p.current_version.amount_vnd) for p in Proposal.objects.filter(building_id=building_id, status=Proposal.Status.COMPLETED, settlement__isnull=True).select_related("current_version")[:40]]
 
 
 def _settlement_ack_items(building_id: int) -> list[ActionItem]:
-    return [ActionItem(kind="settlement_ack", title="Record acknowledgement", summary=f"Settlement #{s.pk}", target_type="Settlement", target_id=s.pk, url=reverse("web:settlement-detail", kwargs={"pk": s.pk}), priority=14, amount_vnd=s.amount_vnd) for s in Settlement.objects.filter(proposal__building_id=building_id, settled_at__isnull=True)[:40]]
+    return [ActionItem(kind="settlement_ack", title=_kind_title("settlement_ack"), summary=_("Settlement #%(id)s") % {"id": s.pk}, target_type="Settlement", target_id=s.pk, url=reverse("web:settlement-detail", kwargs={"pk": s.pk}), priority=14, amount_vnd=s.amount_vnd) for s in Settlement.objects.filter(proposal__building_id=building_id, settled_at__isnull=True)[:40]]
 
 
 def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
@@ -261,8 +287,8 @@ def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
         items.append(
             ActionItem(
                 kind="integrity_mismatch",
-                title="Integrity mismatch",
-                summary=f"Ledger entry #{obs.published_entry_id}",
+                title=_kind_title("integrity_mismatch"),
+                summary=_("Ledger entry #%(id)s") % {"id": obs.published_entry_id},
                 target_type="PublishedLedgerEntry",
                 target_id=obs.published_entry_id,
                 url=reverse("web:audit-export")
@@ -284,8 +310,9 @@ def _failed_outbox_items(building_id: int) -> list[ActionItem]:
         items.append(
             ActionItem(
                 kind="failed_outbox",
-                title="Failed outbox",
-                summary=f"Event {event.event_id[:18]}… · {event.last_error[:80]}",
+                title=_kind_title("failed_outbox"),
+                summary=_("Event %(event_id)s… · %(error)s")
+                % {"event_id": event.event_id[:18], "error": event.last_error[:80]},
                 target_type="BlockchainOutboxEvent",
                 target_id=event.pk,
                 url=reverse("web:audit-export") + f"?outbox={event.pk}",
@@ -305,7 +332,7 @@ def _quarantined_upload_items(building_id: int, membership) -> list[ActionItem]:
         items.append(
             ActionItem(
                 kind="quarantined_upload",
-                title="Quarantined upload",
+                title=_kind_title("quarantined_upload"),
                 summary=f"{upload.filename} · {upload.reason}",
                 target_type="QuarantinedUpload",
                 target_id=upload.pk,

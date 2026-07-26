@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n staff_extras %}
+{% load i18n l10n staff_extras %}
 {% block title %}{% trans "Ops health" %} · LamTo{% endblock %}
 {% block content %}
 <section class="panel" aria-labelledby="ops-health-heading">
@@ -83,7 +83,7 @@
     <p class="health-detail">{% blocktrans with hours=health.gate_purge_stale_after_hours %}No successful purge in the last {{ hours }} hours. Gate events may be past their retention window.{% endblocktrans %}</p>
     {% else %}
     <p class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> {% trans "Current" %}</p>
-    <p class="health-detail">{{ health.gate_purge_last_success_at }}</p>
+    <p class="health-detail">{{ health.gate_purge_last_success_at|staff_datetime }}</p>
     {% endif %}
   </div>
 
@@ -99,15 +99,15 @@
     {% endif %}
     <dl class="detail-list">
       <div><dt>{% trans "Anchoring backend" %}</dt><dd>{{ health.anchoring_backend }}</dd></div>
-      <div><dt>{% trans "Last confirmed block" %}</dt><dd>{% if health.last_confirmed_block %}{{ health.last_confirmed_block }}{% else %}<span class="sr-only">{% trans "Not confirmed" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
-      <div><dt>{% trans "Last confirmed at" %}</dt><dd>{% if health.last_confirmed_at %}{{ health.last_confirmed_at }}{% else %}<span class="sr-only">{% trans "Not confirmed" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
+      <div><dt>{% trans "Last confirmed block" %}</dt><dd>{% if health.last_confirmed_block %}{{ health.last_confirmed_block|unlocalize }}{% else %}<span class="sr-only">{% trans "Not confirmed" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
+      <div><dt>{% trans "Last confirmed at" %}</dt><dd>{% if health.last_confirmed_at %}{{ health.last_confirmed_at|staff_datetime }}{% else %}<span class="sr-only">{% trans "Not confirmed" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
     </dl>
   </div>
 
   <div class="workflow-section">
     <h2>{% trans "Snapshot" %}</h2>
     <dl class="detail-list">
-      <div><dt>{% trans "Generated at" %}</dt><dd>{{ health.generated_at }}</dd></div>
+      <div><dt>{% trans "Generated at" %}</dt><dd>{{ health.generated_at|staff_datetime }}</dd></div>
     </dl>
   </div>
 </section>

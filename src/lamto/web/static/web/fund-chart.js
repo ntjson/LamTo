@@ -37,7 +37,8 @@
         type: "bar",
         label: canvas.dataset.labelOutflows || "Outflows",
         data: points.map(function (p) { return p.outflows_vnd; }),
-        backgroundColor: color("--color-brand"),
+        // Distinct from the brand balance line; still the brand family, never semantic.
+        backgroundColor: color("--color-brand-active"),
         order: 1,
       }
     );

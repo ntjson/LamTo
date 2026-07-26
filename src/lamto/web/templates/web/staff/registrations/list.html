@@ -10,7 +10,9 @@
     </div>
   </div>
 
-  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=_("Search registrations") search_placeholder=_("Name, phone, or unit…") %}
+  {% translate "Search registrations" as search_label %}
+  {% translate "Name, phone, or unit…" as search_placeholder %}
+  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=search_label search_placeholder=search_placeholder %}
 
   <ul class="task-list">
     {% for registration in registrations %}
@@ -24,9 +26,11 @@
     {% empty %}
     <li class="empty-state">
       <p>{% if list_meta.query %}{% trans "No registrations match your search." %}{% else %}{% trans "No registrations are waiting for review." %}{% endif %}</p>
+      {% if list_meta.query %}<p class="hint"><a class="text-link" href="{% url 'web:staff-registration-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Residents appear here when they ask to join the building." %}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>
-  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=_("Registration pages") %}
+  {% translate "Registration pages" as pagination_label %}
+  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=pagination_label %}
 </section>
 {% endblock %}

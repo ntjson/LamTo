@@ -12,6 +12,7 @@ expires, whichever comes first.
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from django.db.models import Q
 from django.utils import timezone
 
@@ -19,10 +20,10 @@ from lamto.accounts.models import Building, ResidentOccupancy
 
 
 class ReviewStatus(models.TextChoices):
-    PENDING = "PENDING", "Pending review"
-    APPROVED = "APPROVED", "Approved"
-    REJECTED = "REJECTED", "Rejected"
-    EXPIRED = "EXPIRED", "Expired before review"
+    PENDING = "PENDING", _("Pending review")
+    APPROVED = "APPROVED", _("Approved")
+    REJECTED = "REJECTED", _("Rejected")
+    EXPIRED = "EXPIRED", _("Expired before review")
 
 
 class FaceEnrollment(models.Model):
@@ -147,8 +148,8 @@ class GateDevice(models.Model):
     """A reader. Direction is declared, because one camera cannot infer it."""
 
     class Direction(models.TextChoices):
-        ENTRY = "ENTRY", "Entry"
-        EXIT = "EXIT", "Exit"
+        ENTRY = "ENTRY", _("Entry")
+        EXIT = "EXIT", _("Exit")
 
     building = models.ForeignKey(
         Building, on_delete=models.PROTECT, related_name="gate_devices"
@@ -212,8 +213,8 @@ class GateEvent(models.Model):
     """
 
     class Kind(models.TextChoices):
-        FACE = "FACE", "Face"
-        PLATE = "PLATE", "Plate"
+        FACE = "FACE", _("Face")
+        PLATE = "PLATE", _("Plate")
 
     building = models.ForeignKey(
         Building, on_delete=models.CASCADE, related_name="gate_events"

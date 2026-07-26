@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import Building, Unit
 from lamto.documents.models import DocumentVersion
@@ -48,14 +49,14 @@ class BuildingLocation(models.Model):
 
 class IssueReport(models.Model):
     class Status(models.TextChoices):
-        SUBMITTED = "SUBMITTED", "Submitted"
-        IN_REVIEW = "IN_REVIEW", "In review"
-        NEEDS_INFO = "NEEDS_INFO", "Needs information"
-        DECLINED = "DECLINED", "Declined"
-        IN_PROGRESS = "IN_PROGRESS", "In progress"
-        PROPOSED = "PROPOSED", "Proposed"
-        COMPLETED = "COMPLETED", "Completed"
-        CLOSED = "CLOSED", "Closed"
+        SUBMITTED = "SUBMITTED", _("Submitted")
+        IN_REVIEW = "IN_REVIEW", _("In review")
+        NEEDS_INFO = "NEEDS_INFO", _("Needs information")
+        DECLINED = "DECLINED", _("Declined")
+        IN_PROGRESS = "IN_PROGRESS", _("In progress")
+        PROPOSED = "PROPOSED", _("Proposed")
+        COMPLETED = "COMPLETED", _("Completed")
+        CLOSED = "CLOSED", _("Closed")
 
     reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT)
@@ -117,10 +118,10 @@ class ReportPhoto(models.Model):
 
 class TriageJob(models.Model):
     class Status(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        PROCESSING = "PROCESSING", "Processing"
-        SUCCEEDED = "SUCCEEDED", "Succeeded"
-        NEEDS_MANUAL = "NEEDS_MANUAL", "Needs manual triage"
+        PENDING = "PENDING", _("Pending")
+        PROCESSING = "PROCESSING", _("Processing")
+        SUCCEEDED = "SUCCEEDED", _("Succeeded")
+        NEEDS_MANUAL = "NEEDS_MANUAL", _("Needs manual triage")
 
     report = models.OneToOneField(IssueReport, on_delete=models.PROTECT, related_name="triage_job")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
@@ -251,8 +252,8 @@ class WorkUpdate(AppendOnlyModel):
 
 class WorkUpdateEvidence(AppendOnlyModel):
     class Kind(models.TextChoices):
-        BEFORE = "BEFORE", "Before"
-        AFTER = "AFTER", "After"
+        BEFORE = "BEFORE", _("Before")
+        AFTER = "AFTER", _("After")
 
     update = models.ForeignKey(WorkUpdate, on_delete=models.PROTECT, related_name="evidence_links")
     version = models.ForeignKey(DocumentVersion, on_delete=models.PROTECT)

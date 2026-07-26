@@ -24,6 +24,7 @@ from lamto.maintenance.models import (
 
 
 @override_settings(ROOT_URLCONF="lamto.config.urls")
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class ListPatternTests(TestCase):
     def _login(self, user, membership):
         self.client.force_login(user)

@@ -10,8 +10,10 @@
       <p class="hint">{% trans "Spending proposals for this building, from draft through publication. Each row shows the next step." %}</p>
     </div>
   </div>
-  {% include "web/staff/_list_toolbar.html" with filter_label=_("Status") %}
-  {% include "web/staff/_list.html" with items=proposal_items empty_label=_("No proposals need attention.") %}
+  {% translate "Status" as status_filter_label %}
+  {% include "web/staff/_list_toolbar.html" with filter_label=status_filter_label %}
+  {% translate "No proposals need attention." as proposals_empty_label %}
+  {% include "web/staff/_list.html" with items=proposal_items empty_label=proposals_empty_label %}
 </section>
 {% else %}
 <section class="panel">
@@ -19,6 +21,7 @@
   <h1>{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}</h1>
   <div class="record-layout">
     <div class="record-summary">
+      <h2>{% trans "Proposal record" %}</h2>
       {% if version %}<p class="lede">{{ version.purpose }}</p>{% endif %}
       {% if version %}<p>{% trans "The amount, contractor, scope, schedule, and quotation evidence are frozen." %}</p>{% endif %}
       <dl class="detail-list detail-list-wide">
@@ -61,7 +64,7 @@
       {% if can_publish %}
       <div class="workflow-section workflow-primary">
         <h2>{% trans "Publish settled expense" %}</h2>
-        <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
+        <p class="consequence-note">{% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
         <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form.as_p }}<button type="submit" class="button button-primary">{% trans "Publish to resident ledger" %}</button></form>
       </div>
       {% elif proposal.status == "PUBLISHED" %}

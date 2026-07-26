@@ -1,13 +1,11 @@
 {% load i18n humanize %}
-<section class="panel">
-  {% if mode == "record" %}
-  <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
-    {% csrf_token %}
-    <input type="hidden" name="action" value="prepare">
-    {{ record_form.as_p }}
-    <p class="hint">{% trans "Upload the source evidence (PDF). Amounts are integer VND." %}</p>
-    <button type="submit" class="button button-primary">{% trans "Record source" %}</button>
-  </form>
-  {% endif %}
-  {% if mode == "verify" %}{% include "web/staff/_fund_verify.html" %}{% endif %}
-</section>
+{% if mode == "record" %}
+<form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
+  {% csrf_token %}
+  <input type="hidden" name="action" value="prepare">
+  {{ record_form.as_p }}
+  <p class="hint">{% trans "Upload the source evidence (PDF). Amounts are integer VND." %}</p>
+  <button type="submit" class="button button-primary">{% trans "Record source" %}</button>
+</form>
+{% endif %}
+{% if mode == "verify" %}{% include "web/staff/_fund_verify.html" %}{% endif %}

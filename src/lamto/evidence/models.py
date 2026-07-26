@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 class EvidenceType(models.IntegerChoices):
     PROPOSAL_CREATED = 1, "Proposal created"
@@ -12,20 +13,20 @@ class EvidenceType(models.IntegerChoices):
 class EvidenceLevel(models.TextChoices):
     """Explicit verification state — replaces any boolean notion of verified (spec 5.1)."""
 
-    PENDING = "PENDING", "Pending"
-    LOCAL_SIGNED = "LOCAL_SIGNED", "Locally signed"
-    CHAIN_CONFIRMED = "CHAIN_CONFIRMED", "Chain confirmed"
-    MISMATCH = "MISMATCH", "Mismatch"
+    PENDING = "PENDING", _("Pending")
+    LOCAL_SIGNED = "LOCAL_SIGNED", _("Locally signed")
+    CHAIN_CONFIRMED = "CHAIN_CONFIRMED", _("Chain confirmed")
+    MISMATCH = "MISMATCH", _("Mismatch")
 
 
 class BlockchainOutboxEvent(models.Model):
     class Status(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        SUBMITTED = "SUBMITTED", "Submitted"
-        CONFIRMED = "CONFIRMED", "Confirmed"
-        LOCAL = "LOCAL", "Locally settled"
-        FAILED = "FAILED", "Failed"
-        MISMATCH = "MISMATCH", "Mismatch"
+        PENDING = "PENDING", _("Pending")
+        SUBMITTED = "SUBMITTED", _("Submitted")
+        CONFIRMED = "CONFIRMED", _("Confirmed")
+        LOCAL = "LOCAL", _("Locally settled")
+        FAILED = "FAILED", _("Failed")
+        MISMATCH = "MISMATCH", _("Mismatch")
 
     event_id = models.CharField(max_length=66, unique=True)
     event_type = models.PositiveSmallIntegerField(choices=EvidenceType)

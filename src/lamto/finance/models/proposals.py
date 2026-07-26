@@ -72,12 +72,13 @@ class ProposalVersion(InsertOnlyModel):
 
     @property
     def verification_label(self):
+        # Evidence vocabulary is fixed: pending / locally signed / chain confirmed / mismatch.
         labels = {
-            "CONFIRMED": "Blockchain anchored",
-            "LOCAL": "Locally signed (anchoring disabled)",
-            "MISMATCH": "Anchoring mismatch detected",
+            "CONFIRMED": _("Chain confirmed"),
+            "LOCAL": _("Locally signed (anchoring disabled)"),
+            "MISMATCH": _("Mismatch detected"),
         }
-        return labels.get(self.outbox_event.status, "Pending blockchain anchoring")
+        return labels.get(self.outbox_event.status, _("Pending anchoring"))
 
     class Meta:
         constraints = [

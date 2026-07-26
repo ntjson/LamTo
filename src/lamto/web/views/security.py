@@ -43,7 +43,7 @@ class PhoneOrEmailAuthenticationForm(AuthenticationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["username"].label = "Email or phone"
+        self.fields["username"].label = _("Email or phone")
         self.fields["username"].widget.attrs.setdefault(
             "autocomplete", "username"
         )

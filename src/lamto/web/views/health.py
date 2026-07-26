@@ -264,6 +264,11 @@ def pilot_metrics(request):
     )
     if request.GET.get("format") == "json":
         return JsonResponse(metrics)
+    # A latency is not a currency: one decimal on screen, raw values in JSON.
+    display_metrics = {
+        key: (round(value, 1) if isinstance(value, float) else value)
+        for key, value in metrics.items()
+    }
     return render(
         request,
         "web/staff/ops_metrics.html",
@@ -273,7 +278,7 @@ def pilot_metrics(request):
             memberships,
             nav_active="ops",
             ops_active="metrics",
-            metrics=metrics,
+            metrics=display_metrics,
             panel="metrics",
         ),
     )

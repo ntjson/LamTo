@@ -8,10 +8,12 @@
       <h1 id="bills-heading">{% trans "Bills" %}</h1>
       <p class="hint">{% blocktrans with building=membership.building.name %}Resident bills for {{ building }}.{% endblocktrans %}</p>
     </div>
-    <a class="button button-primary" href="#issue-bill">{% trans "Issue bill" %}</a>
+    <a class="button button-primary" href="{% url 'web:staff-bill-create' %}">{% trans "Issue bill" %}</a>
   </div>
 
-  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=_("Search bills") search_placeholder=_("Title, resident, or status…") %}
+  {% translate "Search bills" as search_label %}
+  {% translate "Title, resident, or status…" as search_placeholder %}
+  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=search_label search_placeholder=search_placeholder %}
 
   <ul class="task-list">
     {% for bill in bills %}
@@ -26,27 +28,11 @@
     {% empty %}
     <li class="empty-state">
       <p>{% if list_meta.query %}{% trans "No bills match your search." %}{% else %}{% trans "No bills have been issued." %}{% endif %}</p>
-      {% if list_meta.query %}<p class="hint"><a href="{% url 'web:staff-bill-list' %}">{% trans "Clear filters" %}</a></p>{% endif %}
+      {% if list_meta.query %}<p class="hint"><a class="text-link" href="{% url 'web:staff-bill-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Create one with Issue bill." %}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>
-  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=_("Bill pages") %}
-
-  <details class="workflow-section" id="issue-bill">
-    <summary class="button button-secondary">{% trans "Issue a bill" %}</summary>
-    <form method="post" action="{% url 'web:staff-bill-create' %}" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>
-      {% csrf_token %}
-      {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
-      {% for field in form %}
-      <div class="field">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
-        {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
-      </div>
-      {% endfor %}
-      <button type="submit" class="button button-primary">{% trans "Issue bill" %}</button>
-    </form>
-  </details>
+  {% translate "Bill pages" as pagination_label %}
+  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=pagination_label %}
 </section>
 {% endblock %}
