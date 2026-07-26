@@ -89,17 +89,24 @@ class ProposalsListScreen extends ConsumerWidget {
               await ref.read(proposalsListProvider.future);
             } catch (_) {}
           },
-          child: ListView(
+          // Builder-based so a long paginated history lays out lazily.
+          child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              title,
-              for (final proposal in value) _ProposalTile(proposal: proposal),
-              if (ref.read(proposalsListProvider.notifier).hasMore)
-                LoadMoreButton(
+            itemCount:
+                1 +
+                value.length +
+                (ref.read(proposalsListProvider.notifier).hasMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == 0) return title;
+              final i = index - 1;
+              if (i == value.length) {
+                return LoadMoreButton(
                   label: l10n.ledgerLoadMore,
                   onLoadMore: ref.read(proposalsListProvider.notifier).loadMore,
-                ),
-            ],
+                );
+              }
+              return _ProposalTile(proposal: value[i]);
+            },
           ),
         ),
         AsyncError(:final error) => ListView(

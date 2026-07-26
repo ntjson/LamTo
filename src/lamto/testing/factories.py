@@ -334,7 +334,7 @@ class PilotDomainDriver:
         case = confirm_triage(
             report,
             manager.user,
-            category="Elevator",
+            category="ELEVATOR",
             urgency="HIGH",
             location=self.seed.location,
             department="Maintenance",
@@ -355,7 +355,7 @@ class PilotDomainDriver:
         version = publish_proposal_version(
             proposal, manager, amount_vnd=amount_vnd,
             contractor_name="Pilot Contractor Co", fund_code="GENERAL",
-            purpose=work.category, proposed_action="Repair the affected equipment",
+            purpose=work.get_category_display(), proposed_action="Repair the affected equipment",
             expected_schedule="Within 14 days", quotation_versions=[quotation],
             event_id=event_id,
         )

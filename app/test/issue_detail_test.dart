@@ -6,12 +6,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lamto/core/authenticated_image.dart';
 import 'package:lamto/core/occupancy.dart';
 import 'package:lamto/core/providers.dart';
 import 'package:lamto/features/reports/issue_detail_screen.dart';
+import 'package:lamto/features/reports/photo_thumbnail.dart';
 import 'package:lamto/features/reports/report_draft.dart';
 import 'package:lamto/features/reports/report_form_screen.dart';
+import 'package:lamto/features/reports/report_photo_files.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
@@ -36,7 +39,7 @@ ReportDetail _detail({
     ..unitLabel = 'B-1204'
     ..createdAt = DateTime.utc(2026, 7, 10)
     ..triageStatus = 'SUCCEEDED'
-    ..category = 'Thang máy'
+    ..category = 'ELEVATOR'
     ..openInfoRequest = openInfoRequest
     ..photos = ListBuilder<ReportPhoto>()
     ..ledgerEntryIds = ListBuilder<int>(ledgerEntryIds)
@@ -44,7 +47,7 @@ ReportDetail _detail({
       ReportCase(
         (c) => c
           ..id = 1
-          ..category = 'Thang máy'
+          ..category = 'ELEVATOR'
           ..urgency = 'HIGH'
           ..deadlineAt = DateTime.utc(2026, 7, 12)
           ..active = true
@@ -93,6 +96,10 @@ class _FakeRepo implements ReportsRepository {
   ReportDetail detail;
   final ratings = <(int, bool, String)>[];
   final replies = <(int, String)>[];
+  final uploads = <(int, String)>[];
+
+  /// Filenames whose upload throws (per-photo failure choreography).
+  final failUploads = <String>{};
   int fetches = 0;
 
   @override
@@ -101,8 +108,14 @@ class _FakeRepo implements ReportsRepository {
     return detail;
   }
 
+  bool failReply = false;
+
   @override
   Future<void> replyInfo({required int reportId, required String text}) async {
+    if (failReply) {
+      failReply = false;
+      throw Exception('offline');
+    }
     replies.add((reportId, text));
     detail = _detail(canRate: false, status: StatusEnum.IN_REVIEW);
   }
@@ -140,7 +153,62 @@ class _FakeRepo implements ReportsRepository {
     required int reportId,
     required String path,
     required String filename,
-  }) => throw UnimplementedError();
+  }) async {
+    if (failUploads.contains(filename)) {
+      throw Exception('upload failed');
+    }
+    uploads.add((reportId, filename));
+    return ReportPhoto(
+      (b) => b
+        ..id = uploads.length
+        ..filename = filename
+        ..sha256 = 'sha-$filename'
+        ..downloadUrl = '/photos/$filename',
+    );
+  }
+}
+
+/// In-memory picker: the sheet only forwards `xfile.path` to the file store,
+/// which is also faked, so no real files are needed.
+class _FakePicker extends ImagePicker {
+  _FakePicker(this.files);
+  final List<XFile> files;
+
+  @override
+  Future<List<XFile>> pickMultiImage({
+    double? maxWidth,
+    double? maxHeight,
+    int? imageQuality,
+    int? limit,
+    bool requestFullMetadata = true,
+  }) async => files;
+
+  @override
+  Future<XFile?> pickImage({
+    required ImageSource source,
+    double? maxWidth,
+    double? maxHeight,
+    int? imageQuality,
+    CameraDevice preferredCameraDevice = CameraDevice.rear,
+    bool requestFullMetadata = true,
+  }) async => files.isEmpty ? null : files.first;
+}
+
+/// No real file IO in widget tests (fake-async cannot drive dart:io futures).
+class _FakeFileStore extends ReportPhotoFileStore {
+  final deleted = <String>[];
+  int _n = 0;
+
+  @override
+  Future<String> importReplyPickerPath({
+    required int reportId,
+    required String sourcePath,
+  }) async => '/owned/reply_$reportId/photo${++_n}.jpg';
+
+  @override
+  Future<void> deletePaths(Iterable<String> paths) async {
+    deleted.addAll(paths);
+  }
 }
 
 class _MissingImageAdapter implements HttpClientAdapter {
@@ -155,8 +223,14 @@ class _MissingImageAdapter implements HttpClientAdapter {
   ) async => ResponseBody.fromString('', 404);
 }
 
-Future<void> _pump(WidgetTester tester, _FakeRepo repo) async {
-  SharedPreferences.setMockInitialValues({});
+Future<void> _pump(
+  WidgetTester tester,
+  _FakeRepo repo, {
+  _FakePicker? picker,
+  _FakeFileStore? fileStore,
+  Map<String, Object> prefs = const {},
+}) async {
+  SharedPreferences.setMockInitialValues(prefs);
   final dio = Dio(BaseOptions(baseUrl: 'http://test'))
     ..httpClientAdapter = _MissingImageAdapter();
   final holder = OccupancyHolder()..occupancyId = 7;
@@ -167,6 +241,10 @@ Future<void> _pump(WidgetTester tester, _FakeRepo repo) async {
         dioProvider.overrideWith((ref) => dio),
         occupancyHolderProvider.overrideWithValue(holder),
         reportDraftStoreProvider.overrideWithValue(ReportDraftStore()),
+        reportPhotoFileStoreProvider.overrideWithValue(
+          fileStore ?? _FakeFileStore(),
+        ),
+        imagePickerProvider.overrideWithValue(picker ?? _FakePicker(const [])),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -203,6 +281,28 @@ void main() {
       tester.getTopLeft(find.text('Cáp mòn 1')).dy,
       lessThan(tester.getTopLeft(find.text('Cáp mòn 2')).dy),
     );
+  });
+
+  testWidgets('renders the case category from its code in Vietnamese', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeRepo(_detail(canRate: false)));
+
+    expect(
+      find.textContaining('Đã ghép vào yêu cầu xử lý: Thang máy'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('drops the category when the code is unknown', (tester) async {
+    final detail = _detail(canRate: false).rebuild(
+      (b) => b.cases[0] = b.cases[0].rebuild((c) => c.category = 'Water leak'),
+    );
+    await _pump(tester, _FakeRepo(detail));
+
+    expect(find.textContaining('Water leak'), findsNothing);
+    expect(find.textContaining('Đã ghép vào yêu cầu xử lý'), findsOneWidget);
+    expect(find.textContaining('Đã ghép vào yêu cầu xử lý:'), findsNothing);
   });
 
   testWidgets('shows completion before the rating action', (tester) async {
@@ -363,6 +463,230 @@ void main() {
     );
     expect(submit.onPressed, isNull);
   });
+
+  testWidgets('sends the reply text first, then attaches every photo', (
+    tester,
+  ) async {
+    final repo = _FakeRepo(
+      _detail(
+        canRate: false,
+        status: StatusEnum.NEEDS_INFO,
+        openInfoRequest: _infoRequest(JsonObject('Send a photo of the leak')),
+      ),
+    );
+    final fileStore = _FakeFileStore();
+    await _pump(
+      tester,
+      repo,
+      picker: _FakePicker([XFile('/picked/a.jpg'), XFile('/picked/b.jpg')]),
+      fileStore: fileStore,
+    );
+    final semantics = tester.ensureSemantics();
+
+    await tester.tap(find.text('Gửi trả lời'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Ảnh rò nước đây');
+    await tester.pump();
+
+    await tester.tap(find.text('Thêm ảnh'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chọn từ thư viện'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PhotoThumbnail), findsNWidgets(2));
+    expect(find.bySemanticsLabel(RegExp('Ảnh 1/2')), findsOneWidget);
+
+    await tester.tap(find.text('Gửi trả lời').last);
+    await tester.pumpAndSettle();
+
+    expect(repo.replies.single, (42, 'Ảnh rò nước đây'));
+    expect(repo.uploads, [(42, 'photo1.jpg'), (42, 'photo2.jpg')]);
+    expect(
+      find.text('Trả lời của bạn đã được ghi nhận. Đã đính kèm 2/2 ảnh.'),
+      findsOneWidget,
+    );
+    // Uploaded copies cleaned up; no pending record left behind.
+    expect(
+      fileStore.deleted,
+      containsAll(['/owned/reply_42/photo1.jpg', '/owned/reply_42/photo2.jpg']),
+    );
+    expect(await InfoReplyPhotoStore().read(42), isEmpty);
+
+    await tester.tap(find.text('Đóng'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ban quản lý cần thêm thông tin'), findsNothing);
+    semantics.dispose();
+  });
+
+  testWidgets('reply sheet delete removes a picked photo before send', (
+    tester,
+  ) async {
+    final repo = _FakeRepo(
+      _detail(
+        canRate: false,
+        status: StatusEnum.NEEDS_INFO,
+        openInfoRequest: _infoRequest(JsonObject('Send a photo')),
+      ),
+    );
+    final fileStore = _FakeFileStore();
+    await _pump(
+      tester,
+      repo,
+      picker: _FakePicker([XFile('/picked/a.jpg'), XFile('/picked/b.jpg')]),
+      fileStore: fileStore,
+    );
+
+    await tester.tap(find.text('Gửi trả lời'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Thêm ảnh'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chọn từ thư viện'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PhotoThumbnail), findsNWidgets(2));
+
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PhotoThumbnail), findsOneWidget);
+    expect(fileStore.deleted, ['/owned/reply_42/photo1.jpg']);
+  });
+
+  testWidgets(
+    'keeps the reply and offers per-photo retry when a photo upload fails',
+    (tester) async {
+      final repo = _FakeRepo(
+        _detail(
+          canRate: false,
+          status: StatusEnum.NEEDS_INFO,
+          openInfoRequest: _infoRequest(JsonObject('Send a photo')),
+        ),
+      );
+      repo.failUploads.add('photo1.jpg');
+      final fileStore = _FakeFileStore();
+      await _pump(
+        tester,
+        repo,
+        picker: _FakePicker([XFile('/picked/a.jpg')]),
+        fileStore: fileStore,
+      );
+
+      await tester.tap(find.text('Gửi trả lời'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Vòi bếp');
+      await tester.tap(find.text('Thêm ảnh'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn từ thư viện'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Gửi trả lời').last);
+      await tester.pumpAndSettle();
+
+      // The words are committed; the photo is not — and the sheet says so.
+      expect(repo.replies.single, (42, 'Vòi bếp'));
+      expect(repo.uploads, isEmpty);
+      expect(
+        find.text(
+          'Trả lời của bạn đã được ghi nhận. '
+          'Một số ảnh chưa tải lên được — thử lại từng ảnh bên dưới.',
+        ),
+        findsOneWidget,
+      );
+      expect(await InfoReplyPhotoStore().read(42), [
+        '/owned/reply_42/photo1.jpg',
+      ]);
+      expect(fileStore.deleted, isEmpty);
+      // The committed reply is locked: no edit, no resend — only Close.
+      expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+      expect(find.text('Đóng'), findsOneWidget);
+
+      repo.failUploads.clear();
+      await tester.tap(find.text('Thử lại'));
+      await tester.pumpAndSettle();
+
+      expect(repo.uploads.single, (42, 'photo1.jpg'));
+      expect(
+        find.text('Trả lời của bạn đã được ghi nhận. Đã đính kèm 1/1 ảnh.'),
+        findsOneWidget,
+      );
+      expect(find.text('Thử lại'), findsNothing);
+      expect(await InfoReplyPhotoStore().read(42), isEmpty);
+      expect(fileStore.deleted, ['/owned/reply_42/photo1.jpg']);
+    },
+  );
+
+  testWidgets('a failed reply states nothing was sent and keeps everything', (
+    tester,
+  ) async {
+    final repo = _FakeRepo(
+      _detail(
+        canRate: false,
+        status: StatusEnum.NEEDS_INFO,
+        openInfoRequest: _infoRequest(JsonObject('Send a photo')),
+      ),
+    );
+    repo.failReply = true;
+    await _pump(tester, repo, picker: _FakePicker([XFile('/picked/a.jpg')]));
+
+    await tester.tap(find.text('Gửi trả lời'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Vòi bếp');
+    await tester.tap(find.text('Thêm ảnh'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chọn từ thư viện'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Gửi trả lời').last);
+    await tester.pumpAndSettle();
+
+    expect(repo.replies, isEmpty);
+    expect(find.textContaining('Chưa có gì được gửi đi.'), findsOneWidget);
+    expect(find.byType(PhotoThumbnail), findsOneWidget); // photo kept
+    expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    expect(await InfoReplyPhotoStore().read(42), isEmpty); // not committed
+
+    // The same tap sends the full reply once the network is back.
+    await tester.tap(find.text('Gửi trả lời').last);
+    await tester.pumpAndSettle();
+    expect(repo.replies.single, (42, 'Vòi bếp'));
+    expect(
+      find.text('Trả lời của bạn đã được ghi nhận. Đã đính kèm 1/1 ảnh.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'restores pending reply photos after restart with working retry',
+    (tester) async {
+      final repo = _FakeRepo(
+        _detail(canRate: false, status: StatusEnum.IN_REVIEW),
+      );
+      final fileStore = _FakeFileStore();
+      await _pump(
+        tester,
+        repo,
+        fileStore: fileStore,
+        prefs: {
+          'lamto_report_draft_reply_photos_42': '["/owned/reply_42/leak.jpg"]',
+        },
+      );
+
+      expect(
+        find.text('Ảnh trả lời chưa tải lên được — thử lại từng ảnh.'),
+        findsOneWidget,
+      );
+      // Thumbnail with retry, never a minted filename.
+      expect(find.byType(PhotoThumbnail), findsOneWidget);
+      expect(find.text('leak.jpg'), findsNothing);
+
+      await tester.tap(find.text('Thử lại'));
+      await tester.pumpAndSettle();
+
+      expect(repo.uploads.single, (42, 'leak.jpg'));
+      expect(fileStore.deleted, ['/owned/reply_42/leak.jpg']);
+      expect(find.byType(PhotoThumbnail), findsNothing);
+      expect(await InfoReplyPhotoStore().read(42), isEmpty);
+      expect(repo.fetches, 2); // photo strip refreshed after the upload landed
+    },
+  );
 
   testWidgets('ignores malformed open information request messages', (
     tester,

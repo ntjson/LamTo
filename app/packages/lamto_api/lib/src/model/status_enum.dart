@@ -11,28 +11,28 @@ part 'status_enum.g.dart';
 
 class StatusEnum extends EnumClass {
 
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'SUBMITTED')
   static const StatusEnum SUBMITTED = _$SUBMITTED;
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'IN_REVIEW')
   static const StatusEnum IN_REVIEW = _$IN_REVIEW;
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'NEEDS_INFO')
   static const StatusEnum NEEDS_INFO = _$NEEDS_INFO;
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'DECLINED')
   static const StatusEnum DECLINED = _$DECLINED;
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'IN_PROGRESS')
   static const StatusEnum IN_PROGRESS = _$IN_PROGRESS;
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'PROPOSED')
   static const StatusEnum PROPOSED = _$PROPOSED;
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'COMPLETED')
   static const StatusEnum COMPLETED = _$COMPLETED;
-  /// * `SUBMITTED` - Submitted * `IN_REVIEW` - In review * `NEEDS_INFO` - Needs information * `DECLINED` - Declined * `IN_PROGRESS` - In progress * `PROPOSED` - Proposed * `COMPLETED` - Completed * `CLOSED` - Closed
+  /// * `SUBMITTED` - Đã gửi * `IN_REVIEW` - Đang xem xét * `NEEDS_INFO` - Cần thông tin * `DECLINED` - Đã từ chối * `IN_PROGRESS` - Đang thực hiện * `PROPOSED` - Đã đề xuất * `COMPLETED` - Hoàn tất * `CLOSED` - Đã đóng
   @BuiltValueEnumConst(wireName: r'CLOSED')
   static const StatusEnum CLOSED = _$CLOSED;
 

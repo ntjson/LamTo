@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import 'adaptive_buttons.dart';
 import 'failure.dart';
 
 /// Load-more control shared by the cursor-paginated lists. Disables itself
@@ -54,17 +55,11 @@ class _LoadMoreButtonState extends State<LoadMoreButton> {
             ),
             const SizedBox(height: 8),
           ],
-          if (_busy)
-            OutlinedButton.icon(
-              onPressed: null,
-              icon: const SizedBox.square(
-                dimension: 16,
-                child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-              ),
-              label: Text(widget.label),
-            )
-          else
-            OutlinedButton(onPressed: _load, child: Text(widget.label)),
+          AdaptiveOutlinedButton(
+            busy: _busy,
+            onPressed: _busy ? null : _load,
+            child: Text(widget.label),
+          ),
         ],
       ),
     );

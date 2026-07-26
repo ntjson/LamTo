@@ -32,11 +32,18 @@ void main() {
     );
     await tester.tap(find.text('Tải thêm'));
     await tester.pump();
-    await tester.tap(find.text('Tải thêm')); // disabled: no second page
+    // Busy keeps the label laid out (invisible under the spinner); tap the
+    // button itself — the text is intentionally not hit-testable.
+    final button = find.widgetWithText(OutlinedButton, 'Tải thêm');
+    final busySize = tester.getSize(button);
+    await tester.tap(button); // disabled: no second page
     await tester.pump();
     expect(calls, 1);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
     gate.complete();
     await tester.pumpAndSettle();
+    // Stable geometry: the busy spinner never shifted the button's size.
+    expect(tester.getSize(button), busySize);
   });
 
   testWidgets('failed page shows resident copy inline and retries', (

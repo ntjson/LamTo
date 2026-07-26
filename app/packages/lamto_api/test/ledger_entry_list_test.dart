@@ -37,5 +37,11 @@ void main() {
       // TODO
     });
 
+    // Resident-visible narrative of work completed.
+    // String whatWasFixed
+    test('to test the property `whatWasFixed`', () async {
+      // TODO
+    });
+
   });
 }

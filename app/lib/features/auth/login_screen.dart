@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/failure.dart';
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
@@ -121,11 +122,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                FilledButton(
+                AdaptiveFilledButton(
                   onPressed: _busy ? null : () => _submit(l10n),
                   child: Text(l10n.loginSubmit),
                 ),
-                TextButton(
+                AdaptiveTextButton(
                   onPressed: _busy
                       ? null
                       : () => Navigator.of(context).push(

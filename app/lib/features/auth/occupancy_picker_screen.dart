@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_buttons.dart';
+import '../../core/adaptive_scaffold.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import 'session_controller.dart';
@@ -25,8 +27,8 @@ class OccupancyPickerScreen extends ConsumerWidget {
       );
     }
     final current = me!;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.occupancyPickerTitle)),
+    return AdaptiveScaffold(
+      title: l10n.occupancyPickerTitle,
       body: PageBody(
         child: ListView(
           children: current.occupancies.map((Occupancy o) {
@@ -53,8 +55,8 @@ class _NoOccupancyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.noOccupancyTitle)),
+    return AdaptiveScaffold(
+      title: l10n.noOccupancyTitle,
       body: PageBody(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -67,7 +69,10 @@ class _NoOccupancyScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 24),
-              FilledButton(onPressed: onSignOut, child: Text(l10n.signOut)),
+              AdaptiveFilledButton(
+                onPressed: onSignOut,
+                child: Text(l10n.signOut),
+              ),
             ],
           ),
         ),

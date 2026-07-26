@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/core/occupancy.dart';
 import 'package:lamto/core/providers.dart';
+import 'package:lamto/features/reports/photo_thumbnail.dart';
 import 'package:lamto/features/reports/report_draft.dart';
 import 'package:lamto/features/reports/report_form_screen.dart';
 import 'package:lamto/features/reports/report_submitter.dart';
@@ -151,6 +152,24 @@ void main() {
     expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
   });
 
+  testWidgets('draft photos render as thumbnails with working delete', (
+    tester,
+  ) async {
+    final repo = _FakeRepo();
+    final draft = ReportDraft.fresh().copyWith(
+      text: 'Rò nước',
+      photoPaths: ['/owned/report_7/a.jpg', '/owned/report_7/b.jpg'],
+    );
+    await _pump(tester, repo, existingDraft: draft);
+
+    expect(find.byType(PhotoThumbnail), findsNWidgets(2));
+    expect(find.text('a.jpg'), findsNothing); // no minted filenames
+
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pump();
+    expect(find.byType(PhotoThumbnail), findsOneWidget);
+  });
+
   testWidgets('submits a private report when the switch is enabled', (
     tester,
   ) async {
@@ -199,7 +218,9 @@ void main() {
     expect(find.text('Đã lưu bản nháp'), findsOneWidget);
   });
 
-  testWidgets('submit action shows progress copy', (tester) async {
+  testWidgets('submit shows a busy spinner without a size jump', (
+    tester,
+  ) async {
     final repo = _FakeRepo()..createCompleter = Completer<ReportSummary>();
     final draft = ReportDraft.fresh().copyWith(
       text: 'Rò nước',
@@ -208,10 +229,13 @@ void main() {
     );
     await _pump(tester, repo, existingDraft: draft);
 
+    final idle = tester.getSize(_sendButton);
     await tester.tap(_sendButton);
     await tester.pump();
-    expect(find.text('Đang gửi…'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    // Stable geometry while busy; the action stays inert until it resolves.
+    expect(tester.getSize(_sendButton), idle);
+    expect(tester.widget<FilledButton>(_sendButton).onPressed, isNull);
 
     repo.createCompleter!.complete(_summary());
     await tester.pumpAndSettle();

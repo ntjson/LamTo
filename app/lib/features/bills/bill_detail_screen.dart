@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +7,7 @@ import 'package:lamto_api/lamto_api.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
@@ -31,9 +30,19 @@ class BillDetailScreen extends ConsumerStatefulWidget {
 class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   bool _openingDocument = false;
 
+  /// Outcome of the scan flow, rendered as an inline notice (a SnackBar
+  /// would never appear under the iOS Cupertino shell).
+  BillScanResult? _scanResult;
+
+  /// Inline document-open failure, shown under the document row.
+  bool _documentFailed = false;
+
   Future<void> _openDocument(BillDetail bill) async {
     if (_openingDocument) return;
-    setState(() => _openingDocument = true);
+    setState(() {
+      _openingDocument = true;
+      _documentFailed = false;
+    });
     File? file;
     try {
       final bytes = await ref
@@ -57,13 +66,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
         ),
       );
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.ledgerDocumentFailure),
-          ),
-        );
-      }
+      if (mounted) setState(() => _documentFailed = true);
     } finally {
       try {
         if (await file?.exists() ?? false) await file!.delete();
@@ -72,12 +75,14 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     }
   }
 
-  void _scanPayment() {
-    Navigator.of(context).push(
-      adaptivePageRoute<void>(
+  Future<void> _scanPayment() async {
+    final result = await Navigator.of(context).push(
+      adaptivePageRoute<BillScanResult>(
         builder: (_) => BillScanScreen(billId: widget.billId),
       ),
     );
+    // Back-navigation without a scan returns null: no notice.
+    if (result != null && mounted) setState(() => _scanResult = result);
   }
 
   @override
@@ -105,7 +110,18 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     final issued = bill.status == BillStatusEnum.ISSUED;
     final paid = bill.status == BillStatusEnum.PAID;
     final voided = bill.status == BillStatusEnum.VOID;
-    final dueDate = bill.dueDate;
+    final dueDate = bill.dueDate?.toLocal();
+    // DESIGN.md deadline vocabulary: unpaid past its due day is Mismatch Red
+    // with the explicit word; unpaid-but-not-due keeps the quiet treatment.
+    final now = DateTime.now();
+    final overdue =
+        issued &&
+        dueDate != null &&
+        DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).isAfter(DateTime(dueDate.year, dueDate.month, dueDate.day));
     final amountStyle = Theme.of(context).textTheme.headlineMedium?.copyWith(
       fontWeight: FontWeight.w700,
       fontFeatures: const [FontFeature.tabularFigures()],
@@ -114,6 +130,19 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Scan outcome where the eye lands on return, above the refreshed
+        // status chip it explains. Only conclusive results pop the scanner.
+        if (_scanResult case final scan?) ...[
+          StatusNotice(
+            tone: scan == BillScanResult.recorded
+                ? StatusTone.success
+                : StatusTone.error,
+            message: scan == BillScanResult.recorded
+                ? l10n.billPaymentRecorded
+                : l10n.billPaymentVoided,
+          ),
+          const SizedBox(height: 16),
+        ],
         Text(bill.title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         Text(formatVnd(bill.amountVnd), style: amountStyle),
@@ -144,7 +173,15 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
             minTileHeight: 48,
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.billDueLabel),
-            trailing: Text(DateFormat('dd/MM/yyyy').format(dueDate.toLocal())),
+            trailing: overdue
+                ? StatusChip(
+                    tone: StatusTone.error,
+                    icon: Icons.event_busy_outlined,
+                    label:
+                        '${DateFormat('dd/MM/yyyy').format(dueDate)}'
+                        ' · ${l10n.billOverdue}',
+                  )
+                : Text(DateFormat('dd/MM/yyyy').format(dueDate)),
           ),
           const Divider(),
         ] else
@@ -163,6 +200,13 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               : const Icon(Icons.open_in_new),
           onTap: _openingDocument ? null : () => _openDocument(bill),
         ),
+        if (_documentFailed) ...[
+          const SizedBox(height: 8),
+          StatusNotice(
+            tone: StatusTone.error,
+            message: l10n.ledgerDocumentFailure,
+          ),
+        ],
         if (bill.note.isNotEmpty) ...[
           const Divider(),
           Padding(
@@ -172,16 +216,15 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
         ],
         if (issued) ...[
           const SizedBox(height: 24),
-          if (defaultTargetPlatform == TargetPlatform.iOS)
-            CupertinoButton.filled(
-              onPressed: _scanPayment,
-              child: Text(l10n.billPayAction),
-            )
-          else
-            FilledButton(
-              onPressed: _scanPayment,
-              child: Text(l10n.billPayAction),
-            ),
+          Text(l10n.billPayExplainer),
+          const SizedBox(height: 8),
+          Text(l10n.billPayStep1),
+          Text(l10n.billPayStep2),
+          const SizedBox(height: 16),
+          AdaptiveFilledButton(
+            onPressed: _scanPayment,
+            child: Text(l10n.billPayAction),
+          ),
         ],
       ],
     );

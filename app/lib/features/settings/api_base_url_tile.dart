@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/adaptive_buttons.dart';
 import '../../core/api_base_url.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import '../auth/session_controller.dart';
 
 /// Collapsible API server URL editor (login + account).
@@ -24,6 +26,10 @@ class _ApiBaseUrlTileState extends ConsumerState<ApiBaseUrlTile> {
   String? _error;
   bool _busy = false;
 
+  /// Inline saved confirmation — a SnackBar has no Material Scaffold host
+  /// under the iOS Cupertino shell, so it would never render there.
+  bool _saved = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,16 +46,13 @@ class _ApiBaseUrlTileState extends ConsumerState<ApiBaseUrlTile> {
     setState(() {
       _busy = true;
       _error = null;
+      _saved = false;
     });
     try {
       await ref.read(apiBaseUrlProvider.notifier).setUrl(_controller.text);
       // Old knox tokens belong to the previous host.
       await ref.read(sessionControllerProvider.notifier).signOut();
-      if (mounted) {
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text(l10n.apiBaseUrlSaved)));
-      }
+      if (mounted) setState(() => _saved = true);
     } on FormatException {
       if (mounted) setState(() => _error = l10n.apiBaseUrlInvalid);
     } catch (_) {
@@ -63,16 +66,13 @@ class _ApiBaseUrlTileState extends ConsumerState<ApiBaseUrlTile> {
     setState(() {
       _busy = true;
       _error = null;
+      _saved = false;
     });
     try {
       await ref.read(apiBaseUrlProvider.notifier).clearOverride();
       _controller.text = ref.read(apiBaseUrlProvider);
       await ref.read(sessionControllerProvider.notifier).signOut();
-      if (mounted) {
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text(l10n.apiBaseUrlSaved)));
-      }
+      if (mounted) setState(() => _saved = true);
     } catch (_) {
       if (mounted) setState(() => _error = l10n.errGeneric);
     } finally {
@@ -126,18 +126,22 @@ class _ApiBaseUrlTileState extends ConsumerState<ApiBaseUrlTile> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ],
+        if (_saved) ...[
+          const SizedBox(height: 8),
+          StatusNotice(tone: StatusTone.success, message: l10n.apiBaseUrlSaved),
+        ],
         const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: FilledButton(
+              child: AdaptiveFilledButton(
                 key: const Key('api_base_url_save'),
                 onPressed: _busy ? null : () => _save(l10n),
                 child: Text(l10n.apiBaseUrlSave),
               ),
             ),
             const SizedBox(width: 8),
-            TextButton(
+            AdaptiveTextButton(
               key: const Key('api_base_url_reset'),
               onPressed: _busy ? null : () => _reset(l10n),
               child: Text(l10n.apiBaseUrlReset),

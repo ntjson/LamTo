@@ -21,5 +21,6 @@ Name | Type | Description | Notes
 **category** | **String** |  |
 **photos** | [**BuiltList&lt;ReportPhoto&gt;**](ReportPhoto.md) |  |
 **cases** | [**BuiltList&lt;ReportCase&gt;**](ReportCase.md) |  |
+**ledgerEntryIds** | **BuiltList&lt;int&gt;** |  |
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

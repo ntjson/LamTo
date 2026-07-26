@@ -13,12 +13,17 @@ class AdaptiveScaffold extends StatelessWidget {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(middle: Text(title)),
+        // top: true (default): bodies use explicit paddings, so they must not
+        // be asked to consume MediaQuery.padding themselves — with top: false
+        // the first ~90pt of content hides under the translucent bar.
         child: SafeArea(
-          top: false,
           child: Material(color: Colors.transparent, child: body),
         ),
       );
     }
-    return Scaffold(appBar: AppBar(title: Text(title)), body: body);
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: body,
+    );
   }
 }

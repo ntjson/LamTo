@@ -1,4 +1,5 @@
 import 'package:built_collection/built_collection.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -95,6 +96,17 @@ class _Repo implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Offline: the mark-read PATCH dies, the announcement must still open.
+class _OfflineMarkRepo extends _Repo {
+  @override
+  Future<void> markNotificationRead(int id) async {
+    throw DioException.connectionError(
+      requestOptions: RequestOptions(path: '/notifications/$id/read'),
+      reason: 'offline',
+    );
+  }
+}
+
 Future<void> _pumpHome(WidgetTester tester, _Repo repo) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -138,6 +150,70 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Mất nước tầng 8'), findsNothing);
     expect(find.text('Bảo trì thang máy'), findsOneWidget);
+  });
+
+  testWidgets('bill and announcement peers share one grouped-row pattern', (
+    tester,
+  ) async {
+    final repo = _Repo();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          newestUnpaidBillProvider.overrideWith(
+            (ref) async => BillSummary(
+              (b) => b
+                ..id = 7
+                ..title = 'Phí tháng 7'
+                ..amountVnd = 250000
+                ..status = BillStatusEnum.ISSUED
+                ..period = '2026-07'
+                ..issuedAt = DateTime.utc(2026, 7, 1),
+            ),
+          ),
+          reportsRepositoryProvider.overrideWithValue(_Reports()),
+          transparencyRepositoryProvider.overrideWithValue(repo),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Peer rows read as the same pattern: grouped list rows, no card stack.
+    expect(find.byType(Card), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.text('Hóa đơn tòa nhà'),
+        matching: find.byType(ListTile),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.text('Mất nước tầng 8'),
+        matching: find.byType(ListTile),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('announcement opens even when mark-read fails offline', (
+    tester,
+  ) async {
+    final repo = _OfflineMarkRepo();
+    await _pumpHome(tester, repo);
+
+    await tester.tap(find.text('Mất nước tầng 8'));
+    await tester.pumpAndSettle();
+
+    // The dialog opened; the row simply stays unread for a later refresh.
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Tạm ngừng cấp nước từ 14:00 đến 16:00.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('announcement highlight fits compact screens at large text', (

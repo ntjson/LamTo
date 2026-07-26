@@ -83,7 +83,7 @@ def proposal_list(request):
     proposal_items = [
         {
             "url": f"/s/proposals/{p.pk}/",
-            "title": f"Proposal #{p.pk} · {p.case.category if p.case_id else p.current_version.purpose if p.current_version else 'Standalone'}"
+            "title": f"Proposal #{p.pk} · {p.case.get_category_display() if p.case_id else p.current_version.purpose if p.current_version else 'Standalone'}"
             + (
                 f" · {p.current_version.contractor_name}"
                 if p.current_version
@@ -282,7 +282,7 @@ def proposal_create(request, pk):
                     proposal, membership, amount_vnd=create_form.cleaned_data["amount_vnd"],
                     contractor_name=create_form.cleaned_data["contractor_name"],
                     fund_code=create_form.cleaned_data.get("fund_code") or "GENERAL",
-                    purpose=create_form.cleaned_data.get("purpose") or case.category,
+                    purpose=create_form.cleaned_data.get("purpose") or case.get_category_display(),
                     proposed_action=create_form.cleaned_data.get("proposed_action") or "Perform proposed maintenance",
                     expected_schedule=create_form.cleaned_data.get("expected_schedule") or "To be scheduled",
                     quotation_versions=[original], event_id=new_event_id(),

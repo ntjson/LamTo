@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/error_retry.dart';
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/failure.dart';
 import '../../core/format.dart';
@@ -14,15 +15,25 @@ import '../ledger/evidence_labels.dart';
 import 'proposals_list_screen.dart';
 import 'proposals_repository.dart';
 
-class ProposalDetailScreen extends ConsumerWidget {
+class ProposalDetailScreen extends ConsumerStatefulWidget {
   const ProposalDetailScreen({required this.proposalId, super.key});
 
   final int proposalId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProposalDetailScreen> createState() =>
+      _ProposalDetailScreenState();
+}
+
+class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
+  /// Shows the inline thanks notice after a rating — SnackBars never render
+  /// under the iOS Cupertino shell.
+  bool _rated = false;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final proposal = ref.watch(proposalDetailProvider(proposalId));
+    final proposal = ref.watch(proposalDetailProvider(widget.proposalId));
     return AdaptiveScaffold(
       title: l10n.proposalsSegment,
       body: PageBody(
@@ -31,7 +42,8 @@ class ProposalDetailScreen extends ConsumerWidget {
           AsyncError(:final error) => Center(
             child: ErrorRetry(
               error: error,
-              onRetry: () => ref.invalidate(proposalDetailProvider(proposalId)),
+              onRetry: () =>
+                  ref.invalidate(proposalDetailProvider(widget.proposalId)),
             ),
           ),
           _ => const Center(child: CircularProgressIndicator.adaptive()),
@@ -54,12 +66,15 @@ class ProposalDetailScreen extends ConsumerWidget {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Chip(label: Text(proposalStatusLabel(proposal.status, l10n))),
+          child: StatusChip(
+            tone: proposalStatusTone(proposal.status),
+            label: proposalStatusLabel(proposal.status, l10n),
+          ),
         ),
         _Field(l10n.proposalProblem, proposal.purpose),
         _Field(l10n.proposalAction, proposal.proposedAction),
         _Field(l10n.proposalCost, formatVnd(proposal.amountVnd), amount: true),
-        _Field(l10n.proposalFund, proposal.fundCode),
+        _Field(l10n.proposalFund, _fundLabel(proposal.fundCode, l10n)),
         _Field(l10n.proposalContractor, proposal.contractorName),
         _Field(l10n.proposalSchedule, proposal.expectedSchedule),
         const Divider(height: 32),
@@ -104,39 +119,46 @@ class ProposalDetailScreen extends ConsumerWidget {
                 : l10n.proposalSettled,
           ),
         ],
+        // Inline where the rate CTA sits (visible on iOS, unlike a SnackBar).
+        if (_rated) ...[
+          const SizedBox(height: 24),
+          StatusNotice(tone: StatusTone.success, message: l10n.rateThanks),
+        ],
         if (proposal.status == 'COMPLETED' && proposal.canRate) ...[
           const SizedBox(height: 24),
-          FilledButton.icon(
+          AdaptiveFilledButton(
             icon: const Icon(Icons.star_outline),
-            label: Text(l10n.proposalRateCta),
-            onPressed: () => _openRating(context, ref, l10n),
+            child: Text(l10n.proposalRateCta),
+            onPressed: () => _openRating(context),
           ),
         ],
       ],
     );
   }
 
-  Future<void> _openRating(
-    BuildContext context,
-    WidgetRef ref,
-    AppLocalizations l10n,
-  ) async {
+  Future<void> _openRating(BuildContext context) async {
     final rated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _RateProposalSheet(proposalId: proposalId),
+      builder: (_) => _RateProposalSheet(proposalId: widget.proposalId),
     );
-    if (rated == true && context.mounted) {
-      ref.invalidate(proposalDetailProvider(proposalId));
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.rateThanks)));
+    if (rated == true && mounted) {
+      ref.invalidate(proposalDetailProvider(widget.proposalId));
+      setState(() => _rated = true);
     }
   }
 }
 
 String _date(DateTime value) =>
     DateFormat('dd/MM/yyyy').format(value.toLocal());
+
+/// fund_code is free-text staff input; unknown codes fall back to an honest
+/// generic label instead of leaking the raw value (Vietnamese-First Rule).
+String _fundLabel(String code, AppLocalizations l10n) => switch (code) {
+  'GENERAL' => l10n.fundGeneral,
+  'MAINTENANCE' => l10n.fundMaintenance,
+  _ => l10n.fundOther,
+};
 
 class _Field extends StatelessWidget {
   const _Field(this.label, this.value, {this.amount = false});
@@ -217,7 +239,7 @@ class _RateProposalSheetState extends ConsumerState<_RateProposalSheet> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           const SizedBox(height: 8),
-          FilledButton(
+          AdaptiveFilledButton(
             onPressed: _busy ? null : _submit,
             child: Text(l10n.rateSubmit),
           ),

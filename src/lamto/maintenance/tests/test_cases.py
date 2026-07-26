@@ -48,7 +48,7 @@ class CaseFixture:
         job = TriageJob.objects.create(report=report)
         TriageSuggestion.objects.create(
             job=job,
-            category="Elevator",
+            category="ELEVATOR",
             interpreted_location="Lift 2",
             urgency="MEDIUM",
             confidence_percent=90,
@@ -137,6 +137,18 @@ class CaseTests(CaseFixture, TestCase):
         self.assertEqual(set(case.reports.values_list("id", flat=True)), {first.id, second.id})
         self.assertEqual(CaseReport.objects.filter(case=case, report=second).count(), 1)
         self.assertEqual(AuditEvent.objects.filter(action="case.group", result="accepted").count(), 1)
+
+    def test_confirmation_normalizes_category_to_codes(self):
+        legacy = confirm_triage(
+            self.make_report(1), self.operator, "Water leak", "HIGH", self.location, "Maintenance", 60
+        )
+        self.assertEqual(legacy.category, "WATER_LEAK")
+        self.assertEqual(legacy.decision.category, "WATER_LEAK")
+
+        unknown = confirm_triage(
+            self.make_report(2), self.operator, "Sơn lại hành lang", "LOW", self.location, "Maintenance", 60
+        )
+        self.assertEqual(unknown.category, "OTHER")
 
     def test_grouping_rejects_report_already_in_an_active_case(self):
         first, second, third = self.make_report(1), self.make_report(2), self.make_report(3)

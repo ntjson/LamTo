@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import Document, DocumentVersion
 from lamto.finance.models import MaintenanceFundEntry
-from lamto.maintenance.models import BuildingLocation
+from lamto.maintenance.models import BuildingLocation, CaseCategory
 from lamto.maintenance.triage import confirm_triage
 from lamto.notifications.models import NotificationPreference
 from lamto.notifications.services import PREFERENCE_EVENT_CHOICES
@@ -25,8 +25,10 @@ class MembershipSwitchForm(forms.Form):
 
 
 class ConfirmTriageForm(forms.Form):
-    category = forms.CharField(
-        max_length=128, label=_("Category"), widget=forms.TextInput(attrs={"class": "input"})
+    category = forms.ChoiceField(
+        choices=CaseCategory.choices,
+        label=_("Category"),
+        widget=forms.Select(attrs={"class": "input"}),
     )
     urgency = forms.ChoiceField(
         # Must match lamto.maintenance.ai.URGENCIES / confirm_triage.

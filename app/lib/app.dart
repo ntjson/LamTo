@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import 'core/adaptive_buttons.dart';
 import 'core/adaptive_page_route.dart';
 import 'core/error_retry.dart';
 import 'core/failure.dart';
@@ -241,7 +242,7 @@ class BootstrapErrorScreen extends ConsumerWidget {
                   // Expanded so tunnel URL is visible without hunting.
                   const ApiBaseUrlTile(initiallyExpanded: true),
                   const SizedBox(height: 16),
-                  TextButton(
+                  AdaptiveTextButton(
                     onPressed: () =>
                         ref.read(sessionControllerProvider.notifier).signOut(),
                     child: Text(l10n.signOut),

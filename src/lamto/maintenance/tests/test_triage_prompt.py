@@ -1,4 +1,5 @@
 from lamto.maintenance.triage_prompt import (
+    CATEGORY_CODES,
     SUGGESTED_DEPARTMENTS,
     build_system_prompt,
 )
@@ -23,6 +24,9 @@ def test_system_prompt_covers_contract_taxonomy_and_untrusted_warning():
     assert "provider_request_id" not in prompt
     # Taxonomy guidance is present.
     assert SUGGESTED_DEPARTMENTS[0] in prompt
+    # Category codes are the required closed set.
+    for code in CATEGORY_CODES:
+        assert code in prompt
     # Prompt-injection defense is present.
     assert "UNTRUSTED" in prompt
     # Text-only triage.

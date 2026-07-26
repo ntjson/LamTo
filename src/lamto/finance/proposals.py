@@ -104,7 +104,7 @@ def build_proposal_evidence_payload(proposal, amount_vnd, contractor_name, quota
         raise ValidationError("Proposal amount must be a positive integer.")
     if not isinstance(contractor_name, str) or not contractor_name.strip():
         raise ValidationError("Contractor name is required.")
-    purpose = proposal.case.category if purpose is None and proposal.case_id else (purpose or "")
+    purpose = proposal.case.get_category_display() if purpose is None and proposal.case_id else (purpose or "")
     versions = _quotation_versions(proposal.building_id or proposal.case.building_id, quotation_versions)
     number = (ProposalVersion.objects.filter(proposal=proposal).aggregate(Max("number"))["number__max"] or 0) + 1
     _, evidence_payload = _submission_snapshot(

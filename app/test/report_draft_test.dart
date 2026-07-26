@@ -49,6 +49,26 @@ void main() {
     expect(await store.read(2), isNull);
   });
 
+  test('hasUnsentWork sees non-empty drafts and pending reply photos', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = ReportDraftStore();
+    expect(await store.hasUnsentWork(), isFalse);
+
+    // An empty draft record is not work a resident would lose.
+    await store.write(7, ReportDraft.fresh());
+    expect(await store.hasUnsentWork(), isFalse);
+
+    await store.write(7, ReportDraft.fresh().copyWith(text: 'bể ống nước'));
+    expect(await store.hasUnsentWork(), isTrue);
+
+    await store.clear(7);
+    expect(await store.hasUnsentWork(), isFalse);
+
+    // Pending info-reply photos count too (shared prefix, list payload).
+    await InfoReplyPhotoStore().write(9, ['/owned/reply.jpg']);
+    expect(await store.hasUnsentWork(), isTrue);
+  });
+
   test(
     'serialized writes preserve last draft under concurrent autosave',
     () async {
@@ -196,6 +216,64 @@ void main() {
 
       expect(File(pathA).existsSync(), isFalse);
       expect(File(pathB).existsSync(), isFalse);
+    });
+
+    test('importReplyPickerPath copies under the reply dir, out of reach of '
+        'clearOccupancy, wiped by clearAll', () async {
+      final source = File('${root.path}/reply_src.jpg')
+        ..writeAsBytesSync([5, 6]);
+
+      final owned = await photos.importReplyPickerPath(
+        reportId: 7,
+        sourcePath: source.path,
+      );
+
+      expect(owned, startsWith('${root.path}/reply_7/'));
+      expect(await File(owned).readAsBytes(), [5, 6]);
+
+      // Same-numbered occupancy cleanup must not touch reply copies.
+      await photos.clearOccupancy(7);
+      expect(File(owned).existsSync(), isTrue);
+
+      await photos.clearAll(); // logout wipe covers reply copies
+      expect(File(owned).existsSync(), isFalse);
+    });
+  });
+
+  group('InfoReplyPhotoStore', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('round-trips pending paths; empty write removes the record', () async {
+      final store = InfoReplyPhotoStore();
+      expect(await store.read(42), isEmpty);
+
+      await store.write(42, ['/owned/reply_42/a.jpg', '/owned/reply_42/b.jpg']);
+      expect(await store.read(42), [
+        '/owned/reply_42/a.jpg',
+        '/owned/reply_42/b.jpg',
+      ]);
+
+      await store.write(42, ['/owned/reply_42/b.jpg']);
+      expect(await store.read(42), ['/owned/reply_42/b.jpg']);
+
+      await store.write(42, []);
+      expect(await store.read(42), isEmpty);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getKeys().where((k) => k.contains('reply_photos')),
+        isEmpty,
+      );
+    });
+
+    test('logout ReportDraftStore.clearAll drops reply records too', () async {
+      final store = InfoReplyPhotoStore();
+      await store.write(42, ['/owned/reply_42/a.jpg']);
+
+      await ReportDraftStore().clearAll();
+
+      expect(await store.read(42), isEmpty);
     });
   });
 }

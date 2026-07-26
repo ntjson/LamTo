@@ -58,6 +58,7 @@ def published_ledger_entries(building_id):
         )
         .select_related(
             "case",
+            "case__decision__report",
             "proposal",
             "proposal__current_version",
             "settlement",
@@ -194,12 +195,15 @@ def fund_series(building_id, *, range_key):
     )
 
 
-def _ledger_story_fields(entry, payload):
+def ledger_story_fields(entry):
     """Resident-visible plain-language story for §6.3(6).
 
     Prefer the latest case progress narrative; fall back to report text /
-    case category.
+    case category. Shared by the list and detail serializers so both wire
+    the same ``what_was_fixed`` value.
     """
+    # ponytail: one updates query per entry on the 20-row list page;
+    # prefetch with a window function if ledger pages ever feel slow.
     case = entry.case
     work = (
         case.updates.order_by("-created_at", "-pk").first()
@@ -253,7 +257,7 @@ def ledger_entry_proof(entry):
         "payload_hash": event.payload_hash,
         "evidence_level": evidence_level(event.status),
     }
-    story = _ledger_story_fields(entry, payload)
+    story = ledger_story_fields(entry)
     return {
         "payload": payload,
         "proposed_amount": (

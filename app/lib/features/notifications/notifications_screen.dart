@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
@@ -142,18 +143,22 @@ class NotificationsScreen extends ConsumerWidget {
                 await ref.read(notificationsProvider.future);
               } catch (_) {}
             },
-            child: ListView(
+            // Builder-based so a long paginated feed lays out lazily.
+            child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                if (value.isEmpty)
-                  Padding(
+              itemCount: value.isEmpty
+                  ? 1
+                  : value.length + (controller.hasMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (value.isEmpty) {
+                  return Padding(
                     padding: const EdgeInsets.only(top: 120),
                     child: Center(
                       child: Column(
                         children: [
                           Text(l10n.notificationsEmpty),
                           const SizedBox(height: 12),
-                          OutlinedButton(
+                          AdaptiveOutlinedButton(
                             onPressed: () => Navigator.maybePop(context),
                             child: Text(
                               MaterialLocalizations.of(
@@ -164,34 +169,43 @@ class NotificationsScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                  ),
-                for (final notice in value)
-                  ListTile(
-                    minTileHeight: 64,
-                    leading: Icon(
+                  );
+                }
+                if (index == value.length) {
+                  return LoadMoreButton(
+                    label: l10n.notificationsLoadMore,
+                    onLoadMore: controller.loadMore,
+                  );
+                }
+                final notice = value[index];
+                return ListTile(
+                  minTileHeight: 64,
+                  // The glyph/weight difference is visual only; the state
+                  // word makes unread audible (Separate States Rule).
+                  leading: Semantics(
+                    label: notice.readAt == null
+                        ? l10n.notificationUnread
+                        : l10n.notificationRead,
+                    child: Icon(
                       notice.readAt == null
                           ? Icons.circle_notifications
                           : Icons.notifications_none,
                     ),
-                    title: Text(
-                      notice.subject,
-                      style: notice.readAt == null
-                          ? const TextStyle(fontWeight: FontWeight.w600)
-                          : null,
-                    ),
-                    subtitle: Text(
-                      notice.body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => _open(context, ref, controller, notice),
                   ),
-                if (controller.hasMore)
-                  LoadMoreButton(
-                    label: l10n.notificationsLoadMore,
-                    onLoadMore: controller.loadMore,
+                  title: Text(
+                    notice.subject,
+                    style: notice.readAt == null
+                        ? const TextStyle(fontWeight: FontWeight.w600)
+                        : null,
                   ),
-              ],
+                  subtitle: Text(
+                    notice.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => _open(context, ref, controller, notice),
+                );
+              },
             ),
           ),
           AsyncError(:final error) => Center(

@@ -207,9 +207,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reportSubmit => 'Gửi phản ánh';
 
   @override
-  String get reportSubmitting => 'Đang gửi…';
-
-  @override
   String get reportDraftSaving => 'Đang lưu bản nháp…';
 
   @override
@@ -251,7 +248,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get privateToggleSubtitle =>
-      'Chỉ bạn và Ban quản lý xem được yêu cầu này. Yêu cầu riêng tư không đưa vào đề xuất cộng đồng.';
+      'Chỉ bạn và Ban quản lý xem được yêu cầu này. Yêu cầu riêng tư không xuất hiện trong đề xuất hay sổ quỹ công khai.';
 
   @override
   String get privateBadge => 'Riêng tư';
@@ -264,12 +261,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get issuesLoadMore => 'Tải thêm';
-
-  @override
-  String get statusOpen => 'Đang mở';
-
-  @override
-  String get statusResolved => 'Đã xử lý';
 
   @override
   String get statusSubmitted => 'Đã gửi';
@@ -313,6 +304,42 @@ class AppLocalizationsVi extends AppLocalizations {
   String timelineCase(String category) {
     return 'Đã ghép vào yêu cầu xử lý: $category';
   }
+
+  @override
+  String get timelineCaseNoCategory => 'Đã ghép vào yêu cầu xử lý';
+
+  @override
+  String get categoryElevator => 'Thang máy';
+
+  @override
+  String get categoryWaterLeak => 'Rò rỉ nước';
+
+  @override
+  String get categoryElectricalFault => 'Sự cố điện';
+
+  @override
+  String get categoryHeatingCooling => 'Điều hòa / sưởi ấm';
+
+  @override
+  String get categoryLighting => 'Chiếu sáng';
+
+  @override
+  String get categoryDoorLock => 'Cửa / khóa';
+
+  @override
+  String get categoryAppliance => 'Thiết bị gia dụng';
+
+  @override
+  String get categoryStructural => 'Kết cấu';
+
+  @override
+  String get categoryCleanliness => 'Vệ sinh';
+
+  @override
+  String get categoryNoise => 'Tiếng ồn';
+
+  @override
+  String get categoryOther => 'Khác';
 
   @override
   String timelineWork(String status, String deadline) {
@@ -372,6 +399,46 @@ class AppLocalizationsVi extends AppLocalizations {
       'Bạn cũng có thể thêm ảnh ở phần ảnh bên dưới.';
 
   @override
+  String infoReplySavedPhotos(int uploaded, int total) {
+    return 'Trả lời của bạn đã được ghi nhận. Đã đính kèm $uploaded/$total ảnh.';
+  }
+
+  @override
+  String get infoReplyPhotosPending =>
+      'Trả lời của bạn đã được ghi nhận. Một số ảnh chưa tải lên được — thử lại từng ảnh bên dưới.';
+
+  @override
+  String get infoReplyNotSent =>
+      'Chưa có gì được gửi đi. Nội dung trả lời và ảnh vẫn còn ở đây — hãy thử lại.';
+
+  @override
+  String get infoReplyPendingPhotosTitle =>
+      'Ảnh trả lời chưa tải lên được — thử lại từng ảnh.';
+
+  @override
+  String get infoReplyClose => 'Đóng';
+
+  @override
+  String photoNofM(int n, int m) {
+    return 'Ảnh $n/$m';
+  }
+
+  @override
+  String get photoUploadFailed => 'Chưa tải lên được';
+
+  @override
+  String get photoLoading => 'Đang tải ảnh…';
+
+  @override
+  String get photoLoadFailed => 'Không tải được ảnh.';
+
+  @override
+  String get photoBeforeRepair => 'Ảnh trước khi sửa';
+
+  @override
+  String get photoAfterRepair => 'Ảnh sau khi sửa';
+
+  @override
   String get workStatusAssigned => 'Đã giao';
 
   @override
@@ -402,6 +469,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get homeFundOutflows => 'Chi (30 ngày)';
 
   @override
+  String get homeFundChartCaption => 'Số dư quỹ · 6 tháng gần nhất';
+
+  @override
   String get homeActiveReports => 'Phản ánh đang mở';
 
   @override
@@ -429,6 +499,17 @@ class AppLocalizationsVi extends AppLocalizations {
   String get notificationsLoadMore => 'Tải thêm';
 
   @override
+  String notificationsUnreadCount(int n) {
+    return '$n thông báo chưa đọc';
+  }
+
+  @override
+  String get notificationUnread => 'Chưa đọc';
+
+  @override
+  String get notificationRead => 'Đã đọc';
+
+  @override
   String get ledgerTitle => 'Sổ quỹ tòa nhà';
 
   @override
@@ -439,6 +520,12 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get ledgerAllTime => 'Tất cả';
+
+  @override
+  String get ledgerYearLabel => 'Năm';
+
+  @override
+  String get ledgerMonthLabel => 'Tháng';
 
   @override
   String get ledgerLoadMore => 'Tải thêm';
@@ -507,11 +594,19 @@ class AppLocalizationsVi extends AppLocalizations {
       'Khoản chi đã được công bố nhưng còn bước xác minh chưa hoàn tất. Xem chuỗi trách nhiệm bên dưới.';
 
   @override
+  String get ledgerConclusionMismatch =>
+      'Bản ghi này không khớp với bằng chứng đã neo';
+
+  @override
+  String get ledgerConclusionMismatchBody =>
+      'Dữ liệu đã công bố khác với bằng chứng đã neo cho khoản chi này. Hãy báo ban quản lý kiểm tra khoản chi.';
+
+  @override
   String get ledgerChainTitle => 'Chuỗi trách nhiệm';
 
   @override
   String get ledgerChainHint =>
-      'Mở để xem khoản chi đi từ phản ánh đến xác minh như thế nào';
+      'Khoản chi đi từ phản ánh đến xác minh độc lập theo các bước dưới đây.';
 
   @override
   String get ledgerChainReports => 'Phản ánh và lý do';
@@ -530,6 +625,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get ledgerCorrections => 'Điều chỉnh';
+
+  @override
+  String get ledgerCorrectionRecorded => 'Đã ghi nhận điều chỉnh';
 
   @override
   String get ledgerDocuments => 'Tài liệu';
@@ -589,13 +687,14 @@ class AppLocalizationsVi extends AppLocalizations {
   String get accountPreferences => 'Thông báo';
 
   @override
-  String get accountPrefEmail => 'Email';
-
-  @override
-  String get accountPrefPush => 'Đẩy (push)';
+  String get accountPrefAll => 'Nhận tất cả thông báo';
 
   @override
   String get accountSignOutAll => 'Đăng xuất mọi thiết bị';
+
+  @override
+  String get signOutUnsentWorkWarning =>
+      'Phản ánh đang soạn và ảnh chưa gửi trên thiết bị này sẽ bị xóa.';
 
   @override
   String get commonCancel => 'Hủy';
@@ -735,24 +834,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get gateReaderThrottled => 'Thao tác quá nhanh. Vui lòng chờ.';
 
   @override
-  String get prefReportReceipt => 'Đã nhận phản ánh';
-
-  @override
-  String get prefTriageStatus => 'Phản ánh được xem xét';
-
-  @override
-  String get prefWorkCompleted => 'Công việc hoàn thành';
-
-  @override
-  String get prefLedgerPublication => 'Khoản chi được công bố';
-
-  @override
-  String get prefCorrectionStatus => 'Điều chỉnh';
-
-  @override
-  String get prefBuildingAnnouncement => 'Thông báo của ban quản lý';
-
-  @override
   String get fundChartTitle => 'Số dư quỹ';
 
   @override
@@ -775,6 +856,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String fundChartOutflowValue(String amount) {
     return 'chi $amount';
   }
+
+  @override
+  String get fundChartInflowLabel => 'Thu';
+
+  @override
+  String get fundChartOutflowLabel => 'Chi';
 
   @override
   String get fundChartRange30d => '30 ngày';
@@ -822,6 +909,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get proposalFund => 'Nguồn kinh phí';
 
   @override
+  String get fundGeneral => 'Quỹ chung';
+
+  @override
+  String get fundMaintenance => 'Quỹ bảo trì';
+
+  @override
+  String get fundOther => 'Quỹ của tòa nhà';
+
+  @override
   String get proposalContractor => 'Nhà thầu';
 
   @override
@@ -866,10 +962,24 @@ class AppLocalizationsVi extends AppLocalizations {
   String get billDueLabel => 'Hạn';
 
   @override
+  String get billOverdue => 'Quá hạn';
+
+  @override
   String get billViewFile => 'Xem hóa đơn';
 
   @override
   String get billPayAction => 'Tôi đã thanh toán';
+
+  @override
+  String get billPayExplainer =>
+      'Quét QR chỉ ghi nhận khoản tiền bạn đã chuyển — không thực hiện thanh toán.';
+
+  @override
+  String get billPayStep1 => '1. Chuyển khoản bằng app ngân hàng.';
+
+  @override
+  String get billPayStep2 =>
+      '2. Quay lại đây, quét mã QR trên hóa đơn để ghi nhận.';
 
   @override
   String get billStatusIssued => 'Chưa thanh toán';

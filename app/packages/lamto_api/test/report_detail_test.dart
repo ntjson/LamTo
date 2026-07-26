@@ -72,5 +72,10 @@ void main() {
       // TODO
     });
 
+    // BuiltList<int> ledgerEntryIds
+    test('to test the property `ledgerEntryIds`', () async {
+      // TODO
+    });
+
   });
 }

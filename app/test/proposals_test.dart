@@ -6,6 +6,7 @@ import 'package:lamto/features/proposals/proposal_detail_screen.dart';
 import 'package:lamto/features/proposals/proposals_list_screen.dart';
 import 'package:lamto/features/proposals/proposals_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
+import 'package:lamto/theme.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 Proposal _proposal({
@@ -135,6 +136,14 @@ void main() {
       _host(const ProposalDetailScreen(proposalId: 7), repository),
     );
     await tester.pumpAndSettle();
+
+    // fund_code renders as a localized label, never the raw code.
+    expect(find.text('General fund', skipOffstage: false), findsOneWidget);
+    expect(find.text('GENERAL', skipOffstage: false), findsNothing);
+
+    // Status uses the one system pill, not a second Material Chip shape.
+    expect(find.byType(Chip), findsNothing);
+    expect(find.byType(StatusChip), findsWidgets);
 
     for (final label in [
       'Problem or need',

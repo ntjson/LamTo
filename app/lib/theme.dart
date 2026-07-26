@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 /// DESIGN.md light tokens. Accountability Indigo is primary (≤10% of a screen).
 class LamToColors {
   static const primary = Color(0xFF2F3A8F);
-  static const flowOut = Color(0xFF5B6577);
   static const onPrimary = Color(0xFFFFFFFF);
   static const bg = Color(0xFFF6F7FB);
   static const surface = Color(0xFFFFFFFF);
@@ -27,13 +26,14 @@ class LamToColors {
 class LamToColorsDark {
   // 6.34:1 on Night Ground. The light primary remains a fill color only.
   static const primary = Color(0xFF8A97E8);
-  static const flowOut = Color(0xFFA0A8B8);
   static const bg = Color(0xFF12141C);
   static const surface = Color(0xFF1C2030);
   static const ink = Color(0xFFE8EAF2);
   static const muted = Color(0xFFA0A8B8);
   static const border = Color(0xFF3A4158);
-  static const onPrimary = Color(0xFFFFFFFF);
+  // Night Ground ink on the light dark-primary (≈6.9:1). White fails AA
+  // (2.74:1) on every filled button in dark mode.
+  static const onPrimary = Color(0xFF12141C);
   // Semantic tones for Night surfaces: deep tinted chip fills with light ink
   // (the light pastels would glare on Night Ground and fail contrast).
   static const success = Color(0xFF66D19E);
@@ -122,6 +122,60 @@ class StatusChip extends StatelessWidget {
   }
 }
 
+/// Inline outcome notice: tinted semantic container + icon + text. This is
+/// the app's snack-bar replacement — snack bars need a Material Scaffold host
+/// that the iOS Cupertino tab shell does not provide, so outcomes render
+/// inline where the user is looking. Live-region so screen readers announce
+/// the state change (Separate States Rule: tone + icon + text, never color
+/// alone).
+class StatusNotice extends StatelessWidget {
+  const StatusNotice({
+    required this.tone,
+    required this.message,
+    this.icon,
+    super.key,
+  });
+
+  final StatusTone tone;
+  final String message;
+  final IconData? icon;
+
+  static IconData _defaultIcon(StatusTone tone) => switch (tone) {
+    StatusTone.success => Icons.check_circle_outline,
+    StatusTone.error => Icons.error_outline,
+    StatusTone.warning || StatusTone.info => Icons.info_outline,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = statusToneColors(context, tone);
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.bg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon ?? _defaultIcon(tone), color: colors.fg),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: colors.fg),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Tabular-figure body style for amounts inside list rows. Full Record Ink on
 /// purpose: financial figures are primary copy (DESIGN.md), not muted metadata.
 TextStyle? listAmountStyle(BuildContext context) => Theme.of(context)
@@ -148,7 +202,7 @@ ThemeData lamToTheme(Brightness brightness) {
     seedColor: LamToColors.primary,
     brightness: brightness,
     primary: isDark ? LamToColorsDark.primary : LamToColors.primary,
-    onPrimary: LamToColors.onPrimary,
+    onPrimary: isDark ? LamToColorsDark.onPrimary : LamToColors.onPrimary,
     // Dark keeps the derived light-tone error: #B42318 on Night Ground is
     // ~2.8:1, below the WCAG AA baseline for error text.
     error: isDark ? null : LamToColors.error,

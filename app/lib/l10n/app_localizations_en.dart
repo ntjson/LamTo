@@ -207,9 +207,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportSubmit => 'Send report';
 
   @override
-  String get reportSubmitting => 'Sending…';
-
-  @override
   String get reportDraftSaving => 'Saving draft…';
 
   @override
@@ -251,7 +248,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privateToggleSubtitle =>
-      'Only you and Management can see this request. Private requests are not part of community proposals.';
+      'Only you and Management can see this request. Private requests never appear in the public proposals or ledger.';
 
   @override
   String get privateBadge => 'Private';
@@ -264,12 +261,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issuesLoadMore => 'Load more';
-
-  @override
-  String get statusOpen => 'Open';
-
-  @override
-  String get statusResolved => 'Resolved';
 
   @override
   String get statusSubmitted => 'Submitted';
@@ -313,6 +304,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String timelineCase(String category) {
     return 'Grouped into case: $category';
   }
+
+  @override
+  String get timelineCaseNoCategory => 'Grouped into a maintenance case';
+
+  @override
+  String get categoryElevator => 'Elevator';
+
+  @override
+  String get categoryWaterLeak => 'Water leak';
+
+  @override
+  String get categoryElectricalFault => 'Electrical fault';
+
+  @override
+  String get categoryHeatingCooling => 'Heating / cooling';
+
+  @override
+  String get categoryLighting => 'Lighting';
+
+  @override
+  String get categoryDoorLock => 'Door / lock';
+
+  @override
+  String get categoryAppliance => 'Appliance';
+
+  @override
+  String get categoryStructural => 'Structural';
+
+  @override
+  String get categoryCleanliness => 'Cleanliness';
+
+  @override
+  String get categoryNoise => 'Noise';
+
+  @override
+  String get categoryOther => 'Other';
 
   @override
   String timelineWork(String status, String deadline) {
@@ -372,6 +399,46 @@ class AppLocalizationsEn extends AppLocalizations {
       'You can also add photos from the photo section below.';
 
   @override
+  String infoReplySavedPhotos(int uploaded, int total) {
+    return 'Your reply was received. $uploaded/$total photos attached.';
+  }
+
+  @override
+  String get infoReplyPhotosPending =>
+      'Your reply was received. Some photos did not upload — retry each photo below.';
+
+  @override
+  String get infoReplyNotSent =>
+      'Nothing was sent yet. Your reply and photos are still here — try again.';
+
+  @override
+  String get infoReplyPendingPhotosTitle =>
+      'Reply photos not yet uploaded — retry each photo.';
+
+  @override
+  String get infoReplyClose => 'Close';
+
+  @override
+  String photoNofM(int n, int m) {
+    return 'Photo $n of $m';
+  }
+
+  @override
+  String get photoUploadFailed => 'Not uploaded';
+
+  @override
+  String get photoLoading => 'Loading photo…';
+
+  @override
+  String get photoLoadFailed => 'The photo could not be loaded.';
+
+  @override
+  String get photoBeforeRepair => 'Photo before the repair';
+
+  @override
+  String get photoAfterRepair => 'Photo after the repair';
+
+  @override
   String get workStatusAssigned => 'Assigned';
 
   @override
@@ -402,6 +469,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeFundOutflows => 'Out (30d)';
 
   @override
+  String get homeFundChartCaption => 'Fund balance · last 6 months';
+
+  @override
   String get homeActiveReports => 'My open reports';
 
   @override
@@ -429,6 +499,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsLoadMore => 'Load more';
 
   @override
+  String notificationsUnreadCount(int n) {
+    return '$n unread notifications';
+  }
+
+  @override
+  String get notificationUnread => 'Unread';
+
+  @override
+  String get notificationRead => 'Read';
+
+  @override
   String get ledgerTitle => 'Building ledger';
 
   @override
@@ -439,6 +520,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerAllTime => 'All';
+
+  @override
+  String get ledgerYearLabel => 'Year';
+
+  @override
+  String get ledgerMonthLabel => 'Month';
 
   @override
   String get ledgerLoadMore => 'Load more';
@@ -506,11 +593,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'The expense was published, but a verification step is incomplete. Review the accountability chain below.';
 
   @override
+  String get ledgerConclusionMismatch =>
+      'This record does not match its anchored evidence';
+
+  @override
+  String get ledgerConclusionMismatchBody =>
+      'The published record differs from the evidence that was anchored for it. Report this expense to the management board.';
+
+  @override
   String get ledgerChainTitle => 'Accountability chain';
 
   @override
   String get ledgerChainHint =>
-      'Open to see how the expense moves from report to verification';
+      'The expense moves from report to independent verification in the steps below.';
 
   @override
   String get ledgerChainReports => 'Reports and rationale';
@@ -529,6 +624,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerCorrections => 'Corrections';
+
+  @override
+  String get ledgerCorrectionRecorded => 'Adjustment recorded';
 
   @override
   String get ledgerDocuments => 'Documents';
@@ -588,13 +686,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountPreferences => 'Notifications';
 
   @override
-  String get accountPrefEmail => 'Email';
-
-  @override
-  String get accountPrefPush => 'Push';
+  String get accountPrefAll => 'Receive all notifications';
 
   @override
   String get accountSignOutAll => 'Sign out of all devices';
+
+  @override
+  String get signOutUnsentWorkWarning =>
+      'The report you are drafting and any unsent photos on this device will be deleted.';
 
   @override
   String get commonCancel => 'Cancel';
@@ -735,24 +834,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gateReaderThrottled => 'Actions are too frequent. Please wait.';
 
   @override
-  String get prefReportReceipt => 'Report received';
-
-  @override
-  String get prefTriageStatus => 'Report reviewed';
-
-  @override
-  String get prefWorkCompleted => 'Work completed';
-
-  @override
-  String get prefLedgerPublication => 'Published spending';
-
-  @override
-  String get prefCorrectionStatus => 'Corrections';
-
-  @override
-  String get prefBuildingAnnouncement => 'Building announcements';
-
-  @override
   String get fundChartTitle => 'Fund balance';
 
   @override
@@ -775,6 +856,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String fundChartOutflowValue(String amount) {
     return 'outflow $amount';
   }
+
+  @override
+  String get fundChartInflowLabel => 'Inflows';
+
+  @override
+  String get fundChartOutflowLabel => 'Outflows';
 
   @override
   String get fundChartRange30d => '30 days';
@@ -822,6 +909,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proposalFund => 'Funding source';
 
   @override
+  String get fundGeneral => 'General fund';
+
+  @override
+  String get fundMaintenance => 'Maintenance fund';
+
+  @override
+  String get fundOther => 'Building fund';
+
+  @override
   String get proposalContractor => 'Contractor';
 
   @override
@@ -866,10 +962,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billDueLabel => 'Due';
 
   @override
+  String get billOverdue => 'Overdue';
+
+  @override
   String get billViewFile => 'View bill';
 
   @override
   String get billPayAction => 'I\'ve paid';
+
+  @override
+  String get billPayExplainer =>
+      'Scanning records a transfer you already made — it does not pay the bill.';
+
+  @override
+  String get billPayStep1 => '1. Transfer the amount in your banking app.';
+
+  @override
+  String get billPayStep2 =>
+      '2. Come back here and scan the QR on the bill to record it.';
 
   @override
   String get billStatusIssued => 'Unpaid';

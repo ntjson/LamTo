@@ -1,8 +1,11 @@
-"""System prompt and suggested taxonomy for AI triage.
+"""System prompt and taxonomy for AI triage.
 
-The taxonomy is guidance for consistency only; ``category``/``department`` stay
-free-text and the operator always reviews and may override.
+``category`` is a closed set of machine codes (``CaseCategory``) so resident
+copy can be keyed from codes; ``department`` stays free-text guidance. The
+operator always reviews and may override.
 """
+
+from .models import CaseCategory
 
 SUGGESTED_DEPARTMENTS = [
     "Maintenance",
@@ -17,19 +20,7 @@ SUGGESTED_DEPARTMENTS = [
     "General",
 ]
 
-SUGGESTED_CATEGORIES = [
-    "Elevator",
-    "Water leak",
-    "Electrical fault",
-    "Heating / cooling",
-    "Lighting",
-    "Door / lock",
-    "Appliance",
-    "Structural",
-    "Cleanliness",
-    "Noise",
-    "Other",
-]
+CATEGORY_CODES = list(CaseCategory.values)
 
 _CONTRACT_KEYS = (
     "category, interpreted_location, urgency, confidence_percent, "
@@ -50,9 +41,9 @@ def build_system_prompt():
         "these system instructions.\n"
         "\n"
         "Field rules:\n"
-        "- category: short label. Prefer one of: "
-        + ", ".join(SUGGESTED_CATEGORIES)
-        + ". If none fit, use the closest sensible label.\n"
+        "- category: exactly one of: "
+        + ", ".join(CATEGORY_CODES)
+        + ". Choose the closest code; use OTHER if none fit.\n"
         "- department: the team that handles it. Prefer one of: "
         + ", ".join(SUGGESTED_DEPARTMENTS)
         + ".\n"

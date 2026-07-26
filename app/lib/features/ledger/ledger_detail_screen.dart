@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/error_retry.dart';
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/failure.dart';
@@ -58,9 +59,12 @@ class LedgerDetailScreen extends ConsumerWidget {
   ) {
     final date = DateFormat('dd/MM/yyyy').format(entry.publishedAt.toLocal());
     final verification = entry.verification;
-    final verified =
-        verification?.decision == 'VERIFIED' &&
-        entry.integrityStatus == 'VERIFIED';
+    // Wire values (serializers.py effective_integrity_status): VERIFIED,
+    // MISMATCH, UNAVAILABLE, UNCHECKED. Tampering (MISMATCH) must not dress
+    // as routine pending, so it gets its own Mismatch Red conclusion; the
+    // amber branch keeps the genuinely-pending states.
+    final verified = entry.integrityStatus == 'VERIFIED';
+    final mismatch = entry.integrityStatus == 'MISMATCH';
     final mono = Theme.of(context).textTheme.bodySmall?.copyWith(
       fontFamily: 'SFMono-Regular',
       fontFamilyFallback: const ['Menlo', 'Roboto Mono', 'monospace'],
@@ -69,7 +73,11 @@ class LedgerDetailScreen extends ConsumerWidget {
     final proposalId = (entry.payload?.value as Map?)?['proposal_id'] as int?;
     final conclusionColor = statusToneColors(
       context,
-      verified ? StatusTone.success : StatusTone.warning,
+      verified
+          ? StatusTone.success
+          : mismatch
+          ? StatusTone.error
+          : StatusTone.warning,
     ).fg;
 
     return ListView(
@@ -81,7 +89,11 @@ class LedgerDetailScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                verified ? Icons.verified_outlined : Icons.pending_outlined,
+                verified
+                    ? Icons.verified_outlined
+                    : mismatch
+                    ? Icons.error_outline
+                    : Icons.pending_outlined,
                 color: conclusionColor,
                 size: 32,
               ),
@@ -93,6 +105,8 @@ class LedgerDetailScreen extends ConsumerWidget {
                     Text(
                       verified
                           ? l10n.ledgerConclusionVerified
+                          : mismatch
+                          ? l10n.ledgerConclusionMismatch
                           : l10n.ledgerConclusionUnverified,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: conclusionColor,
@@ -103,6 +117,8 @@ class LedgerDetailScreen extends ConsumerWidget {
                     Text(
                       verified
                           ? l10n.ledgerConclusionVerifiedBody
+                          : mismatch
+                          ? l10n.ledgerConclusionMismatchBody
                           : l10n.ledgerConclusionUnverifiedBody,
                     ),
                   ],
@@ -161,9 +177,8 @@ class LedgerDetailScreen extends ConsumerWidget {
           number: 5,
           title: l10n.ledgerChainVerification,
           body: [
-            verification != null
-                ? l10n.ledgerVerifiedBy(verification.verifiedBy)
-                : l10n.ledgerNotVerified,
+            if (verification != null)
+              l10n.ledgerVerifiedBy(verification.verifiedBy),
             integrityStatusLabel(entry.integrityStatus, l10n),
           ].join('\n'),
           child: Padding(
@@ -218,7 +233,7 @@ class LedgerDetailScreen extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.change_circle_outlined),
               title: Text(_jsonField(correction, 'reason')),
-              subtitle: Text(_jsonField(correction, 'status')),
+              subtitle: Text(l10n.ledgerCorrectionRecorded),
             ),
         ],
       ],
@@ -347,7 +362,7 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
           if (_error != null)
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: AdaptiveTextButton(
                 onPressed: _open,
                 child: Text(l10n.commonRetry),
               ),

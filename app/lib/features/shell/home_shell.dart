@@ -90,7 +90,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               label: l10n.tabIssues,
             ),
             BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.money_dollar),
+              // The open ledger book ("Sổ quỹ"), twinned with Android's
+              // Icons.account_balance institution glyph. Never a currency
+              // symbol ("$" fronting a VND fund).
+              icon: const Icon(CupertinoIcons.book),
               label: l10n.tabLedger,
             ),
             BottomNavigationBarItem(

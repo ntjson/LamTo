@@ -14,11 +14,21 @@ import 'providers.dart';
 /// in-flight or completed future (no re-fetch). On failure, an explicit retry
 /// control clears the memoized future and re-issues the GET.
 class AuthenticatedImage extends ConsumerStatefulWidget {
-  const AuthenticatedImage(this.url, {this.width, this.height, super.key});
+  const AuthenticatedImage(
+    this.url, {
+    this.width,
+    this.height,
+    this.semanticLabel,
+    super.key,
+  });
 
   final String url;
   final double? width;
   final double? height;
+
+  /// Announced for the image; loading and error states prefix it to their
+  /// own wording so evidence photos are never silence in a screen reader.
+  final String? semanticLabel;
 
   @override
   ConsumerState<AuthenticatedImage> createState() => _AuthenticatedImageState();
@@ -63,6 +73,12 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
     }
   }
 
+  /// "{label}. {state}" when a label exists; just the state otherwise.
+  String _stateLabel(String state) {
+    final label = widget.semanticLabel;
+    return label == null ? state : '$label. $state';
+  }
+
   @override
   Widget build(BuildContext context) {
     final dio = ref.watch(dioProvider);
@@ -84,6 +100,7 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
             width: width,
             height: widget.height,
             fit: BoxFit.cover,
+            semanticLabel: widget.semanticLabel,
             // Decode at display size, not the server's full resolution: a
             // 2048px photo decoded for a 96px thumb costs ~16 MB and jank.
             cacheWidth: width == null
@@ -94,23 +111,32 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
         }
         if (snapshot.hasError) {
           final retryLabel = l10n?.commonRetry ?? 'Retry';
-          return SizedBox(
-            width: widget.width,
-            height: widget.height,
-            child: Center(
-              child: IconButton(
-                key: const Key('authenticated_image_retry'),
-                tooltip: retryLabel,
-                icon: const Icon(Icons.refresh),
-                onPressed: _retry,
+          return Semantics(
+            liveRegion: true,
+            label: _stateLabel(
+              l10n?.photoLoadFailed ?? 'The photo could not be loaded.',
+            ),
+            child: SizedBox(
+              width: widget.width,
+              height: widget.height,
+              child: Center(
+                child: IconButton(
+                  key: const Key('authenticated_image_retry'),
+                  tooltip: retryLabel,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _retry,
+                ),
               ),
             ),
           );
         }
-        return SizedBox(
-          width: widget.width,
-          height: widget.height,
-          child: const Center(child: CircularProgressIndicator.adaptive()),
+        return Semantics(
+          label: _stateLabel(l10n?.photoLoading ?? 'Loading photo…'),
+          child: SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: const Center(child: CircularProgressIndicator.adaptive()),
+          ),
         );
       },
     );

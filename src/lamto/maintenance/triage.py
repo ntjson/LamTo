@@ -15,6 +15,7 @@ from .models import (
     MaintenanceCase,
     TriageDecision,
     TriageSuggestion,
+    normalize_category,
 )
 
 
@@ -34,6 +35,7 @@ def _active_location(location, building_id):
 def _decision_values(category, urgency, department, deadline_minutes):
     if not isinstance(category, str) or not (category := category.strip()):
         raise ValidationError("Case category is required.")
+    category = normalize_category(category)
     if urgency not in URGENCIES:
         raise ValidationError("Case urgency is invalid.")
     if not isinstance(department, str) or not (department := department.strip()):

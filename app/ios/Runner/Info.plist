@@ -27,7 +27,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>LÀM TỔ uses the camera to scan bill QR codes.</string>
+	<string>LÀM TỔ dùng máy ảnh để chụp ảnh cho phản ánh, quét mã QR hóa đơn và chụp ảnh khuôn mặt khi đăng ký cổng.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

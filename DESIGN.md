@@ -23,6 +23,8 @@ colors:
   info: "#175cd3"
   info-bg: "#eff8ff"
   staff-nav: "#1c2434"
+  dark-primary: "#8a97e8"
+  dark-on-primary: "#12141c"
   dark-bg: "#12141c"
   dark-surface: "#1c2030"
   dark-ink: "#e8eaf2"
@@ -186,11 +188,11 @@ Neutral surfaces dominate. Accountability Indigo is reserved for primary actions
 Four roles, one meaning each, on both platforms.
 
 - **Verified Green** (`success`): Confirmed, resolved, chain-confirmed, independently verified.
-- **Attention Amber** (`warning`): Pending, locally signed, awaiting confirmation, deadline approaching.
+- **Attention Amber** (`warning`): Pending, awaiting confirmation, deadline approaching.
 - **Mismatch Red** (`error`): Failure, mismatch, overdue, blocked progress.
-- **Open Blue** (`info`): Open, informational, in progress.
+- **Open Blue** (`info`): Open, informational, in progress — and the locally-signed evidence level. Under disabled anchoring, "Đã ký — chưa bật neo blockchain" is a permanent informational state, not a warning awaiting resolution, so LOCAL_SIGNED renders Open Blue rather than Attention Amber.
 
-Night has its own semantic set (`dark-success` through `dark-info-bg`): deep tinted fills with light ink. The light pastels glare on Night Ground and fail contrast, so they are never reused there.
+Night has its own semantic set (`dark-success` through `dark-info-bg`): deep tinted fills with light ink. The light pastels glare on Night Ground and fail contrast, so they are never reused there. Night also carries its own primary pair: fills lighten to `dark-primary` (`#8A97E8`) so they read on Night Ground, and filled-button labels flip to `dark-on-primary` (`#12141C`, the Night Ground ink, ≈6.9:1) — white on the light indigo is 2.74:1 and fails AA.
 
 ### Named Rules
 
@@ -200,7 +202,7 @@ Night has its own semantic set (`dark-success` through `dark-info-bg`): deep tin
 
 **The One Warning Rule.** There is exactly one warning value, `#8A5C00` (5.39:1 on Attention Amber's background), and both platforms use it. The lighter `#9A6700` cleared AA by 0.02 and is prohibited. Where web and app disagree on a token, the accessible value wins and both move.
 
-**The Native Role Rule.** Flutter maps the palette through iOS semantic colors and Material color roles so dark mode and increased contrast keep working.
+**The Native Role Rule.** Flutter maps the palette through iOS semantic colors and Material color roles so dark mode and increased contrast keep working. The app's accepted Material mapping lightens two neutrals — neutral-bg maps to `#F6F7FB` and border to `#D7DCE8` — while the web workspace ships the canonical `neutral-bg`/`border` values.
 
 ## 3. Typography
 

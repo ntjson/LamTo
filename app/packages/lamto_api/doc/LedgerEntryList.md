@@ -14,5 +14,6 @@ Name | Type | Description | Notes
 **publishedAt** | [**DateTime**](DateTime.md) |  |
 **integrityStatus** | **String** |  |
 **evidenceLevel** | **String** |  |
+**whatWasFixed** | **String** | Resident-visible narrative of work completed. |
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/failure.dart';
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
@@ -167,7 +168,10 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 liveRegion: true,
                 child: Text(_error!),
               ),
-              _secondaryAction(l10n.commonRetry, _loadOptions),
+              AdaptiveTextButton(
+                onPressed: _loadOptions,
+                child: Text(l10n.commonRetry),
+              ),
             ],
           ),
         ),
@@ -266,7 +270,10 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   ),
                 ),
               const SizedBox(height: 20),
-              _primaryAction(l10n.registrationSubmit, _busy ? null : _submit),
+              AdaptiveFilledButton(
+                onPressed: _busy ? null : _submit,
+                child: Text(l10n.registrationSubmit),
+              ),
             ],
           ),
         ),
@@ -291,16 +298,6 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       body: child,
     );
   }
-
-  Widget _primaryAction(String label, VoidCallback? onPressed) =>
-      defaultTargetPlatform == TargetPlatform.iOS
-      ? CupertinoButton.filled(onPressed: onPressed, child: Text(label))
-      : FilledButton(onPressed: onPressed, child: Text(label));
-
-  Widget _secondaryAction(String label, VoidCallback? onPressed) =>
-      defaultTargetPlatform == TargetPlatform.iOS
-      ? CupertinoButton(onPressed: onPressed, child: Text(label))
-      : TextButton(onPressed: onPressed, child: Text(label));
 
   String? _required(String? value) => value == null || value.trim().isEmpty
       ? AppLocalizations.of(context)!.registrationRequired

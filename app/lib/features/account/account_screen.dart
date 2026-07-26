@@ -1,26 +1,28 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_buttons.dart';
+import '../../core/adaptive_page_route.dart';
 import '../../core/failure.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/session_controller.dart';
+import '../reports/reports_repository.dart';
 import '../settings/api_base_url_tile.dart';
 import '../transparency/transparency_repository.dart';
 import '../gate/gate_registration_screen.dart';
 
-/// Resident notification categories (server defaults absent rows to
-/// enabled). Labels resolve through l10n.
-List<({String code, String label})> residentPreferenceCategories(
-  AppLocalizations l10n,
-) => [
-  (code: 'report.receipt', label: l10n.prefReportReceipt),
-  (code: 'triage.status', label: l10n.prefTriageStatus),
-  (code: 'work.completed', label: l10n.prefWorkCompleted),
-  (code: 'ledger.publication', label: l10n.prefLedgerPublication),
-  (code: 'correction.status', label: l10n.prefCorrectionStatus),
-  (code: 'building.announcement', label: l10n.prefBuildingAnnouncement),
+/// Resident notification event codes (server defaults absent rows to
+/// enabled). One master switch drives every code on both channels.
+const residentPreferenceCodes = [
+  'report.receipt',
+  'triage.status',
+  'work.completed',
+  'ledger.publication',
+  'correction.status',
+  'building.announcement',
 ];
 
 /// Account tab (spec 6.3(7)). Body-only: the shell owns chrome.
@@ -32,13 +34,12 @@ class AccountScreen extends ConsumerStatefulWidget {
 }
 
 class _AccountScreenState extends ConsumerState<AccountScreen> {
-  /// Local overlay of toggles the user flipped this session.
-  final Map<String, bool> _email = {};
-  final Map<String, bool> _push = {};
+  /// Local overlay of the master toggle after the user flipped it.
+  bool? _all;
 
   /// Last preference PATCH failure (resident copy). Inline — not SnackBar —
   /// so the message works under iOS [CupertinoPageScaffold] (no Material
-  /// Scaffold / ScaffoldMessenger host).
+  /// Scaffold / snack-bar host).
   String? _prefError;
 
   @override
@@ -53,9 +54,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       return const Center(child: CircularProgressIndicator.adaptive());
     }
     final holder = ref.watch(occupancyHolderProvider);
-    final serverPrefs = {
-      for (final pref in me.notificationPreferences) pref.eventCode: pref,
-    };
+    // Absent rows default to enabled server-side, so present rows decide.
+    final serverAll = me.notificationPreferences.every(
+      (pref) => pref.emailEnabled && pref.pushEnabled,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -111,41 +113,39 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 ),
               ),
             ],
-            for (final category in residentPreferenceCategories(l10n))
-              _prefRow(l10n, category, serverPrefs[category.code]),
+            SwitchListTile.adaptive(
+              key: const Key('notifications_all'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.accountPrefAll),
+              value: _all ?? serverAll,
+              onChanged: _setAll,
+            ),
             const SizedBox(height: 24),
-            OutlinedButton.icon(
+            AdaptiveOutlinedButton(
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
+                adaptivePageRoute<void>(
                   builder: (_) => GateRegistrationScreen(
                     repository: ref.read(gateRepositoryProvider),
                   ),
                 ),
               ),
               icon: const Icon(Icons.door_front_door_outlined),
-              label: Text(l10n.gateAccountAction),
+              child: Text(l10n.gateAccountAction),
             ),
             const SizedBox(height: 24),
             const ApiBaseUrlTile(),
             const SizedBox(height: 24),
             // Session actions, not the tab's primary CTA: outlined/text, never
             // the filled Accountability Indigo reserved for primary actions.
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-              ),
-              onPressed: () =>
-                  ref.read(sessionControllerProvider.notifier).signOut(),
+            AdaptiveOutlinedButton(
+              fullWidth: true,
+              onPressed: () => _confirmSignOut(),
               child: Text(l10n.signOut),
             ),
             const SizedBox(height: 8),
-            TextButton(
-              style: TextButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-              ),
-              onPressed: () => ref
-                  .read(sessionControllerProvider.notifier)
-                  .signOut(allDevices: true),
+            AdaptiveTextButton(
+              fullWidth: true,
+              onPressed: () => _confirmSignOut(allDevices: true),
               child: Text(l10n.accountSignOutAll),
             ),
           ],
@@ -154,76 +154,81 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
-  Widget _prefRow(
-    AppLocalizations l10n,
-    ({String code, String label}) category,
-    NotificationPreference? server,
-  ) {
-    final email = _email[category.code] ?? server?.emailEnabled ?? true;
-    final push = _push[category.code] ?? server?.pushEnabled ?? true;
-    // Wrap, not Row: at large system text scale the fixed labels + switches
-    // exceed compact widths and a Row would clip (PRODUCT.md: system text
-    // scaling without clipping). Controls fall to their own line instead.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 4,
-        children: [
-          Text(category.label),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              ExcludeSemantics(
-                child: Text(
-                  l10n.accountPrefEmail,
-                  style: Theme.of(context).textTheme.labelSmall,
+  /// Sign-out destroys unsent work on this device ([ReportDraftStore.clearAll]
+  /// wipes report drafts and pending reply photos), so it confirms first.
+  /// The consequence line appears only when such work actually exists.
+  Future<void> _confirmSignOut({bool allDevices = false}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final hasUnsentWork = await ref
+        .read(reportDraftStoreProvider)
+        .hasUnsentWork();
+    if (!mounted) return;
+    final title = allDevices ? l10n.accountSignOutAll : l10n.signOut;
+    final warning = hasUnsentWork ? l10n.signOutUnsentWorkWarning : null;
+    final confirmed = defaultTargetPlatform == TargetPlatform.iOS
+        ? await showCupertinoDialog<bool>(
+            context: context,
+            builder: (context) => CupertinoAlertDialog(
+              title: Text(title),
+              content: warning == null ? null : Text(warning),
+              actions: [
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l10n.commonCancel),
                 ),
-              ),
-              Semantics(
-                label: '${category.label} · ${l10n.accountPrefEmail}',
-                child: Switch.adaptive(
-                  key: Key('email_${category.code}'),
-                  value: email,
-                  onChanged: (value) => _patch(category.code, email: value),
+                CupertinoDialogAction(
+                  isDestructiveAction: true,
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(l10n.signOut),
                 ),
-              ),
-              ExcludeSemantics(
-                child: Text(
-                  l10n.accountPrefPush,
-                  style: Theme.of(context).textTheme.labelSmall,
+              ],
+            ),
+          )
+        : await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(title),
+              content: warning == null ? null : Text(warning),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l10n.commonCancel),
                 ),
-              ),
-              Semantics(
-                label: '${category.label} · ${l10n.accountPrefPush}',
-                child: Switch.adaptive(
-                  key: Key('push_${category.code}'),
-                  value: push,
-                  onChanged: (value) => _patch(category.code, push: value),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(l10n.signOut),
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+              ],
+            ),
+          );
+    if (confirmed == true && mounted) {
+      await ref
+          .read(sessionControllerProvider.notifier)
+          .signOut(allDevices: allDevices);
+    }
   }
 
-  Future<void> _patch(String code, {bool? email, bool? push}) async {
+  Future<void> _setAll(bool value) async {
     setState(() {
-      if (email != null) _email[code] = email;
-      if (push != null) _push[code] = push;
+      _all = value;
       _prefError = null;
     });
     try {
-      await ref
-          .read(transparencyRepositoryProvider)
-          .updatePreference(
-            eventCode: code,
-            emailEnabled: email,
-            pushEnabled: push,
-          );
+      // ponytail: sequential per-code PATCH (no bulk endpoint); a mid-loop
+      // failure leaves earlier codes applied — the revert + retry covers it.
+      for (final code in residentPreferenceCodes) {
+        await ref
+            .read(transparencyRepositoryProvider)
+            .updatePreference(
+              eventCode: code,
+              emailEnabled: value,
+              pushEnabled: value,
+            );
+      }
     } catch (error) {
       // Revert the optimistic flip on failure and surface resident copy.
       // Inline error only — SnackBar needs a Material Scaffold host that
@@ -231,8 +236,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() {
-        if (email != null) _email[code] = !email;
-        if (push != null) _push[code] = !push;
+        _all = !value;
         _prefError = failureMessage(Failure.fromObject(error), l10n);
       });
     }

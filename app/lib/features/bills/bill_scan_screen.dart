@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../core/adaptive_scaffold.dart';
+import '../../theme.dart';
 import 'bill_qr.dart';
 import 'bills_repository.dart';
 
@@ -49,6 +50,11 @@ class BillScanScreen extends ConsumerStatefulWidget {
 class _BillScanScreenState extends ConsumerState<BillScanScreen> {
   bool _handling = false;
 
+  /// Inline failure copy (SnackBars never render under the iOS Cupertino
+  /// shell). Non-null keeps the resident on this screen for an instant
+  /// rescan; the camera session stays alive because the screen never pops.
+  String? _failure;
+
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_handling) return;
     String? raw;
@@ -59,7 +65,10 @@ class _BillScanScreenState extends ConsumerState<BillScanScreen> {
       }
     }
     if (raw == null) return;
-    setState(() => _handling = true);
+    setState(() {
+      _handling = true;
+      _failure = null;
+    });
 
     final result = await handleScannedCode(
       ProviderScope.containerOf(context),
@@ -69,27 +78,26 @@ class _BillScanScreenState extends ConsumerState<BillScanScreen> {
     if (!mounted) return;
 
     final l10n = AppLocalizations.of(context)!;
-    final messenger = ScaffoldMessenger.of(context);
     if (result != BillScanResult.invalidQr) {
+      // Even on an unknown failure the payment may have landed server-side;
+      // refresh so the detail screen shows the authoritative status.
       invalidateBillViews(ProviderScope.containerOf(context), widget.billId);
     }
     switch (result) {
       case BillScanResult.invalidQr:
-        messenger.showSnackBar(SnackBar(content: Text(l10n.billInvalidQr)));
-        setState(() => _handling = false);
-      case BillScanResult.recorded:
-        Navigator.of(context).pop();
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.billPaymentRecorded)),
-        );
-      case BillScanResult.voided:
-        Navigator.of(context).pop();
-        messenger.showSnackBar(SnackBar(content: Text(l10n.billPaymentVoided)));
       case BillScanResult.error:
-        Navigator.of(context).pop();
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.billPaymentUnknown)),
-        );
+        // Transient: stay here, say what happened, allow immediate rescan.
+        setState(() {
+          _handling = false;
+          _failure = result == BillScanResult.invalidQr
+              ? l10n.billInvalidQr
+              : l10n.billPaymentUnknown;
+        });
+      case BillScanResult.recorded:
+      case BillScanResult.voided:
+        // Conclusive: the bill detail screen renders the outcome notice
+        // (visible on iOS, unlike a SnackBar) over the refreshed status.
+        Navigator.of(context).pop(result);
     }
   }
 
@@ -104,6 +112,11 @@ class _BillScanScreenState extends ConsumerState<BillScanScreen> {
             padding: const EdgeInsets.all(16),
             child: Text(l10n.billScanInstruction, textAlign: TextAlign.center),
           ),
+          if (_failure case final failure?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: StatusNotice(tone: StatusTone.error, message: failure),
+            ),
           Expanded(
             child: Semantics(
               label: l10n.billScanInstruction,

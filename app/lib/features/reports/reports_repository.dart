@@ -155,6 +155,17 @@ final reportPhotoFileStoreProvider = Provider<ReportPhotoFileStore>(
   (ref) => ReportPhotoFileStore(),
 );
 
+final infoReplyPhotoStoreProvider = Provider<InfoReplyPhotoStore>(
+  (ref) => InfoReplyPhotoStore(),
+);
+
+/// Info-reply photos not yet uploaded for a report (fail-safe doctrine): the
+/// issue detail screen renders per-photo retry from this after restart.
+final infoReplyPendingPhotosProvider = FutureProvider.autoDispose
+    .family<List<String>, int>(
+      (ref, reportId) => ref.watch(infoReplyPhotoStoreProvider).read(reportId),
+    );
+
 /// Building-scoped caches rebuild on occupancy change (providers.dart contract).
 final locationsProvider = FutureProvider.autoDispose<List<Location>>((ref) {
   ref.watch(occupancyScopedProviders);

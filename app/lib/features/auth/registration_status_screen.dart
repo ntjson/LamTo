@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
 import '../../core/failure.dart';
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
@@ -122,7 +123,10 @@ class _RegistrationStatusScreenState
                               liveRegion: true,
                               child: Text(_error!),
                             ),
-                            _secondaryAction(l10n.commonRetry, _refresh),
+                            AdaptiveOutlinedButton(
+                              onPressed: _refresh,
+                              child: Text(l10n.commonRetry),
+                            ),
                           ],
                         ),
                 )
@@ -146,9 +150,9 @@ class _RegistrationStatusScreenState
                         ),
                         Text(l10n.registrationPendingBody),
                         const SizedBox(height: 16),
-                        _secondaryAction(
-                          l10n.registrationRefresh,
-                          _busy ? null : _refresh,
+                        AdaptiveOutlinedButton(
+                          onPressed: _busy ? null : _refresh,
+                          child: Text(l10n.registrationRefresh),
                         ),
                       ] else if (status.status ==
                           RegistrationStatusEnum.REJECTED) ...[
@@ -158,9 +162,9 @@ class _RegistrationStatusScreenState
                         ),
                         Text(status.rejectionReason!),
                         const SizedBox(height: 16),
-                        _primaryAction(
-                          l10n.registrationNewRequest,
-                          _newRequest,
+                        AdaptiveFilledButton(
+                          onPressed: _newRequest,
+                          child: Text(l10n.registrationNewRequest),
                         ),
                       ] else if (status.status ==
                           RegistrationStatusEnum.APPROVED) ...[
@@ -170,7 +174,10 @@ class _RegistrationStatusScreenState
                         ),
                         Text(l10n.registrationApprovedBody),
                         const SizedBox(height: 16),
-                        _primaryAction(l10n.registrationContinueLogin, _login),
+                        AdaptiveFilledButton(
+                          onPressed: _login,
+                          child: Text(l10n.registrationContinueLogin),
+                        ),
                       ] else ...[
                         Text(
                           l10n.registrationExpiredTitle,
@@ -178,9 +185,9 @@ class _RegistrationStatusScreenState
                         ),
                         Text(l10n.registrationExpiredBody),
                         const SizedBox(height: 16),
-                        _primaryAction(
-                          l10n.registrationNewRequest,
-                          _newRequest,
+                        AdaptiveFilledButton(
+                          onPressed: _newRequest,
+                          child: Text(l10n.registrationNewRequest),
                         ),
                       ],
                       if (_error != null)
@@ -195,7 +202,10 @@ class _RegistrationStatusScreenState
                                   color: Theme.of(context).colorScheme.error,
                                 ),
                               ),
-                              _secondaryAction(l10n.commonRetry, _refresh),
+                              AdaptiveOutlinedButton(
+                                onPressed: _refresh,
+                                child: Text(l10n.commonRetry),
+                              ),
                             ],
                           ),
                         ),
@@ -222,14 +232,4 @@ class _RegistrationStatusScreenState
       body: child,
     );
   }
-
-  Widget _primaryAction(String label, VoidCallback? onPressed) =>
-      defaultTargetPlatform == TargetPlatform.iOS
-      ? CupertinoButton.filled(onPressed: onPressed, child: Text(label))
-      : FilledButton(onPressed: onPressed, child: Text(label));
-
-  Widget _secondaryAction(String label, VoidCallback? onPressed) =>
-      defaultTargetPlatform == TargetPlatform.iOS
-      ? CupertinoButton(onPressed: onPressed, child: Text(label))
-      : OutlinedButton(onPressed: onPressed, child: Text(label));
 }

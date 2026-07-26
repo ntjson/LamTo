@@ -19,6 +19,19 @@ void main() {
     expect(theme.brightness, Brightness.dark);
   });
 
+  test('dark filled buttons use Night Ground ink, not white (AA)', () {
+    // White on dark-primary #8A97E8 is 2.74:1; the ink pair is ≈6.9:1.
+    expect(
+      lamToTheme(Brightness.dark).colorScheme.onPrimary,
+      LamToColorsDark.onPrimary,
+    );
+    expect(LamToColorsDark.onPrimary, const Color(0xFF12141C));
+    expect(
+      lamToTheme(Brightness.light).colorScheme.onPrimary,
+      LamToColors.onPrimary,
+    );
+  });
+
   test('iOS theme follows platform typography', () {
     final previous = debugDefaultTargetPlatformOverride;
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;

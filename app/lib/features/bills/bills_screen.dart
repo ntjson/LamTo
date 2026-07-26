@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
@@ -52,7 +53,7 @@ class BillsScreen extends ConsumerWidget {
               children: [
                 Text(l10n.billNone),
                 const SizedBox(height: 12),
-                OutlinedButton(
+                AdaptiveOutlinedButton(
                   onPressed: () => Navigator.maybePop(context),
                   child: Text(
                     MaterialLocalizations.of(context).backButtonTooltip,

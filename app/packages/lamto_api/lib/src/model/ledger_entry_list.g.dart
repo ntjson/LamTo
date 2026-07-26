@@ -19,6 +19,8 @@ class _$LedgerEntryList extends LedgerEntryList {
   final String integrityStatus;
   @override
   final String evidenceLevel;
+  @override
+  final String whatWasFixed;
 
   factory _$LedgerEntryList([void Function(LedgerEntryListBuilder)? updates]) =>
       (LedgerEntryListBuilder()..update(updates))._build();
@@ -29,7 +31,8 @@ class _$LedgerEntryList extends LedgerEntryList {
       required this.actualCostVnd,
       required this.publishedAt,
       required this.integrityStatus,
-      required this.evidenceLevel})
+      required this.evidenceLevel,
+      required this.whatWasFixed})
       : super._();
   @override
   LedgerEntryList rebuild(void Function(LedgerEntryListBuilder) updates) =>
@@ -47,7 +50,8 @@ class _$LedgerEntryList extends LedgerEntryList {
         actualCostVnd == other.actualCostVnd &&
         publishedAt == other.publishedAt &&
         integrityStatus == other.integrityStatus &&
-        evidenceLevel == other.evidenceLevel;
+        evidenceLevel == other.evidenceLevel &&
+        whatWasFixed == other.whatWasFixed;
   }
 
   @override
@@ -59,6 +63,7 @@ class _$LedgerEntryList extends LedgerEntryList {
     _$hash = $jc(_$hash, publishedAt.hashCode);
     _$hash = $jc(_$hash, integrityStatus.hashCode);
     _$hash = $jc(_$hash, evidenceLevel.hashCode);
+    _$hash = $jc(_$hash, whatWasFixed.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -71,7 +76,8 @@ class _$LedgerEntryList extends LedgerEntryList {
           ..add('actualCostVnd', actualCostVnd)
           ..add('publishedAt', publishedAt)
           ..add('integrityStatus', integrityStatus)
-          ..add('evidenceLevel', evidenceLevel))
+          ..add('evidenceLevel', evidenceLevel)
+          ..add('whatWasFixed', whatWasFixed))
         .toString();
   }
 }
@@ -108,6 +114,10 @@ class LedgerEntryListBuilder
   set evidenceLevel(String? evidenceLevel) =>
       _$this._evidenceLevel = evidenceLevel;
 
+  String? _whatWasFixed;
+  String? get whatWasFixed => _$this._whatWasFixed;
+  set whatWasFixed(String? whatWasFixed) => _$this._whatWasFixed = whatWasFixed;
+
   LedgerEntryListBuilder() {
     LedgerEntryList._defaults(this);
   }
@@ -121,6 +131,7 @@ class LedgerEntryListBuilder
       _publishedAt = $v.publishedAt;
       _integrityStatus = $v.integrityStatus;
       _evidenceLevel = $v.evidenceLevel;
+      _whatWasFixed = $v.whatWasFixed;
       _$v = null;
     }
     return this;
@@ -154,6 +165,8 @@ class LedgerEntryListBuilder
               integrityStatus, r'LedgerEntryList', 'integrityStatus'),
           evidenceLevel: BuiltValueNullFieldError.checkNotNull(
               evidenceLevel, r'LedgerEntryList', 'evidenceLevel'),
+          whatWasFixed: BuiltValueNullFieldError.checkNotNull(
+              whatWasFixed, r'LedgerEntryList', 'whatWasFixed'),
         );
     replace(_$result);
     return _$result;

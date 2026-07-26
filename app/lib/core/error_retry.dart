@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import 'adaptive_buttons.dart';
 import 'failure.dart';
 
 /// Inline failure state: resident copy plus an explicit retry action
@@ -25,7 +26,10 @@ class ErrorRetry extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: Text(l10n.commonRetry)),
+          AdaptiveFilledButton(
+            onPressed: onRetry,
+            child: Text(l10n.commonRetry),
+          ),
         ],
       ),
     );

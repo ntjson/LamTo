@@ -118,11 +118,20 @@ class LedgerEntryListSerializer(serializers.Serializer):
     published_at = serializers.DateTimeField()
     integrity_status = serializers.CharField(source="effective_integrity_status")
     evidence_level = serializers.SerializerMethodField()
+    # Same concept, same wire name as the detail payload (§6.3(6) story).
+    what_was_fixed = serializers.SerializerMethodField(
+        help_text="Resident-visible narrative of work completed."
+    )
 
     def get_evidence_level(self, entry) -> str:
         from lamto.evidence.models import evidence_level
 
         return evidence_level(entry.settlement.outbox_event.status)
+
+    def get_what_was_fixed(self, entry) -> str:
+        from lamto.finance.selectors import ledger_story_fields
+
+        return ledger_story_fields(entry)["what_was_fixed"]
 
 
 class VerificationSerializer(serializers.Serializer):

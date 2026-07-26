@@ -17,6 +17,7 @@ part 'ledger_entry_list.g.dart';
 /// * [publishedAt]
 /// * [integrityStatus]
 /// * [evidenceLevel]
+/// * [whatWasFixed] - Resident-visible narrative of work completed.
 @BuiltValue()
 abstract class LedgerEntryList implements Built<LedgerEntryList, LedgerEntryListBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -36,6 +37,10 @@ abstract class LedgerEntryList implements Built<LedgerEntryList, LedgerEntryList
 
   @BuiltValueField(wireName: r'evidence_level')
   String get evidenceLevel;
+
+  /// Resident-visible narrative of work completed.
+  @BuiltValueField(wireName: r'what_was_fixed')
+  String get whatWasFixed;
 
   LedgerEntryList._();
 
@@ -88,6 +93,11 @@ class _$LedgerEntryListSerializer implements PrimitiveSerializer<LedgerEntryList
     yield r'evidence_level';
     yield serializers.serialize(
       object.evidenceLevel,
+      specifiedType: const FullType(String),
+    );
+    yield r'what_was_fixed';
+    yield serializers.serialize(
+      object.whatWasFixed,
       specifiedType: const FullType(String),
     );
   }
@@ -154,6 +164,13 @@ class _$LedgerEntryListSerializer implements PrimitiveSerializer<LedgerEntryList
             specifiedType: const FullType(String),
           ) as String;
           result.evidenceLevel = valueDes;
+          break;
+        case r'what_was_fixed':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.whatWasFixed = valueDes;
           break;
         default:
           unhandled.add(key);

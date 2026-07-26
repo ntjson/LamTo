@@ -194,6 +194,57 @@ void main() {
     expect(adapter.paths, ['/api/v1/documents/a', '/api/v1/documents/b']);
   });
 
+  testWidgets('exposes the semantic label on the loaded image', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      host(
+        child: const AuthenticatedImage(
+          '/api/v1/documents/tok',
+          width: 40,
+          height: 40,
+          semanticLabel: 'Ảnh sau khi sửa',
+        ),
+      ),
+    );
+    // Loading announces the label with the loading wording.
+    expect(
+      find.bySemanticsLabel('Ảnh sau khi sửa. Loading photo…'),
+      findsOneWidget,
+    );
+
+    await tester.idle();
+    await tester.pump();
+    expect(find.bySemanticsLabel('Ảnh sau khi sửa'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('error state announces the label with failure wording', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    adapter.failNext = 1;
+    await tester.pumpWidget(
+      host(
+        child: const AuthenticatedImage(
+          '/api/v1/documents/tok',
+          width: 40,
+          height: 40,
+          semanticLabel: 'Ảnh trước khi sửa',
+        ),
+      ),
+    );
+    await tester.idle();
+    await tester.pump();
+
+    expect(
+      find.bySemanticsLabel(
+        'Ảnh trước khi sửa. The photo could not be loaded.',
+      ),
+      findsOneWidget,
+    );
+    semantics.dispose();
+  });
+
   testWidgets('explicit retry after error re-issues GET and shows image', (
     tester,
   ) async {

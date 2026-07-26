@@ -14,16 +14,22 @@ import 'package:lamto/features/proposals/proposals_repository.dart';
 import 'package:lamto/features/transparency/fund_chart.dart';
 import 'package:lamto/features/transparency/transparency_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
+import 'package:lamto/theme.dart';
 import 'package:lamto_api/lamto_api.dart';
 
-LedgerEntryList _entry(int id, String level) => LedgerEntryList(
+LedgerEntryList _entry(
+  int id,
+  String level, {
+  String subject = 'Thay bóng đèn hành lang',
+}) => LedgerEntryList(
   (b) => b
     ..id = id
     ..contractorName = 'Acme Co'
     ..actualCostVnd = 900000
     ..publishedAt = DateTime.utc(2026, 7, 10)
     ..integrityStatus = 'VERIFIED'
-    ..evidenceLevel = level,
+    ..evidenceLevel = level
+    ..whatWasFixed = subject,
 );
 
 FundSeries _series(String range) => FundSeries(
@@ -139,6 +145,36 @@ class _FakeRepo implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _SubjectRepo extends _FakeRepo {
+  @override
+  Future<PaginatedLedgerEntryListList> listLedger({
+    String? cursor,
+    int? year,
+    int? month,
+  }) async => PaginatedLedgerEntryListList(
+    (b) => b
+      ..results = ListBuilder<LedgerEntryList>([
+        _entry(1, 'LOCAL_SIGNED'),
+        _entry(2, 'LOCAL_SIGNED', subject: ''),
+      ]),
+  );
+}
+
+class _NoVerificationRepo extends _FakeRepo {
+  @override
+  Future<LedgerEntryDetail> fetchLedgerEntry(int id) async =>
+      _detail().rebuild((b) => b.verification = null);
+}
+
+class _IntegrityRepo extends _FakeRepo {
+  _IntegrityRepo(this.status);
+  final String status;
+
+  @override
+  Future<LedgerEntryDetail> fetchLedgerEntry(int id) async =>
+      _detail().rebuild((b) => b..integrityStatus = status);
+}
+
 class _EmptyProposalsRepository implements ProposalsRepository {
   @override
   Future<PaginatedProposalList> listProposals({String? cursor}) async =>
@@ -204,6 +240,9 @@ void main() {
     expect(find.byType(FundChart), findsOneWidget);
     expect(find.byType(LineChart), findsOneWidget);
     expect(find.byType(BarChart), findsOneWidget);
+    // Legend names each flow series; color never carries meaning alone.
+    expect(find.text('Thu'), findsOneWidget);
+    expect(find.text('Chi'), findsOneWidget);
     expect(find.byType(SegmentedButton<String>), findsNothing);
     expect(repo.seriesRanges, ['12m']);
   });
@@ -238,15 +277,59 @@ void main() {
       findsOneWidget,
     );
 
+    // Month is a within-year refinement: disabled until a year is chosen
+    // (a tap opens no menu, so the item text exists only once, in the field).
+    expect(repo.periods, [(null, null)]);
+    await tester.tap(find.byType(DropdownButtonFormField<int?>).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Tháng 3', skipOffstage: false), findsOneWidget);
+    expect(repo.periods, [(null, null)]);
+
     // Choosing a year re-queries with the filter; empty period shows copy.
     final year = DateTime.now().year;
-    await tester.tap(find.byType(DropdownButtonFormField<int?>));
+    await tester.tap(find.byType(DropdownButtonFormField<int?>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('$year').last);
     await tester.pumpAndSettle();
     expect(repo.periods.last, (year, null));
+    // The field keeps showing the selected year (filter state survives the
+    // notifier rebuild).
+    expect(
+      tester
+          .widget<DropdownButtonFormField<int?>>(
+            find.byType(DropdownButtonFormField<int?>).first,
+          )
+          .initialValue,
+      year,
+    );
     expect(
       find.text('Không có khoản chi nào trong kỳ này.', skipOffstage: false),
+      findsOneWidget,
+    );
+
+    // Month narrows the same year.
+    await tester.tap(find.byType(DropdownButtonFormField<int?>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tháng 3').last);
+    await tester.pumpAndSettle();
+    expect(repo.periods.last, (year, 3));
+  });
+
+  testWidgets('ledger rows lead with the subject and never a bare blank', (
+    tester,
+  ) async {
+    final repo = _SubjectRepo();
+    await tester.pumpWidget(_host(const Scaffold(body: LedgerScreen()), repo));
+    await tester.pumpAndSettle();
+
+    // Subject present: the story leads the row.
+    expect(
+      find.text('Thay bóng đèn hành lang', skipOffstage: false),
+      findsOneWidget,
+    );
+    // Subject empty: the constant title stands in.
+    expect(
+      find.text('Chi tiết khoản chi', skipOffstage: false),
       findsOneWidget,
     );
   });
@@ -297,6 +380,67 @@ void main() {
       expect(find.textContaining('0xfeed'), findsOneWidget);
     },
   );
+
+  testWidgets('verified integrity does not require verifier attribution', (
+    tester,
+  ) async {
+    final repo = _NoVerificationRepo();
+    await tester.pumpWidget(_host(const LedgerDetailScreen(entryId: 42), repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Khoản chi này đã được xác minh'), findsOneWidget);
+    expect(find.text('Khoản chi này chưa được xác minh đầy đủ'), findsNothing);
+  });
+
+  testWidgets('MISMATCH renders its own red conclusion, not routine pending', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(const LedgerDetailScreen(entryId: 42), _IntegrityRepo('MISMATCH')),
+    );
+    await tester.pumpAndSettle();
+
+    const headline = 'Bản ghi này không khớp với bằng chứng đã neo';
+    expect(find.text(headline), findsOneWidget);
+    expect(
+      find.text(
+        'Dữ liệu đã công bố khác với bằng chứng đã neo cho khoản chi này. '
+        'Hãy báo ban quản lý kiểm tra khoản chi.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Khoản chi này chưa được xác minh đầy đủ'), findsNothing);
+    expect(find.text('Khoản chi này đã được xác minh'), findsNothing);
+    // Mismatch Red + error icon: never the amber pending presentation
+    // (Separate States Rule — icon and text carry the state, not color alone).
+    expect(
+      tester.widget<Text>(find.text(headline)).style?.color,
+      LamToColors.error,
+    );
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    expect(find.byIcon(Icons.pending_outlined), findsNothing);
+  });
+
+  testWidgets('genuinely-pending integrity keeps the amber conclusion', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(const LedgerDetailScreen(entryId: 42), _IntegrityRepo('UNCHECKED')),
+    );
+    await tester.pumpAndSettle();
+
+    const headline = 'Khoản chi này chưa được xác minh đầy đủ';
+    expect(find.text(headline), findsOneWidget);
+    expect(
+      find.text('Bản ghi này không khớp với bằng chứng đã neo'),
+      findsNothing,
+    );
+    expect(
+      tester.widget<Text>(find.text(headline)).style?.color,
+      LamToColors.warning,
+    );
+    expect(find.byIcon(Icons.pending_outlined), findsOneWidget);
+  });
 
   testWidgets('document row covers loading, offline, authorization and retry', (
     tester,

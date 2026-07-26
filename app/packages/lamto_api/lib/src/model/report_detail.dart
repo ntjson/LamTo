@@ -80,7 +80,7 @@ abstract class ReportDetail implements Built<ReportDetail, ReportDetailBuilder> 
   factory ReportDetail([void updates(ReportDetailBuilder b)]) = _$ReportDetail;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(ReportDetailBuilder b) => b..ledgerEntryIds = ListBuilder();
+  static void _defaults(ReportDetailBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
   static Serializer<ReportDetail> get serializer => _$ReportDetailSerializer();

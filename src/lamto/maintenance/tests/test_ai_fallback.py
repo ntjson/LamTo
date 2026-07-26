@@ -143,6 +143,27 @@ class TriageTests(TestCase):
             [message["role"] for message in body["messages"]], ["system", "user"]
         )
 
+    @patch("lamto.maintenance.ai.urlopen")
+    def test_category_is_normalized_to_a_code(self, urlopen):
+        for raw, expected in [
+            ("ELEVATOR", "ELEVATOR"),
+            ("Water leak", "WATER_LEAK"),
+            ("Heating / cooling", "HEATING_COOLING"),
+            ("Plumbing", "OTHER"),
+        ]:
+            with self.subTest(raw=raw):
+                report = self.submit("Elevator shakes")
+                urlopen.return_value = FakeResponse(
+                    envelope(triage_payload(category=raw))
+                )
+
+                job = process_triage_job(report.triage_job.id)
+
+                self.assertEqual(job.status, TriageJob.Status.SUCCEEDED)
+                suggestion = TriageSuggestion.objects.get(job=job)
+                self.assertEqual(suggestion.category, expected)
+                self.assertEqual(suggestion.raw_response["category"], raw)
+
     @patch("lamto.maintenance.ai.urlopen", side_effect=URLError("offline"))
     def test_transport_failure_preserves_report_for_manual_triage(self, _urlopen):
         report = self.submit("Elevator shakes")

@@ -109,7 +109,7 @@ class ProposalApiTests(TestCase):
 
         assert response.status_code == 200, response.content
         body = response.json()
-        assert body["purpose"] == "Elevator"
+        assert body["purpose"] == "Thang máy"
         assert body["proposed_action"] == "Repair the affected equipment"
         assert body["amount_vnd"] > 0
         assert body["fund_code"] == "GENERAL"

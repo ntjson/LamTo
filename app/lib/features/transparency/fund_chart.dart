@@ -85,9 +85,55 @@ class FundChart extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         SizedBox(height: 120, child: _flowsBars(context, points)),
+        const SizedBox(height: 8),
+        // Names each series; color never carries the meaning alone.
+        Wrap(
+          spacing: 16,
+          runSpacing: 4,
+          children: [
+            _legendItem(
+              context,
+              _inflowColor(context),
+              l10n.fundChartInflowLabel,
+            ),
+            _legendItem(
+              context,
+              _outflowColor(context),
+              l10n.fundChartOutflowLabel,
+            ),
+          ],
+        ),
       ],
     );
   }
+
+  // Tabular Column Rule: money-flow series use the brand/info pair — never
+  // success/error, which are reserved for evidence state.
+  Color _inflowColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? LamToColorsDark.primary
+      : LamToColors.primary;
+
+  Color _outflowColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? LamToColorsDark.info
+      : LamToColors.info;
+
+  Widget _legendItem(BuildContext context, Color color, String label) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+      const SizedBox(width: 6),
+      Text(label, style: Theme.of(context).textTheme.labelSmall),
+    ],
+  );
 
   Duration _animationDuration(BuildContext context) =>
       MediaQuery.disableAnimationsOf(context)
@@ -135,9 +181,8 @@ class FundChart extends ConsumerWidget {
   }
 
   Widget _flowsBars(BuildContext context, List<FundSeriesPoint> points) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final inflow = dark ? LamToColorsDark.primary : LamToColors.primary;
-    final outflow = dark ? LamToColorsDark.flowOut : LamToColors.flowOut;
+    final inflow = _inflowColor(context);
+    final outflow = _outflowColor(context);
     return BarChart(
       BarChartData(
         gridData: const FlGridData(show: false),

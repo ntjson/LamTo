@@ -1441,6 +1441,12 @@ paths:
   /api/v1/reports/{id}/info-reply:
     post:
       operationId: reports_info_reply_create
+      description: 'Step 1 of the resident''s needs-info reply: commit the text. Text-only
+        by design so a dropped connection can never lose the words; the client then
+        attaches any photos one by one via POST /api/v1/reports/{id}/photos. A successful
+        reply resolves the open information request and moves the report from NEEDS_INFO
+        back to IN_REVIEW (photo uploads are not status-gated, so step 2 still works
+        after the flip).'
       parameters:
       - in: path
         name: id
@@ -1498,6 +1504,13 @@ paths:
   /api/v1/reports/{id}/photos:
     post:
       operationId: reports_photos_create
+      description: 'Attach one photo to a report the caller submitted (active occupancy
+        in the report''s building required). There is no report-status gate, so this
+        also serves as step 2 of the needs-info reply choreography, after POST /api/v1/reports/{id}/info-reply
+        commits the text. Uploads are virus-scanned before storage and idempotent
+        per report by content SHA-256: replaying the same file returns 200 with the
+        existing photo instead of creating a duplicate (201), so per-photo retries
+        are safe.'
       parameters:
       - in: path
         name: id
@@ -1612,9 +1625,9 @@ components:
       - VOID
       type: string
       description: |-
-        * `ISSUED` - Issued
-        * `PAID` - Paid
-        * `VOID` - Void
+        * `ISSUED` - Đã phát hành
+        * `PAID` - Đã thanh toán
+        * `VOID` - Đã hủy
     BillSummary:
       type: object
       properties:
@@ -1838,8 +1851,8 @@ components:
       - AFTER
       type: string
       description: |-
-        * `BEFORE` - Before
-        * `AFTER` - After
+        * `BEFORE` - Trước
+        * `AFTER` - Sau
     LedgerDocument:
       type: object
       properties:
@@ -1928,6 +1941,10 @@ components:
         evidence_level:
           type: string
           readOnly: true
+        what_was_fixed:
+          type: string
+          readOnly: true
+          description: Resident-visible narrative of work completed.
       required:
       - actual_cost_vnd
       - contractor_name
@@ -1935,6 +1952,7 @@ components:
       - id
       - integrity_status
       - published_at
+      - what_was_fixed
     Location:
       type: object
       properties:
@@ -2519,10 +2537,10 @@ components:
       - EXPIRED
       type: string
       description: |-
-        * `PENDING` - Pending
-        * `APPROVED` - Approved
-        * `REJECTED` - Rejected
-        * `EXPIRED` - Expired
+        * `PENDING` - Đang chờ
+        * `APPROVED` - Đã phê duyệt
+        * `REJECTED` - Đã từ chối
+        * `EXPIRED` - Hết hạn
     RegistrationSubmission:
       type: object
       properties:
@@ -2761,14 +2779,14 @@ components:
       - CLOSED
       type: string
       description: |-
-        * `SUBMITTED` - Submitted
-        * `IN_REVIEW` - In review
-        * `NEEDS_INFO` - Needs information
-        * `DECLINED` - Declined
-        * `IN_PROGRESS` - In progress
-        * `PROPOSED` - Proposed
-        * `COMPLETED` - Completed
-        * `CLOSED` - Closed
+        * `SUBMITTED` - Đã gửi
+        * `IN_REVIEW` - Đang xem xét
+        * `NEEDS_INFO` - Cần thông tin
+        * `DECLINED` - Đã từ chối
+        * `IN_PROGRESS` - Đang thực hiện
+        * `PROPOSED` - Đã đề xuất
+        * `COMPLETED` - Hoàn tất
+        * `CLOSED` - Đã đóng
     TokenResponse:
       type: object
       properties:

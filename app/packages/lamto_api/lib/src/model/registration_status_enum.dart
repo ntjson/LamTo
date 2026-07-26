@@ -11,16 +11,16 @@ part 'registration_status_enum.g.dart';
 
 class RegistrationStatusEnum extends EnumClass {
 
-  /// * `PENDING` - Pending * `APPROVED` - Approved * `REJECTED` - Rejected * `EXPIRED` - Expired
+  /// * `PENDING` - Đang chờ * `APPROVED` - Đã phê duyệt * `REJECTED` - Đã từ chối * `EXPIRED` - Hết hạn
   @BuiltValueEnumConst(wireName: r'PENDING')
   static const RegistrationStatusEnum PENDING = _$PENDING;
-  /// * `PENDING` - Pending * `APPROVED` - Approved * `REJECTED` - Rejected * `EXPIRED` - Expired
+  /// * `PENDING` - Đang chờ * `APPROVED` - Đã phê duyệt * `REJECTED` - Đã từ chối * `EXPIRED` - Hết hạn
   @BuiltValueEnumConst(wireName: r'APPROVED')
   static const RegistrationStatusEnum APPROVED = _$APPROVED;
-  /// * `PENDING` - Pending * `APPROVED` - Approved * `REJECTED` - Rejected * `EXPIRED` - Expired
+  /// * `PENDING` - Đang chờ * `APPROVED` - Đã phê duyệt * `REJECTED` - Đã từ chối * `EXPIRED` - Hết hạn
   @BuiltValueEnumConst(wireName: r'REJECTED')
   static const RegistrationStatusEnum REJECTED = _$REJECTED;
-  /// * `PENDING` - Pending * `APPROVED` - Approved * `REJECTED` - Rejected * `EXPIRED` - Expired
+  /// * `PENDING` - Đang chờ * `APPROVED` - Đã phê duyệt * `REJECTED` - Đã từ chối * `EXPIRED` - Hết hạn
   @BuiltValueEnumConst(wireName: r'EXPIRED')
   static const RegistrationStatusEnum EXPIRED = _$EXPIRED;
 

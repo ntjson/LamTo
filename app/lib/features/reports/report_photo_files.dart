@@ -61,6 +61,26 @@ class ReportPhotoFileStore {
     required String sourcePath,
   }) async {
     final dir = await _occupancyDir(occupancyId);
+    return _copyInto(dir, sourcePath);
+  }
+
+  /// Copies [sourcePath] into app-owned storage for a needs-info reply on
+  /// [reportId] and returns the durable absolute path. Lives under
+  /// `report_draft_photos/reply_<reportId>/` — the `reply_` prefix cannot
+  /// collide with occupancy int dirs, and the logout [clearAll] wipe covers it.
+  Future<String> importReplyPickerPath({
+    required int reportId,
+    required String sourcePath,
+  }) async {
+    final root = await _root();
+    final dir = Directory(_join(root.path, 'reply_$reportId'));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return _copyInto(dir, sourcePath);
+  }
+
+  Future<String> _copyInto(Directory dir, String sourcePath) async {
     final ext = _extension(sourcePath);
     final destName = '${uuidV4()}${ext.isEmpty ? '.jpg' : ext}';
     final destPath = _join(dir.path, destName);

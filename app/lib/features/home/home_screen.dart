@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/error_retry.dart';
 import '../../core/format.dart';
@@ -32,6 +35,15 @@ class HomeScreen extends ConsumerWidget {
     final spending = ref.watch(recentSpendingProvider);
     final announcement = ref.watch(latestAnnouncementProvider);
     final newestBill = ref.watch(newestUnpaidBillProvider);
+    // Same feed the Notifications screen shows (mark-read updates it
+    // optimistically). Best-effort: loading or failed feed = no badge.
+    final unreadCount =
+        ref
+            .watch(notificationsProvider)
+            .value
+            ?.where((notice) => notice.readAt == null)
+            .length ??
+        0;
 
     return Material(
       color: Colors.transparent,
@@ -44,6 +56,7 @@ class HomeScreen extends ConsumerWidget {
               ref.refresh(myReportsProvider.future),
               ref.refresh(latestAnnouncementProvider.future),
               ref.refresh(newestUnpaidBillProvider.future),
+              ref.refresh(notificationsProvider.future),
             ]);
           } catch (_) {
             // Each failed provider retains AsyncError and renders its retry
@@ -87,51 +100,71 @@ class HomeScreen extends ConsumerWidget {
               _ => [_SectionLoading(label: l10n.homeBillLoading)],
             },
             if (announcement.value case final notice?) ...[
-              Card.filled(
-                child: ListTile(
-                  minTileHeight: 64,
-                  leading: const Icon(Icons.campaign_outlined),
-                  title: Text(l10n.homeAnnouncementTitle),
-                  subtitle: Text(
-                    notice.subject,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openAnnouncement(context, ref, notice),
+              ListTile(
+                minTileHeight: 64,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.campaign_outlined),
+                title: Text(l10n.homeAnnouncementTitle),
+                subtitle: Text(
+                  notice.subject,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openAnnouncement(context, ref, notice),
               ),
-              const SizedBox(height: 16),
+              const Divider(),
             ],
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.homeFundTitle,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                IconButton(
-                  iconSize: 28,
-                  icon: const Icon(Icons.receipt_long_outlined),
-                  tooltip: l10n.billsTitle,
-                  onPressed: () => Navigator.push(
-                    context,
-                    adaptivePageRoute(builder: (_) => const BillsScreen()),
-                  ),
-                ),
-                IconButton(
-                  iconSize: 28,
-                  icon: const Icon(Icons.notifications_outlined),
-                  tooltip: l10n.notificationsTitle,
-                  onPressed: () => Navigator.push(
-                    context,
-                    adaptivePageRoute(
-                      builder: (_) => const NotificationsScreen(),
+            // Labeled entries, not icon-only chrome: every resident can read
+            // where a row goes without long-pressing for a tooltip.
+            ListTile(
+              minTileHeight: 64,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(l10n.billsTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                adaptivePageRoute(builder: (_) => const BillsScreen()),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              minTileHeight: 64,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.notifications_outlined),
+              title: Text(l10n.notificationsTitle),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (unreadCount > 0) ...[
+                    Semantics(
+                      label: l10n.notificationsUnreadCount(unreadCount),
+                      child: ExcludeSemantics(
+                        child: Badge.count(
+                          count: unreadCount,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          textColor: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 8),
+                  ],
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              onTap: () => Navigator.push(
+                context,
+                adaptivePageRoute(builder: (_) => const NotificationsScreen()),
+              ),
+            ),
+            const Divider(),
+            const SizedBox(height: 8),
+            Text(
+              l10n.homeFundTitle,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             switch (fund) {
               AsyncData(:final value) => _fundBlock(context, ref, l10n, value),
@@ -191,12 +224,22 @@ class HomeScreen extends ConsumerWidget {
     WidgetRef ref,
     NotificationFeed notice,
   ) async {
-    await ref
-        .read(transparencyRepositoryProvider)
-        .markNotificationRead(notice.id);
-    ref.invalidate(latestAnnouncementProvider);
-    ref.invalidate(notificationsProvider);
-    if (context.mounted) await showNotificationDialog(context, notice);
+    // Best-effort mark-read, same doctrine as NotificationsController
+    // .markRead: the feed is authoritative, a failed call simply leaves the
+    // row unread — and reading the announcement must work offline.
+    unawaited(() async {
+      try {
+        await ref
+            .read(transparencyRepositoryProvider)
+            .markNotificationRead(notice.id);
+      } catch (_) {
+        return; // unread it stays; nothing to refresh
+      }
+      if (!context.mounted) return;
+      ref.invalidate(latestAnnouncementProvider);
+      ref.invalidate(notificationsProvider);
+    }());
+    await showNotificationDialog(context, notice);
   }
 
   /// DESIGN.md fund-balance signature: large tabular amount + stat grid.
@@ -249,6 +292,11 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
         const SizedBox(height: 16),
+        Text(
+          l10n.homeFundChartCaption,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 4),
         FundChart(
           range: '6m',
           compact: true,
@@ -276,7 +324,7 @@ class HomeScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l10n.homeNoActiveReports),
-            TextButton(
+            AdaptiveTextButton(
               onPressed: () => openReportForm(context),
               child: Text(l10n.tabReport),
             ),
@@ -321,7 +369,7 @@ class HomeScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l10n.homeNoSpending),
-            TextButton(
+            AdaptiveTextButton(
               onPressed: () => selectLedgerTab(ref),
               child: Text(l10n.tabLedger),
             ),
@@ -335,7 +383,15 @@ class HomeScreen extends ConsumerWidget {
           ListTile(
             minTileHeight: 56,
             contentPadding: EdgeInsets.zero,
-            title: Text(l10n.ledgerDetailTitle),
+            // Lead with the story subject; the constant title is only the
+            // fallback so a row never renders a bare blank.
+            title: Text(
+              entry.whatWasFixed.isNotEmpty
+                  ? entry.whatWasFixed
+                  : l10n.ledgerDetailTitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

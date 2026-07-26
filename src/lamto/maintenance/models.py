@@ -1,3 +1,5 @@
+import re
+
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
@@ -5,6 +7,26 @@ from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import Building, Unit
 from lamto.documents.models import DocumentVersion
+
+
+class CaseCategory(models.TextChoices):
+    ELEVATOR = "ELEVATOR", _("Elevator")
+    WATER_LEAK = "WATER_LEAK", _("Water leak")
+    ELECTRICAL_FAULT = "ELECTRICAL_FAULT", _("Electrical fault")
+    HEATING_COOLING = "HEATING_COOLING", _("Heating / cooling")
+    LIGHTING = "LIGHTING", _("Lighting")
+    DOOR_LOCK = "DOOR_LOCK", _("Door / lock")
+    APPLIANCE = "APPLIANCE", _("Appliance")
+    STRUCTURAL = "STRUCTURAL", _("Structural")
+    CLEANLINESS = "CLEANLINESS", _("Cleanliness")
+    NOISE = "NOISE", _("Noise")
+    OTHER = "OTHER", _("Other")
+
+
+def normalize_category(value):
+    """Map a code or legacy free-text label to a CaseCategory code (OTHER if unknown)."""
+    code = re.sub(r"[^A-Z0-9]+", "_", str(value).upper()).strip("_")
+    return code if code in CaseCategory.values else CaseCategory.OTHER.value
 
 
 class BuildingLocation(models.Model):
@@ -132,7 +154,7 @@ class TriageJob(models.Model):
 
 class TriageSuggestion(models.Model):
     job = models.OneToOneField(TriageJob, on_delete=models.PROTECT, related_name="suggestion")
-    category = models.CharField(max_length=128)
+    category = models.CharField(max_length=128, choices=CaseCategory.choices)
     interpreted_location = models.CharField(max_length=1000)
     urgency = models.CharField(max_length=16)
     confidence_percent = models.PositiveSmallIntegerField()
@@ -151,7 +173,7 @@ class TriageDecision(models.Model):
     report = models.OneToOneField(IssueReport, on_delete=models.PROTECT, related_name="triage_decision")
     suggestion = models.ForeignKey(TriageSuggestion, null=True, blank=True, on_delete=models.PROTECT)
     operator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    category = models.CharField(max_length=128)
+    category = models.CharField(max_length=128, choices=CaseCategory.choices)
     urgency = models.CharField(max_length=16)
     location = models.ForeignKey(BuildingLocation, on_delete=models.PROTECT)
     department = models.CharField(max_length=128)
@@ -163,7 +185,7 @@ class TriageDecision(models.Model):
 class MaintenanceCase(models.Model):
     decision = models.OneToOneField(TriageDecision, on_delete=models.PROTECT, related_name="case")
     building = models.ForeignKey(Building, on_delete=models.PROTECT)
-    category = models.CharField(max_length=128)
+    category = models.CharField(max_length=128, choices=CaseCategory.choices)
     urgency = models.CharField(max_length=16)
     location = models.ForeignKey(BuildingLocation, on_delete=models.PROTECT)
     department = models.CharField(max_length=128)

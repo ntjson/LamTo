@@ -12,7 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .candidates import find_duplicate_candidates
-from .models import IssueReport, TriageJob, TriageSuggestion
+from .models import IssueReport, TriageJob, TriageSuggestion, normalize_category
 from .triage_prompt import build_system_prompt
 
 logger = logging.getLogger(__name__)
@@ -234,7 +234,7 @@ def _process_claimed_job(job):
     payload["provider_request_id"] = request_id
     TriageSuggestion.objects.create(
         job=job,
-        category=payload["category"],
+        category=normalize_category(payload["category"]),
         interpreted_location=payload["interpreted_location"],
         urgency=payload["urgency"],
         confidence_percent=payload["confidence_percent"],

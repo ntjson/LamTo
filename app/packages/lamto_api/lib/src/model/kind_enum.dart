@@ -11,10 +11,10 @@ part 'kind_enum.g.dart';
 
 class KindEnum extends EnumClass {
 
-  /// * `BEFORE` - Before * `AFTER` - After
+  /// * `BEFORE` - Trước * `AFTER` - Sau
   @BuiltValueEnumConst(wireName: r'BEFORE')
   static const KindEnum BEFORE = _$BEFORE;
-  /// * `BEFORE` - Before * `AFTER` - After
+  /// * `BEFORE` - Trước * `AFTER` - Sau
   @BuiltValueEnumConst(wireName: r'AFTER')
   static const KindEnum AFTER = _$AFTER;
 

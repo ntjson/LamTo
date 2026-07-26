@@ -121,7 +121,7 @@ def case_list(request):
     case_items = [
         {
             "url": f"/s/cases/{c.pk}/",
-            "title": f"Case #{c.pk} · {c.category} · {c.location.name}",
+            "title": f"Case #{c.pk} · {c.get_category_display()} · {c.location.name}",
             "status": urgency_labels.get(c.urgency, c.urgency.title()),
             "deadline": c.deadline_at,
             "deadline_tone": deadline_tone(c.deadline_at),

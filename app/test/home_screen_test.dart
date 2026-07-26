@@ -13,6 +13,7 @@ import 'package:lamto/features/bills/bills_screen.dart';
 import 'package:lamto/features/bills/bills_repository.dart';
 import 'package:lamto/features/home/home_screen.dart';
 import 'package:lamto/features/ledger/ledger_screen.dart';
+import 'package:lamto/features/notifications/notifications_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/features/shell/home_shell.dart';
 import 'package:lamto/features/transparency/fund_chart.dart';
@@ -50,7 +51,8 @@ LedgerEntryList _entry(int id) => LedgerEntryList(
     ..actualCostVnd = 900000
     ..publishedAt = DateTime.utc(2026, 7, 10)
     ..integrityStatus = 'VERIFIED'
-    ..evidenceLevel = 'CHAIN_CONFIRMED',
+    ..evidenceLevel = 'CHAIN_CONFIRMED'
+    ..whatWasFixed = 'Sửa máy bơm nước',
 );
 
 ReportSummary _report(String text, StatusEnum status) => ReportSummary(
@@ -140,6 +142,38 @@ class _FakeTransparency implements TransparencyRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+NotificationFeed _notice(int id, {DateTime? readAt}) => NotificationFeed(
+  (b) => b
+    ..id = id
+    ..eventCode = 'ledger.publication'
+    ..eventKey = 'ledger.publication:entry:$id'
+    ..subject = 'Khoản chi $id'
+    ..body = 'Một khoản chi vừa được công bố.'
+    ..createdAt = DateTime.utc(2026, 7, 15)
+    ..readAt = readAt,
+);
+
+/// Two unread + one read in the general feed; no unread announcements.
+class _UnreadTransparency extends _FakeTransparency {
+  @override
+  Future<PaginatedNotificationFeedList> listNotifications({
+    String? cursor,
+    String? eventCode,
+    bool? unread,
+  }) async => PaginatedNotificationFeedList(
+    (b) => b
+      ..results = ListBuilder<NotificationFeed>(
+        eventCode == null
+            ? [
+                _notice(1),
+                _notice(2),
+                _notice(3, readAt: DateTime.utc(2026, 7, 16)),
+              ]
+            : const <NotificationFeed>[],
+      ),
+  );
+}
+
 class _ThrowingSeriesTransparency extends _FakeTransparency {
   @override
   Future<FundSeries> fetchFundSeries({String range = '6m'}) async {
@@ -217,11 +251,72 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Bills'));
+    // The entry is a labeled row, not icon-only chrome behind a tooltip.
+    await tester.tap(find.text('Bills'));
     await tester.pumpAndSettle();
 
     expect(find.byType(BillsScreen), findsOneWidget);
     expect(find.text('No bills.'), findsOneWidget);
+  });
+
+  testWidgets('Home notifications row is labeled and opens the list', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(_FakeTransparency()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Thông báo'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NotificationsScreen), findsOneWidget);
+  });
+
+  testWidgets('Home notifications row carries an announced unread badge', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          newestUnpaidBillProvider.overrideWith((ref) async => null),
+          reportsRepositoryProvider.overrideWithValue(_FakeReports()),
+          transparencyRepositoryProvider.overrideWithValue(
+            _UnreadTransparency(),
+          ),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Count-bearing badge on the row, announced for screen readers.
+    expect(find.byType(Badge), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    // The tile merges descendant semantics; match within the row's label.
+    expect(
+      find.bySemanticsLabel(RegExp('2 thông báo chưa đọc')),
+      findsOneWidget,
+    );
+    semantics.dispose();
   });
 
   testWidgets('Home shows the newest unpaid bill', (tester) async {
@@ -453,10 +548,30 @@ void main() {
 
     expect(find.text('Quỹ bảo trì'), findsOneWidget);
     expect(find.text('1.500.000 ₫'), findsOneWidget); // tabular integer VND
-    expect(find.text('Thang máy kêu'), findsOneWidget); // OPEN shown
-    expect(find.text('Đèn hỏng'), findsNothing); // RESOLVED filtered out
-    expect(find.text('Acme Co'), findsOneWidget); // recent spending row
-    expect(find.byIcon(Icons.notifications_outlined), findsOneWidget); // bell
+    // 30-day stats and 6-month chart each state their window (item G).
+    expect(find.textContaining('Thu (30 ngày)'), findsOneWidget);
+    expect(find.text('Số dư quỹ · 6 tháng gần nhất'), findsOneWidget);
+    // Below-the-fold sections still render; search offstage rows too.
+    expect(
+      find.text('Thang máy kêu', skipOffstage: false),
+      findsOneWidget,
+    ); // OPEN shown
+    expect(
+      find.text('Đèn hỏng', skipOffstage: false),
+      findsNothing,
+    ); // RESOLVED filtered out
+    expect(
+      find.text('Acme Co', skipOffstage: false),
+      findsOneWidget,
+    ); // recent spending row
+    expect(
+      find.text('Sửa máy bơm nước', skipOffstage: false),
+      findsOneWidget,
+    ); // spending subject leads the row
+    // Bills/Notifications are visibly labeled rows outside the fund heading.
+    expect(find.text('Hóa đơn'), findsOneWidget);
+    expect(find.text('Thông báo'), findsOneWidget);
+    expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
   });
 
   testWidgets(
@@ -487,14 +602,18 @@ void main() {
       // Fund / spending still succeed.
       expect(find.text('Quỹ bảo trì'), findsOneWidget);
       expect(find.text('1.500.000 ₫'), findsOneWidget);
-      expect(find.text('Acme Co'), findsOneWidget);
+      expect(find.text('Acme Co', skipOffstage: false), findsOneWidget);
 
       // Active-reports section header + resident-facing errServer (generic throw
       // → Failure.fromObject → server_error), not a silent empty list.
-      expect(find.text('Phản ánh đang mở'), findsOneWidget);
+      expect(
+        find.text('Phản ánh đang mở', skipOffstage: false),
+        findsOneWidget,
+      );
       expect(
         find.text(
           'Đã có lỗi từ phía hệ thống. Thao tác có thể chưa được lưu. Vui lòng thử lại sau.',
+          skipOffstage: false,
         ),
         findsOneWidget,
       );

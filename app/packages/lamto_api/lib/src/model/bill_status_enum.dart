@@ -11,13 +11,13 @@ part 'bill_status_enum.g.dart';
 
 class BillStatusEnum extends EnumClass {
 
-  /// * `ISSUED` - Issued * `PAID` - Paid * `VOID` - Void
+  /// * `ISSUED` - Đã phát hành * `PAID` - Đã thanh toán * `VOID` - Đã hủy
   @BuiltValueEnumConst(wireName: r'ISSUED')
   static const BillStatusEnum ISSUED = _$ISSUED;
-  /// * `ISSUED` - Issued * `PAID` - Paid * `VOID` - Void
+  /// * `ISSUED` - Đã phát hành * `PAID` - Đã thanh toán * `VOID` - Đã hủy
   @BuiltValueEnumConst(wireName: r'PAID')
   static const BillStatusEnum PAID = _$PAID;
-  /// * `ISSUED` - Issued * `PAID` - Paid * `VOID` - Void
+  /// * `ISSUED` - Đã phát hành * `PAID` - Đã thanh toán * `VOID` - Đã hủy
   @BuiltValueEnumConst(wireName: r'VOID')
   static const BillStatusEnum VOID = _$VOID;
 

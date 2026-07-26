@@ -197,7 +197,7 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
             ActionItem(
                 kind="deadline_risk",
                 title=_kind_title("deadline_risk"),
-                summary=_("Case #%(id)s · %(category)s") % {"id": case.pk, "category": case.category},
+                summary=_("Case #%(id)s · %(category)s") % {"id": case.pk, "category": case.get_category_display()},
                 target_type="MaintenanceCase",
                 target_id=case.pk,
                 url=reverse("web:case-detail", kwargs={"pk": case.pk}),
@@ -210,7 +210,7 @@ def _deadline_risk_items(building_id: int) -> list[ActionItem]:
 
 def _in_progress_case_items(building_id: int) -> list[ActionItem]:
     return [ActionItem(kind="in_progress_case", title=_kind_title("in_progress_case"),
-                       summary=_("Case #%(id)s · %(category)s") % {"id": case.pk, "category": case.category},
+                       summary=_("Case #%(id)s · %(category)s") % {"id": case.pk, "category": case.get_category_display()},
                        target_type="MaintenanceCase",
                        target_id=case.pk, url=reverse("web:case-detail", kwargs={"pk": case.pk}),
                        priority=20, deadline_at=case.deadline_at)

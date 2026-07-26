@@ -470,12 +470,6 @@ abstract class AppLocalizations {
   /// **'Send report'**
   String get reportSubmit;
 
-  /// No description provided for @reportSubmitting.
-  ///
-  /// In en, this message translates to:
-  /// **'Sending…'**
-  String get reportSubmitting;
-
   /// No description provided for @reportDraftSaving.
   ///
   /// In en, this message translates to:
@@ -551,7 +545,7 @@ abstract class AppLocalizations {
   /// No description provided for @privateToggleSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Only you and Management can see this request. Private requests are not part of community proposals.'**
+  /// **'Only you and Management can see this request. Private requests never appear in the public proposals or ledger.'**
   String get privateToggleSubtitle;
 
   /// No description provided for @privateBadge.
@@ -577,18 +571,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load more'**
   String get issuesLoadMore;
-
-  /// No description provided for @statusOpen.
-  ///
-  /// In en, this message translates to:
-  /// **'Open'**
-  String get statusOpen;
-
-  /// No description provided for @statusResolved.
-  ///
-  /// In en, this message translates to:
-  /// **'Resolved'**
-  String get statusResolved;
 
   /// No description provided for @statusSubmitted.
   ///
@@ -667,6 +649,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Grouped into case: {category}'**
   String timelineCase(String category);
+
+  /// No description provided for @timelineCaseNoCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Grouped into a maintenance case'**
+  String get timelineCaseNoCategory;
+
+  /// No description provided for @categoryElevator.
+  ///
+  /// In en, this message translates to:
+  /// **'Elevator'**
+  String get categoryElevator;
+
+  /// No description provided for @categoryWaterLeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Water leak'**
+  String get categoryWaterLeak;
+
+  /// No description provided for @categoryElectricalFault.
+  ///
+  /// In en, this message translates to:
+  /// **'Electrical fault'**
+  String get categoryElectricalFault;
+
+  /// No description provided for @categoryHeatingCooling.
+  ///
+  /// In en, this message translates to:
+  /// **'Heating / cooling'**
+  String get categoryHeatingCooling;
+
+  /// No description provided for @categoryLighting.
+  ///
+  /// In en, this message translates to:
+  /// **'Lighting'**
+  String get categoryLighting;
+
+  /// No description provided for @categoryDoorLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Door / lock'**
+  String get categoryDoorLock;
+
+  /// No description provided for @categoryAppliance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appliance'**
+  String get categoryAppliance;
+
+  /// No description provided for @categoryStructural.
+  ///
+  /// In en, this message translates to:
+  /// **'Structural'**
+  String get categoryStructural;
+
+  /// No description provided for @categoryCleanliness.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleanliness'**
+  String get categoryCleanliness;
+
+  /// No description provided for @categoryNoise.
+  ///
+  /// In en, this message translates to:
+  /// **'Noise'**
+  String get categoryNoise;
+
+  /// No description provided for @categoryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get categoryOther;
 
   /// No description provided for @timelineWork.
   ///
@@ -776,6 +830,72 @@ abstract class AppLocalizations {
   /// **'You can also add photos from the photo section below.'**
   String get infoReplyPhotosHint;
 
+  /// No description provided for @infoReplySavedPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reply was received. {uploaded}/{total} photos attached.'**
+  String infoReplySavedPhotos(int uploaded, int total);
+
+  /// No description provided for @infoReplyPhotosPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reply was received. Some photos did not upload — retry each photo below.'**
+  String get infoReplyPhotosPending;
+
+  /// No description provided for @infoReplyNotSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was sent yet. Your reply and photos are still here — try again.'**
+  String get infoReplyNotSent;
+
+  /// No description provided for @infoReplyPendingPhotosTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply photos not yet uploaded — retry each photo.'**
+  String get infoReplyPendingPhotosTitle;
+
+  /// No description provided for @infoReplyClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get infoReplyClose;
+
+  /// No description provided for @photoNofM.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo {n} of {m}'**
+  String photoNofM(int n, int m);
+
+  /// No description provided for @photoUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not uploaded'**
+  String get photoUploadFailed;
+
+  /// No description provided for @photoLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading photo…'**
+  String get photoLoading;
+
+  /// No description provided for @photoLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo could not be loaded.'**
+  String get photoLoadFailed;
+
+  /// No description provided for @photoBeforeRepair.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo before the repair'**
+  String get photoBeforeRepair;
+
+  /// No description provided for @photoAfterRepair.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo after the repair'**
+  String get photoAfterRepair;
+
   /// No description provided for @workStatusAssigned.
   ///
   /// In en, this message translates to:
@@ -836,6 +956,12 @@ abstract class AppLocalizations {
   /// **'Out (30d)'**
   String get homeFundOutflows;
 
+  /// No description provided for @homeFundChartCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund balance · last 6 months'**
+  String get homeFundChartCaption;
+
   /// No description provided for @homeActiveReports.
   ///
   /// In en, this message translates to:
@@ -890,6 +1016,24 @@ abstract class AppLocalizations {
   /// **'Load more'**
   String get notificationsLoadMore;
 
+  /// No description provided for @notificationsUnreadCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} unread notifications'**
+  String notificationsUnreadCount(int n);
+
+  /// No description provided for @notificationUnread.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread'**
+  String get notificationUnread;
+
+  /// No description provided for @notificationRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get notificationRead;
+
   /// No description provided for @ledgerTitle.
   ///
   /// In en, this message translates to:
@@ -913,6 +1057,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All'**
   String get ledgerAllTime;
+
+  /// No description provided for @ledgerYearLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get ledgerYearLabel;
+
+  /// No description provided for @ledgerMonthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get ledgerMonthLabel;
 
   /// No description provided for @ledgerLoadMore.
   ///
@@ -1016,6 +1172,18 @@ abstract class AppLocalizations {
   /// **'The expense was published, but a verification step is incomplete. Review the accountability chain below.'**
   String get ledgerConclusionUnverifiedBody;
 
+  /// No description provided for @ledgerConclusionMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'This record does not match its anchored evidence'**
+  String get ledgerConclusionMismatch;
+
+  /// No description provided for @ledgerConclusionMismatchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The published record differs from the evidence that was anchored for it. Report this expense to the management board.'**
+  String get ledgerConclusionMismatchBody;
+
   /// No description provided for @ledgerChainTitle.
   ///
   /// In en, this message translates to:
@@ -1025,7 +1193,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerChainHint.
   ///
   /// In en, this message translates to:
-  /// **'Open to see how the expense moves from report to verification'**
+  /// **'The expense moves from report to independent verification in the steps below.'**
   String get ledgerChainHint;
 
   /// No description provided for @ledgerChainReports.
@@ -1063,6 +1231,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Corrections'**
   String get ledgerCorrections;
+
+  /// No description provided for @ledgerCorrectionRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustment recorded'**
+  String get ledgerCorrectionRecorded;
 
   /// No description provided for @ledgerDocuments.
   ///
@@ -1172,23 +1346,23 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get accountPreferences;
 
-  /// No description provided for @accountPrefEmail.
+  /// No description provided for @accountPrefAll.
   ///
   /// In en, this message translates to:
-  /// **'Email'**
-  String get accountPrefEmail;
-
-  /// No description provided for @accountPrefPush.
-  ///
-  /// In en, this message translates to:
-  /// **'Push'**
-  String get accountPrefPush;
+  /// **'Receive all notifications'**
+  String get accountPrefAll;
 
   /// No description provided for @accountSignOutAll.
   ///
   /// In en, this message translates to:
   /// **'Sign out of all devices'**
   String get accountSignOutAll;
+
+  /// No description provided for @signOutUnsentWorkWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'The report you are drafting and any unsent photos on this device will be deleted.'**
+  String get signOutUnsentWorkWarning;
 
   /// No description provided for @commonCancel.
   ///
@@ -1442,42 +1616,6 @@ abstract class AppLocalizations {
   /// **'Actions are too frequent. Please wait.'**
   String get gateReaderThrottled;
 
-  /// No description provided for @prefReportReceipt.
-  ///
-  /// In en, this message translates to:
-  /// **'Report received'**
-  String get prefReportReceipt;
-
-  /// No description provided for @prefTriageStatus.
-  ///
-  /// In en, this message translates to:
-  /// **'Report reviewed'**
-  String get prefTriageStatus;
-
-  /// No description provided for @prefWorkCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Work completed'**
-  String get prefWorkCompleted;
-
-  /// No description provided for @prefLedgerPublication.
-  ///
-  /// In en, this message translates to:
-  /// **'Published spending'**
-  String get prefLedgerPublication;
-
-  /// No description provided for @prefCorrectionStatus.
-  ///
-  /// In en, this message translates to:
-  /// **'Corrections'**
-  String get prefCorrectionStatus;
-
-  /// No description provided for @prefBuildingAnnouncement.
-  ///
-  /// In en, this message translates to:
-  /// **'Building announcements'**
-  String get prefBuildingAnnouncement;
-
   /// No description provided for @fundChartTitle.
   ///
   /// In en, this message translates to:
@@ -1513,6 +1651,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'outflow {amount}'**
   String fundChartOutflowValue(String amount);
+
+  /// No description provided for @fundChartInflowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Inflows'**
+  String get fundChartInflowLabel;
+
+  /// No description provided for @fundChartOutflowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Outflows'**
+  String get fundChartOutflowLabel;
 
   /// No description provided for @fundChartRange30d.
   ///
@@ -1604,6 +1754,24 @@ abstract class AppLocalizations {
   /// **'Funding source'**
   String get proposalFund;
 
+  /// No description provided for @fundGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General fund'**
+  String get fundGeneral;
+
+  /// No description provided for @fundMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance fund'**
+  String get fundMaintenance;
+
+  /// No description provided for @fundOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Building fund'**
+  String get fundOther;
+
   /// No description provided for @proposalContractor.
   ///
   /// In en, this message translates to:
@@ -1688,6 +1856,12 @@ abstract class AppLocalizations {
   /// **'Due'**
   String get billDueLabel;
 
+  /// No description provided for @billOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get billOverdue;
+
   /// No description provided for @billViewFile.
   ///
   /// In en, this message translates to:
@@ -1699,6 +1873,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I\'ve paid'**
   String get billPayAction;
+
+  /// No description provided for @billPayExplainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning records a transfer you already made — it does not pay the bill.'**
+  String get billPayExplainer;
+
+  /// No description provided for @billPayStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Transfer the amount in your banking app.'**
+  String get billPayStep1;
+
+  /// No description provided for @billPayStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Come back here and scan the QR on the bill to record it.'**
+  String get billPayStep2;
 
   /// No description provided for @billStatusIssued.
   ///

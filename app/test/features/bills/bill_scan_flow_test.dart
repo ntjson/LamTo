@@ -1,19 +1,30 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/features/bills/bill_scan_screen.dart';
 import 'package:lamto/features/bills/bills_repository.dart';
+import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class _Repo implements BillsRepository {
   _Repo({this.error});
 
   final Object? error;
   String? confirmedReference;
+  int confirmations = 0;
+
+  /// When set, confirmPayment stalls until completed (busy-guard tests).
+  Completer<void>? gate;
 
   @override
   Future<BillDetail> confirmPayment(int id, String reference) async {
+    confirmations++;
     confirmedReference = reference;
+    if (gate case final gate?) await gate.future;
     if (error case final error?) throw error;
     return BillDetail(
       (builder) => builder
@@ -36,6 +47,27 @@ class _Repo implements BillsRepository {
 ProviderContainer _container(_Repo repo) => ProviderContainer(
   overrides: [billsRepositoryProvider.overrideWithValue(repo)],
 );
+
+/// Pumps the scan screen and returns its scanner so tests can feed
+/// detections directly (no camera in the test environment).
+Future<MobileScanner> _pumpScan(WidgetTester tester, _Repo repo) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [billsRepositoryProvider.overrideWithValue(repo)],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('vi'),
+        home: const BillScanScreen(billId: 1),
+      ),
+    ),
+  );
+  await tester.pump();
+  return tester.widget<MobileScanner>(find.byType(MobileScanner));
+}
+
+BarcodeCapture _qr(String raw) =>
+    BarcodeCapture(barcodes: [Barcode(rawValue: raw)]);
 
 void main() {
   test(
@@ -110,6 +142,68 @@ void main() {
       BillScanResult.recorded,
     );
     expect(repo.confirmedReference, 'ref-9');
+  });
+
+  testWidgets(
+    'transient failure stays on the scan screen with inline copy and rescan',
+    (tester) async {
+      final repo = _Repo(
+        error: DioException(requestOptions: RequestOptions(path: '/confirm')),
+      );
+      final scanner = await _pumpScan(tester, repo);
+
+      scanner.onDetect!(_qr('lamto-bill:a'));
+      await tester.pumpAndSettle();
+
+      // Still here — no pop — with the mapped Vietnamese failure copy inline.
+      expect(find.byType(BillScanScreen), findsOneWidget);
+      expect(
+        find.text(
+          'Chưa thể xác nhận thanh toán đã được ghi nhận hay chưa. '
+          'Hãy kiểm tra trạng thái hóa đơn trước khi thử lại.',
+        ),
+        findsOneWidget,
+      );
+
+      // Immediate rescan works: the busy flag was released.
+      scanner.onDetect!(_qr('lamto-bill:b'));
+      await tester.pumpAndSettle();
+      expect(repo.confirmations, 2);
+      expect(repo.confirmedReference, 'b');
+    },
+  );
+
+  testWidgets('non-LamTo QR shows inline copy without confirming', (
+    tester,
+  ) async {
+    final repo = _Repo();
+    final scanner = await _pumpScan(tester, repo);
+
+    scanner.onDetect!(_qr('https://example.test'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BillScanScreen), findsOneWidget);
+    expect(find.text('Mã QR không hợp lệ.'), findsOneWidget);
+    expect(repo.confirmations, 0);
+  });
+
+  testWidgets('a second QR hit while confirming is swallowed', (tester) async {
+    // Error result so the screen never pops (pop is exercised in the
+    // detail-flow test); only the busy guard is under test here.
+    final repo = _Repo(
+      error: DioException(requestOptions: RequestOptions(path: '/confirm')),
+    )..gate = Completer<void>();
+    final scanner = await _pumpScan(tester, repo);
+
+    scanner.onDetect!(_qr('lamto-bill:a'));
+    await tester.pump();
+    scanner.onDetect!(_qr('lamto-bill:b'));
+    await tester.pump();
+
+    repo.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(repo.confirmations, 1);
+    expect(repo.confirmedReference, 'a');
   });
 
   test(

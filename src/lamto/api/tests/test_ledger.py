@@ -79,6 +79,8 @@ class LedgerApiTests(TestCase):
         assert row["published_at"]
         assert row["evidence_level"] == EvidenceLevel.CHAIN_CONFIRMED
         assert row["integrity_status"] == self.entry.effective_integrity_status
+        # List rows carry the same §6.3(6) story subject as the detail.
+        assert row["what_was_fixed"] == "Cable secured"
 
     def test_list_period_filters(self):
         year = self.entry.published_at.year
@@ -209,7 +211,8 @@ class LedgerApiTests(TestCase):
         entry = settlement.ledger_entry
         auth = self._auth()
         rows = self.client.get(reverse("api:ledger-list"), headers=auth).json()["results"]
-        assert entry.pk in {row["id"] for row in rows}
+        row = next(row for row in rows if row["id"] == entry.pk)
+        assert row["what_was_fixed"] == "Lobby repainted"
         detail = self.client.get(reverse("api:ledger-detail", args=[entry.pk]), headers=auth)
         assert detail.status_code == 200
         body = detail.json()

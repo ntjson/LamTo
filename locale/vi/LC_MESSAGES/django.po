@@ -1807,3 +1807,36 @@ msgstr "Tạo đề xuất độc lập"
 msgid "A spending proposal without a maintenance case. Publication freezes it either way."
 msgstr "Đề xuất chi tiêu không gắn với vụ việc bảo trì. Công bố sẽ cố định đề xuất trong mọi trường hợp."
 
+
+msgid "Elevator"
+msgstr "Thang máy"
+
+msgid "Water leak"
+msgstr "Rò rỉ nước"
+
+msgid "Electrical fault"
+msgstr "Sự cố điện"
+
+msgid "Heating / cooling"
+msgstr "Điều hòa / sưởi ấm"
+
+msgid "Lighting"
+msgstr "Chiếu sáng"
+
+msgid "Door / lock"
+msgstr "Cửa / khóa"
+
+msgid "Appliance"
+msgstr "Thiết bị gia dụng"
+
+msgid "Structural"
+msgstr "Kết cấu"
+
+msgid "Cleanliness"
+msgstr "Vệ sinh"
+
+msgid "Noise"
+msgstr "Tiếng ồn"
+
+msgid "Other"
+msgstr "Khác"

@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/failure.dart';
@@ -15,6 +18,7 @@ import '../../theme.dart';
 import 'issue_detail_screen.dart';
 import 'location_picker_screen.dart';
 import 'my_issues_screen.dart';
+import 'photo_thumbnail.dart';
 import 'report_draft.dart';
 import 'report_submitter.dart';
 import 'reports_repository.dart';
@@ -22,6 +26,80 @@ import 'reports_repository.dart';
 const maxReportPhotos = 5; // spec 6.3
 const _maxPhotoEdge = 2048.0; // spec 6.3: client-side max edge before upload
 const _photoQuality = 85;
+
+/// Injectable so widget tests can fake picking (native picker cannot run).
+final imagePickerProvider = Provider<ImagePicker>((_) => ImagePicker());
+
+/// Shared photo-pick flow (report form + needs-info reply sheet): camera or
+/// gallery via a source sheet, native downscale to max edge 2048 + JPEG
+/// re-encode (spec 6.3). Returns at most [limit] files; empty on cancel.
+Future<List<XFile>> pickReportPhotos(
+  BuildContext context,
+  AppLocalizations l10n,
+  ImagePicker picker, {
+  required int limit,
+}) async {
+  // Camera-vs-gallery is the textbook iOS action-sheet moment; Android keeps
+  // the Material bottom sheet.
+  final source = defaultTargetPlatform == TargetPlatform.iOS
+      ? await showCupertinoModalPopup<ImageSource>(
+          context: context,
+          builder: (context) => CupertinoActionSheet(
+            actions: [
+              CupertinoActionSheetAction(
+                onPressed: () => Navigator.pop(context, ImageSource.camera),
+                child: Text(l10n.reportPhotoCamera),
+              ),
+              CupertinoActionSheetAction(
+                onPressed: () => Navigator.pop(context, ImageSource.gallery),
+                child: Text(l10n.reportPhotoGallery),
+              ),
+            ],
+            cancelButton: CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.commonCancel),
+            ),
+          ),
+        )
+      : await showModalBottomSheet<ImageSource>(
+          context: context,
+          builder: (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  minTileHeight: 56,
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: Text(l10n.reportPhotoCamera),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                ListTile(
+                  minTileHeight: 56,
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: Text(l10n.reportPhotoGallery),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
+            ),
+          ),
+        );
+  if (source == null) return const [];
+  final picked = source == ImageSource.gallery
+      ? await picker.pickMultiImage(
+          maxWidth: _maxPhotoEdge,
+          maxHeight: _maxPhotoEdge,
+          imageQuality: _photoQuality,
+        )
+      : [
+          await picker.pickImage(
+            source: ImageSource.camera,
+            maxWidth: _maxPhotoEdge,
+            maxHeight: _maxPhotoEdge,
+            imageQuality: _photoQuality,
+          ),
+        ].nonNulls.toList();
+  return picked.take(limit).toList();
+}
 
 enum _DraftSaveState { idle, saving, saved, failed }
 
@@ -55,7 +133,6 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   final _text = TextEditingController();
   final _scrollController = ScrollController();
   final _noticeKey = GlobalKey();
-  final _picker = ImagePicker();
   ReportDraft _draft = ReportDraft.fresh();
   bool _restored = false;
   bool _busy = false;
@@ -207,50 +284,18 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     if (_committed || _busy) return;
     final remaining = maxReportPhotos - _draft.photoPaths.length;
     if (remaining <= 0) return;
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              minTileHeight: 56,
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: Text(l10n.reportPhotoCamera),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              minTileHeight: 56,
-              leading: const Icon(Icons.photo_library_outlined),
-              title: Text(l10n.reportPhotoGallery),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+    final picked = await pickReportPhotos(
+      context,
+      l10n,
+      ref.read(imagePickerProvider),
+      limit: remaining,
     );
-    if (source == null) return;
-    // Native downscale to max edge 2048 + JPEG re-encode (spec 6.3).
-    final picked = source == ImageSource.gallery
-        ? await _picker.pickMultiImage(
-            maxWidth: _maxPhotoEdge,
-            maxHeight: _maxPhotoEdge,
-            imageQuality: _photoQuality,
-          )
-        : [
-            await _picker.pickImage(
-              source: ImageSource.camera,
-              maxWidth: _maxPhotoEdge,
-              maxHeight: _maxPhotoEdge,
-              imageQuality: _photoQuality,
-            ),
-          ].nonNulls.toList();
     if (picked.isEmpty) return;
 
     // Amendment 8: copy into app-owned durable storage before draft paths.
     final photoStore = ref.read(reportPhotoFileStoreProvider);
     final owned = <String>[];
-    for (final xfile in picked.take(remaining)) {
+    for (final xfile in picked) {
       final path = await photoStore.importPickerPath(
         occupancyId: _occupancyId,
         sourcePath: xfile.path,
@@ -474,35 +519,39 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
                     await _persist();
                   },
           ),
-          const SizedBox(height: 16),
-          Text(l10n.reportPhotosLabel(maxReportPhotos)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final path in _draft.photoPaths)
-                InputChip(
-                  label: Text(
-                    path.split('/').last,
-                    overflow: TextOverflow.ellipsis,
+          // Committed-result hides the attached list: uploaded photos are on
+          // the server (their local copies deleted); failures keep their own
+          // retry thumbnails below the notice.
+          if (!_committed) ...[
+            const SizedBox(height: 16),
+            Text(l10n.reportPhotosLabel(maxReportPhotos)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (index, path) in _draft.photoPaths.indexed)
+                  PhotoThumbnail(
+                    path: path,
+                    index: index + 1,
+                    count: _draft.photoPaths.length,
+                    onDelete: editingLocked ? null : () => _removePhoto(path),
                   ),
-                  onDeleted: editingLocked ? null : () => _removePhoto(path),
-                ),
-              if (!_committed && _draft.photoPaths.length < maxReportPhotos)
-                ActionChip(
-                  avatar: const Icon(Icons.add_a_photo_outlined, size: 20),
-                  label: Text(l10n.reportAddPhoto),
-                  // ≥48dp touch target (spec §6.2/§6.4).
-                  materialTapTargetSize: MaterialTapTargetSize.padded,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 12,
+                if (_draft.photoPaths.length < maxReportPhotos)
+                  ActionChip(
+                    avatar: const Icon(Icons.add_a_photo_outlined, size: 20),
+                    label: Text(l10n.reportAddPhoto),
+                    // ≥48dp touch target (spec §6.2/§6.4).
+                    materialTapTargetSize: MaterialTapTargetSize.padded,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 12,
+                    ),
+                    onPressed: _busy ? null : () => _addPhoto(l10n),
                   ),
-                  onPressed: _busy ? null : () => _addPhoto(l10n),
-                ),
-            ],
-          ),
+              ],
+            ),
+          ],
           if (_notice != null) ...[
             const SizedBox(height: 16),
             Builder(
@@ -542,28 +591,27 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
               },
             ),
           ],
-          for (final photo in failedPhotos)
-            Builder(
-              builder: (context) {
-                final colors = statusToneColors(context, StatusTone.error);
-                return ListTile(
-                  minTileHeight: 48,
-                  tileColor: colors.bg,
-                  textColor: colors.fg,
-                  iconColor: colors.fg,
-                  leading: const Icon(Icons.error_outline),
-                  title: Text(photo.filename, overflow: TextOverflow.ellipsis),
-                  trailing: TextButton(
-                    onPressed: () => _retryPhoto(photo, l10n),
-                    child: Text(l10n.reportPhotoRetry),
+          if (failedPhotos.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final photo in failedPhotos)
+                  PhotoThumbnail(
+                    path: photo.path,
+                    index: _outcome!.photos.indexOf(photo) + 1,
+                    count: _outcome!.photos.length,
+                    onRetry: () => _retryPhoto(photo, l10n),
                   ),
-                );
-              },
+              ],
             ),
+          ],
           if (_committed) ...[
             const SizedBox(height: 16),
             if (!_pushRequested)
-              FilledButton.tonalIcon(
+              AdaptiveFilledButton(
+                tonal: true,
                 onPressed: _pushBusy ? null : _requestPushConsent,
                 icon: _pushBusy
                     ? const SizedBox.square(
@@ -571,40 +619,25 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.notifications_outlined),
-                label: Text(l10n.reportEnableNotifications),
+                child: Text(l10n.reportEnableNotifications),
               ),
-            TextButton(
-              style: TextButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-              ),
+            AdaptiveTextButton(
+              fullWidth: true,
               onPressed: _openIssueDetail,
               child: Text(l10n.reportViewIssue),
             ),
-            TextButton(
-              style: TextButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-              ),
+            AdaptiveTextButton(
+              fullWidth: true,
               onPressed: _startAnotherReport,
               child: Text(l10n.reportAnother),
             ),
           ],
           if (!_committed) ...[
             const SizedBox(height: 24),
-            FilledButton(
+            AdaptiveFilledButton(
+              busy: _busy,
               onPressed: _busy ? null : () => _submit(l10n),
-              child: _busy
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(l10n.reportSubmitting),
-                      ],
-                    )
-                  : Text(l10n.reportSubmit),
+              child: Text(l10n.reportSubmit),
             ),
           ],
         ],

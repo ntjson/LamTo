@@ -140,8 +140,33 @@ class ReportDraftStore {
     });
   }
 
-  /// Removes every draft key (all occupancies). Used on logout so resident
-  /// issue text does not remain after the session ends (amendment 7).
+  /// Whether any occupancy holds a non-empty draft or any report has pending
+  /// info-reply photos — the unsent work [clearAll] would destroy. Draft
+  /// records decode as JSON maps, reply-photo records as JSON lists.
+  Future<bool> hasUnsentWork() async {
+    final prefs = await _prefs;
+    for (final key in prefs.getKeys()) {
+      if (!key.startsWith(_prefix)) continue;
+      final raw = prefs.getString(key);
+      if (raw == null) continue;
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          if (decoded.isNotEmpty) return true;
+        } else if (decoded is Map<String, dynamic>) {
+          if (!ReportDraft.fromJson(decoded).isEmpty) return true;
+        }
+      } on Object {
+        // Corrupt record: nothing restorable, nothing worth warning about.
+      }
+    }
+    return false;
+  }
+
+  /// Removes every draft key (all occupancies) **and** every pending
+  /// info-reply photo record ([InfoReplyPhotoStore] shares the prefix). Used
+  /// on logout so resident issue text does not remain after the session ends
+  /// (amendment 7).
   ///
   /// Drains write chains in a loop until empty so a write enqueued while
   /// awaiting cannot re-persist after key removal.
@@ -157,6 +182,46 @@ class ReportDraftStore {
     final keys = prefs.getKeys().where((k) => k.startsWith(_prefix)).toList();
     for (final key in keys) {
       await prefs.remove(key);
+    }
+  }
+}
+
+/// Pending needs-info reply photos per report: the paths of app-owned copies
+/// not yet uploaded after the reply text committed (fail-safe doctrine —
+/// the issue detail screen restores per-photo retry from this record after
+/// process death). Written when the reply commits, shrunk per uploaded photo,
+/// removed when empty.
+///
+/// Keys live under [ReportDraftStore]'s prefix (suffix `reply_photos_<id>`
+/// never collides with the drafts' bare occupancy-int suffix) so the logout
+/// [ReportDraftStore.clearAll] wipe drops these records too (amendment 7).
+class InfoReplyPhotoStore {
+  InfoReplyPhotoStore([SharedPreferences? prefs]) : _prefsOverride = prefs;
+
+  final SharedPreferences? _prefsOverride;
+
+  Future<SharedPreferences> get _prefs async =>
+      _prefsOverride ?? await SharedPreferences.getInstance();
+
+  String _key(int reportId) => '${ReportDraftStore._prefix}reply_photos_$reportId';
+
+  Future<List<String>> read(int reportId) async {
+    final raw = (await _prefs).getString(_key(reportId));
+    if (raw == null) return const [];
+    try {
+      return (jsonDecode(raw) as List).cast<String>();
+    } on Object {
+      return const []; // corrupt record: nothing restorable
+    }
+  }
+
+  /// Persists [paths] for [reportId]; an empty list removes the record.
+  Future<void> write(int reportId, List<String> paths) async {
+    final prefs = await _prefs;
+    if (paths.isEmpty) {
+      await prefs.remove(_key(reportId));
+    } else {
+      await prefs.setString(_key(reportId), jsonEncode(paths));
     }
   }
 }

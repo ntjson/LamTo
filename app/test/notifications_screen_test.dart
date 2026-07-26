@@ -208,6 +208,39 @@ void main() {
     expect(find.text('Khoản chi mới'), findsOneWidget);
   });
 
+  Widget rowStateHost(TransparencyRepository repo) => ProviderScope(
+    overrides: [transparencyRepositoryProvider.overrideWithValue(repo)],
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('vi'),
+      home: const NotificationsScreen(),
+    ),
+  );
+
+  // The tile merges descendant semantics; match within the row's label.
+  testWidgets('unread row announces its state', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(rowStateHost(_FakeRepo())); // readAt == null
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel(RegExp('Chưa đọc')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Đã đọc')), findsNothing);
+    semantics.dispose();
+  });
+
+  testWidgets('read row announces its state', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      rowStateHost(_FakeRepo(_notice(9, readAt: DateTime.utc(2026, 7, 16)))),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel(RegExp('Đã đọc')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Chưa đọc')), findsNothing);
+    semantics.dispose();
+  });
+
   testWidgets('lists notices; tap marks read and deep-links to ledger detail', (
     tester,
   ) async {

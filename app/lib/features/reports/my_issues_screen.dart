@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
 
+import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/error_retry.dart';
 import '../../core/load_more_button.dart';
@@ -119,7 +120,7 @@ class MyIssuesScreen extends ConsumerWidget {
                       children: [
                         Text(l10n.issuesEmpty),
                         const SizedBox(height: 12),
-                        FilledButton(
+                        AdaptiveFilledButton(
                           onPressed: () => openReportForm(context),
                           child: Text(l10n.tabReport),
                         ),
@@ -128,17 +129,24 @@ class MyIssuesScreen extends ConsumerWidget {
                   ),
                 ],
               )
-            : ListView(
+            // Builder-based so a long paginated history lays out lazily.
+            : ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  title,
-                  for (final report in value) _ReportTile(report: report),
-                  if (ref.read(myReportsProvider.notifier).hasMore)
-                    LoadMoreButton(
+                itemCount:
+                    1 +
+                    value.length +
+                    (ref.read(myReportsProvider.notifier).hasMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == 0) return title;
+                  final i = index - 1;
+                  if (i == value.length) {
+                    return LoadMoreButton(
                       label: l10n.issuesLoadMore,
                       onLoadMore: ref.read(myReportsProvider.notifier).loadMore,
-                    ),
-                ],
+                    );
+                  }
+                  return _ReportTile(report: value[i]);
+                },
               ),
       ),
       AsyncError(:final error) => ListView(
