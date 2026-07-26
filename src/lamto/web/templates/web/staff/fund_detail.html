@@ -51,6 +51,16 @@
               data-label-balance="{% trans 'Balance' %}"
               data-label-inflows="{% trans 'Inflows' %}"
               data-label-outflows="{% trans 'Outflows' %}"></canvas>
+      {# Sibling, not canvas fallback: role="img" hides descendants from AT. #}
+      <table class="sr-only">
+        <caption>{% trans "Fund balance by period" %}</caption>
+        <thead><tr><th scope="col">{% trans "Period" %}</th><th scope="col">{% trans "Balance" %}</th><th scope="col">{% trans "Inflows" %}</th><th scope="col">{% trans "Outflows" %}</th></tr></thead>
+        <tbody>
+          {% for point in chart_points %}
+          <tr><td>{{ point.period_start }}</td><td>{{ point.balance_vnd|intcomma }} VND</td><td>{{ point.inflows_vnd|intcomma }} VND</td><td>{{ point.outflows_vnd|intcomma }} VND</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
     {{ chart_points|json_script:"fund-chart-data" }}
   </div>
@@ -79,6 +89,7 @@
       </li>
       {% endfor %}
     </ul>
+    {% if pending_verification_capped %}<p class="hint">{% blocktrans with shown=pending_verification|length total=pending_verification_total %}Showing the latest {{ shown }} of {{ total }} sources awaiting verification.{% endblocktrans %}</p>{% endif %}
   </div>
   {% endif %}
   {% if pending %}
@@ -97,6 +108,7 @@
       </li>
       {% endfor %}
     </ul>
+    {% if pending_capped %}<p class="hint">{% blocktrans with shown=pending|length total=pending_total %}Showing the latest {{ shown }} of {{ total }} proposals awaiting reconciliation.{% endblocktrans %}</p>{% endif %}
   </div>
   {% endif %}
 

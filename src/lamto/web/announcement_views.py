@@ -134,7 +134,7 @@ def announcement_edit(request, announcement_id):
     form = AnnouncementForm(request.POST)
     if not form.is_valid() or form.cleaned_data.get("expected_revision") is None:
         if form.cleaned_data.get("expected_revision") is None:
-            form.add_error("expected_revision", "Revision is required.")
+            form.add_error("expected_revision", _("Revision is required."))
         return _render_detail(request, membership, memberships, announcement, form)
     try:
         edit_announcement(

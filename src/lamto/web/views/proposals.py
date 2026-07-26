@@ -5,10 +5,10 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _
 from django.views.decorators.http import require_GET, require_http_methods
 
-from lamto.accounts.security import require_recent_auth
+from lamto.accounts.security import pop_stashed_post, require_recent_auth
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.finance.models import (
@@ -31,6 +31,7 @@ from lamto.maintenance.cases import complete_proposal_work, publish_progress, st
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
     CreateProposalForm,
+    ProposalDecisionForm,
     PublishLedgerEntryForm,
     ProgressUpdateForm,
     StandaloneProposalForm,
@@ -74,16 +75,24 @@ def proposal_list(request):
             "current_version__contractor_name",
             "case__category",
         ),
-        sorts=(("", "Newest first", ("-created_at",)),),
+        sorts=(("", _("Newest first"), ("-created_at",)),),
     )
     next_actions = {
-        Proposal.Status.DRAFT: "Complete and submit",
-        Proposal.Status.IN_PROGRESS: "Publish progress or complete",
+        Proposal.Status.DRAFT: _("Complete and submit"),
+        Proposal.Status.IN_PROGRESS: _("Publish progress or complete"),
+        Proposal.Status.PUBLISHED: _("Decide whether to proceed"),
+        Proposal.Status.COMPLETED: _("Record transfer"),
     }
     proposal_items = [
         {
             "url": f"/s/proposals/{p.pk}/",
-            "title": f"Proposal #{p.pk} · {p.case.get_category_display() if p.case_id else p.current_version.purpose if p.current_version else 'Standalone'}"
+            "title": gettext("Proposal #%(id)s · %(subject)s")
+            % {
+                "id": p.pk,
+                "subject": p.case.get_category_display()
+                if p.case_id
+                else (p.current_version.purpose if p.current_version else gettext("Standalone")),
+            }
             + (
                 f" · {p.current_version.contractor_name}"
                 if p.current_version
@@ -137,13 +146,18 @@ def proposal_detail(request, pk):
     can_publish = _proposal_publishable(proposal)
     version = proposal.current_version
     action = request.POST.get("action") if request.method == "POST" else None
+    stashed = pop_stashed_post(request) if request.method == "GET" else None
     progress_form = ProgressUpdateForm(
         request.POST if action in {"progress", "complete"} else None,
         request.FILES if action in {"progress", "complete"} else None,
         building_id=membership.building_id,
         uploader_id=request.user.pk,
+        initial=stashed,
     )
     publish_form = PublishLedgerEntryForm(request.POST if action == "publish" else None)
+    decision_form = ProposalDecisionForm(
+        request.POST if action == "decide" else None, initial=stashed
+    )
 
     if request.method == "POST":
         action = action or "publish"
@@ -160,52 +174,61 @@ def proposal_detail(request, pk):
                 else:
                     messages.success(request, _("Settled expense published to the resident ledger."))
                     return redirect("web:proposal-detail", pk=proposal.pk)
-        elif action in {"decide", "progress", "complete"}:
+        elif action == "decide":
             require_recent_auth(request)
-            uploaded = []
-            try:
-                if action == "decide":
-                    proceed = request.POST.get("proceed") in {"1", "true", "on"}
+            if decision_form.is_valid():
+                proceed = decision_form.proceed
+                try:
                     with transaction.atomic():
                         if proceed and proposal.case_id:
                             start_case_work(proposal.case, request.user)
                         decide_proposal(
-                            proposal, request.user, proceed, request.POST.get("note", ""),
+                            proposal, request.user, proceed,
+                            decision_form.cleaned_data.get("note", ""),
                         )
+                except (ValidationError, PermissionDenied) as error:
+                    messages.error(request, "; ".join(getattr(error, "messages", [str(error)])))
                 else:
-                    if not progress_form.is_valid():
-                        raise ValidationError("Review the progress fields and evidence uploads.")
-                    with transaction.atomic():
-                        before = list(progress_form.cleaned_data["before_versions"])
-                        after = list(progress_form.cleaned_data["after_versions"])
-                        if progress_form.cleaned_data.get("before_upload"):
-                            uploaded.append(upload_document(proposal.building, Document.Kind.BEFORE_PHOTO, request.user, progress_form.cleaned_data["before_upload"]))
-                            before.extend(uploaded[-1:])
-                        if progress_form.cleaned_data.get("after_upload"):
-                            uploaded.append(upload_document(proposal.building, Document.Kind.AFTER_PHOTO, request.user, progress_form.cleaned_data["after_upload"]))
-                            after.extend(uploaded[-1:])
-                        if action == "progress":
-                            publish_progress(
-                                proposal=proposal, manager=request.user,
-                                cause=progress_form.cleaned_data["cause"], result=progress_form.cleaned_data["result"],
-                                before_versions=before, after_versions=after,
-                            )
-                        else:
-                            complete_proposal_work(
-                                proposal, request.user, progress_form.cleaned_data["cause"],
-                                progress_form.cleaned_data["result"], before, after,
-                            )
+                    if proceed:
+                        messages.success(request, _("Decision recorded. Work on this proposal can start."))
+                    else:
+                        messages.success(request, _("Decision recorded. This proposal is closed as not proceeding."))
+                return redirect("web:proposal-detail", pk=proposal.pk)
+        elif action in {"progress", "complete"}:
+            require_recent_auth(request)
+            uploaded = []
+            try:
+                if not progress_form.is_valid():
+                    raise ValidationError(_("Review the progress fields and evidence uploads."))
+                with transaction.atomic():
+                    before = list(progress_form.cleaned_data["before_versions"])
+                    after = list(progress_form.cleaned_data["after_versions"])
+                    if progress_form.cleaned_data.get("before_upload"):
+                        uploaded.append(upload_document(proposal.building, Document.Kind.BEFORE_PHOTO, request.user, progress_form.cleaned_data["before_upload"]))
+                        before.extend(uploaded[-1:])
+                    if progress_form.cleaned_data.get("after_upload"):
+                        uploaded.append(upload_document(proposal.building, Document.Kind.AFTER_PHOTO, request.user, progress_form.cleaned_data["after_upload"]))
+                        after.extend(uploaded[-1:])
+                    if action == "progress":
+                        publish_progress(
+                            proposal=proposal, manager=request.user,
+                            cause=progress_form.cleaned_data["cause"], result=progress_form.cleaned_data["result"],
+                            before_versions=before, after_versions=after,
+                        )
+                    else:
+                        complete_proposal_work(
+                            proposal, request.user, progress_form.cleaned_data["cause"],
+                            progress_form.cleaned_data["result"], before, after,
+                        )
             except (ValidationError, PermissionDenied) as error:
                 for uploaded_version in uploaded:
                     _delete_storage_blob(uploaded_version.storage_key, uploaded_version.provider_version_id or "")
-                if action in {"progress", "complete"} and isinstance(error, ValidationError):
+                if isinstance(error, ValidationError):
                     progress_form.add_error(None, error)
                 else:
                     messages.error(request, str(error))
             else:
                 messages.success(request, _("Proposal updated."))
-                return redirect("web:proposal-detail", pk=proposal.pk)
-            if action == "decide":
                 return redirect("web:proposal-detail", pk=proposal.pk)
 
     publication_snapshot = version
@@ -237,6 +260,7 @@ def proposal_detail(request, pk):
             publication_problem=publication_problem,
             publication_snapshot=publication_snapshot,
             progress_form=progress_form,
+            decision_form=decision_form,
             accountability_stages=accountability_chain_for(
                 proposal, publication_pending=publication_pending
             ),
@@ -254,8 +278,9 @@ def proposal_create(request, pk):
         pk=pk,
         building_id=building_id,
     )
-    if request.method == "POST":
-        require_recent_auth(request)
+    # Recent auth is demanded before the form renders, so the five-minute
+    # window starts when the manager starts typing, not when they submit.
+    require_recent_auth(request)
     if not spending_proposal_cases().filter(pk=case.pk).exists():
         messages.error(request, _("This case is not eligible for a spending proposal."))
         return redirect("web:case-detail", pk=case.pk)
@@ -268,7 +293,11 @@ def proposal_create(request, pk):
         messages.info(request, _("A proposal has already been submitted for this case."))
         return redirect("web:proposal-detail", pk=existing.pk)
 
-    create_form = CreateProposalForm(request.POST or None, request.FILES or None)
+    create_form = CreateProposalForm(
+        request.POST or None,
+        request.FILES or None,
+        initial=pop_stashed_post(request) if request.method == "GET" else None,
+    )
     if request.method == "POST" and create_form.is_valid():
         original = None
         try:
@@ -314,9 +343,13 @@ def proposal_create(request, pk):
 @require_http_methods(["GET", "POST"])
 def standalone_proposal_create(request):
     membership, memberships = require_management_context(request)
-    form = StandaloneProposalForm(request.POST or None, request.FILES or None)
+    require_recent_auth(request)
+    form = StandaloneProposalForm(
+        request.POST or None,
+        request.FILES or None,
+        initial=pop_stashed_post(request) if request.method == "GET" else None,
+    )
     if request.method == "POST":
-        require_recent_auth(request)
         if form.is_valid():
             original = None
             try:

@@ -5,6 +5,9 @@
 <section class="panel" aria-labelledby="reauth-heading">
   <h1 id="reauth-heading">{% trans "Confirm it is you" %}</h1>
   <p class="lede">{% trans "Sensitive financial actions require password and authenticator code within the last five minutes." %}</p>
+  {% if stash_pending %}
+  <p class="status status-info"><span class="status-icon" aria-hidden="true">●</span> {% trans "What you typed has been kept. After confirming, review your entries and re-select any file attachments before submitting again." %}</p>
+  {% endif %}
   <form method="post" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

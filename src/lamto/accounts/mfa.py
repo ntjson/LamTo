@@ -6,6 +6,7 @@ import hashlib
 import secrets
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.utils.translation import gettext_lazy as _
 from django.db import transaction
 from django_otp import DEVICE_ID_SESSION_KEY, user_has_device
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -62,12 +63,12 @@ def begin_totp_enrollment(user, *, name: str = "default") -> TOTPDevice:
 def confirm_totp_enrollment(user, token: str, *, request=None) -> TOTPDevice:
     device = pending_totp_device(user)
     if device is None:
-        raise ValidationError("No pending TOTP enrollment.")
+        raise ValidationError(_("No pending TOTP enrollment."))
     if not device.verify_token(str(token).strip()):
         if request is not None:
             record_auth_failure(user.email, client_ip(request), kind="mfa")
             _audit_mfa(user, "security.mfa.enroll_fail", device, "denied")
-        raise ValidationError("Invalid TOTP token.")
+        raise ValidationError(_("Invalid TOTP token."))
     device.confirmed = True
     device.save(update_fields=["confirmed"])
     # Drop other unconfirmed leftovers.
@@ -89,7 +90,7 @@ def verify_totp_for_session(user, token: str, *, request) -> TOTPDevice:
     ip = client_ip(request)
     devices = list(confirmed_totp_devices(user))
     if not devices:
-        raise ValidationError("No confirmed TOTP device.")
+        raise ValidationError(_("No confirmed TOTP device."))
     token = str(token).strip()
     for device in devices:
         if device.verify_token(token):
@@ -101,7 +102,7 @@ def verify_totp_for_session(user, token: str, *, request) -> TOTPDevice:
             return device
     record_auth_failure(account, ip, kind="mfa")
     _audit_mfa(user, "security.mfa.verify", devices[0], "denied")
-    raise ValidationError("Invalid TOTP token.")
+    raise ValidationError(_("Invalid TOTP token."))
 
 
 def reauthenticate(user, password: str, token: str, *, request) -> None:
@@ -111,7 +112,7 @@ def reauthenticate(user, password: str, token: str, *, request) -> None:
     if not user.check_password(password):
         record_auth_failure(account, ip, kind="reauth")
         _audit_mfa(user, "security.reauth", None, "denied", {"reason": "password"})
-        raise ValidationError("Invalid credentials.")
+        raise ValidationError(_("Invalid credentials."))
     verify_totp_for_session(user, token, request=request)
     mark_recent_reauth(request)
     _audit_mfa(user, "security.reauth", None, "accepted")
@@ -120,7 +121,7 @@ def reauthenticate(user, password: str, token: str, *, request) -> None:
 def revoke_totp_device(user, device_id: int, *, actor=None) -> None:
     device = TOTPDevice.objects.filter(user=user, pk=device_id).first()
     if device is None:
-        raise ValidationError("Device not found.")
+        raise ValidationError(_("Device not found."))
     device_pk = device.pk
     device.delete()
     _audit_mfa(actor or user, "security.mfa.revoke", None, "accepted", {"device_id": device_pk})

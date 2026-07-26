@@ -9,6 +9,7 @@ from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
 from lamto.evidence.models import EvidenceType
 from lamto.evidence.services import queue_platform_event, utc_rfc3339
+from django.utils.translation import gettext_lazy as _
 
 from .models import Proposal, Settlement
 
@@ -16,7 +17,7 @@ from .models import Proposal, Settlement
 def normalize_bank_reference(value):
     value = re.sub(r"\s+", " ", str(value or "").strip()).upper()
     if not value:
-        raise ValidationError("Bank reference is required.")
+        raise ValidationError(_("Bank reference is required."))
     return value
 
 
@@ -26,7 +27,7 @@ def _require_proof(proof, building_id, *, lock=False):
         qs = qs.select_for_update()
     version = qs.first()
     if not version or version.document.kind != Document.Kind.PAYMENT_PROOF or version.document.building_id != building_id or version.scan_status != DocumentVersion.ScanStatus.CLEAN:
-        raise ValidationError("Settlement evidence requires a clean payment proof in the proposal building.")
+        raise ValidationError(_("Settlement evidence requires a clean payment proof in the proposal building."))
     return version
 
 
@@ -40,16 +41,16 @@ def record_transfer(proposal, membership, *, amount_vnd, payee_name, bank_refere
     proposal = Proposal.objects.select_for_update().get(pk=proposal.pk)
     actor = require_management(membership.user, proposal.building_id)
     if proposal.status != Proposal.Status.COMPLETED:
-        raise ValidationError("Only completed proposals can be settled.")
+        raise ValidationError(_("Only completed proposals can be settled."))
     if Settlement.objects.filter(proposal=proposal).exists():
-        raise ValidationError("Settlement already exists for this proposal.")
+        raise ValidationError(_("Settlement already exists for this proposal."))
     if type(amount_vnd) is not int or amount_vnd <= 0:
-        raise ValidationError("Settlement amount must be a positive integer VND amount.")
+        raise ValidationError(_("Settlement amount must be a positive integer VND amount."))
     if proposal.current_version is None or amount_vnd != proposal.current_version.amount_vnd:
-        raise ValidationError("Settlement amount must match the published proposal amount.")
+        raise ValidationError(_("Settlement amount must match the published proposal amount."))
     payee_name = str(payee_name or "").strip()
     if not payee_name:
-        raise ValidationError("Payee name is required.")
+        raise ValidationError(_("Payee name is required."))
     original = _require_proof(transfer, proposal.building_id, lock=True)
     settlement = Settlement.objects.create(proposal=proposal, amount_vnd=amount_vnd, payee_name=payee_name, bank_reference=normalize_bank_reference(bank_reference), transfer=original, transfer_recorded_by=actor, transfer_recorded_at=timezone.now())
     record_audit(actor.user, actor, "settlement.transfer_recorded", "Settlement", str(settlement.pk), "accepted")
@@ -61,7 +62,7 @@ def record_acknowledgement(settlement, membership, *, ack, event_id):
     settlement = Settlement.objects.select_for_update().get(pk=settlement.pk)
     actor = require_management(membership.user, settlement.proposal.building_id)
     if settlement.settled_at is not None:
-        raise ValidationError("Settlement is already settled.")
+        raise ValidationError(_("Settlement is already settled."))
     original = _require_proof(ack, settlement.proposal.building_id, lock=True)
     now = timezone.now()
     settlement.ack, settlement.ack_recorded_by, settlement.ack_recorded_at = original, actor, now

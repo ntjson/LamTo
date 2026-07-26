@@ -1840,3 +1840,784 @@ msgstr "Tiếng ồn"
 
 msgid "Other"
 msgstr "Khác"
+
+msgid "Invalid TOTP token."
+msgstr "Mã xác thực không đúng."
+
+msgid "No pending TOTP enrollment."
+msgstr "Không có thiết lập xác thực nào đang chờ."
+
+msgid "No confirmed TOTP device."
+msgstr "Chưa có thiết bị xác thực nào được xác nhận."
+
+msgid "Invalid credentials."
+msgstr "Thông tin đăng nhập không đúng."
+
+msgid "Device not found."
+msgstr "Không tìm thấy thiết bị."
+
+msgid "Too many authentication attempts. Try again later."
+msgstr "Quá nhiều lần xác thực không thành công. Vui lòng thử lại sau."
+
+msgid "Resident does not exist."
+msgstr "Cư dân không tồn tại."
+
+msgid "Resident has no active occupancy in this building."
+msgstr "Cư dân không có lượt cư trú đang hoạt động trong tòa nhà này."
+
+msgid "Document must be a resident bill."
+msgstr "Tài liệu phải là hóa đơn cư dân."
+
+msgid "Document must belong to the target building."
+msgstr "Tài liệu phải thuộc tòa nhà được chọn."
+
+msgid "A void reason is required."
+msgstr "Cần lý do hủy hóa đơn."
+
+msgid "Only an issued bill can be voided."
+msgstr "Chỉ hóa đơn đã phát hành mới có thể hủy."
+
+msgid "S3 bucket versioning is not enabled."
+msgstr "Kho lưu trữ chưa bật tính năng lưu phiên bản."
+
+msgid "S3 did not return an immutable VersionId."
+msgstr "Kho lưu trữ không trả về mã phiên bản bất biến."
+
+msgid "Could not verify S3 bucket versioning."
+msgstr "Không thể kiểm tra tính năng lưu phiên bản của kho lưu trữ."
+
+msgid "S3 quarantine object has no immutable VersionId."
+msgstr "Bản cách ly trong kho lưu trữ không có mã phiên bản bất biến."
+
+msgid "Fund source evidence document is required."
+msgstr "Cần tài liệu bằng chứng cho nguồn quỹ."
+
+msgid "Fund source evidence versions must still exist."
+msgstr "Phiên bản bằng chứng của nguồn quỹ phải còn tồn tại."
+
+msgid "Only opening balance and inflow sources may be recorded."
+msgstr "Chỉ được ghi nhận số dư đầu kỳ và nguồn thu."
+
+msgid "Fund source amount must be a positive integer VND amount."
+msgstr "Số tiền nguồn quỹ phải là số nguyên dương (VND)."
+
+msgid "Maintenance fund does not exist."
+msgstr "Quỹ bảo trì không tồn tại."
+
+msgid "Fund entry does not exist."
+msgstr "Bút toán quỹ không tồn tại."
+
+msgid "Fund entry id must be a positive integer."
+msgstr "Mã bút toán quỹ phải là số nguyên dương."
+
+msgid "Fund entry id is already used."
+msgstr "Mã bút toán quỹ đã được sử dụng."
+
+msgid "Fund entry timestamp must be timezone-aware."
+msgstr "Thời điểm bút toán quỹ phải kèm múi giờ."
+
+msgid "Fund source key already exists."
+msgstr "Khóa nguồn quỹ đã tồn tại."
+
+msgid "Only opening balance and inflow sources may be verified."
+msgstr "Chỉ xác minh được số dư đầu kỳ và nguồn thu."
+
+msgid "Fund source has no recorder."
+msgstr "Nguồn quỹ không có người ghi nhận."
+
+msgid "Fund source has already been verified."
+msgstr "Nguồn quỹ đã được xác minh."
+
+msgid "Building is required."
+msgstr "Cần chọn tòa nhà."
+
+msgid "Building does not exist."
+msgstr "Tòa nhà không tồn tại."
+
+msgid "At least one distinct quotation is required."
+msgstr "Cần ít nhất một báo giá riêng biệt."
+
+msgid "Every quotation version must still exist."
+msgstr "Mọi phiên bản báo giá phải còn tồn tại."
+
+msgid "Proposal amount must be a positive integer."
+msgstr "Số tiền đề xuất phải là số nguyên dương."
+
+msgid "Contractor name is required."
+msgstr "Cần tên nhà thầu."
+
+msgid "An active uncompleted case is required."
+msgstr "Cần một vụ việc đang hoạt động và chưa hoàn tất."
+
+msgid "Private requests cannot become community proposals."
+msgstr "Yêu cầu riêng tư không thể trở thành đề xuất chung của tòa nhà."
+
+msgid "Cases already proceeding without spending cannot add a proposal."
+msgstr "Vụ việc đang xử lý không chi tiêu thì không thể thêm đề xuất."
+
+msgid "Only published proposals can be decided."
+msgstr "Chỉ đề xuất đã công bố mới có thể quyết định."
+
+msgid "Proceed must be a boolean."
+msgstr "Giá trị quyết định không hợp lệ."
+
+msgid "This proposal cannot receive another version."
+msgstr "Đề xuất này không thể nhận thêm phiên bản."
+
+msgid "Funding source is required."
+msgstr "Cần nguồn kinh phí."
+
+msgid "Problem or need is required."
+msgstr "Cần mô tả vấn đề hoặc nhu cầu."
+
+msgid "Proposed action is required."
+msgstr "Cần hành động đề xuất."
+
+msgid "Expected schedule is required."
+msgstr "Cần lịch trình dự kiến."
+
+msgid "Quotations must be clean, safe, and in the work-order building."
+msgstr "Báo giá phải sạch (đã quét an toàn) và thuộc tòa nhà của công việc."
+
+msgid "A proposal already exists for this case."
+msgstr "Vụ việc này đã có đề xuất."
+
+msgid "Settlement must be completed before publication."
+msgstr "Phải hoàn tất quyết toán trước khi công bố."
+
+msgid "A current proposal version is required."
+msgstr "Cần phiên bản hiện tại của đề xuất."
+
+msgid "Settlement is required before publication."
+msgstr "Cần quyết toán trước khi công bố."
+
+msgid "Bank reference is required."
+msgstr "Cần mã tham chiếu ngân hàng."
+
+msgid "Settlement evidence requires a clean payment proof in the proposal building."
+msgstr "Bằng chứng quyết toán phải là chứng từ thanh toán sạch thuộc tòa nhà của đề xuất."
+
+msgid "Only completed proposals can be settled."
+msgstr "Chỉ đề xuất đã hoàn tất công việc mới có thể quyết toán."
+
+msgid "Settlement already exists for this proposal."
+msgstr "Đề xuất này đã có quyết toán."
+
+msgid "Settlement amount must be a positive integer VND amount."
+msgstr "Số tiền quyết toán phải là số nguyên dương (VND)."
+
+msgid "Settlement amount must match the published proposal amount."
+msgstr "Số tiền quyết toán phải khớp với số tiền đề xuất đã công bố."
+
+msgid "Payee name is required."
+msgstr "Cần tên người nhận tiền."
+
+msgid "Settlement is already settled."
+msgstr "Khoản quyết toán này đã hoàn tất."
+
+msgid "A rejection reason is required."
+msgstr "Cần lý do từ chối."
+
+msgid "This enrolment has already been closed."
+msgstr "Đăng ký này đã được xử lý xong."
+
+msgid "Another resident already holds this plate in this building."
+msgstr "Biển số này đã thuộc về một cư dân khác trong tòa nhà."
+
+msgid "Only a pending enrolment can be approved."
+msgstr "Chỉ đăng ký đang chờ mới có thể duyệt."
+
+msgid "The face embedding is missing; the resident must resubmit."
+msgstr "Thiếu dữ liệu khuôn mặt; cư dân cần đăng ký lại."
+
+msgid "The review photo has expired; the resident must resubmit."
+msgstr "Ảnh xét duyệt đã hết hạn; cư dân cần đăng ký lại."
+
+msgid "An active, uncompleted case is required."
+msgstr "Cần một vụ việc đang hoạt động và chưa hoàn tất."
+
+msgid "Progress requires distinct evidence versions."
+msgstr "Tiến độ cần các phiên bản bằng chứng riêng biệt."
+
+msgid "Progress evidence must be clean original images from the case building."
+msgstr "Bằng chứng tiến độ phải là ảnh gốc sạch thuộc tòa nhà của vụ việc."
+
+msgid "Progress updates need both a cause and a result."
+msgstr "Cập nhật tiến độ cần cả nguyên nhân và kết quả."
+
+msgid "Progress requires exactly one case or proposal."
+msgstr "Tiến độ phải gắn với đúng một vụ việc hoặc một đề xuất."
+
+msgid "An in-progress standalone proposal is required."
+msgstr "Cần một đề xuất độc lập đang thực hiện."
+
+msgid "Report is required."
+msgstr "Cần báo cáo."
+
+msgid "Closed or declined requests cannot ask for information."
+msgstr "Yêu cầu đã đóng hoặc đã từ chối không thể hỏi thêm thông tin."
+
+msgid "An information request needs a message."
+msgstr "Yêu cầu bổ sung thông tin cần nội dung."
+
+msgid "An information request is already open for this report."
+msgstr "Báo cáo này đang có một yêu cầu bổ sung thông tin."
+
+msgid "No open information request for this report."
+msgstr "Báo cáo này không có yêu cầu bổ sung thông tin nào đang mở."
+
+msgid "A reply needs text (photos may be attached separately)."
+msgstr "Phản hồi cần nội dung chữ (ảnh có thể đính kèm riêng)."
+
+msgid "This request is already closed."
+msgstr "Yêu cầu này đã đóng."
+
+msgid "Declining a request requires a reason the resident can read."
+msgstr "Từ chối yêu cầu cần lý do mà cư dân đọc được."
+
+msgid "Case location hierarchy is invalid."
+msgstr "Cấu trúc vị trí của vụ việc không hợp lệ."
+
+msgid "Case category is required."
+msgstr "Cần chọn hạng mục."
+
+msgid "Case urgency is invalid."
+msgstr "Mức khẩn cấp không hợp lệ."
+
+msgid "Case department is required."
+msgstr "Cần chọn hàng đợi quản lý."
+
+msgid "Case deadline must be a positive number of minutes."
+msgstr "Hạn xử lý phải là số phút dương."
+
+msgid "An active case and report are required."
+msgstr "Cần vụ việc đang hoạt động và báo cáo."
+
+msgid "Report must belong to the case building."
+msgstr "Báo cáo phải thuộc tòa nhà của vụ việc."
+
+msgid "Report already belongs to another active case."
+msgstr "Báo cáo đã thuộc một vụ việc khác đang hoạt động."
+
+msgid "Private requests cannot join a case with a community proposal."
+msgstr "Yêu cầu riêng tư không thể gộp vào vụ việc có đề xuất chung."
+
+msgid "Case location must be active and belong to the report building."
+msgstr "Vị trí phải đang hoạt động và thuộc tòa nhà của báo cáo."
+
+msgid "Decision"
+msgstr "Quyết định"
+
+msgid "Choose whether to proceed before recording the decision."
+msgstr "Hãy chọn tiến hành hay không trước khi ghi nhận quyết định."
+
+msgid "Explain why the building is not proceeding. The note is recorded with the decision."
+msgstr "Hãy giải thích vì sao tòa nhà không tiến hành. Ghi chú được lưu cùng quyết định."
+
+msgid "Proceed — open the work on this proposal"
+msgstr "Tiến hành — mở công việc cho đề xuất này"
+
+msgid "Do not proceed — close this proposal permanently"
+msgstr "Không tiến hành — đóng vĩnh viễn đề xuất này"
+
+#, python-format
+msgid "Evidence upload failed: %(reason)s"
+msgstr "Tải bằng chứng lên thất bại: %(reason)s"
+
+msgid "the file type is not supported"
+msgstr "định dạng tệp không được hỗ trợ"
+
+msgid "the file exceeds the size limit"
+msgstr "tệp vượt quá giới hạn dung lượng"
+
+msgid "the file content does not match its declared type"
+msgstr "nội dung tệp không khớp với định dạng khai báo"
+
+msgid "the image could not be verified"
+msgstr "không xác minh được ảnh"
+
+msgid "the virus scanner was unavailable"
+msgstr "trình quét vi-rút không khả dụng"
+
+msgid "the scan detected malware"
+msgstr "quét phát hiện mã độc"
+
+msgid "Write what you checked or did before recording; the response cannot be empty."
+msgstr "Hãy ghi những gì bạn đã kiểm tra hoặc đã làm; phản hồi không được để trống."
+
+msgid "Response recorded in the audit log under your name."
+msgstr "Phản hồi đã được ghi vào nhật ký kiểm toán dưới tên bạn."
+
+msgid "Tick the confirmation box to revoke. Nothing was changed."
+msgstr "Hãy đánh dấu ô xác nhận để thu hồi. Chưa có gì thay đổi."
+
+msgid "Reader credential revoked. The reader stops authenticating immediately."
+msgstr "Đã thu hồi chứng chỉ đầu đọc. Đầu đọc ngừng xác thực ngay lập tức."
+
+#, python-format
+msgid "Face access for %(name)s is revoked; the stored face data is deleted."
+msgstr "Đã thu hồi quyền ra vào bằng khuôn mặt của %(name)s; dữ liệu khuôn mặt đã được xóa."
+
+#, python-format
+msgid "Gate access for plate %(plate)s is revoked."
+msgstr "Đã thu hồi quyền ra vào của biển số %(plate)s."
+
+msgid "AI suggestions accepted as-is"
+msgstr "Gợi ý AI được chấp nhận nguyên trạng"
+
+msgid "AI suggestions edited before confirming"
+msgstr "Gợi ý AI được chỉnh trước khi xác nhận"
+
+msgid "AI suggestions produced"
+msgstr "Số gợi ý AI đã tạo"
+
+msgid "Suggestions flagging possible duplicates"
+msgstr "Gợi ý đánh dấu khả năng trùng lặp"
+
+msgid "Average triage latency (ms)"
+msgstr "Độ trễ phân loại trung bình (ms)"
+
+msgid "Average work response time (seconds)"
+msgstr "Thời gian phản hồi công việc trung bình (giây)"
+
+msgid "Average publication time (seconds)"
+msgstr "Thời gian công bố trung bình (giây)"
+
+msgid "Average anchoring delay (seconds)"
+msgstr "Độ trễ ghi neo trung bình (giây)"
+
+msgid "Authoritative for decisions"
+msgstr "Có tính quyết định"
+
+msgid "Yes"
+msgstr "Có"
+
+msgid "No"
+msgstr "Không"
+
+msgid "disabled — records are signed locally"
+msgstr "đã tắt — bản ghi được ký cục bộ"
+
+msgid "Complete and submit"
+msgstr "Hoàn thiện và gửi"
+
+msgid "Publish progress or complete"
+msgstr "Công bố tiến độ hoặc hoàn tất"
+
+#, python-format
+msgid "Proposal #%(id)s · %(subject)s"
+msgstr "Đề xuất #%(id)s · %(subject)s"
+
+msgid "Standalone"
+msgstr "Độc lập"
+
+msgid "Decision recorded. Work on this proposal can start."
+msgstr "Đã ghi nhận quyết định. Công việc của đề xuất có thể bắt đầu."
+
+msgid "Decision recorded. This proposal is closed as not proceeding."
+msgstr "Đã ghi nhận quyết định. Đề xuất được đóng với kết luận không tiến hành."
+
+msgid "Review the progress fields and evidence uploads."
+msgstr "Hãy kiểm tra các trường tiến độ và bằng chứng tải lên."
+
+#, python-format
+msgid "Case #%(id)s · %(category)s · %(location)s"
+msgstr "Vụ việc #%(id)s · %(category)s · %(location)s"
+
+msgid "Follow work in progress"
+msgstr "Theo dõi công việc đang làm"
+
+msgid "Deadline soonest"
+msgstr "Hạn gần nhất"
+
+msgid "Routine"
+msgstr "Thông thường"
+
+msgid "Urgent"
+msgstr "Khẩn cấp"
+
+msgid "Selected evidence is no longer available."
+msgstr "Bằng chứng đã chọn không còn khả dụng."
+
+msgid "Back to Action inbox"
+msgstr "Về Hộp việc"
+
+msgid "Sign in with another account"
+msgstr "Đăng nhập bằng tài khoản khác"
+
+msgid "Your account does not have access to this page. Nothing was changed."
+msgstr "Tài khoản của bạn không có quyền truy cập trang này. Chưa có gì thay đổi."
+
+msgid "The request could not be completed. Your last action may not have been saved — open the record and check before repeating it."
+msgstr "Yêu cầu không thể hoàn tất. Thao tác gần nhất có thể chưa được lưu — hãy mở bản ghi kiểm tra trước khi thao tác lại."
+
+msgid "What you typed has been kept. After confirming, review your entries and re-select any file attachments before submitting again."
+msgstr "Nội dung bạn đã nhập vẫn được giữ. Sau khi xác nhận, hãy kiểm tra lại và chọn lại tệp đính kèm (nếu có) trước khi gửi."
+
+msgid "Recording asks for your password and authenticator code when your last confirmation is older than five minutes. What you typed is kept across that check; re-select any file attachments before submitting again."
+msgstr "Khi ghi nhận, hệ thống sẽ hỏi mật khẩu và mã xác thực nếu lần xác nhận gần nhất quá năm phút. Nội dung đã nhập được giữ nguyên qua bước này; hãy chọn lại tệp đính kèm trước khi gửi lại."
+
+msgid "Recording asks for your password and authenticator code when your last confirmation is older than five minutes. What you typed is kept across that check."
+msgstr "Khi ghi nhận, hệ thống sẽ hỏi mật khẩu và mã xác thực nếu lần xác nhận gần nhất quá năm phút. Nội dung đã nhập được giữ nguyên qua bước này."
+
+msgid "Download blocked"
+msgstr "Đã chặn tải xuống"
+
+msgid "If the problem continues, check storage under Operations health."
+msgstr "Nếu sự cố tiếp diễn, hãy kiểm tra kho lưu trữ trong Sức khỏe vận hành."
+
+#, python-format
+msgid "LamTo refuses to serve “%(name)s” without confirming it, rather than hand over evidence it cannot vouch for. This is usually temporary — try again in a few minutes."
+msgstr "LamTo từ chối cung cấp “%(name)s” khi chưa xác minh được, thay vì trao ra bằng chứng không thể bảo đảm. Sự cố này thường tạm thời — hãy thử lại sau ít phút."
+
+msgid "The document store could not be read just now, so this file's integrity could not be confirmed. Nothing was changed."
+msgstr "Kho tài liệu tạm thời không đọc được nên chưa thể xác minh tính toàn vẹn của tệp. Chưa có gì thay đổi."
+
+msgid "The stored file no longer matches the fingerprint recorded when it was published."
+msgstr "Tệp đang lưu không còn khớp với dấu vân tay đã ghi khi công bố."
+
+msgid "Treat this as an exception to investigate, not a broken link: review Operations health and record what you find."
+msgstr "Hãy coi đây là ngoại lệ cần điều tra, không phải liên kết hỏng: xem Sức khỏe vận hành và ghi lại những gì bạn phát hiện."
+
+#, python-format
+msgid "“%(name)s” failed its integrity check, so LamTo blocked the download instead of serving evidence that may have been altered. The published record and its recorded fingerprint are unchanged; only the stored file is in question."
+msgstr "“%(name)s” không vượt qua kiểm tra toàn vẹn, nên LamTo đã chặn tải xuống thay vì cung cấp bằng chứng có thể đã bị thay đổi. Bản ghi đã công bố và dấu vân tay của nó không đổi; chỉ tệp đang lưu là cần xem xét."
+
+msgid "A newer verification no longer reports a mismatch. Review the history below and record what explained the earlier difference."
+msgstr "Lần xác minh mới hơn không còn báo không khớp. Hãy xem lịch sử bên dưới và ghi lại nguyên nhân của sai lệch trước đó."
+
+msgid "Anchoring is still failing for this record"
+msgstr "Bản ghi này vẫn đang ghi neo thất bại"
+
+msgid "Attempts"
+msgstr "Số lần thử"
+
+msgid "Back to exceptions"
+msgstr "Về danh sách ngoại lệ"
+
+msgid "Cleared: the latest observation matches again"
+msgstr "Đã hết: lần quan sát mới nhất đã khớp trở lại"
+
+msgid "Delivery has moved past the failure since this item was raised. Record what you checked so the episode is closed under a name."
+msgstr "Việc gửi đã vượt qua lỗi kể từ khi mục này được nêu. Hãy ghi lại những gì bạn đã kiểm tra để sự việc được khép lại dưới một cái tên."
+
+#, python-format
+msgid "Failed evidence anchor · Event %(id)s"
+msgstr "Ghi neo bằng chứng thất bại · Sự kiện %(id)s"
+
+#, python-format
+msgid "Integrity mismatch · Ledger entry #%(id)s"
+msgstr "Không khớp toàn vẹn · Bút toán sổ cái #%(id)s"
+
+msgid "Last attempt"
+msgstr "Lần thử gần nhất"
+
+msgid "Last error"
+msgstr "Lỗi gần nhất"
+
+msgid "Latest observation"
+msgstr "Quan sát mới nhất"
+
+msgid "No attempt recorded"
+msgstr "Chưa ghi nhận lần thử nào"
+
+#, python-format
+msgid "No longer failing — current delivery state: %(status)s"
+msgstr "Không còn thất bại — trạng thái gửi hiện tại: %(status)s"
+
+msgid "No response has been recorded yet. This item is unowned until someone records one."
+msgstr "Chưa có phản hồi nào được ghi nhận. Mục này chưa có người chịu trách nhiệm cho đến khi có phản hồi."
+
+msgid "Observation details"
+msgstr "Chi tiết quan sát"
+
+msgid "Past its retention date — the sealed copy is deleted automatically"
+msgstr "Đã quá hạn lưu giữ — bản niêm phong được xóa tự động"
+
+msgid "Payload hash"
+msgstr "Mã băm nội dung"
+
+msgid "Proposal"
+msgstr "Đề xuất"
+
+#, python-format
+msgid "Quarantined upload · %(name)s"
+msgstr "Tải lên bị cách ly · %(name)s"
+
+msgid "Record response"
+msgstr "Ghi nhận phản hồi"
+
+msgid "Record your response"
+msgstr "Ghi nhận phản hồi của bạn"
+
+msgid "Recorded responses"
+msgstr "Phản hồi đã ghi nhận"
+
+msgid "Sealed copy deleted on"
+msgstr "Bản niêm phong bị xóa vào"
+
+msgid "Size"
+msgstr "Dung lượng"
+
+msgid "The file never entered the evidence store: the stored copy is sealed off and cannot be downloaded, and it is deleted at the retention date. If the evidence is still needed, ask the uploader for a clean file and upload it in the normal way."
+msgstr "Tệp chưa từng vào kho bằng chứng: bản lưu đã bị niêm phong, không thể tải xuống và sẽ bị xóa vào ngày hết hạn lưu giữ. Nếu vẫn cần bằng chứng này, hãy đề nghị người tải gửi tệp sạch và tải lên theo cách thông thường."
+
+msgid "The latest observation still reports a mismatch"
+msgstr "Lần quan sát mới nhất vẫn báo không khớp"
+
+msgid "The published record does not match what was independently observed. Published records are never edited in place, so this difference will not fix itself: verify the record, find the cause, and record what you found. Corrections, when needed, are appended as new records."
+msgstr "Bản ghi đã công bố không khớp với kết quả quan sát độc lập. Bản ghi đã công bố không bao giờ bị sửa tại chỗ, nên sai lệch này sẽ không tự hết: hãy xác minh bản ghi, tìm nguyên nhân và ghi lại những gì bạn phát hiện. Khi cần chỉnh sửa, bản đính chính sẽ được ghi bổ sung."
+
+msgid "The record is signed and safe; only its blockchain anchor is failing. Delivery retries on its own. Check Operations health for the backend state, then record what you found."
+msgstr "Bản ghi đã được ký và an toàn; chỉ phần ghi neo blockchain đang thất bại. Việc gửi sẽ tự thử lại. Hãy kiểm tra Sức khỏe vận hành để biết trạng thái hệ thống neo, rồi ghi lại những gì bạn phát hiện."
+
+msgid "The response is appended to the audit log under your name with a timestamp. It cannot be edited or deleted, and auditors see it in the export."
+msgstr "Phản hồi được ghi bổ sung vào nhật ký kiểm toán dưới tên bạn kèm thời điểm. Không thể sửa hay xóa, và kiểm toán viên thấy nó trong bản xuất dữ liệu."
+
+msgid "The virus scan refused this file"
+msgstr "Trình quét vi-rút đã từ chối tệp này"
+
+msgid "Uploaded at"
+msgstr "Tải lên lúc"
+
+msgid "Uploaded by"
+msgstr "Người tải lên"
+
+msgid "What you checked and what happens next"
+msgstr "Bạn đã kiểm tra gì và bước tiếp theo là gì"
+
+msgid "A published record no longer matches what was independently observed. This is the most serious state the workspace can show."
+msgstr "Một bản ghi đã công bố không còn khớp với kết quả quan sát độc lập. Đây là trạng thái nghiêm trọng nhất mà không gian làm việc có thể hiển thị."
+
+msgid "A signed record could not be anchored. The record itself is safe and locally signed; delivery keeps retrying."
+msgstr "Một bản ghi đã ký chưa thể ghi neo. Bản ghi vẫn an toàn và đã ký cục bộ; việc gửi sẽ tiếp tục thử lại."
+
+#, python-format
+msgid "Event %(id)s"
+msgstr "Sự kiện %(id)s"
+
+msgid "Every published record matches its independent observation, every anchor is delivering, and no upload is quarantined."
+msgstr "Mọi bản ghi đã công bố đều khớp với quan sát độc lập, mọi neo đều đang gửi, và không có tệp nào bị cách ly."
+
+msgid "Failed evidence anchors"
+msgstr "Ghi neo bằng chứng thất bại"
+
+msgid "Files the virus scan refused. The stored copy is sealed off and deleted at the retention date; a clean file must be uploaded in its place."
+msgstr "Các tệp bị trình quét vi-rút từ chối. Bản lưu đã bị niêm phong và sẽ bị xóa vào ngày hết hạn lưu giữ; cần tải lên tệp sạch thay thế."
+
+msgid "Needs a response"
+msgstr "Cần phản hồi"
+
+msgid "No failed anchors."
+msgstr "Không có neo thất bại nào."
+
+msgid "No open exceptions"
+msgstr "Không có ngoại lệ nào"
+
+msgid "No open integrity mismatches."
+msgstr "Không có sai lệch toàn vẹn nào."
+
+msgid "No quarantined uploads."
+msgstr "Không có tệp bị cách ly."
+
+msgid "Quarantined uploads"
+msgstr "Tải lên bị cách ly"
+
+msgid "Response on file"
+msgstr "Đã có phản hồi"
+
+msgid "Review failed anchor"
+msgstr "Xem neo thất bại"
+
+msgid "Review mismatch"
+msgstr "Xem sai lệch"
+
+msgid "Review quarantined file"
+msgstr "Xem tệp bị cách ly"
+
+#, python-format
+msgid "Showing the latest %(shown)s of %(total)s failed anchors."
+msgstr "Đang hiển thị %(shown)s neo thất bại mới nhất trong tổng số %(total)s."
+
+#, python-format
+msgid "Showing the latest %(shown)s of %(total)s quarantined uploads."
+msgstr "Đang hiển thị %(shown)s tệp cách ly mới nhất trong tổng số %(total)s."
+
+msgid "Trust-critical failures for this building. Open an item, inspect the record, and file a response under your name. An item leaves this list only when its cause clears."
+msgstr "Các sự cố hệ trọng với niềm tin của tòa nhà này. Mở từng mục, kiểm tra bản ghi và ghi phản hồi dưới tên bạn. Một mục chỉ rời danh sách khi nguyên nhân của nó đã được khắc phục."
+
+msgid "Download CSV"
+msgstr "Tải CSV"
+
+msgid "Stop this reader immediately"
+msgstr "Dừng đầu đọc này ngay lập tức"
+
+#, python-format
+msgid "Permanently remove %(name)s's face"
+msgstr "Xóa vĩnh viễn khuôn mặt của %(name)s"
+
+#, python-format
+msgid "Permanently remove plate %(plate)s"
+msgstr "Xóa vĩnh viễn biển số %(plate)s"
+
+msgid "Revoking deletes the resident's face data permanently and closes gate access. It cannot be undone; the resident must enrol again."
+msgstr "Thu hồi sẽ xóa vĩnh viễn dữ liệu khuôn mặt của cư dân và chấm dứt quyền ra vào cổng. Không thể hoàn tác; cư dân phải đăng ký lại."
+
+msgid "Revoking removes the plate's gate access permanently. It cannot be undone; the resident must enrol the plate again."
+msgstr "Thu hồi sẽ chấm dứt vĩnh viễn quyền ra vào của biển số. Không thể hoàn tác; cư dân phải đăng ký lại biển số."
+
+#, python-format
+msgid "Delivery queue is aging (oldest %(age)ss); it retries on its own"
+msgstr "Hàng đợi gửi đang chậm (mục cũ nhất %(age)s giây); hệ thống tự thử lại"
+
+msgid "No chain confirmation recorded yet"
+msgstr "Chưa ghi nhận xác nhận nào trên chuỗi"
+
+msgid "Required when not proceeding; it is recorded with the decision."
+msgstr "Bắt buộc khi không tiến hành; được lưu cùng quyết định."
+
+msgid "“Do not proceed” closes this proposal permanently in your name; it cannot be reopened, and new spending needs a new proposal."
+msgstr "“Không tiến hành” sẽ đóng vĩnh viễn đề xuất này dưới tên bạn; không thể mở lại, và khoản chi mới cần một đề xuất mới."
+
+msgid "Check the transfer you are recording against these frozen values before typing."
+msgstr "Đối chiếu khoản chuyển bạn sắp ghi với các giá trị đã đóng băng này trước khi nhập."
+
+msgid "Frozen proposal to settle"
+msgstr "Đề xuất đã đóng băng cần quyết toán"
+
+msgid "Recorded transfer"
+msgstr "Chuyển khoản đã ghi nhận"
+
+msgid "The acknowledgement you file must match this recorded transfer."
+msgstr "Xác nhận bạn nộp phải khớp với khoản chuyển đã ghi nhận này."
+
+msgid "Sign out"
+msgstr "Đăng xuất"
+
+#, python-format
+msgid "%(counter)s inactive device; see the counts below"
+msgid_plural "%(counter)s inactive devices; see the counts below"
+msgstr[0] "%(counter)s thiết bị không hoạt động; xem số liệu bên dưới"
+
+#, python-format
+msgid "%(counter)s notification failure; see the counts below"
+msgid_plural "%(counter)s notification failures; see the counts below"
+msgstr[0] "%(counter)s lượt thông báo thất bại; xem số liệu bên dưới"
+
+
+msgid "Management-uploaded evidence"
+msgstr "Bằng chứng do Ban quản lý tải lên"
+
+msgid "Payee link (reserved)"
+msgstr "Liên kết người nhận tiền (dự phòng)"
+
+msgid "Verified"
+msgstr "Đã xác minh"
+
+msgid "Unavailable"
+msgstr "Không khả dụng"
+
+msgid "Or enter this address in your authenticator app manually:"
+msgstr "Hoặc nhập thủ công địa chỉ này vào ứng dụng xác thực:"
+
+msgid "Copy setup address"
+msgstr "Sao chép địa chỉ thiết lập"
+
+#, python-format
+msgid "Face enrolment for %(name)s approved."
+msgstr "Đã duyệt đăng ký khuôn mặt của %(name)s."
+
+#, python-format
+msgid "Face enrolment for %(name)s rejected."
+msgstr "Đã từ chối đăng ký khuôn mặt của %(name)s."
+
+#, python-format
+msgid "Plate %(plate)s approved."
+msgstr "Đã duyệt biển số %(plate)s."
+
+#, python-format
+msgid "Plate %(plate)s rejected."
+msgstr "Đã từ chối biển số %(plate)s."
+
+msgid "Reader credential"
+msgstr "Chứng chỉ đầu đọc"
+
+msgid "Anchoring is turned off — records are signed locally and never chain-confirmed. This is expected, not a failure."
+msgstr "Ghi neo đang tắt — bản ghi được ký cục bộ và không bao giờ có xác nhận chuỗi. Đây là trạng thái dự kiến, không phải sự cố."
+
+
+#, python-format
+msgid "Approve face for %(resident)s"
+msgstr "Duyệt khuôn mặt của %(resident)s"
+
+#, python-format
+msgid "Reject face for %(resident)s"
+msgstr "Từ chối khuôn mặt của %(resident)s"
+
+#, python-format
+msgid "Approve plate %(plate)s"
+msgstr "Duyệt biển số %(plate)s"
+
+#, python-format
+msgid "Reject plate %(plate)s"
+msgstr "Từ chối biển số %(plate)s"
+
+msgid "Fund balance by period"
+msgstr "Số dư quỹ theo kỳ"
+
+msgid "Settlement pages"
+msgstr "Trang quyết toán"
+
+#, python-format
+msgid "Showing the latest %(shown)s of %(total)s proposals awaiting transfer evidence."
+msgstr "Đang hiển thị %(shown)s đề xuất chờ bằng chứng chuyển khoản mới nhất trong tổng số %(total)s."
+
+#, python-format
+msgid "Showing the latest %(count)s gate events."
+msgstr "Đang hiển thị %(count)s sự kiện cổng mới nhất."
+
+#, python-format
+msgid "Showing the latest %(shown)s of %(total)s sources awaiting verification."
+msgstr "Đang hiển thị %(shown)s nguồn chờ xác minh mới nhất trong tổng số %(total)s."
+
+#, python-format
+msgid "Showing the latest %(shown)s of %(total)s proposals awaiting reconciliation."
+msgstr "Đang hiển thị %(shown)s đề xuất chờ đối chiếu mới nhất trong tổng số %(total)s."
+
+#, python-format
+msgid "Payment QR for bill %(ref)s"
+msgstr "Mã QR thanh toán cho hóa đơn %(ref)s"
+
+#, python-format
+msgid "Revoke face for %(name)s"
+msgstr "Thu hồi khuôn mặt của %(name)s"
+
+#, python-format
+msgid "Revoke plate %(plate)s"
+msgstr "Thu hồi biển số %(plate)s"
+
+#, python-format
+msgid "Rotate credential for %(label)s"
+msgstr "Xoay chứng chỉ cho đầu đọc %(label)s"
+
+#, python-format
+msgid "Revoke credential for %(label)s"
+msgstr "Thu hồi chứng chỉ của đầu đọc %(label)s"
+
+#, python-format
+msgid "Stop reader %(label)s immediately"
+msgstr "Dừng đầu đọc %(label)s ngay lập tức"
+
+#, python-format
+msgid "Reader %(label)s registered. Configure it with the one-time credential below."
+msgstr "Đã đăng ký đầu đọc %(label)s. Cấu hình bằng chứng chỉ một lần bên dưới."
+
+msgid "Credential rotated. Configure the reader with the new one-time credential below."
+msgstr "Đã xoay chứng chỉ. Cấu hình đầu đọc bằng chứng chỉ một lần mới bên dưới."
+
+msgid "Verification is the sign-off that lets this source count in the fund balance. Check the frozen values above against the evidence before confirming."
+msgstr "Xác minh là bước ký duyệt để nguồn này được tính vào số dư quỹ. Hãy đối chiếu các giá trị đã chốt ở trên với bằng chứng trước khi xác nhận."
+
+msgid "Signed out. This computer no longer holds your session."
+msgstr "Đã đăng xuất. Máy tính này không còn giữ phiên làm việc của bạn."
+

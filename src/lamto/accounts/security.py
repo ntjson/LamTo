@@ -7,6 +7,7 @@ import time
 from datetime import timedelta
 
 from django.core.exceptions import PermissionDenied
+from django.utils.translation import gettext_lazy as _
 from django.db import transaction
 from django.utils import timezone
 
@@ -19,6 +20,13 @@ RECENT_REAUTH_KEY = "recent_reauth_at"
 DEFAULT_REAUTH_MAX_AGE = 300
 THROTTLE_MAX_FAILURES = 5
 THROTTLE_WINDOW_SECONDS = 15 * 60
+
+# In-flight POST bodies preserved across the reauth hop (never files or secrets).
+REAUTH_STASH_KEY = "reauth_stashed_post"
+REAUTH_STASH_MAX_AGE_SECONDS = 15 * 60
+REAUTH_STASH_MAX_CHARS = 20_000
+# Never restore: CSRF, action routing, irreversibility confirms, credentials.
+_REAUTH_STASH_DROP = {"csrfmiddlewaretoken", "action", "confirm", "password", "token"}
 
 
 class RecentAuthRequired(PermissionDenied):
@@ -54,7 +62,7 @@ def assert_not_throttled(account: str, ip: str | None) -> None:
         return
     now = _now()
     if bucket.locked_until and bucket.locked_until > now:
-        raise PermissionDenied("Too many authentication attempts. Try again later.")
+        raise PermissionDenied(_("Too many authentication attempts. Try again later."))
     if (
         bucket.window_started_at
         and (now - bucket.window_started_at).total_seconds() > THROTTLE_WINDOW_SECONDS
@@ -164,6 +172,46 @@ def recent_reauth_age_seconds(request) -> float | None:
 def mark_recent_reauth(request) -> None:
     request.session[RECENT_REAUTH_KEY] = time.time()
     request.session.modified = True
+
+
+def stash_post_for_reauth(request) -> None:
+    """Keep typed POST values across the reauth redirect so the hop loses no work.
+
+    File uploads cannot be stashed in the session; the form copy tells the
+    manager attachments need re-selecting. Confirm checkboxes are dropped so an
+    irreversible action is never re-armed without a fresh human tick.
+    """
+    if request.method != "POST":
+        return
+    data = {
+        key: values if len(values) > 1 else values[0]
+        for key in request.POST
+        if key not in _REAUTH_STASH_DROP
+        for values in [request.POST.getlist(key)]
+    }
+    if not data or sum(len(str(v)) for v in data.values()) > REAUTH_STASH_MAX_CHARS:
+        return
+    request.session[REAUTH_STASH_KEY] = {
+        "path": request.path,
+        "at": time.time(),
+        "data": data,
+    }
+    request.session.modified = True
+
+
+def pop_stashed_post(request) -> dict | None:
+    """Return the values stashed for this path, once, or None."""
+    stash = request.session.get(REAUTH_STASH_KEY)
+    if stash is None:
+        return None
+    if (
+        stash.get("path") != request.path
+        or time.time() - float(stash.get("at") or 0) > REAUTH_STASH_MAX_AGE_SECONDS
+    ):
+        return None
+    del request.session[REAUTH_STASH_KEY]
+    request.session.modified = True
+    return stash.get("data") or None
 
 
 def require_recent_auth(request, max_age_seconds: int = DEFAULT_REAUTH_MAX_AGE) -> None:

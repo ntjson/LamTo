@@ -60,7 +60,14 @@ def upload_document(building, kind, uploader, file):
     except ValueError as error:  # DocumentUploadRejected/Quarantined + identical-bytes all subclass ValueError
         for key, pvid in written_blobs:
             _delete_storage_blob(key, pvid)
-        raise ValidationError(f"Evidence upload failed: {error}") from error
+        from django.utils.translation import gettext
+
+        from lamto.web.templatetags.staff_extras import upload_reason_label
+
+        raise ValidationError(
+            gettext("Evidence upload failed: %(reason)s")
+            % {"reason": upload_reason_label(str(error))}
+        ) from error
     return version
 
 

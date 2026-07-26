@@ -9,6 +9,7 @@ from lamto.billing.models import Bill
 from lamto.documents.models import Document
 from lamto.notifications.models import NotificationDelivery
 from lamto.notifications.services import EVENT_BILL_ISSUED, queue_notification
+from django.utils.translation import gettext_lazy as _
 
 
 class BillError(Exception):
@@ -51,17 +52,17 @@ def issue_bill(
     membership = require_management(actor, building_id)
     resident = get_user_model().objects.filter(pk=resident_id).first()
     if resident is None:
-        raise BillError("Resident does not exist.")
+        raise BillError(_("Resident does not exist."))
     if not ResidentOccupancy.objects.filter(
         user_id=resident_id,
         active=True,
         unit__building_id=building_id,
     ).exists():
-        raise BillError("Resident has no active occupancy in this building.")
+        raise BillError(_("Resident has no active occupancy in this building."))
     if document.document.kind != Document.Kind.RESIDENT_BILL:
-        raise BillError("Document must be a resident bill.")
+        raise BillError(_("Document must be a resident bill."))
     if document.document.building_id != building_id:
-        raise BillError("Document must belong to the target building.")
+        raise BillError(_("Document must belong to the target building."))
 
     bill = Bill.objects.create(
         building_id=building_id,
@@ -148,11 +149,11 @@ def confirm_payment(bill, *, source, actor, reference) -> Bill:
 def void_bill(actor, bill_id, *, reason) -> Bill:
     reason = (reason or "").strip()
     if not reason:
-        raise BillError("A void reason is required.")
+        raise BillError(_("A void reason is required."))
     locked = Bill.objects.select_for_update().get(pk=bill_id)
     membership = require_management(actor, locked.building_id)
     if locked.status != Bill.Status.ISSUED:
-        raise BillError("Only an issued bill can be voided.")
+        raise BillError(_("Only an issued bill can be voided."))
     locked.status = Bill.Status.VOID
     locked.void_by = actor
     locked.void_at = timezone.now()

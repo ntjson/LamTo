@@ -25,7 +25,7 @@
     {% elif membership and membership_count > 1 %}
     <details class="membership-switcher">
       <summary class="building-label membership-switcher-summary">
-        {{ membership.building.name }}
+        <span class="sr-only">{% trans "Switch building" %}: </span>{{ membership.building.name }}
       </summary>
       <div class="membership-bar membership-bar-disclosure" role="region" aria-label="{% trans 'Active membership' %}">
         <form method="post" action="{% url 'web:switch-building' %}" class="membership-form" data-busy-on-submit>
@@ -43,6 +43,10 @@
       </div>
     </details>
     {% endif %}
+    <form method="post" action="{% url 'logout' %}" class="logout-form" data-busy-on-submit>
+      {% csrf_token %}
+      <button type="submit" class="button button-secondary button-compact">{% trans "Sign out" %}</button>
+    </form>
   </header>
 
   <nav class="staff-nav" role="navigation" aria-label="{% trans 'Management' %}">

@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
+from django.utils.translation import gettext_lazy as _
 
 from .ai import URGENCIES
 from .models import (
@@ -24,24 +25,24 @@ def _active_location(location, building_id):
     seen = set()
     while location is not None:
         if location.pk in seen or not location.active or location.building_id != building_id:
-            raise ValidationError("Case location must be active and belong to the report building.")
+            raise ValidationError(_("Case location must be active and belong to the report building."))
         seen.add(location.pk)
         if location.parent_id is None:
             return location
         location = BuildingLocation.objects.select_for_update().filter(pk=location.parent_id).first()
-    raise ValidationError("Case location hierarchy is invalid.")
+    raise ValidationError(_("Case location hierarchy is invalid."))
 
 
 def _decision_values(category, urgency, department, deadline_minutes):
     if not isinstance(category, str) or not (category := category.strip()):
-        raise ValidationError("Case category is required.")
+        raise ValidationError(_("Case category is required."))
     category = normalize_category(category)
     if urgency not in URGENCIES:
-        raise ValidationError("Case urgency is invalid.")
+        raise ValidationError(_("Case urgency is invalid."))
     if not isinstance(department, str) or not (department := department.strip()):
-        raise ValidationError("Case department is required.")
+        raise ValidationError(_("Case department is required."))
     if type(deadline_minutes) is not int or deadline_minutes <= 0:
-        raise ValidationError("Case deadline must be a positive number of minutes.")
+        raise ValidationError(_("Case deadline must be a positive number of minutes."))
     return category, urgency, department, deadline_minutes
 
 
@@ -54,7 +55,7 @@ def confirm_triage(report, operator, category, urgency, location, department, de
         .first()
     )
     if report is None:
-        raise ValidationError("Report is required.")
+        raise ValidationError(_("Report is required."))
     membership = require_management(operator, report.unit.building_id)
     location = _active_location(location, report.unit.building_id)
     category, urgency, department, deadline_minutes = _decision_values(
@@ -127,10 +128,10 @@ def group_report(case, report, operator):
         .first()
     )
     if case is None or report is None or not case.active:
-        raise ValidationError("An active case and report are required.")
+        raise ValidationError(_("An active case and report are required."))
     membership = require_management(operator, case.building_id)
     if report.unit.building_id != case.building_id:
-        raise ValidationError("Report must belong to the case building.")
+        raise ValidationError(_("Report must belong to the case building."))
     existing = (
         CaseReport.objects.select_for_update()
         .select_related("case")
@@ -140,7 +141,7 @@ def group_report(case, report, operator):
     if existing is not None:
         if existing.case_id == case.pk:
             return existing
-        raise ValidationError("Report already belongs to another active case.")
+        raise ValidationError(_("Report already belongs to another active case."))
     if case.reports.filter(status=IssueReport.Status.IN_PROGRESS).exists():
         status = IssueReport.Status.IN_PROGRESS
     elif hasattr(case, "proposal"):
@@ -148,7 +149,7 @@ def group_report(case, report, operator):
     else:
         status = IssueReport.Status.IN_REVIEW
     if report.is_private and status == IssueReport.Status.PROPOSED:
-        raise ValidationError("Private requests cannot join a case with a community proposal.")
+        raise ValidationError(_("Private requests cannot join a case with a community proposal."))
     link = CaseReport.objects.create(case=case, report=report, grouped_by=operator)
     report.status = status
     report.save(update_fields=["status"])

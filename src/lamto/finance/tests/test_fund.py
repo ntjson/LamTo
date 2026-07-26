@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from lamto.documents.models import Document
 from lamto.evidence.models import BlockchainOutboxEvent
@@ -8,6 +8,7 @@ from lamto.finance.models import MaintenanceFundEntry
 from lamto.testing.factories import seed_pilot_world
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class OffchainFundTests(TestCase):
     def setUp(self):
         self.seed = seed_pilot_world(building_name=f"Fund {self._testMethodName}", create_sample_report=False)

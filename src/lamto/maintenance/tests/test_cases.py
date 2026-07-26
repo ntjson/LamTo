@@ -3,7 +3,7 @@ import threading
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, close_old_connections, connection, transaction
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, override_settings
 
 from lamto.accounts.models import Building, ManagementMembership, Unit
 from lamto.audit.models import AuditEvent
@@ -62,6 +62,7 @@ class CaseFixture:
         return report
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class CaseTests(CaseFixture, TestCase):
 
     def test_late_grouping_adopts_in_progress_case_phase(self):

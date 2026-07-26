@@ -80,7 +80,7 @@ def case_list(request):
         request,
         report_qs,
         search_fields=("text", "location_path_snapshot"),
-        sorts=(("", "Newest first", ("-created_at",)),),
+        sorts=(("", _("Newest first"), ("-created_at",)),),
         page_param="rpage",
     )
     cases_qs = (
@@ -97,14 +97,14 @@ def case_list(request):
         cases_qs,
         search_fields=("category", "department", "location__name"),
         sorts=(
-            ("", "Newest first", ("-created_at",)),
-            ("deadline", "Deadline soonest", ("deadline_at",)),
+            ("", _("Newest first"), ("-created_at",)),
+            ("deadline", _("Deadline soonest"), ("deadline_at",)),
         ),
     )
     urgency_labels = {
-        "LOW": "Low",
-        "MEDIUM": "Medium",
-        "HIGH": "High",
+        "LOW": _("Low"),
+        "MEDIUM": _("Medium"),
+        "HIGH": _("High"),
     }
 
     report_items = [
@@ -114,26 +114,27 @@ def case_list(request):
             "status": r.get_status_display(),
             "deadline": None,
             "deadline_tone": "neutral",
-            "next_action": "Confirm triage",
+            "next_action": _("Confirm triage"),
         }
         for r in report_list["page"].object_list
     ]
     case_items = [
         {
             "url": f"/s/cases/{c.pk}/",
-            "title": f"Case #{c.pk} · {c.get_category_display()} · {c.location.name}",
-            "status": urgency_labels.get(c.urgency, c.urgency.title()),
+            "title": _("Case #%(id)s · %(category)s · %(location)s")
+            % {"id": c.pk, "category": c.get_category_display(), "location": c.location.name},
+            "status": urgency_labels.get(c.urgency, c.urgency),
             "deadline": c.deadline_at,
             "deadline_tone": deadline_tone(c.deadline_at),
             "next_action": (
-                "Start work" if c.work_count == 0 else "Follow work in progress"
+                _("Start work") if c.work_count == 0 else _("Follow work in progress")
             ),
         }
         for c in case_list["page"].object_list
     ]
     filters = [
         {"label": label, "value": value, "active": value == active_group}
-        for value, label in (("routine", "Routine"), ("urgent", "Urgent"))
+        for value, label in (("routine", _("Routine")), ("urgent", _("Urgent")))
     ]
     return render(
         request,

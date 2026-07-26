@@ -9,7 +9,7 @@
     {% for kind in export_kinds %}
     <li>
       <a class="task-row task-row-simple" href="{% url 'web:audit-export' %}?kind={{ kind.key }}">
-        <span class="task-action">{% trans "Download" %}</span>
+        <span class="task-action">{% trans "Download CSV" %}</span>
         <span class="task-subject">{{ kind.label }}</span>
         <span class="task-meta"><span>{% blocktrans count counter=kind.count %}{{ counter }} row{% plural %}{{ counter }} rows{% endblocktrans %}</span></span>
       </a>

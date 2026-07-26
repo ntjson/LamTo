@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from lamto.accounts.models import Building, ManagementMembership, Unit
@@ -23,6 +23,7 @@ from lamto.finance.proposals import (
 )
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class ProposalVersionTests(TestCase):
     def make_signed_proposal_inputs(self):
         building = Building.objects.create(name="Minh An Residence")

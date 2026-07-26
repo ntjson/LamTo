@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import io
+
+import qrcode
+import qrcode.image.svg
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -11,6 +15,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.utils.translation import gettext as _
 
@@ -26,6 +31,7 @@ from lamto.accounts.mfa import (
 )
 from lamto.accounts.models import ManagementMembership
 from lamto.accounts.security import (
+    REAUTH_STASH_KEY,
     assert_not_throttled,
     client_ip,
     record_auth_failure,
@@ -36,6 +42,19 @@ from lamto.accounts.security import (
     user_is_otp_verified,
 )
 from lamto.audit.services import record_audit
+
+
+def _otpauth_qr_svg(uri: str) -> str:
+    """Render the otpauth:// provisioning URI as an inline SVG QR code."""
+    image = qrcode.make(
+        uri,
+        image_factory=qrcode.image.svg.SvgPathImage,
+        box_size=10,
+        border=2,
+    )
+    buffer = io.BytesIO()
+    image.save(buffer)
+    return buffer.getvalue().decode("utf-8")
 
 
 class PhoneOrEmailAuthenticationForm(AuthenticationForm):
@@ -59,7 +78,7 @@ class SecureLoginView(LoginView):
         try:
             assert_not_throttled(username, ip)
         except PermissionDenied:
-            form.add_error(None, "Too many authentication attempts. Try again later.")
+            form.add_error(None, _("Too many authentication attempts. Try again later."))
             return self.form_invalid(form)
 
         user = form.get_user()
@@ -127,12 +146,14 @@ def mfa_setup(request):
                 return redirect(next_url)
         device = pending_totp_device(request.user) or device
 
+    config_url = provisioning_uri(device, request.user.email) if device else ""
     return render(
         request,
         "web/security/mfa_setup.html",
         {
             "device": device,
-            "config_url": provisioning_uri(device, request.user.email) if device else "",
+            "config_url": config_url,
+            "qr_svg": mark_safe(_otpauth_qr_svg(config_url)) if config_url else "",
         },
     )
 
@@ -179,7 +200,11 @@ def reauth(request):
         else:
             messages.success(request, _("Re-authentication successful."))
             return redirect(next_url)
-    return render(request, "web/security/reauth.html", {"next": next_url})
+    return render(
+        request,
+        "web/security/reauth.html",
+        {"next": next_url, "stash_pending": bool(request.session.get(REAUTH_STASH_KEY))},
+    )
 
 
 @login_required
@@ -215,4 +240,6 @@ def secure_logout(request):
                 pass
     logout(request)
     revoke_session(request)
+    # After the flush, so the confirmation rides the fresh anonymous session.
+    messages.success(request, _("Signed out. This computer no longer holds your session."))
     return redirect("login")

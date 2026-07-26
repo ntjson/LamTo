@@ -60,7 +60,9 @@ class ManagementShellTests(TestCase):
         self.assertIn('rel="icon"', html)
         self.assertIn('lamto-mark.png', html)
         self.assertIn('alt=""', html)
-        self.assertIn('LÀM TỔ', html)
+        # One brand on both sides of sign-in: "LamTo Management" / "LamTo Quản lý".
+        self.assertIn('LamTo', html)
+        self.assertNotIn('LÀM TỔ', html)
 
     def test_non_management_user_is_denied_staff_home(self):
         resident = get_user_model().objects.create_user(

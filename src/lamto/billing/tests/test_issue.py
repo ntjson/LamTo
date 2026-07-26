@@ -84,6 +84,7 @@ def test_issue_bill_targets_only_the_named_resident():
     ).exists()
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 def test_issue_bill_rejects_resident_without_active_occupancy():
     building = Building.objects.create(name="Tower A")
     manager = User.objects.create_user(email="m@x.test", password="pw")
@@ -100,6 +101,7 @@ def test_issue_bill_rejects_resident_without_active_occupancy():
         )
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 def test_issue_bill_rejects_missing_resident():
     building = Building.objects.create(name="Tower A")
     manager = User.objects.create_user(email="m@x.test", password="pw")
@@ -116,6 +118,7 @@ def test_issue_bill_rejects_missing_resident():
         )
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 def test_issue_bill_rejects_non_bill_document():
     building = Building.objects.create(name="Tower A")
     manager = User.objects.create_user(email="m@x.test", password="pw")
@@ -135,6 +138,7 @@ def test_issue_bill_rejects_non_bill_document():
         )
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 def test_issue_bill_rejects_document_from_another_building():
     building = Building.objects.create(name="Tower A")
     other_building = Building.objects.create(name="Tower B")

@@ -7,6 +7,8 @@ from django.urls import include, path
 
 from lamto.web.views.security import SecureLoginView, secure_logout
 
+handler500 = "lamto.web.views.errors.server_error"
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(

@@ -108,9 +108,9 @@ class FundEntryVerification(InsertOnlyModel):
 
 class VerificationObservation(InsertOnlyModel):
     class Result(models.TextChoices):
-        VERIFIED = "VERIFIED", "Verified"
-        MISMATCH = "MISMATCH", "Mismatch"
-        UNAVAILABLE = "UNAVAILABLE", "Unavailable"
+        VERIFIED = "VERIFIED", _("Verified")
+        MISMATCH = "MISMATCH", _("Mismatch")
+        UNAVAILABLE = "UNAVAILABLE", _("Unavailable")
 
     published_entry = models.ForeignKey(
         "PublishedLedgerEntry",

@@ -110,6 +110,41 @@ class DeclineReportForm(forms.Form):
     )
 
 
+class ProposalDecisionForm(forms.Form):
+    """Explicit proceed/decline decision; declining is terminal and needs a reason."""
+
+    PROCEED = "proceed"
+    DECLINE = "decline"
+
+    decision = forms.ChoiceField(
+        choices=[
+            (PROCEED, _("Proceed — open the work on this proposal")),
+            (DECLINE, _("Do not proceed — close this proposal permanently")),
+        ],
+        widget=forms.RadioSelect,
+        label=_("Decision"),
+        error_messages={"required": _("Choose whether to proceed before recording the decision.")},
+    )
+    note = forms.CharField(
+        required=False,
+        label=_("Decision note"),
+        widget=forms.Textarea(attrs={"class": "input", "rows": 3}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("decision") == self.DECLINE and not (cleaned.get("note") or "").strip():
+            self.add_error(
+                "note",
+                _("Explain why the building is not proceeding. The note is recorded with the decision."),
+            )
+        return cleaned
+
+    @property
+    def proceed(self) -> bool:
+        return self.cleaned_data["decision"] == self.PROCEED
+
+
 class ProgressUpdateForm(forms.Form):
     cause = forms.CharField(label=_("Cause"), widget=forms.Textarea(attrs={"class": "input", "rows": 3}))
     result = forms.CharField(label=_("Result"), widget=forms.Textarea(attrs={"class": "input", "rows": 3}))

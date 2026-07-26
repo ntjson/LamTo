@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2f3a8f">
-  <title>{% block title %}LÀM TỔ{% endblock %}</title>
+  <title>{% block title %}{% trans "Management" %} · LamTo{% endblock %}</title>
   <link rel="icon" type="image/png" href="{% static 'web/brand/favicon.png' %}">
   <link rel="stylesheet" href="{% static 'web/app.css' %}">
 </head>
@@ -15,7 +15,7 @@
   <header class="site-header" role="banner">
     <div class="brand">
       <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="">
-      <span class="brand-name">LÀM TỔ</span>
+      <span class="brand-name">{% trans "LamTo Management" %}</span>
     </div>
   </header>
 
@@ -34,6 +34,12 @@
     {% block content %}{% endblock %}
   </main>
 
+  <script>
+    window.lamtoI18n = {
+      copied: "{% filter escapejs %}{% trans 'Copied' %}{% endfilter %}",
+      copyFailed: "{% filter escapejs %}{% trans 'Copy failed. Select the value and copy it manually.' %}{% endfilter %}"
+    };
+  </script>
   <script src="{% static 'web/staff.js' %}" defer></script>
   {% block extra_js %}{% endblock %}
 </body>

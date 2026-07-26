@@ -71,8 +71,25 @@ def test_gate_record_pages_use_responsive_task_lists(client, management, url_nam
 def test_invalid_reader_is_not_created_and_reports_error(client, management, label, direction):
     client.force_login(management.user)
     with patch("lamto.accounts.middleware.require_staff_mfa"), patch("lamto.web.staff.require_staff_mfa"), patch("lamto.web.views.gate.require_recent_auth"):
-        response = client.post(reverse("web:gate-devices"), {"action": "create", "label": label, "direction": direction})
-    assert response.status_code == 200
+        response = client.post(reverse("web:gate-devices"), {"action": "create", "label": label, "direction": direction}, follow=True)
+    assert response.redirect_chain == [(reverse("web:gate-devices"), 302)]
     assert GateDevice.objects.count() == 0
     assert b'aria-labelledby="messages-heading"' in response.content
     assert b'role="alert"' not in response.content
+
+
+@pytest.mark.django_db
+@override_settings(LANGUAGE_CODE="en")
+def test_reader_creation_redirects_and_shows_token_once(client, management):
+    # PRG: the POST redirects (refresh never re-submits) and the one-time
+    # credential is popped from the session, so it renders exactly once.
+    client.force_login(management.user)
+    with patch("lamto.accounts.middleware.require_staff_mfa"), patch("lamto.web.staff.require_staff_mfa"), patch("lamto.web.views.gate.require_recent_auth"):
+        response = client.post(reverse("web:gate-devices"), {"action": "create", "label": "North", "direction": GateDevice.Direction.ENTRY}, follow=True)
+        second = client.get(reverse("web:gate-devices"))
+
+    assert response.redirect_chain == [(reverse("web:gate-devices"), 302)]
+    html = response.content.decode()
+    assert "This credential is shown once" in html
+    assert "data-copy=" in html
+    assert "This credential is shown once" not in second.content.decode()

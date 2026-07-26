@@ -2,6 +2,7 @@
 
 import tempfile
 
+from django.template.loader import render_to_string
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -75,6 +76,28 @@ class EvidenceLevelLabelTests(TestCase):
         version.outbox_event.refresh_from_db()
         label = version.verification_label
         self.assertEqual(label, "Mismatch detected")
+
+    def test_local_signed_pill_is_informational_not_amber(self):
+        # Disabled anchoring is a permanent informational state (Open Blue),
+        # not a warning awaiting resolution (DESIGN.md status colors).
+        event = self.entry.settlement.outbox_event
+        BlockchainOutboxEvent.objects.filter(pk=event.pk).update(
+            status=BlockchainOutboxEvent.Status.LOCAL, confirmed_at=None
+        )
+        event.refresh_from_db()
+        html = render_to_string("web/staff/_evidence_level.html", {"event": event})
+        self.assertIn("status-info", html)
+        self.assertNotIn("status-warning", html)
+        self.assertIn("Locally signed (anchoring disabled)", html)
+
+        # A genuinely pending event under a live backend stays amber.
+        BlockchainOutboxEvent.objects.filter(pk=event.pk).update(
+            status=BlockchainOutboxEvent.Status.PENDING
+        )
+        event.refresh_from_db()
+        html = render_to_string("web/staff/_evidence_level.html", {"event": event})
+        self.assertIn("status-warning", html)
+        self.assertNotIn("status-info", html)
 
     def test_outbox_export_carries_evidence_level_verbatim(self):
         BlockchainOutboxEvent.objects.filter(

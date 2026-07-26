@@ -28,7 +28,7 @@
     {% empty %}
     <li class="empty-state">
       <p>{% if list_meta.query %}{% trans "No bills match your search." %}{% else %}{% trans "No bills have been issued." %}{% endif %}</p>
-      {% if list_meta.query %}<p class="hint"><a class="text-link" href="{% url 'web:staff-bill-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Create one with Issue bill." %}</p>{% endif %}
+      {% if list_meta.query %}<p class="hint"><a class="text-link clear-filters" href="{% url 'web:staff-bill-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Create one with Issue bill." %}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>

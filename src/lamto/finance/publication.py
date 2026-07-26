@@ -3,6 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from lamto.audit.services import record_audit
+from django.utils.translation import gettext_lazy as _
 
 from .models import Proposal, PublishedLedgerEntry
 
@@ -11,9 +12,9 @@ def _load_execution_chain(proposal):
     try:
         settlement = proposal.settlement
     except Proposal.settlement.RelatedObjectDoesNotExist as exc:
-        raise ValidationError("Settlement is required before publication.") from exc
+        raise ValidationError(_("Settlement is required before publication.")) from exc
     if settlement.settled_at is None or settlement.outbox_event_id is None:
-        raise ValidationError("Settlement must be completed before publication.")
+        raise ValidationError(_("Settlement must be completed before publication."))
     return settlement
 
 
@@ -59,10 +60,10 @@ def publish_settlement_entry(settlement) -> PublishedLedgerEntry:
     if existing:
         return existing
     if settlement.settled_at is None or settlement.outbox_event_id is None:
-        raise ValidationError("Settlement must be completed before publication.")
+        raise ValidationError(_("Settlement must be completed before publication."))
     proposal, version = settlement.proposal, settlement.proposal.current_version
     if version is None:
-        raise ValidationError("A current proposal version is required.")
+        raise ValidationError(_("A current proposal version is required."))
     hashes = sorted({document.sha256 for document, _expected, _gate in _collect_document_checks(proposal, version, settlement)})
     entry = PublishedLedgerEntry.objects.create(
         resident_payload=_resident_payload(proposal, version, settlement, hashes),

@@ -100,6 +100,7 @@ def gate_nav_items_for(membership) -> list[dict[str, str]]:
 def ops_nav_items_for(membership) -> list[dict[str, str]]:
     return [
         {"label": _("Health"), "url_name": "web:ops-health", "active_key": "health"},
+        {"label": _("Exceptions"), "url_name": "web:exception-list", "active_key": "exceptions"},
         {"label": _("Metrics"), "url_name": "web:pilot-metrics", "active_key": "metrics"},
         {"label": _("Exports"), "url_name": "web:export-home", "active_key": "exports"},
     ]

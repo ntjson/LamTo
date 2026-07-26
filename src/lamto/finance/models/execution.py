@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from lamto.accounts.models import ManagementMembership
 from lamto.documents.models import DocumentVersion
@@ -9,8 +10,8 @@ from .proposals import Proposal
 
 class Settlement(models.Model):
     class AckKind(models.TextChoices):
-        MANAGEMENT_UPLOAD = "MANAGEMENT_UPLOAD", "Management-uploaded evidence"
-        PAYEE_LINK = "PAYEE_LINK", "Payee link (reserved)"
+        MANAGEMENT_UPLOAD = "MANAGEMENT_UPLOAD", _("Management-uploaded evidence")
+        PAYEE_LINK = "PAYEE_LINK", _("Payee link (reserved)")
 
     proposal = models.OneToOneField(Proposal, on_delete=models.PROTECT, related_name="settlement")
     amount_vnd = models.BigIntegerField()

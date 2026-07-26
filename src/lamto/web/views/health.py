@@ -22,9 +22,26 @@ from lamto.finance.models import VerificationObservation
 from lamto.gate.models import GatePurgeHeartbeat
 from lamto.gate.retention import PURGE_STALE_AFTER_HOURS, purge_is_stale
 from lamto.maintenance.models import TriageDecision, TriageJob, TriageSuggestion
+from django.utils.translation import gettext_lazy as _
+
 from lamto.notifications.models import Device, NotificationDelivery
 from lamto.notifications.services import PUSH_SUPPRESSED_PREFIX
 from lamto.web.staff import require_management_context, staff_context
+
+# Raw snake_case metric keys stay in the JSON payload; screens read these labels.
+PILOT_METRIC_LABELS = {
+    "ai_suggestion_accepted": _("AI suggestions accepted as-is"),
+    "ai_suggestion_edited": _("AI suggestions edited before confirming"),
+    "ai_suggestions_total": _("AI suggestions produced"),
+    "duplicate_confirmation_results": _("Suggestions flagging possible duplicates"),
+    "triage_latency_ms_avg": _("Average triage latency (ms)"),
+    "work_response_time_seconds_avg": _("Average work response time (seconds)"),
+    "publication_time_seconds_avg": _("Average publication time (seconds)"),
+    "anchoring_delay_seconds_avg": _("Average anchoring delay (seconds)"),
+    "anchoring_backend": _("Anchoring backend"),
+    "authoritative": _("Authoritative for decisions"),
+    "generated_at": _("Generated at"),
+}
 
 
 def collect_health_snapshot(building_id: int) -> dict:
@@ -265,10 +282,23 @@ def pilot_metrics(request):
     if request.GET.get("format") == "json":
         return JsonResponse(metrics)
     # A latency is not a currency: one decimal on screen, raw values in JSON.
-    display_metrics = {
-        key: (round(value, 1) if isinstance(value, float) else value)
-        for key, value in metrics.items()
-    }
+    from django.utils.translation import gettext
+
+    metric_rows = []
+    for key, value in metrics.items():
+        if isinstance(value, float):
+            value = round(value, 1)
+        elif isinstance(value, bool):
+            value = gettext("Yes") if value else gettext("No")
+        elif key == "anchoring_backend" and value == "disabled":
+            value = gettext("disabled — records are signed locally")
+        metric_rows.append(
+            {
+                "label": PILOT_METRIC_LABELS.get(key, key),
+                "value": value,
+                "is_datetime": key == "generated_at",
+            }
+        )
     return render(
         request,
         "web/staff/ops_metrics.html",
@@ -278,7 +308,7 @@ def pilot_metrics(request):
             memberships,
             nav_active="ops",
             ops_active="metrics",
-            metrics=display_metrics,
+            metric_rows=metric_rows,
             panel="metrics",
         ),
     )

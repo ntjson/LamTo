@@ -11,6 +11,7 @@ from lamto.evidence.models import EvidenceType
 from lamto.evidence.services import queue_platform_event
 from lamto.maintenance.cases import TERMINAL_STATUSES
 from lamto.maintenance.models import CaseReport, IssueReport, MaintenanceCase
+from django.utils.translation import gettext_lazy as _
 
 from .models import Proposal, ProposalDocument, ProposalVersion
 
@@ -32,13 +33,13 @@ def _quotation_versions(building_id, quotation_versions, *, lock=False):
     supplied = list(quotation_versions or [])
     ids = [getattr(version, "pk", None) for version in supplied]
     if not ids or any(value is None for value in ids) or len(set(ids)) != len(ids):
-        raise ValidationError("At least one distinct quotation is required.")
+        raise ValidationError(_("At least one distinct quotation is required."))
     queryset = DocumentVersion.objects.select_related("document").filter(pk__in=ids)
     if lock:
         queryset = queryset.select_for_update()
     versions = {version.pk: version for version in queryset}
     if len(versions) != len(ids):
-        raise ValidationError("Every quotation version must still exist.")
+        raise ValidationError(_("Every quotation version must still exist."))
 
     resolved = []
     for version_id in ids:
@@ -48,7 +49,7 @@ def _quotation_versions(building_id, quotation_versions, *, lock=False):
             or version.document.building_id != building_id
             or version.scan_status != DocumentVersion.ScanStatus.CLEAN
         ):
-            raise ValidationError("Quotations must be clean, safe, and in the work-order building.")
+            raise ValidationError(_("Quotations must be clean, safe, and in the work-order building."))
         resolved.append(version)
     return resolved
 
@@ -101,9 +102,9 @@ def build_proposal_evidence_payload(proposal, amount_vnd, contractor_name, quota
                                     expected_schedule=""):
     """Build the exact signed payload callers must use before submission."""
     if type(amount_vnd) is not int or amount_vnd <= 0:
-        raise ValidationError("Proposal amount must be a positive integer.")
+        raise ValidationError(_("Proposal amount must be a positive integer."))
     if not isinstance(contractor_name, str) or not contractor_name.strip():
-        raise ValidationError("Contractor name is required.")
+        raise ValidationError(_("Contractor name is required."))
     purpose = proposal.case.get_category_display() if purpose is None and proposal.case_id else (purpose or "")
     versions = _quotation_versions(proposal.building_id or proposal.case.building_id, quotation_versions)
     number = (ProposalVersion.objects.filter(proposal=proposal).aggregate(Max("number"))["number__max"] or 0) + 1
@@ -126,13 +127,13 @@ def create_proposal(case, creator_membership) -> Proposal:
         or not locked_case.active
         or locked_case.completed_at is not None
     ):
-        raise ValidationError("An active uncompleted case is required.")
+        raise ValidationError(_("An active uncompleted case is required."))
     membership = require_management(creator_membership.user, locked_case.building_id)
     links = CaseReport.objects.filter(case=locked_case).select_related("report")
     if any(link.report.is_private for link in links):
-        raise ValidationError("Private requests cannot become community proposals.")
+        raise ValidationError(_("Private requests cannot become community proposals."))
     if any(link.report.status == IssueReport.Status.IN_PROGRESS for link in links):
-        raise ValidationError("Cases already proceeding without spending cannot add a proposal.")
+        raise ValidationError(_("Cases already proceeding without spending cannot add a proposal."))
     try:
         proposal = Proposal.objects.create(
             case=locked_case,
@@ -140,7 +141,7 @@ def create_proposal(case, creator_membership) -> Proposal:
             creator_membership=membership,
         )
     except IntegrityError as exc:
-        raise ValidationError("A proposal already exists for this case.") from exc
+        raise ValidationError(_("A proposal already exists for this case.")) from exc
     IssueReport.objects.filter(case_reports__case=locked_case).exclude(
         status__in=TERMINAL_STATUSES
     ).update(status=IssueReport.Status.PROPOSED)
@@ -170,9 +171,9 @@ def decide_proposal(proposal, manager, proceed: bool, note="") -> Proposal:
     locked = Proposal.objects.select_for_update().get(pk=getattr(proposal, "pk", None))
     membership = require_management(manager, locked.building_id)
     if locked.status != Proposal.Status.PUBLISHED:
-        raise ValidationError("Only published proposals can be decided.")
+        raise ValidationError(_("Only published proposals can be decided."))
     if type(proceed) is not bool:
-        raise ValidationError("Proceed must be a boolean.")
+        raise ValidationError(_("Proceed must be a boolean."))
     now = timezone.now()
     locked.status = Proposal.Status.IN_PROGRESS if proceed else Proposal.Status.NOT_PROCEEDING
     locked.decided_by = membership
@@ -197,14 +198,14 @@ def publish_proposal_version(
     )
     membership = require_management(creator_membership.user, locked_proposal.building_id)
     if type(amount_vnd) is not int or amount_vnd <= 0:
-        raise ValidationError("Proposal amount must be a positive integer.")
+        raise ValidationError(_("Proposal amount must be a positive integer."))
     if not isinstance(contractor_name, str) or not contractor_name.strip():
-        raise ValidationError("Contractor name is required.")
+        raise ValidationError(_("Contractor name is required."))
     if locked_proposal.status not in {Proposal.Status.DRAFT, Proposal.Status.PUBLISHED, Proposal.Status.IN_PROGRESS}:
-        raise ValidationError("This proposal cannot receive another version.")
-    for value, message in ((fund_code, "Funding source is required."), (purpose, "Problem or need is required."),
-                           (proposed_action, "Proposed action is required."),
-                           (expected_schedule, "Expected schedule is required.")):
+        raise ValidationError(_("This proposal cannot receive another version."))
+    for value, message in ((fund_code, _("Funding source is required.")), (purpose, _("Problem or need is required.")),
+                           (proposed_action, _("Proposed action is required.")),
+                           (expected_schedule, _("Expected schedule is required."))):
         if not isinstance(value, str) or not value.strip():
             raise ValidationError(message)
 

@@ -26,7 +26,7 @@
     {% empty %}
     <li class="empty-state">
       <p>{% if list_meta.query %}{% trans "No registrations match your search." %}{% else %}{% trans "No registrations are waiting for review." %}{% endif %}</p>
-      {% if list_meta.query %}<p class="hint"><a class="text-link" href="{% url 'web:staff-registration-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Residents appear here when they ask to join the building." %}</p>{% endif %}
+      {% if list_meta.query %}<p class="hint"><a class="text-link clear-filters" href="{% url 'web:staff-registration-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Residents appear here when they ask to join the building." %}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>

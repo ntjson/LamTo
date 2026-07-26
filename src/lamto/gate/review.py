@@ -1,6 +1,7 @@
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from .models import FaceEnrollment, PendingEnrollmentPhoto, ReviewStatus, VehiclePlate
 from .photos import queue_photo_deletion
@@ -30,11 +31,11 @@ def approve_face(enrollment, membership):
     with transaction.atomic():
         enrollment = FaceEnrollment.objects.select_for_update().get(pk=enrollment.pk)
         if enrollment.status != ReviewStatus.PENDING:
-            raise ReviewNotPossible("Only a pending enrolment can be approved.")
+            raise ReviewNotPossible(_("Only a pending enrolment can be approved."))
         if enrollment.embedding is None:
-            raise ReviewNotPossible("The face embedding is missing; the resident must resubmit.")
+            raise ReviewNotPossible(_("The face embedding is missing; the resident must resubmit."))
         if not PendingEnrollmentPhoto.objects.select_for_update().filter(enrollment=enrollment).exists():
-            raise ReviewNotPossible("The review photo has expired; the resident must resubmit.")
+            raise ReviewNotPossible(_("The review photo has expired; the resident must resubmit."))
         enrollment.status = ReviewStatus.APPROVED
         enrollment.reviewed_by = membership.user
         enrollment.reviewed_at = timezone.now()
@@ -59,9 +60,9 @@ def _close_face(enrollment, membership, note):
 def reject_face(enrollment, membership, note):
     _assert_manages(membership, enrollment.occupancy.unit.building_id)
     if not (note or "").strip():
-        raise ReviewNotPossible("A rejection reason is required.")
+        raise ReviewNotPossible(_("A rejection reason is required."))
     if enrollment.status not in {ReviewStatus.PENDING, ReviewStatus.APPROVED}:
-        raise ReviewNotPossible("This enrolment has already been closed.")
+        raise ReviewNotPossible(_("This enrolment has already been closed."))
     return _close_face(enrollment, membership, note.strip())
 
 
@@ -75,7 +76,7 @@ def approve_plate(plate, membership):
     if plate.status == ReviewStatus.APPROVED:
         return plate
     if VehiclePlate.objects.filter(building_id=plate.building_id, plate=plate.plate, status=ReviewStatus.APPROVED).exclude(pk=plate.pk).exists():
-        raise ReviewNotPossible("Another resident already holds this plate in this building.")
+        raise ReviewNotPossible(_("Another resident already holds this plate in this building."))
     plate.status = ReviewStatus.APPROVED
     plate.reviewed_by = membership.user
     plate.reviewed_at = timezone.now()
@@ -87,7 +88,7 @@ def approve_plate(plate, membership):
 def reject_plate(plate, membership, note):
     _assert_manages(membership, plate.building_id)
     if not (note or "").strip():
-        raise ReviewNotPossible("A rejection reason is required.")
+        raise ReviewNotPossible(_("A rejection reason is required."))
     plate.status = ReviewStatus.REJECTED
     plate.reviewed_by = membership.user
     plate.reviewed_at = timezone.now()

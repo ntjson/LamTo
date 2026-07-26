@@ -16,6 +16,7 @@ from PIL import Image, UnidentifiedImageError
 from lamto.accounts.models import ManagementMembership, ResidentOccupancy
 from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
+from django.utils.translation import gettext_lazy as _
 
 from .models import Document, DocumentVersion, QuarantinedUpload
 from .scanner import DocumentScanUnavailable
@@ -143,9 +144,9 @@ def _store(storage, storage_key, file_obj, content_type):
         try:
             versioning = client.get_bucket_versioning(Bucket=storage.bucket_name)
         except Exception as error:
-            raise DocumentStorageError("Could not verify S3 bucket versioning.") from error
+            raise DocumentStorageError(_("Could not verify S3 bucket versioning.")) from error
         if versioning.get("Status") != "Enabled":
-            raise DocumentStorageError("S3 bucket versioning is not enabled.")
+            raise DocumentStorageError(_("S3 bucket versioning is not enabled."))
         response = client.put_object(
             Bucket=storage.bucket_name,
             Key=storage_key,
@@ -153,7 +154,7 @@ def _store(storage, storage_key, file_obj, content_type):
             ContentType=content_type,
         )
         if not isinstance(version_id := response.get("VersionId"), str) or not version_id or version_id.lower() == "null":
-            raise DocumentStorageError("S3 did not return an immutable VersionId.")
+            raise DocumentStorageError(_("S3 did not return an immutable VersionId."))
         return version_id
     saved_key = storage.save(storage_key, File(file_obj, name=storage_key))
     return saved_key
@@ -346,7 +347,7 @@ def purge_expired_quarantine(now=None):
         if hasattr(storage, "bucket_name") and hasattr(storage, "connection"):
             version_id = upload.provider_version_id
             if not isinstance(version_id, str) or not version_id or version_id.lower() == "null":
-                raise DocumentStorageError("S3 quarantine object has no immutable VersionId.")
+                raise DocumentStorageError(_("S3 quarantine object has no immutable VersionId."))
             storage.connection.meta.client.delete_object(
                 Bucket=storage.bucket_name,
                 Key=upload.storage_key,

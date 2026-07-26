@@ -102,6 +102,7 @@ class DocumentVersionTests(TestCase):
             QuarantinedUpload.objects.filter(pk=quarantined.pk).update(reason="changed")
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class StorageVersionTests(TestCase):
     def test_s3_write_without_version_id_fails_closed(self):
         storage = MagicMock(bucket_name="private")

@@ -2,7 +2,7 @@ import secrets
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from lamto.accounts.models import Building, ManagementMembership, User
@@ -14,6 +14,7 @@ from lamto.finance.settlements import record_acknowledgement, record_transfer
 from lamto.maintenance.cases import close_expired_completed_cases
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 class SettlementTests(TestCase):
     def test_transfer_amount_must_match_frozen_proposal_amount(self):
         proposal, version = self.completed()

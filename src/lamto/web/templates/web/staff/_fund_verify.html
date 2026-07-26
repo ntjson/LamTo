@@ -6,12 +6,12 @@
 </dl>
 {% if already_verified %}
 <p class="hint">{% trans "This source is already verified." %}</p>
-{% elif verify_form %}
-<div class="workflow-section">
+{% else %}
+<div class="workflow-section workflow-primary">
   <h2>{% trans "Verify source" %}</h2>
+  <p class="hint">{% trans "Verification is the sign-off that lets this source count in the fund balance. Check the frozen values above against the evidence before confirming." %}</p>
   <form method="post" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
-    {{ verify_form.as_p }}
     <button type="submit" class="button button-primary">{% trans "Verify source" %}</button>
   </form>
 </div>

@@ -6,7 +6,9 @@
   <h1 id="mfa-heading">{% if verify_only %}{% trans "Verify authenticator" %}{% else %}{% trans "Set up authenticator (TOTP)" %}{% endif %}</h1>
   {% if not verify_only and config_url %}
   <p class="lede">{% trans "Scan this configuration with your authenticator app, then enter a 6-digit code." %}</p>
-  <p class="hash-block"><code>{{ config_url }}</code></p>
+  {% if qr_svg %}<div class="mfa-qr" aria-hidden="true">{{ qr_svg }}</div>{% endif %}
+  <p class="hint">{% trans "Or enter this address in your authenticator app manually:" %}</p>
+  <p class="hash-block"><span class="hash-value"><code class="hash">{{ config_url }}</code> <button type="button" class="button button-secondary button-compact" data-copy="{{ config_url }}" aria-label="{% trans 'Copy setup address' %}">{% trans "Copy" %}</button></span></p>
   {% else %}
   <p class="lede">{% trans "Enter the current code from your authenticator app." %}</p>
   {% endif %}

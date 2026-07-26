@@ -260,20 +260,20 @@ def _settlement_ack_items(building_id: int) -> list[ActionItem]:
     return [ActionItem(kind="settlement_ack", title=_kind_title("settlement_ack"), summary=_("Settlement #%(id)s") % {"id": s.pk}, target_type="Settlement", target_id=s.pk, url=reverse("web:settlement-detail", kwargs={"pk": s.pk}), priority=14, amount_vnd=s.amount_vnd) for s in Settlement.objects.filter(proposal__building_id=building_id, settled_at__isnull=True)[:40]]
 
 
-def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
-    items = []
-    latest_mismatch = (
-        VerificationObservation.objects.filter(
-            published_entry__proposal__building_id=building_id,
-            result=VerificationObservation.Result.MISMATCH,
-        )
-        .order_by("-observed_at")[:30]
-    )
-    seen_entries = set()
+def mismatched_ledger_entry_ids(building_id: int, limit: int = 30) -> list[int]:
+    """Ledger entries whose LATEST observation is still a mismatch, newest first.
+
+    Shared by the inbox and the Exceptions review surface so both always agree
+    on what counts as an open mismatch.
+    """
+    latest_mismatch = VerificationObservation.objects.filter(
+        published_entry__proposal__building_id=building_id,
+        result=VerificationObservation.Result.MISMATCH,
+    ).order_by("-observed_at")[:limit]
+    entry_ids: list[int] = []
     for obs in latest_mismatch:
-        if obs.published_entry_id in seen_entries:
+        if obs.published_entry_id in entry_ids:
             continue
-        # Only surface if latest observation for entry is still mismatch
         latest = (
             VerificationObservation.objects.filter(
                 published_entry_id=obs.published_entry_id
@@ -283,20 +283,25 @@ def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
         )
         if latest is None or latest.result != VerificationObservation.Result.MISMATCH:
             continue
-        seen_entries.add(obs.published_entry_id)
-        items.append(
-            ActionItem(
-                kind="integrity_mismatch",
-                title=_kind_title("integrity_mismatch"),
-                summary=_("Ledger entry #%(id)s") % {"id": obs.published_entry_id},
-                target_type="PublishedLedgerEntry",
-                target_id=obs.published_entry_id,
-                url=reverse("web:audit-export")
-                + f"?entry={obs.published_entry_id}",
-                priority=8,
-            )
+        entry_ids.append(obs.published_entry_id)
+    return entry_ids
+
+
+def _integrity_mismatch_items(building_id: int) -> list[ActionItem]:
+    return [
+        ActionItem(
+            kind="integrity_mismatch",
+            title=_kind_title("integrity_mismatch"),
+            summary=_("Ledger entry #%(id)s") % {"id": entry_id},
+            target_type="PublishedLedgerEntry",
+            target_id=entry_id,
+            url=reverse(
+                "web:exception-review", args=["integrity_mismatch", entry_id]
+            ),
+            priority=8,
         )
-    return items
+        for entry_id in mismatched_ledger_entry_ids(building_id)
+    ]
 
 
 def _failed_outbox_items(building_id: int) -> list[ActionItem]:
@@ -315,7 +320,7 @@ def _failed_outbox_items(building_id: int) -> list[ActionItem]:
                 % {"event_id": event.event_id[:18], "error": event.last_error[:80]},
                 target_type="BlockchainOutboxEvent",
                 target_id=event.pk,
-                url=reverse("web:audit-export") + f"?outbox={event.pk}",
+                url=reverse("web:exception-review", args=["failed_outbox", event.pk]),
                 priority=9,
             )
         )
@@ -329,14 +334,18 @@ def _quarantined_upload_items(building_id: int, membership) -> list[ActionItem]:
         .order_by("-created_at")[:20]
     )
     for upload in qs:
+        from lamto.web.templatetags.staff_extras import upload_reason_label
+
         items.append(
             ActionItem(
                 kind="quarantined_upload",
                 title=_kind_title("quarantined_upload"),
-                summary=f"{upload.filename} · {upload.reason}",
+                summary=f"{upload.filename} · {upload_reason_label(upload.reason)}",
                 target_type="QuarantinedUpload",
                 target_id=upload.pk,
-                url=reverse("web:action-inbox"),
+                url=reverse(
+                    "web:exception-review", args=["quarantined_upload", upload.pk]
+                ),
                 priority=12,
             )
         )

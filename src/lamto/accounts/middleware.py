@@ -8,7 +8,11 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.urls import reverse
 
-from lamto.accounts.security import RecentAuthRequired, require_staff_mfa
+from lamto.accounts.security import (
+    RecentAuthRequired,
+    require_staff_mfa,
+    stash_post_for_reauth,
+)
 
 # MFA enrollment/verify must remain reachable before OTP is confirmed.
 _MFA_EXEMPT_PREFIXES = (
@@ -48,6 +52,7 @@ class StaffSecurityMiddleware:
 
     def process_exception(self, request, exception):
         if isinstance(exception, RecentAuthRequired):
+            stash_post_for_reauth(request)
             next_url = request.get_full_path()
             return redirect(
                 f"{reverse('web:reauth')}?{urlencode({'next': next_url})}"

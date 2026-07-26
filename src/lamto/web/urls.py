@@ -17,6 +17,7 @@ from lamto.web.registration_views import (
 )
 from lamto.web.views import (
     documents,
+    exceptions,
     exports,
     fund,
     gate,
@@ -112,6 +113,12 @@ urlpatterns = [
     # Ops
     path("s/ops/health/", health.ops_health, name="ops-health"),
     path("s/ops/metrics/", health.pilot_metrics, name="pilot-metrics"),
+    path("s/exceptions/", exceptions.exception_list, name="exception-list"),
+    path(
+        "s/exceptions/<str:kind>/<int:pk>/",
+        exceptions.exception_review,
+        name="exception-review",
+    ),
     path("s/gate/", gate.gate_queue, name="gate-queue"),
     path("s/gate/face/<int:pk>/photo/", gate.gate_face_photo, name="gate-face-photo"),
     path("s/gate/face/<int:pk>/decide/", gate.gate_face_decide, name="gate-face-decide"),

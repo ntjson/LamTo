@@ -24,13 +24,16 @@ from lamto.accounts.models import (
 )
 from lamto.accounts.security import (
     RECENT_REAUTH_KEY,
+    REAUTH_STASH_KEY,
     THROTTLE_MAX_FAILURES,
     THROTTLE_WINDOW_SECONDS,
     assert_not_throttled,
     mark_recent_reauth,
+    pop_stashed_post,
     record_auth_failure,
     require_recent_auth,
     reset_auth_throttle,
+    stash_post_for_reauth,
     throttle_digest,
 )
 
@@ -206,6 +209,49 @@ class SecurityTests(TestCase):
                 require_recent_auth(request, max_age_seconds=300)
             mark_recent_reauth(request)
             require_recent_auth(request, max_age_seconds=300)
+
+    def test_reauth_stash_round_trip_preserves_typed_values_only(self):
+        from django.contrib.sessions.backends.db import SessionStore
+
+        request = self.factory.post(
+            "/s/proposals/new/",
+            {
+                "contractor_name": "Công ty TNHH Minh Phát",
+                "amount_vnd": "184500000",
+                "confirm": "on",
+                "csrfmiddlewaretoken": "x",
+                "action": "prepare",
+            },
+        )
+        request.session = SessionStore()
+        stash_post_for_reauth(request)
+
+        restore = self.factory.get("/s/proposals/new/")
+        restore.session = request.session
+        data = pop_stashed_post(restore)
+        self.assertEqual(data["contractor_name"], "Công ty TNHH Minh Phát")
+        self.assertEqual(data["amount_vnd"], "184500000")
+        # Irreversibility confirms and CSRF are never re-armed.
+        self.assertNotIn("confirm", data)
+        self.assertNotIn("csrfmiddlewaretoken", data)
+        # One-shot: a second pop returns nothing.
+        self.assertIsNone(pop_stashed_post(restore))
+
+    def test_reauth_stash_is_path_scoped_and_expires(self):
+        from django.contrib.sessions.backends.db import SessionStore
+
+        request = self.factory.post("/s/fund/record/", {"amount_vnd": "1"})
+        request.session = SessionStore()
+        stash_post_for_reauth(request)
+
+        elsewhere = self.factory.get("/s/proposals/new/")
+        elsewhere.session = request.session
+        self.assertIsNone(pop_stashed_post(elsewhere))
+
+        request.session[REAUTH_STASH_KEY]["at"] = time.time() - 3600
+        same_path = self.factory.get("/s/fund/record/")
+        same_path.session = request.session
+        self.assertIsNone(pop_stashed_post(same_path))
 
     def test_staff_workspace_requires_confirmed_totp(self):
         board = self.make_manager()

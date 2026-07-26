@@ -26,7 +26,7 @@
     {% empty %}
     <li class="empty-state">
       <p>{% if list_meta.query %}{% trans "No announcements match your search." %}{% else %}{% trans "No announcements have been published." %}{% endif %}</p>
-      {% if list_meta.query %}<p class="hint"><a class="text-link" href="{% url 'web:staff-announcement-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Publish the first notice with Publish announcement." %}</p>{% endif %}
+      {% if list_meta.query %}<p class="hint"><a class="text-link clear-filters" href="{% url 'web:staff-announcement-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Publish the first notice with Publish announcement." %}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>

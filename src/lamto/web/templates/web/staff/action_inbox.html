@@ -66,6 +66,16 @@
     <canvas id="fund-chart" role="img" data-compact="1"
             aria-label="{% trans 'Fund balance chart' %}"
             data-label-balance="{% trans 'Balance' %}"></canvas>
+    {# Sibling, not canvas fallback: role="img" hides descendants from AT. #}
+    <table class="sr-only">
+      <caption>{% trans "Fund balance by period" %}</caption>
+      <thead><tr><th scope="col">{% trans "Period" %}</th><th scope="col">{% trans "Balance" %}</th><th scope="col">{% trans "Inflows" %}</th><th scope="col">{% trans "Outflows" %}</th></tr></thead>
+      <tbody>
+        {% for point in fund_chart_points %}
+        <tr><td>{{ point.period_start }}</td><td>{{ point.balance_vnd|intcomma }} VND</td><td>{{ point.inflows_vnd|intcomma }} VND</td><td>{{ point.outflows_vnd|intcomma }} VND</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
   {{ fund_chart_points|json_script:"fund-chart-data" }}
 </section>

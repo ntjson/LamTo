@@ -88,9 +88,22 @@ summary:focus-visible {
 }
 
 .site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
   padding: var(--space-4);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+}
+
+.site-header .building-label {
+  margin: 0;
+}
+
+.logout-form {
+  margin-inline-start: auto;
 }
 
 .brand {
@@ -113,6 +126,7 @@ summary:focus-visible {
 }
 
 .membership-switcher-summary {
+  min-height: var(--touch);
   cursor: pointer;
   list-style: none;
 }
@@ -189,6 +203,7 @@ summary:focus-visible {
 
 .panel-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -315,12 +330,15 @@ h3 {
 /* Secondary workflows fold behind a native disclosure; the heading stays inline
    with the marker so the summary reads as one control. */
 details.workflow-section > summary {
+  min-height: var(--touch);
   cursor: pointer;
 }
 
-details.workflow-section > summary > h2 {
+details.workflow-section > summary > .h2 {
   display: inline;
   margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 
 details.workflow-section[open] > summary {
@@ -429,6 +447,8 @@ details.workflow-section[open] > summary {
 }
 
 a.status {
+  min-height: var(--touch);
+  align-items: center;
   text-decoration: none;
 }
 
@@ -440,7 +460,7 @@ a.status {
   min-width: var(--touch);
   padding: 0.65rem 1rem;
   border-radius: 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-control-border);
   background: var(--color-surface);
   color: var(--color-brand);
   font: inherit;
@@ -476,7 +496,7 @@ a.status {
 .button-secondary {
   background: var(--color-surface);
   color: var(--color-brand);
-  border-color: var(--color-border);
+  border-color: var(--color-control-border);
 }
 
 .button:not(.button-primary):hover,
@@ -662,6 +682,78 @@ a.status {
 .field label,
 .field legend {
   font-weight: 600;
+}
+
+/* Radio decisions: one row per option, the whole row is the target. */
+.choice-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.choice-group .choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: var(--space-2) 0;
+  font-weight: 400;
+}
+
+.choice input[type="radio"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  flex: none;
+  accent-color: var(--color-brand);
+}
+
+/* Irreversible row actions arm with an explicit tick before the button. */
+.confirm-revoke {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.confirm-revoke .confirm-label {
+  display: inline-flex;
+  min-height: var(--touch);
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.confirm-revoke input[type="checkbox"] {
+  margin-top: 0.15rem;
+}
+
+/* Exception responses: an append-only trail of named sign-offs. */
+.response-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.response-item {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.response-item:last-child {
+  border-bottom: 0;
+}
+
+.response-meta {
+  margin: 0 0 var(--space-1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.response-note {
+  margin: 0;
+  white-space: pre-line;
 }
 
 .input,
@@ -1060,6 +1152,8 @@ code {
 .evidence-thumb { display: inline-flex; align-items: center; min-height: var(--touch); padding: var(--space-1) var(--space-2); border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-muted); }
 .bill-qr { max-width: 16rem; }
 .bill-qr svg { width: 100%; height: auto; display: block; }
+.mfa-qr { max-width: 12rem; margin-bottom: var(--space-2); }
+.mfa-qr svg { width: 100%; height: auto; display: block; }
 .health-detail { color: var(--color-muted); max-width: 65ch; }
 .brand-name { font-weight: 700; letter-spacing: 0.02em; }
 .flash-messages { margin-bottom: var(--space-4); }

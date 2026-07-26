@@ -346,7 +346,8 @@ def test_void_requires_in_page_confirmation(client):
 
     assert response.status_code == 200
     assert b"confirm" in response.content.lower()
-    assert b'id_confirm_error' in response.content
+    assert b'id="id_confirm-error"' in response.content
+    assert b'aria-describedby="id_confirm-error"' in response.content
     assert b"onsubmit=" not in response.content
     bill.refresh_from_db()
     assert bill.status == Bill.Status.ISSUED

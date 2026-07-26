@@ -29,7 +29,7 @@ from lamto.accounts.models import ResidentOccupancy
 from lamto.accounts.registration import submit_registration
 from lamto.accounts.security import RECENT_REAUTH_KEY
 from lamto.billing.models import Bill
-from lamto.documents.models import Document, DocumentVersion
+from lamto.documents.models import Document, DocumentVersion, QuarantinedUpload
 from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.fund import fund_balance
 from lamto.finance.models import (
@@ -72,6 +72,8 @@ STAFF_CASES = {
     "web:staff-bill-detail": ("bill_pk", "GET"),
     "web:staff-bill-void": ("bill_pk", "POST"),
     "web:staff-document": ("document_version_pk", "GET"),
+    # Third element (optional): URL args placed before the pk.
+    "web:exception-review": ("ledger_pk", "GET", ("integrity_mismatch",)),
 }
 STAFF_FORBIDDEN_CASES = set()
 
@@ -88,6 +90,7 @@ LIST_ROUTES = [
     "web:proposal-list",
     "web:settlement-list",
     "web:audit-export",
+    "web:exception-list",
 ]
 
 # ---------------------------------------------------------------------------
@@ -223,6 +226,19 @@ class CrossBuildingAccessTests(TestCase):
             "ledger_pk": ledger.pk,
             "fund_entry_pk": b_fund_entry.pk,
         }
+        cls.b["outbox_event_pk"] = (
+            BlockchainOutboxEvent.objects.filter(building=b_building)
+            .values_list("pk", flat=True)
+            .first()
+        )
+        cls.b["quarantine_pk"] = QuarantinedUpload.objects.create(
+            uploader=cls.seed_b.management_memberships[0].user,
+            building=b_building,
+            filename=f"{B_LEAK_MARKER}.pdf",
+            byte_size=1,
+            reason="virus signature",
+            retention_expires_at=timezone.now() + timedelta(days=1),
+        ).pk
         b_notice = NotificationDelivery.objects.create(
             recipient=cls.seed_b.residents[0], building=b_building,
             channel=NotificationDelivery.Channel.IN_APP, status=NotificationDelivery.Status.AVAILABLE,
@@ -381,10 +397,13 @@ class CrossBuildingAccessTests(TestCase):
         assert self.client.get(reverse("web:case-list")).status_code == 403
 
     def test_staff_cannot_reach_other_building_objects(self):
-        for route, (pk_attr, method) in STAFF_CASES.items():
+        for route, case in STAFF_CASES.items():
+            pk_attr, method, *prefix_args = case
             with self.subTest(route=route):
                 self._management_login()
-                url = reverse(route, args=[self.b[pk_attr]])
+                url = reverse(
+                    route, args=[*(prefix_args[0] if prefix_args else ()), self.b[pk_attr]]
+                )
                 response = (
                     self.client.post(url, {}) if method == "POST" else self.client.get(url)
                 )
@@ -395,6 +414,21 @@ class CrossBuildingAccessTests(TestCase):
                 if hasattr(response, "content"):
                     assert B_LEAK_MARKER.encode() not in response.content
                 self.client.logout()
+
+    def test_staff_cannot_reach_other_building_exceptions(self):
+        """Every exception-review kind hides foreign-tenant objects with 404."""
+        cases = [
+            ("failed_outbox", self.b["outbox_event_pk"]),
+            ("quarantined_upload", self.b["quarantine_pk"]),
+        ]
+        self._management_login()
+        for kind, pk in cases:
+            with self.subTest(kind=kind):
+                response = self.client.get(
+                    reverse("web:exception-review", args=[kind, pk])
+                )
+                assert response.status_code == 404, (kind, response.status_code)
+                assert B_LEAK_MARKER.encode() not in response.content
 
     def test_resident_cannot_reach_other_building_objects(self):
         resident_a = self.seed_a.residents[0]

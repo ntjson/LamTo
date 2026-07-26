@@ -119,7 +119,7 @@ class ProposalCreateTests(TestCase):
 
         response = self.client.post(
             reverse("web:proposal-detail", kwargs={"pk": proposal.pk}),
-            {"action": "decide", "proceed": "on", "note": "Proceed"},
+            {"action": "decide", "decision": "proceed", "note": "Proceed"},
         )
 
         self.assertRedirects(response, reverse("web:proposal-detail", kwargs={"pk": proposal.pk}))
@@ -254,3 +254,15 @@ class ProposalCreateTests(TestCase):
         session.save()
         resp = self.client.get(reverse("web:proposal-create", kwargs={"pk": self.work.pk}))
         self.assertEqual(resp.status_code, 200)
+
+
+def test_decision_form_requires_explicit_choice_and_decline_note():
+    from lamto.web.forms.staff import ProposalDecisionForm
+
+    # Untouched form is invalid: NOT_PROCEEDING must never be a silent default.
+    assert not ProposalDecisionForm({}).is_valid()
+    declined = ProposalDecisionForm({"decision": "decline", "note": " "})
+    assert not declined.is_valid()
+    assert "note" in declined.errors
+    assert ProposalDecisionForm({"decision": "decline", "note": "Giá quá cao"}).is_valid()
+    assert ProposalDecisionForm({"decision": "proceed"}).is_valid()

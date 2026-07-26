@@ -23,10 +23,10 @@
   <li class="empty-state">
     {% if list_meta.query %}
     <p>{% blocktrans with q=list_meta.query %}No records match “{{ q }}”. Clear the search to see every record.{% endblocktrans %}</p>
-    <p class="hint"><a class="text-link" href="?">{% trans "Clear filters" %}</a></p>
+    <p class="hint"><a class="text-link clear-filters" href="?">{% trans "Clear filters" %}</a></p>
     {% elif filters_active %}
     <p>{% trans "No records match your filters." %}</p>
-    <p class="hint"><a class="text-link" href="?">{% trans "Clear filters" %}</a></p>
+    <p class="hint"><a class="text-link clear-filters" href="?">{% trans "Clear filters" %}</a></p>
     {% else %}
     <p>{{ empty_label|default:default_empty_label }}</p>
     <p class="hint">{% trans "Check the action inbox for your next responsibility." %}</p>

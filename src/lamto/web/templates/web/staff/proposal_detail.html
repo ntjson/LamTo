@@ -29,7 +29,7 @@
         {% if version %}
         <div><dt>{% trans "Amount" %}</dt><dd>{{ version.amount_vnd|intcomma }} VND</dd></div>
         <div><dt>{% trans "Contractor" %}</dt><dd>{{ version.contractor_name }}</dd></div>
-        {% if proposal.case_id %}<div><dt>{% trans "Maintenance case" %}</dt><dd><a href="{% url 'web:case-detail' proposal.case_id %}">{{ proposal.case.category }} · {% blocktrans with id=proposal.case_id %}Case #{{ id }}{% endblocktrans %}</a></dd></div>{% endif %}
+        {% if proposal.case_id %}<div><dt>{% trans "Maintenance case" %}</dt><dd><a href="{% url 'web:case-detail' proposal.case_id %}">{{ proposal.case.get_category_display }} · {% blocktrans with id=proposal.case_id %}Case #{{ id }}{% endblocktrans %}</a></dd></div>{% endif %}
         <div><dt>{% trans "Evidence" %}</dt><dd>
           {% with quotes=version.quotations.all %}
           {% if quotes %}
@@ -65,17 +65,37 @@
       <div class="workflow-section workflow-primary">
         <h2>{% trans "Publish settled expense" %}</h2>
         <p class="consequence-note">{% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
-        <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form.as_p }}<button type="submit" class="button button-primary">{% trans "Publish to resident ledger" %}</button></form>
+        <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form.as_p }}<p class="hint">{% trans "Recording asks for your password and authenticator code when your last confirmation is older than five minutes. What you typed is kept across that check." %}</p><button type="submit" class="button button-primary">{% trans "Publish to resident ledger" %}</button></form>
       </div>
       {% elif proposal.status == "PUBLISHED" %}
       <div class="workflow-section workflow-primary">
         <h2>{% trans "Decide whether to proceed" %}</h2>
-        <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="decide"><label><input type="checkbox" name="proceed"> {% trans "Proceed with this proposal" %}</label><label>{% trans "Decision note" %}<textarea name="note" class="input"></textarea></label><button type="submit" class="button button-primary">{% trans "Record decision" %}</button></form>
+        <p class="consequence-note">{% trans "“Do not proceed” closes this proposal permanently in your name; it cannot be reopened, and new spending needs a new proposal." %}</p>
+        <form method="post" class="stack-form" data-busy-on-submit>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="decide">
+          {{ decision_form.non_field_errors }}
+          <fieldset class="field choice-group">
+            <legend>{{ decision_form.decision.label }}</legend>
+            {{ decision_form.decision.errors }}
+            {% for radio in decision_form.decision %}
+            <label class="choice">{{ radio.tag }} <span>{{ radio.choice_label }}</span></label>
+            {% endfor %}
+          </fieldset>
+          <div class="field">
+            <label for="{{ decision_form.note.id_for_label }}">{{ decision_form.note.label }}</label>
+            {{ decision_form.note.errors }}
+            {{ decision_form.note }}
+            <p class="hint">{% trans "Required when not proceeding; it is recorded with the decision." %}</p>
+          </div>
+          <p class="hint">{% trans "Recording asks for your password and authenticator code when your last confirmation is older than five minutes. What you typed is kept across that check." %}</p>
+          <button type="submit" class="button button-primary">{% trans "Record decision" %}</button>
+        </form>
       </div>
       {% elif proposal.status == "IN_PROGRESS" %}
       <div class="workflow-section workflow-primary">
         <h2>{% trans "Publish work progress" %}</h2>
-        <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form.as_p }}<button name="action" value="progress" class="button button-secondary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-primary">{% trans "Complete work" %}</button></form>
+        <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form.as_p }}<p class="hint">{% trans "Recording asks for your password and authenticator code when your last confirmation is older than five minutes. What you typed is kept across that check; re-select any file attachments before submitting again." %}</p><button name="action" value="progress" class="button button-primary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-secondary">{% trans "Complete work" %}</button></form>
       </div>
       {% endif %}
       {% if publication_pending %}

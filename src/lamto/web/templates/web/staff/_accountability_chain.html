@@ -1,6 +1,6 @@
 {% load i18n %}
 {% if accountability_stages %}
-<nav class="accountability-chain" aria-label="{% trans 'Accountability chain' %}">
+<div class="accountability-chain" role="group" aria-label="{% trans 'Accountability chain' %}">
   <ol class="accountability-stages">
     {% for stage in accountability_stages %}
     {# The live stage is exactly one of current/pending/blocked — "you are here" holds for all three. #}
@@ -10,5 +10,5 @@
     </li>
     {% endfor %}
   </ol>
-</nav>
+</div>
 {% endif %}

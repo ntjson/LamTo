@@ -56,6 +56,12 @@
     el.setAttribute("role", "alert");
   });
 
+  // Copy feedback swaps the button's own text; the live region makes the
+  // swap announced.
+  document.querySelectorAll("[data-copy]").forEach(function (el) {
+    el.setAttribute("aria-live", "polite");
+  });
+
   // Every mutation is a full page navigation; nothing announces the outcome
   // unless focus lands on the flash region.
   var flash = document.querySelector(".flash-messages");

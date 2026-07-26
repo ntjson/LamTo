@@ -66,7 +66,7 @@
           {% for field, diff in case.decision.differences.items %}
           <div>
             <dt>{% if field == "category" %}{% trans "Category" %}{% elif field == "urgency" %}{% trans "Urgency" %}{% elif field == "department" %}{% trans "Management queue" %}{% elif field == "deadline_minutes" %}{% trans "Deadline" %}{% else %}{{ field|title }}{% endif %}</dt>
-            <dd>{% if field == "deadline_minutes" %}{{ diff.suggested }} {% trans "min" %} → {{ diff.chosen }} {% trans "min" %}{% else %}{{ diff.suggested|title }} → {{ diff.chosen|title }}{% endif %}</dd>
+            <dd>{% if field == "deadline_minutes" %}{{ diff.suggested }} {% trans "min" %} → {{ diff.chosen }} {% trans "min" %}{% elif field == "urgency" %}{{ diff.suggested|staff_urgency }} → {{ diff.chosen|staff_urgency }}{% elif field == "category" %}{{ diff.suggested|staff_category }} → {{ diff.chosen|staff_category }}{% else %}{{ diff.suggested }} → {{ diff.chosen }}{% endif %}</dd>
           </div>
           {% endfor %}
         </dl>
@@ -148,8 +148,8 @@
         <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit aria-label="{% trans 'Publish progress' %}">
           {% csrf_token %}
           {{ work_form.as_p }}
-          <button name="action" value="publish_progress" type="submit" class="button button-secondary">{% trans "Publish progress" %}</button>
-          <button name="action" value="complete_work" type="submit" class="button button-primary">{% trans "Complete work" %}</button>
+          <button name="action" value="publish_progress" type="submit" class="button button-primary">{% trans "Publish progress" %}</button>
+          <button name="action" value="complete_work" type="submit" class="button button-secondary">{% trans "Complete work" %}</button>
         </form>
       </div>
       {% endif %}
@@ -164,12 +164,12 @@
         </form>
       </div>
       {% if not terminal %}
-      <details class="workflow-section">
-        <summary><h2>{% trans "Request information" %}</h2></summary>
+      <details class="workflow-section"{% if info_form.errors %} open{% endif %}>
+        <summary><span class="h2">{% trans "Request information" %}</span></summary>
         <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Request information' %}">{% csrf_token %}<input type="hidden" name="action" value="request_info">{{ info_form.as_p }}<button type="submit" class="button button-secondary">{% trans "Request information" %}</button></form>
       </details>
-      <details class="workflow-section">
-        <summary><h2>{% trans "Decline request" %}</h2></summary>
+      <details class="workflow-section"{% if decline_form.errors %} open{% endif %}>
+        <summary><span class="h2">{% trans "Decline request" %}</span></summary>
         <p class="consequence-note">{% trans "Declining sends this reason to the resident and closes the report. This cannot be undone." %}</p>
         <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Decline request' %}">{% csrf_token %}<input type="hidden" name="action" value="decline">{{ decline_form.as_p }}<button type="submit" class="button button-secondary">{% trans "Decline request" %}</button></form>
       </details>

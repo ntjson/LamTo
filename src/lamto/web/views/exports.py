@@ -8,7 +8,7 @@ from datetime import datetime, timezone as dt_timezone
 from django.contrib.auth.decorators import login_required
 from django.http import StreamingHttpResponse
 from django.shortcuts import render
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 
 from lamto.audit.models import AuditEvent

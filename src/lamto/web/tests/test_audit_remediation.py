@@ -103,11 +103,11 @@ def test_custom_error_templates_use_pre_auth_shell_and_actionable_navigation(cli
     assert reverse("login").encode() in not_found.content
     for status in (403, 500):
         html = render_to_string(f"{status}.html")
-        assert "LÀM TỔ" in html
+        assert "LamTo" in html
         assert reverse("login") in html
     server_error = render_to_string("500.html")
     assert "may not have been saved" in server_error
-    assert "check the record before trying again" in server_error.lower()
+    assert "open the record and check before repeating it" in server_error.lower()
 
 
 @pytest.mark.parametrize(

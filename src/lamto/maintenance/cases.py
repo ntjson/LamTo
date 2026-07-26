@@ -10,6 +10,7 @@ from lamto.accounts.models import ResidentOccupancy
 from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import Document, DocumentVersion
+from django.utils.translation import gettext_lazy as _
 
 from .models import (
     CaseReport, InfoRequest, IssueReport, MaintenanceCase, WorkUpdate, WorkUpdateEvidence,
@@ -24,7 +25,7 @@ RATING_WINDOW_DAYS = 14
 def _locked_case(case):
     case = MaintenanceCase.objects.select_for_update().filter(pk=getattr(case, "pk", None)).first()
     if case is None or not case.active or case.completed_at is not None:
-        raise ValidationError("An active, uncompleted case is required.")
+        raise ValidationError(_("An active, uncompleted case is required."))
     return case
 
 
@@ -34,20 +35,20 @@ def _evidence_versions(versions, kind, building_id, uploader):
         return []
     ids = [getattr(version, "pk", None) for version in versions]
     if None in ids or len(ids) != len(set(ids)):
-        raise ValidationError("Progress requires distinct evidence versions.")
+        raise ValidationError(_("Progress requires distinct evidence versions."))
     valid = list(DocumentVersion.objects.select_for_update().select_related("document").filter(
         pk__in=ids, document__building_id=building_id, document__kind=kind,
         scan_status=DocumentVersion.ScanStatus.CLEAN,
         uploader=uploader,
     ))
     if len(valid) != len(ids) or any(not v.content_type.lower().startswith("image/") for v in valid):
-        raise ValidationError("Progress evidence must be clean original images from the case building.")
+        raise ValidationError(_("Progress evidence must be clean original images from the case building."))
     return valid
 
 
 def _append_update(case, manager, cause, result, before_versions, after_versions, proposal=None):
     if not (cause or "").strip() or not (result or "").strip():
-        raise ValidationError("Progress updates need both a cause and a result.")
+        raise ValidationError(_("Progress updates need both a cause and a result."))
     building_id = case.building_id if case else proposal.building_id
     before = _evidence_versions(before_versions, Document.Kind.BEFORE_PHOTO, building_id, manager)
     after = _evidence_versions(after_versions, Document.Kind.AFTER_PHOTO, building_id, manager)
@@ -74,7 +75,7 @@ def start_case_work(case, manager) -> MaintenanceCase:
 @transaction.atomic
 def publish_progress(case=None, manager=None, cause="", result="", before_versions=(), after_versions=(), proposal=None) -> WorkUpdate:
     if (case is None) == (proposal is None):
-        raise ValidationError("Progress requires exactly one case or proposal.")
+        raise ValidationError(_("Progress requires exactly one case or proposal."))
     if case is not None:
         case = _locked_case(case)
         building_id = case.building_id
@@ -82,7 +83,7 @@ def publish_progress(case=None, manager=None, cause="", result="", before_versio
         from lamto.finance.models import Proposal
         proposal = Proposal.objects.select_for_update().filter(pk=getattr(proposal, "pk", None), case__isnull=True).first()
         if proposal is None or proposal.status != Proposal.Status.IN_PROGRESS:
-            raise ValidationError("An in-progress standalone proposal is required.")
+            raise ValidationError(_("An in-progress standalone proposal is required."))
         building_id = proposal.building_id
     membership = require_management(manager, building_id)
     update = _append_update(case, manager, cause, result, before_versions, after_versions, proposal)
@@ -102,7 +103,7 @@ def complete_proposal_work(proposal, manager, cause, result, before_versions=(),
     from lamto.finance.models import Proposal
     proposal = Proposal.objects.select_for_update().filter(pk=getattr(proposal, "pk", None), case__isnull=True).first()
     if proposal is None or proposal.status != Proposal.Status.IN_PROGRESS:
-        raise ValidationError("An in-progress standalone proposal is required.")
+        raise ValidationError(_("An in-progress standalone proposal is required."))
     membership = require_management(manager, proposal.building_id)
     update = _append_update(None, manager, cause, result, before_versions, after_versions, proposal)
     proposal.status = Proposal.Status.COMPLETED
@@ -181,7 +182,7 @@ def _locked_report(report):
         pk=getattr(report, "pk", None)
     ).first()
     if report is None:
-        raise ValidationError("Report is required.")
+        raise ValidationError(_("Report is required."))
     return report
 
 
@@ -190,11 +191,11 @@ def request_information(report, manager, message) -> InfoRequest:
     report = _locked_report(report)
     membership = require_management(manager, report.unit.building_id)
     if report.status in TERMINAL_STATUSES:
-        raise ValidationError("Closed or declined requests cannot ask for information.")
+        raise ValidationError(_("Closed or declined requests cannot ask for information."))
     if not (message or "").strip():
-        raise ValidationError("An information request needs a message.")
+        raise ValidationError(_("An information request needs a message."))
     if InfoRequest.objects.filter(report=report, resolved_at__isnull=True).exists():
-        raise ValidationError("An information request is already open for this report.")
+        raise ValidationError(_("An information request is already open for this report."))
     info = InfoRequest.objects.create(report=report, message=message.strip(), created_by=manager)
     report.status = IssueReport.Status.NEEDS_INFO
     report.save(update_fields=["status"])
@@ -218,9 +219,9 @@ def reply_information(resident, report, text) -> InfoRequest:
         report=report, resolved_at__isnull=True
     ).first()
     if info is None:
-        raise ValidationError("No open information request for this report.")
+        raise ValidationError(_("No open information request for this report."))
     if not (text or "").strip():
-        raise ValidationError("A reply needs text (photos may be attached separately).")
+        raise ValidationError(_("A reply needs text (photos may be attached separately)."))
     occupancy = ResidentOccupancy.objects.filter(
         user=resident, active=True, unit__building_id=report.unit.building_id
     ).first()
@@ -242,9 +243,9 @@ def decline_report(report, manager, reason) -> IssueReport:
     report = _locked_report(report)
     membership = require_management(manager, report.unit.building_id)
     if report.status in TERMINAL_STATUSES:
-        raise ValidationError("This request is already closed.")
+        raise ValidationError(_("This request is already closed."))
     if not (reason or "").strip():
-        raise ValidationError("Declining a request requires a reason the resident can read.")
+        raise ValidationError(_("Declining a request requires a reason the resident can read."))
     now = timezone.now()
     report.status = IssueReport.Status.DECLINED
     report.declined_reason = reason.strip()

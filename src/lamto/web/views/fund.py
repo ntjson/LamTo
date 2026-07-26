@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET, require_http_methods
 
-from lamto.accounts.security import require_recent_auth
+from lamto.accounts.security import pop_stashed_post, require_recent_auth
 from lamto.documents.models import Document
 from lamto.finance.fund import (
     fund_balance,
@@ -47,12 +47,17 @@ def fund_home(request):
     entries_list = prepare_record_list(
         request,
         verified_fund_entries(building_id).select_related("recorder", "verification"),
-        sorts=(("", "Newest first", ("-recorded_at", "-pk")),),
+        sorts=(("", _("Newest first"), ("-recorded_at", "-pk")),),
     )
     entries = entries_list["page"].object_list
-    pending_verification = list(pending_fund_verification_entries(building_id)[:50])
+    # Both pending selectors stay human-scale; materialize once for total + slice.
+    pending_verification_all = list(pending_fund_verification_entries(building_id))
+    pending_verification_total = len(pending_verification_all)
+    pending_verification = pending_verification_all[:50]
     inflows, outflows = fund_period_flows(building_id, days=30)
-    pending = pending_reconciliation_proposals(building_id)[:50]
+    pending_all = list(pending_reconciliation_proposals(building_id))
+    pending_total = len(pending_all)
+    pending = pending_all[:50]
     range_key = request.GET.get("range", "6m")
     if range_key not in FUND_SERIES_RANGE_KEYS:
         range_key = "6m"
@@ -76,10 +81,14 @@ def fund_home(request):
             entries=entries,
             entries_list=entries_list,
             pending_verification=pending_verification,
+            pending_verification_total=pending_verification_total,
+            pending_verification_capped=pending_verification_total > len(pending_verification),
             balance_vnd=fund_balance(building_id, verified_only=True),
             period_inflows=inflows,
             period_outflows=outflows,
             pending=pending,
+            pending_total=pending_total,
+            pending_capped=pending_total > len(pending),
             chart_points=chart_points,
             chart_range=range_key,
             chart_ranges=FUND_CHART_RANGES,
@@ -100,11 +109,15 @@ def fund_record(request):
     """Two-phase record of an opening-balance/inflow fund source (spec 4.3.2)."""
     membership, memberships = require_management_context(request)
     building = membership.building
-    if request.method == "POST":
-        require_recent_auth(request)
+    # Recent auth before the form renders: the five-minute window starts with typing.
+    require_recent_auth(request)
     fund = get_or_create_fund(building)
 
-    record_form = RecordFundSourceForm(request.POST or None, request.FILES or None)
+    record_form = RecordFundSourceForm(
+        request.POST or None,
+        request.FILES or None,
+        initial=pop_stashed_post(request) if request.method == "GET" else None,
+    )
     if request.method == "POST" and record_form.is_valid():
         try:
             evidence = upload_document(
@@ -155,8 +168,11 @@ def fund_verify(request, pk):
         fund__building_id=building_id,
     )
     already_verified = hasattr(entry, "verification")
-    if request.method == "POST" and not already_verified:
+    if not already_verified:
+        # The verify screen re-presents the frozen record; demanding recent auth
+        # on render keeps review and sign-off inside one five-minute window.
         require_recent_auth(request)
+    if request.method == "POST" and not already_verified:
         try:
             verify_fund_source(entry, membership)
         except (ValidationError, PermissionDenied) as error:

@@ -7,6 +7,7 @@ from lamto.accounts.models import Building
 from lamto.accounts.services import require_management
 from lamto.audit.services import record_audit
 from lamto.documents.models import DocumentVersion
+from django.utils.translation import gettext_lazy as _
 
 from .models import (
     FundEntryVerification,
@@ -54,13 +55,13 @@ def get_or_create_fund(building) -> MaintenanceFund:
 def _require_evidence(evidence, building_id, *, lock=False):
     evidence_id = getattr(evidence, "pk", None)
     if evidence_id is None:
-        raise ValidationError("Fund source evidence document is required.")
+        raise ValidationError(_("Fund source evidence document is required."))
     queryset = DocumentVersion.objects.select_related("document").filter(pk=evidence_id)
     if lock:
         queryset = queryset.select_for_update()
     version = queryset.first()
     if version is None:
-        raise ValidationError("Fund source evidence versions must still exist.")
+        raise ValidationError(_("Fund source evidence versions must still exist."))
     if (
         version.document.building_id != building_id
         or version.scan_status != DocumentVersion.ScanStatus.CLEAN
@@ -73,9 +74,9 @@ def _require_evidence(evidence, building_id, *, lock=False):
 
 def _validate_source_amount(entry_type, amount_vnd):
     if entry_type not in SOURCE_ENTRY_TYPES:
-        raise ValidationError("Only opening balance and inflow sources may be recorded.")
+        raise ValidationError(_("Only opening balance and inflow sources may be recorded."))
     if type(amount_vnd) is not int or amount_vnd <= 0:
-        raise ValidationError("Fund source amount must be a positive integer VND amount.")
+        raise ValidationError(_("Fund source amount must be a positive integer VND amount."))
 
 
 def _source_key(entry_type, fund_id, original_hash):
@@ -90,7 +91,7 @@ def _locked_fund(fund):
         .first()
     )
     if locked is None:
-        raise ValidationError("Maintenance fund does not exist.")
+        raise ValidationError(_("Maintenance fund does not exist."))
     return locked
 
 
@@ -102,7 +103,7 @@ def _locked_entry(entry):
         .first()
     )
     if locked_id is None:
-        raise ValidationError("Fund entry does not exist.")
+        raise ValidationError(_("Fund entry does not exist."))
     return (
         MaintenanceFundEntry.objects.select_related(
             "fund__building",
@@ -130,15 +131,15 @@ def record_fund_source(
     if fund_entry_id is None:
         fund_entry_id = allocate_fund_entry_id()
     if type(fund_entry_id) is not int or fund_entry_id <= 0:
-        raise ValidationError("Fund entry id must be a positive integer.")
+        raise ValidationError(_("Fund entry id must be a positive integer."))
     if MaintenanceFundEntry.objects.filter(pk=fund_entry_id).exists():
-        raise ValidationError("Fund entry id is already used.")
+        raise ValidationError(_("Fund entry id is already used."))
     entry_timestamp = timestamp or timezone.now()
     if not isinstance(entry_timestamp, type(timezone.now())) or entry_timestamp.tzinfo is None:
-        raise ValidationError("Fund entry timestamp must be timezone-aware.")
+        raise ValidationError(_("Fund entry timestamp must be timezone-aware."))
     key = source_key or _source_key(entry_type, fund.pk, evidence.sha256)
     if MaintenanceFundEntry.objects.filter(source_key=key).exists():
-        raise ValidationError("Fund source key already exists.")
+        raise ValidationError(_("Fund source key already exists."))
     entry = MaintenanceFundEntry(
         pk=fund_entry_id,
         fund=fund,
@@ -175,11 +176,11 @@ def verify_fund_source(
     entry = _locked_entry(entry)
     actor = require_management(verifier.user, entry.fund.building_id)
     if entry.entry_type not in SOURCE_ENTRY_TYPES:
-        raise ValidationError("Only opening balance and inflow sources may be verified.")
+        raise ValidationError(_("Only opening balance and inflow sources may be verified."))
     if entry.recorder is None:
-        raise ValidationError("Fund source has no recorder.")
+        raise ValidationError(_("Fund source has no recorder."))
     if FundEntryVerification.objects.filter(entry=entry).exists():
-        raise ValidationError("Fund source has already been verified.")
+        raise ValidationError(_("Fund source has already been verified."))
     verification = FundEntryVerification.objects.create(
         entry=entry,
         membership=actor,
@@ -217,9 +218,9 @@ def fund_balance(building_id, verified_only=True) -> int:
     if type(building_id) is not int or building_id <= 0:
         building_id = getattr(building_id, "pk", None)
     if building_id is None:
-        raise ValidationError("Building is required.")
+        raise ValidationError(_("Building is required."))
     if not Building.objects.filter(pk=building_id).exists():
-        raise ValidationError("Building does not exist.")
+        raise ValidationError(_("Building does not exist."))
     fund = MaintenanceFund.objects.filter(building_id=building_id).first()
     if fund is None:
         return 0
