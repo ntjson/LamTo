@@ -63,7 +63,7 @@ class MaintenanceFundEntry(InsertOnlyModel):
     def save(self, *args, **kwargs):
         if self.recorded_at > timezone.now():
             raise ValidationError(
-                {"recorded_at": "Fund entries cannot be future-dated."}
+                {"recorded_at": _("Fund entries cannot be future-dated.")}
             )
         return super().save(*args, **kwargs)
 

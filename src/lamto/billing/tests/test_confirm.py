@@ -1,4 +1,5 @@
 import pytest
+from django.test import override_settings
 
 from lamto.accounts.models import Building, ManagementMembership, ResidentOccupancy, Unit, User
 from lamto.audit.models import AuditEvent
@@ -79,6 +80,7 @@ def test_confirm_rejects_wrong_reference():
     assert bill.status == Bill.Status.ISSUED
 
 
+@override_settings(LANGUAGE_CODE="en-us")  # asserts English source strings
 def test_self_attested_confirmation_rejects_another_actor():
     bill, _resident = _bill()
     stranger = User.objects.create_user(email="stranger@x.test", password="pw")
