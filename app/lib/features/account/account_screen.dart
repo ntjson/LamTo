@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
@@ -126,10 +125,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               icon: const Icon(Icons.door_front_door_outlined),
               label: Text(l10n.gateAccountAction),
             ),
-            if (kDebugMode) ...[
-              const SizedBox(height: 24),
-              const ApiBaseUrlTile(),
-            ],
+            const SizedBox(height: 24),
+            const ApiBaseUrlTile(),
             const SizedBox(height: 24),
             // Session actions, not the tab's primary CTA: outlined/text, never
             // the filled Accountability Indigo reserved for primary actions.

@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -136,10 +135,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                   child: Text(l10n.registrationOpen),
                 ),
-                if (kDebugMode) ...[
-                  const SizedBox(height: 24),
-                  const ApiBaseUrlTile(),
-                ],
+                // Not debug-gated: a released APK must be retargetable at a
+                // fresh quick-tunnel URL without a rebuild.
+                const SizedBox(height: 24),
+                const ApiBaseUrlTile(),
               ],
             ),
           ),

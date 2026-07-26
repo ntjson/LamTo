@@ -20,7 +20,9 @@ services:
     labels:
       lamto.role: "Management Board"
       lamto.node: "1"
-    networks: [besu]
+    networks:
+      besu:
+        ipv4_address: 10.133.0.2
     volumes:
       - ./Node-1/genesis.json:/config/genesis.json:ro
       - ./Node-1/data:/data
@@ -189,3 +191,6 @@ networks:
   besu:
     name: lamto-besu-net
     driver: bridge
+    ipam:
+      config:
+        - subnet: 10.133.0.0/24
