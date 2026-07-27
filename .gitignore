@@ -21,7 +21,4 @@ skills-lock.json
 .github/skills/
 .github/hooks
 opencode.json
-my-video/
-my-video/node_modules/
-my-video/public/
 node_modules/
