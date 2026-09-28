@@ -10,6 +10,7 @@ import '../../core/adaptive_page_route.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import 'document_kind.dart';
 
 /// Opens a downloaded document on top of the current screen.
@@ -160,18 +161,15 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   }
 
   /// Shown for a file this app cannot render — an unsupported type, or a PDF
-  /// the engine refuses. Sharing stays available, so the document is never a
-  /// dead end.
+  /// the engine refuses. Sharing is offered right there, so the document is
+  /// never a dead end.
   Widget _unreadable(AppLocalizations l10n) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.description_outlined, size: 48),
-          const SizedBox(height: 12),
-          Text(l10n.documentNoPreview, textAlign: TextAlign.center),
-        ],
+    child: EmptyState(
+      icon: Icons.description_outlined,
+      message: l10n.documentNoPreview,
+      action: AdaptiveOutlinedButton(
+        onPressed: _sharing ? null : _share,
+        child: Text(l10n.documentShare),
       ),
     ),
   );

@@ -104,6 +104,11 @@ void main() {
 
     expect(find.textContaining(_unreadable), findsOneWidget);
     expect(find.byTooltip('Chia sẻ hoặc lưu'), findsOneWidget);
+
+    // The way out sits under the sentence that names it.
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Chia sẻ hoặc lưu'));
+    await tester.pumpAndSettle();
+    expect(share.shared, hasLength(1));
   });
 
   testWidgets('a PDF the engine refuses shows the same in-viewer failure', (
