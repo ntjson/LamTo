@@ -70,9 +70,10 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 3));
     expect(find.textContaining('Kiểm thử tự động'), findsWidgets);
 
-    // Ledger tab title (seeded world has fund; list may be empty).
+    // Ledger tab title (seeded world has fund; list may be empty). The large
+    // title and its collapsed copy in the toolbar are both built.
     await tester.tap(find.text('Sổ quỹ').last);
     await tester.pumpAndSettle(const Duration(seconds: 3));
-    expect(find.text('Sổ quỹ tòa nhà'), findsOneWidget);
+    expect(find.text('Sổ quỹ tòa nhà'), findsWidgets);
   });
 }

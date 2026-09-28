@@ -111,7 +111,7 @@ class GroupedListItem extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (!isFirst) Divider(height: 1, indent: dividerIndent),
-          child,
+          Semantics(container: true, child: child),
         ],
       ),
     );

@@ -64,7 +64,10 @@ class InsetGroup extends StatelessWidget {
       if (i > 0) {
         rows.add(Divider(height: 1, indent: dividerIndent));
       }
-      rows.add(children[i]);
+      // Each row is its own accessibility node. Without the container a
+      // lone tappable row merges up into the group, and a screen reader
+      // announces (and taps) the whole card as that one button.
+      rows.add(Semantics(container: true, child: children[i]));
     }
     Widget body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
