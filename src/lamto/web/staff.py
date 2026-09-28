@@ -49,64 +49,118 @@ def require_management_context(request):
     return resolve_active_management(request)
 
 
-def nav_items_for(membership) -> list[dict]:
-    # ≤5 top-level items (working-memory); secondary destinations live in sub-navs.
+def nav_sections_for(membership) -> list[dict]:
+    """The workspace sidebar: every destination, grouped, in one place.
+
+    The unlabelled first section holds the two daily starting points; the
+    labelled sections chunk the rest so the list stays scannable. Actions
+    (New proposal, Publish announcement, Issue bill) are page buttons, not
+    places, so they are deliberately absent here.
+    """
     return [
-        {"label": _("Inbox"), "url_name": "web:action-inbox", "active_key": "inbox"},
-        {"label": _("Cases"), "url_name": "web:case-list", "active_key": "cases"},
+        {
+            "label": None,
+            "items": [
+                {
+                    "label": _("Inbox"),
+                    "url_name": "web:action-inbox",
+                    "key": "inbox",
+                    "icon": "inbox",
+                },
+                {
+                    "label": _("Cases"),
+                    "url_name": "web:case-list",
+                    "key": "cases",
+                    "icon": "wrench",
+                },
+            ],
+        },
         {
             "label": _("Finance"),
-            "url_name": "web:proposal-list",
-            "active_key": "finance",
+            "items": [
+                {
+                    "label": _("Proposals"),
+                    "url_name": "web:proposal-list",
+                    "key": "proposals",
+                    "icon": "doc",
+                },
+                {
+                    "label": _("Settlements"),
+                    "url_name": "web:settlement-list",
+                    "key": "settlements",
+                    "icon": "banknote",
+                },
+                {
+                    "label": _("Maintenance fund"),
+                    "url_name": "web:fund-home",
+                    "key": "fund",
+                    "icon": "columns",
+                },
+            ],
         },
         {
             "label": _("Building"),
-            "url_name": "web:gate-queue",
-            "active_key": "building",
-        },
-        {"label": _("Ops"), "url_name": "web:ops-health", "active_key": "ops"},
-    ]
-
-
-def finance_nav_items_for(membership) -> list[dict[str, str]]:
-    return [
-        {
-            "label": _("Proposals"),
-            "url_name": "web:proposal-list",
-            "active_key": "proposals",
-        },
-        {
-            "label": _("New proposal"),
-            "url_name": "web:standalone-proposal-create",
-            "active_key": "proposal-create",
-        },
-        {
-            "label": _("Settlements"),
-            "url_name": "web:settlement-list",
-            "active_key": "settlements",
-        },
-        {"label": _("Fund"), "url_name": "web:fund-home", "active_key": "fund"},
-    ]
-
-
-def building_nav_items_for(membership) -> list[dict[str, str]]:
-    return [
-        {"label": _("Gate"), "url_name": "web:gate-queue", "active_key": "gate"},
-        {
-            "label": _("Registrations"),
-            "url_name": "web:staff-registration-list",
-            "active_key": "registrations",
+            "items": [
+                {
+                    "label": _("Gate"),
+                    "url_name": "web:gate-queue",
+                    "key": "gate",
+                    "icon": "door",
+                },
+                {
+                    "label": _("Resident registrations"),
+                    "url_name": "web:staff-registration-list",
+                    "key": "registrations",
+                    "icon": "person-add",
+                },
+                {
+                    "label": _("Announcements"),
+                    "url_name": "web:staff-announcement-list",
+                    "key": "announcements",
+                    "icon": "megaphone",
+                },
+                {
+                    "label": _("Bills"),
+                    "url_name": "web:staff-bill-list",
+                    "key": "bills",
+                    "icon": "receipt",
+                },
+            ],
         },
         {
-            "label": _("Announcements"),
-            "url_name": "web:staff-announcement-list",
-            "active_key": "announcements",
+            "label": _("Ops"),
+            "items": [
+                {
+                    "label": _("Health"),
+                    "url_name": "web:ops-health",
+                    "key": "health",
+                    "icon": "pulse",
+                },
+                {
+                    "label": _("Exceptions"),
+                    "url_name": "web:exception-list",
+                    "key": "exceptions",
+                    "icon": "alert",
+                },
+                {
+                    "label": _("Metrics"),
+                    "url_name": "web:pilot-metrics",
+                    "key": "metrics",
+                    "icon": "chart",
+                },
+                {
+                    "label": _("Exports"),
+                    "url_name": "web:export-home",
+                    "key": "exports",
+                    "icon": "download",
+                },
+            ],
         },
-        {"label": _("Bills"), "url_name": "web:staff-bill-list", "active_key": "bills"},
     ]
 
 
 def gate_nav_items_for(membership) -> list[dict[str, str]]:
+    """The Gate page's own sections, shown as a segmented control."""
     return [
         {"label": _("Review"), "url_name": "web:gate-queue", "active_key": "review"},
         {
@@ -123,51 +177,30 @@ def gate_nav_items_for(membership) -> list[dict[str, str]]:
     ]
 
 
-def ops_nav_items_for(membership) -> list[dict[str, str]]:
-    return [
-        {"label": _("Health"), "url_name": "web:ops-health", "active_key": "health"},
-        {
-            "label": _("Exceptions"),
-            "url_name": "web:exception-list",
-            "active_key": "exceptions",
-        },
-        {
-            "label": _("Metrics"),
-            "url_name": "web:pilot-metrics",
-            "active_key": "metrics",
-        },
-        {"label": _("Exports"), "url_name": "web:export-home", "active_key": "exports"},
-    ]
+def _current_nav_key(nav_active, extra) -> str | None:
+    """Resolve a view's section keys to the one sidebar item it lives under."""
+    if nav_active == "finance":
+        sub = extra.get("finance_active")
+        return "proposals" if sub in (None, "proposal-create") else sub
+    if nav_active == "ops":
+        return extra.get("ops_active") or "health"
+    return nav_active
 
 
 def staff_context(request, membership, memberships, *, nav_active=None, **extra):
-    nav_items = nav_items_for(membership)
-    # Map legacy section keys onto the 5 top-level groups.
-    top_active = {
-        "inbox": "inbox",
-        "cases": "cases",
-        "finance": "finance",
-        "gate": "building",
-        "registrations": "building",
-        "announcements": "building",
-        "bills": "building",
-        "building": "building",
-        "ops": "ops",
-        "exports": "ops",
-    }.get(nav_active, nav_active)
-    for item in nav_items:
-        item["is_active"] = bool(top_active) and item.get("active_key") == top_active
+    current = _current_nav_key(nav_active, extra)
+    sections = nav_sections_for(membership)
+    for section in sections:
+        for item in section["items"]:
+            item["is_active"] = item["key"] == current
     return {
         "membership": membership,
         "memberships": memberships,
         "membership_count": len(memberships) if memberships is not None else 0,
-        "nav_items": nav_items,
+        "nav_sections": sections,
         "nav_active": nav_active,
-        "nav_top_active": top_active,
-        "finance_nav_items": finance_nav_items_for(membership),
-        "building_nav_items": building_nav_items_for(membership),
+        "nav_current": current,
         "gate_nav_items": gate_nav_items_for(membership),
-        "ops_nav_items": ops_nav_items_for(membership),
         **extra,
     }
 

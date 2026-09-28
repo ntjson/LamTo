@@ -1,36 +1,38 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n staff_extras %}
+{% load i18n staff_extras icons %}
 {% block title %}{% trans "Announcements" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel" aria-labelledby="announcements-heading">
-  <div class="panel-header">
-    <div>
-      <h1 id="announcements-heading">{% trans "Announcements" %}</h1>
-      <p class="hint">{% blocktrans with building=membership.building.name %}Notices for {{ building }}.{% endblocktrans %}</p>
-    </div>
-    <a class="button button-primary" href="{% url 'web:staff-announcement-create' %}">{% trans "Publish announcement" %}</a>
+<header class="page-header">
+  <div class="page-heading">
+    <h1 id="announcements-heading">{% trans "Announcements" %}</h1>
+    <p class="page-subtitle">{% blocktrans with building=membership.building.name %}Notices for {{ building }}.{% endblocktrans %}</p>
   </div>
+  <div class="page-actions">
+    <a class="button button-primary" href="{% url 'web:staff-announcement-create' %}">{% icon "plus" %}{% trans "Publish announcement" %}</a>
+  </div>
+</header>
 
-  {% translate "Search announcements" as search_label %}
-  {% translate "Title or body…" as search_placeholder %}
-  {% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=search_label search_placeholder=search_placeholder %}
+{% translate "Search announcements" as search_label %}
+{% translate "Title or body…" as search_placeholder %}
+{% include "web/staff/_list_toolbar.html" with list_meta=list_meta search_label=search_label search_placeholder=search_placeholder %}
 
-  <ul class="task-list">
-    {% for announcement in announcements %}
-    <li>
-      <a class="task-row" href="{% url 'web:staff-announcement-detail' announcement.pk %}">
-        <span class="task-action">{{ announcement.get_state_display }}</span>
-        <span class="task-subject">{{ announcement.title }} · {% trans "Revision" %} {{ announcement.revision }} · {{ announcement.created_by }} · {{ announcement.created_at|staff_datetime }}</span>
-      </a>
-    </li>
-    {% empty %}
-    <li class="empty-state">
-      <p>{% if list_meta.query %}{% trans "No announcements match your search." %}{% else %}{% trans "No announcements have been published." %}{% endif %}</p>
-      {% if list_meta.query %}<p class="hint"><a class="text-link clear-filters" href="{% url 'web:staff-announcement-list' %}">{% trans "Clear filters" %}</a></p>{% else %}<p class="hint">{% trans "Publish the first notice with Publish announcement." %}</p>{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  {% translate "Announcement pages" as pagination_label %}
-  {% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=pagination_label %}
-</section>
+<ul class="task-list" aria-labelledby="announcements-heading">
+  {% for announcement in announcements %}
+  <li>
+    <a class="task-row" href="{% url 'web:staff-announcement-detail' announcement.pk %}">
+      <span class="task-action">{{ announcement.title }}</span>
+      <span class="task-subject">{% trans "Revision" %} {{ announcement.revision }} · {{ announcement.created_by }} · {{ announcement.created_at|staff_datetime }}</span>
+      <span class="task-meta"><span class="status {% if announcement.state == 'PUBLISHED' %}status-verified{% else %}status-neutral{% endif %}"><span class="status-icon" aria-hidden="true">●</span> {{ announcement.get_state_display }}</span></span>
+    </a>
+  </li>
+  {% empty %}
+  <li class="empty-state">
+    <span class="empty-state-icon">{% if list_meta.query %}{% icon "search" %}{% else %}{% icon "megaphone" %}{% endif %}</span>
+    <p>{% if list_meta.query %}{% trans "No announcements match your search." %}{% else %}{% trans "No announcements have been published." %}{% endif %}</p>
+    {% if list_meta.query %}<a class="button button-secondary clear-filters" href="{% url 'web:staff-announcement-list' %}">{% trans "Clear filters" %}</a>{% else %}<p class="hint">{% trans "Publish the first notice with Publish announcement." %}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% translate "Announcement pages" as pagination_label %}
+{% include "web/staff/_pagination.html" with list_meta=list_meta pagination_label=pagination_label %}
 {% endblock %}

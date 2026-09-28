@@ -128,13 +128,19 @@ class FundHomeTests(TestCase):
         # The seeded opening balance is a verified entry.
         self.assertContains(resp, "Số dư đầu kỳ")          # Opening balance
 
-    def test_verified_fund_rows_lead_with_record_state(self):
+    def test_verified_fund_rows_lead_with_entry_type_and_state_pill(self):
+        # The section already says "Verified entries", so each row leads with
+        # what the entry is and carries its verified state as a pill.
         seed = seed_pilot_world(building_name="Fund Row B", email_prefix="fhr")
         self._login(seed, "fund_recorder")
 
         resp = self.client.get(reverse("web:fund-home"))
 
-        self.assertContains(resp, '<span class="task-action">Bút toán đã xác minh</span>')
+        self.assertContains(resp, '<span class="task-action">Số dư đầu kỳ</span>')
+        self.assertContains(
+            resp,
+            '<span class="status status-verified"><span class="status-icon" aria-hidden="true">●</span> Đã xác minh</span>',
+        )
 
     @patch("lamto.web.views.fund.pending_fund_verification_entries")
     @patch("lamto.web.views.fund.pending_reconciliation_proposals")

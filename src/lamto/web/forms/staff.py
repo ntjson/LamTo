@@ -14,7 +14,15 @@ from lamto.notifications.services import PREFERENCE_EVENT_CHOICES
 from lamto.web.forms.fields import WholeVndField
 
 
-class MembershipSwitchForm(forms.Form):
+class WorkspaceForm(forms.Form):
+    """Labels sit on their own line above the field, so they carry no colon."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+
+
+class MembershipSwitchForm(WorkspaceForm):
     membership = forms.ModelChoiceField(
         queryset=ManagementMembership.objects.none(),
         label=_("Active membership"),
@@ -25,7 +33,7 @@ class MembershipSwitchForm(forms.Form):
         self.fields["membership"].queryset = memberships or ManagementMembership.objects.none()
 
 
-class ConfirmTriageForm(forms.Form):
+class ConfirmTriageForm(WorkspaceForm):
     category = forms.ChoiceField(
         choices=CaseCategory.choices,
         label=_("Category"),
@@ -129,11 +137,11 @@ class ConfirmTriageForm(forms.Form):
         )
 
 
-class InfoRequestForm(forms.Form):
+class InfoRequestForm(WorkspaceForm):
     message = forms.CharField(widget=forms.Textarea, label=_("What information is missing?"))
 
 
-class DeclineReportForm(forms.Form):
+class DeclineReportForm(WorkspaceForm):
     reason = forms.CharField(widget=forms.Textarea, label=_("Reason shown to the resident"))
     confirm = forms.BooleanField(
         required=True,
@@ -141,7 +149,7 @@ class DeclineReportForm(forms.Form):
     )
 
 
-class ProposalDecisionForm(forms.Form):
+class ProposalDecisionForm(WorkspaceForm):
     """Explicit proceed/decline decision; declining is terminal and needs a reason."""
 
     PROCEED = "proceed"
@@ -176,14 +184,14 @@ class ProposalDecisionForm(forms.Form):
         return self.cleaned_data["decision"] == self.PROCEED
 
 
-class ProgressUpdateForm(forms.Form):
+class ProgressUpdateForm(WorkspaceForm):
     """A work update is its narrative: what caused the problem and what fixed it."""
 
     cause = forms.CharField(label=_("Cause"), widget=forms.Textarea(attrs={"class": "input", "rows": 3}))
     result = forms.CharField(label=_("Result"), widget=forms.Textarea(attrs={"class": "input", "rows": 3}))
 
 
-class RecordSettlementForm(forms.Form):
+class RecordSettlementForm(WorkspaceForm):
     """The whole of settling: one transfer proof (ADR 0002).
 
     The amount is not asked for — it is the frozen published proposal amount.
@@ -193,7 +201,7 @@ class RecordSettlementForm(forms.Form):
     proof_upload = forms.FileField(label=_("Upload transfer proof"), widget=forms.ClearableFileInput(attrs={"class": "input"}))
 
 
-class NotificationPreferenceForm(forms.Form):
+class NotificationPreferenceForm(WorkspaceForm):
     """Email/push opt-in flags per material event; in-app remains required."""
 
     def __init__(self, *args, user=None, **kwargs):
@@ -234,7 +242,7 @@ class NotificationPreferenceForm(forms.Form):
             )
 
 
-class CreateProposalForm(forms.Form):
+class CreateProposalForm(WorkspaceForm):
     """Management-entered proposal draft; the quotation uploads on prepare."""
 
     amount_vnd = WholeVndField(label=_("Amount (VND)"))
@@ -270,7 +278,7 @@ class CreateProposalForm(forms.Form):
         return cleaned_data
 
 
-class PublishLedgerEntryForm(forms.Form):
+class PublishLedgerEntryForm(WorkspaceForm):
     confirm = forms.BooleanField(
         required=True,
         label=_("I confirm this settled expense is ready for the resident ledger."),
@@ -284,7 +292,7 @@ class StandaloneProposalForm(CreateProposalForm):
             self.fields[name].required = True
 
 
-class RecordFundSourceForm(forms.Form):
+class RecordFundSourceForm(WorkspaceForm):
     """Fund source draft; the evidence uploads on prepare."""
 
     entry_type = forms.ChoiceField(

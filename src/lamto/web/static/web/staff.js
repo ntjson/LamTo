@@ -1,7 +1,47 @@
-// Behaviour for the two data- attributes the staff templates already ship:
-// data-busy-on-submit (loading state) and data-copy (hash copy button).
+// Behaviour for the data- attributes the staff templates ship:
+// data-busy-on-submit (loading state), data-copy (hash copy button),
+// data-nav-toggle / data-nav-close (the narrow-screen sidebar drawer), and
+// data-price-compare (the quotation price reading).
 (function () {
   "use strict";
+
+  // Sidebar drawer below the desktop breakpoint. The sidebar is a real
+  // landmark in the page either way; the drawer only moves it on screen.
+  var root = document.documentElement;
+  var toggle = document.querySelector("[data-nav-toggle]");
+  var sidebar = document.getElementById("app-sidebar");
+  var scrim = document.querySelector(".scrim");
+  var setNav = function (open, restoreFocus) {
+    if (!toggle || !sidebar) return;
+    root.classList.toggle("nav-open", open);
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (scrim) scrim.hidden = !open;
+    if (open) {
+      var current = sidebar.querySelector('[aria-current="page"]') || sidebar.querySelector("a, button");
+      if (current) current.focus();
+    } else if (restoreFocus) {
+      toggle.focus();
+    }
+  };
+  if (toggle) {
+    toggle.addEventListener("click", function () {
+      setNav(!root.classList.contains("nav-open"), false);
+    });
+  }
+  document.addEventListener("click", function (event) {
+    if (event.target.closest("[data-nav-close]")) setNav(false, true);
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && root.classList.contains("nav-open")) {
+      setNav(false, true);
+    }
+  });
+  // Close the building menu when focus or a click leaves it.
+  document.addEventListener("click", function (event) {
+    document.querySelectorAll("details.membership-switcher[open]").forEach(function (menu) {
+      if (!menu.contains(event.target)) menu.removeAttribute("open");
+    });
+  });
 
   // Loading state. Marks the form busy and blocks the double submit; the
   // browser is navigating away, so there is nothing to reset.

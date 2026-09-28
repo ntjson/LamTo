@@ -1,6 +1,6 @@
 {% load i18n humanize %}
 {% if mode == "record" %}
-<form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
+<form method="post" class="card card-body stack-form" enctype="multipart/form-data" data-busy-on-submit>
   {% csrf_token %}
   <input type="hidden" name="action" value="prepare">
   {{ record_form.as_p }}

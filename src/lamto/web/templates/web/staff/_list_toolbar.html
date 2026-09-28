@@ -1,10 +1,10 @@
-{% load i18n %}
+{% load i18n icons %}
 {% translate "Search records" as default_search_label %}
 {% translate "ID, category, or name…" as default_search_placeholder %}
 {% translate "Task type" as default_secondary_filter_label %}
 <form method="get" class="queue-toolbar" role="search">
-  <label for="record-search">{{ search_label|default:default_search_label }}
-    <input id="record-search" name="q" value="{{ list_meta.query }}" placeholder="{{ search_placeholder|default:default_search_placeholder }}">
+  <label for="record-search" class="toolbar-search">{{ search_label|default:default_search_label }}
+    <span class="search-field">{% icon "search" %}<input id="record-search" name="q" type="search" value="{{ list_meta.query }}" placeholder="{{ search_placeholder|default:default_search_placeholder }}"></span>
   </label>
   {% if filters %}
   <label for="record-filter">{{ filter_label }}
@@ -35,6 +35,8 @@
     </select>
   </label>
   {% endif %}
-  <button type="submit" class="button button-secondary">{% trans "Apply filters" %}</button>
-  {% if list_meta.query or list_meta.sort or filters_active %}<a class="text-link clear-filters" href="?">{% trans "Clear filters" %}</a>{% endif %}
+  <span class="toolbar-actions">
+    <button type="submit" class="button button-neutral">{% trans "Apply filters" %}</button>
+    {% if list_meta.query or list_meta.sort or filters_active %}<a class="text-link clear-filters" href="?">{% trans "Clear filters" %}</a>{% endif %}
+  </span>
 </form>

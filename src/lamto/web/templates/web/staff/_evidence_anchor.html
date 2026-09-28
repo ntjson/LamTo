@@ -1,5 +1,5 @@
-{% load i18n %}
-<div class="evidence-anchor">
-  {% include "web/staff/_evidence_level.html" with event=event %}
-  <a class="button button-secondary" href="{% url 'explorer:detail' public_token=token %}" target="_blank" rel="noopener">{% trans "Evidence explorer" %}</a>
+{% load i18n icons %}
+<div class="card evidence-anchor">
+  <span class="evidence-anchor-label">{% trans "Evidence" %} {% include "web/staff/_evidence_level.html" with event=event %}</span>
+  <a class="button button-secondary" href="{% url 'explorer:detail' public_token=token %}" target="_blank" rel="noopener">{% trans "Evidence explorer" %}{% icon "external" %}</a>
 </div>

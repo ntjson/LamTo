@@ -1,21 +1,28 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n staff_extras %}
+{% load i18n staff_extras icons %}
 {% block title %}{% trans "Publish announcement" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel" aria-labelledby="publish-announcement-heading">
-  <h1 id="publish-announcement-heading">{% trans "Publish announcement" %}</h1>
-  <p class="hint">{% blocktrans with building=membership.building.name %}Publish a notice to residents of {{ building }}.{% endblocktrans %}</p>
-  <form method="post" action="{% url 'web:staff-announcement-create' %}" class="stack-form" data-busy-on-submit>
+<header class="page-header">
+  <div class="page-heading">
+    <a class="back-link" href="{% url 'web:staff-announcement-list' %}">{% icon "chevron-left" %}<span>{% trans "Back to announcements" %}</span></a>
+    <h1 id="publish-announcement-heading">{% trans "Publish announcement" %}</h1>
+    <p class="page-subtitle">{% blocktrans with building=membership.building.name %}Publish a notice to residents of {{ building }}.{% endblocktrans %}</p>
+  </div>
+</header>
+<div class="narrow">
+  <form method="post" action="{% url 'web:staff-announcement-create' %}" class="card card-body stack-form" data-busy-on-submit aria-labelledby="publish-announcement-heading">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
     {% for field in form %}
+    {% if field.is_hidden %}{{ field }}{% if field.errors %}<p class="field-error" role="alert">{{ field.errors|striptags }}</p>{% endif %}{% else %}
     <div class="field">
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field|describe_errors }}
       {% if field.errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ field.errors|striptags }}</p>{% endif %}
     </div>
+    {% endif %}
     {% endfor %}
     <button type="submit" class="button button-primary">{% trans "Publish announcement" %}</button>
   </form>
-</section>
+</div>
 {% endblock %}

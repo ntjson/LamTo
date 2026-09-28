@@ -1,29 +1,25 @@
 {% extends "web/public/shell.html" %}
-{% load humanize %}
+{% load humanize icons %}
 {% block title %}Trình khám phá bằng chứng · {{ building.name }} · LamTo{% endblock %}
 {% block content %}
 {% if chain_unreachable %}
-<div class="message message-warning" role="alert">
-  <span class="status-icon" aria-hidden="true">●</span> <strong>Lưu ý:</strong> Không thể kết nối với blockchain. Đang hiển thị trạng thái đã lưu.
+<div class="message message-warning explorer-notice" role="alert">
+  {% icon "warning" %}<span><strong>Lưu ý:</strong> Không thể kết nối với blockchain. Đang hiển thị trạng thái đã lưu.</span>
 </div>
 {% endif %}
 
-<section class="panel">
+<section class="panel explorer-hero">
   <h1>Hồ sơ minh bạch chi tiêu</h1>
-  <p class="hint">{{ building.name }} · Đề xuất #{{ proposal.pk }}{% if published_at %} · {{ published_at|date:"d/m/Y" }}{% endif %}</p>
+  <p class="page-subtitle">{{ building.name }} · Đề xuất #{{ proposal.pk }}{% if published_at %} · {{ published_at|date:"d/m/Y" }}{% endif %}</p>
+  {% if proposal.current_version %}
+  <p class="explorer-amount">{{ proposal.current_version.amount_vnd|intcomma }} <span class="currency">VND</span></p>
+  <p class="explorer-payee">{{ proposal.current_version.contractor_name }}</p>
+  {% endif %}
 </section>
 
-<section class="panel">
-  <h2>Thông tin tổng quan khoản chi</h2>
-  <dl class="detail-list detail-list-wide">
-    <div>
-      <dt>Số tiền</dt>
-      <dd><strong>{% if proposal.current_version %}{{ proposal.current_version.amount_vnd|intcomma }} VND{% else %}—{% endif %}</strong></dd>
-    </div>
-    <div>
-      <dt>Đơn vị thực hiện</dt>
-      <dd>{% if proposal.current_version %}{{ proposal.current_version.contractor_name }}{% else %}—{% endif %}</dd>
-    </div>
+<section class="panel explorer-summary" aria-labelledby="summary-heading">
+  <h2 id="summary-heading">Thông tin tổng quan khoản chi</h2>
+  <dl class="detail-list">
     <div>
       <dt>Báo cáo &amp; nhu cầu</dt>
       <dd>{{ why|default:"—" }}</dd>
@@ -34,13 +30,7 @@
     </div>
     <div>
       <dt>Người phê duyệt</dt>
-      <dd>
-        {% if approvers %}
-          {{ approvers|join:", " }}
-        {% else %}
-          Ban quản lý
-        {% endif %}
-      </dd>
+      <dd>{% if approvers %}{{ approvers|join:", " }}{% else %}Ban quản lý{% endif %}</dd>
     </div>
     {% if published_at %}
     <div>
@@ -52,8 +42,8 @@
 </section>
 
 {% if integrity_observation %}
-<section class="evidence-observation-panel">
-  <h2>
+<section class="panel evidence-observation-panel" aria-labelledby="observation-heading">
+  <h2 id="observation-heading">
     <span>Xác thực tính toàn vẹn độc lập</span>
     <span class="status status-{{ integrity_observation.tone }}">
       <span class="status-icon" aria-hidden="true">●</span> {{ integrity_observation.label }}
@@ -72,15 +62,20 @@
 </section>
 {% endif %}
 
-<section>
-  <h2>Chuỗi bằng chứng trách nhiệm</h2>
-  <p class="hint">Toàn bộ quá trình từ đề xuất sửa chữa đến thanh toán được ghi nhận và neo bằng chứng độc lập.</p>
+<section class="section" aria-labelledby="chain-heading">
+  <div class="section-header">
+    <h2 id="chain-heading">Chuỗi bằng chứng trách nhiệm</h2>
+    <p class="hint">Toàn bộ quá trình từ đề xuất sửa chữa đến thanh toán được ghi nhận và neo bằng chứng độc lập.</p>
+  </div>
 
   <ol class="evidence-timeline">
     {% for step in timeline_steps %}
     <li class="evidence-timeline-step">
       <div class="evidence-timeline-step-header">
-        <h3 class="evidence-timeline-step-title">{{ step.title }}</h3>
+        <div class="evidence-timeline-step-heading">
+          <span class="evidence-step-number" aria-hidden="true">{{ forloop.counter }}</span>
+          <h3 class="evidence-timeline-step-title">{{ step.title }}</h3>
+        </div>
         <span class="status status-{{ step.chain.evidence_tone }}">
           <span class="status-icon" aria-hidden="true">●</span> {{ step.chain.evidence_label }}
         </span>
@@ -125,9 +120,7 @@
           <ul class="evidence-doc-list">
             {% for q in step.quotations %}
             <li>
-              <a class="evidence-doc-link" href="{% url 'explorer:document-download' public_token=public_token sha256=q.sha256 %}">
-                📄 {{ q.filename }}
-              </a>
+              <a class="evidence-doc-link" href="{% url 'explorer:document-download' public_token=public_token sha256=q.sha256 %}">{% icon "doc" %}<span>{{ q.filename }}</span></a>
             </li>
             {% endfor %}
           </ul>
@@ -140,7 +133,7 @@
         <dl class="detail-list">
           <div>
             <dt>Số tiền thanh toán</dt>
-            <dd><strong>{{ step.amount_vnd|intcomma }} VND</strong></dd>
+            <dd class="figure">{{ step.amount_vnd|intcomma }} VND</dd>
           </div>
           <div>
             <dt>Đơn vị thụ hưởng</dt>
@@ -161,9 +154,7 @@
           <strong>Chứng từ thanh toán:</strong>
           <ul class="evidence-doc-list">
             <li>
-              <a class="evidence-doc-link" href="{% url 'explorer:document-download' public_token=public_token sha256=step.transfer.sha256 %}">
-                📄 {{ step.transfer.filename }}
-              </a>
+              <a class="evidence-doc-link" href="{% url 'explorer:document-download' public_token=public_token sha256=step.transfer.sha256 %}">{% icon "doc" %}<span>{{ step.transfer.filename }}</span></a>
             </li>
           </ul>
         </div>
@@ -177,7 +168,7 @@
       {% if step.chain.payload_hash %}
       <details class="technical-proof">
         <summary>Bằng chứng kỹ thuật</summary>
-        <dl class="detail-list">
+        <dl class="detail-list detail-list-stacked">
           <div>
             <dt>Mã băm dữ liệu (Payload hash)</dt>
             <dd><code class="hash">{{ step.chain.payload_hash }}</code></dd>

@@ -2836,3 +2836,21 @@ msgstr "Dự phòng"
 msgid "Price comparison"
 msgstr "So sánh giá"
 
+
+msgid "Close menu"
+msgstr "Đóng menu"
+
+msgid "Open menu"
+msgstr "Mở menu"
+
+msgid "Next step"
+msgstr "Bước tiếp theo"
+
+msgid "Resident registrations"
+msgstr "Đăng ký cư dân"
+
+msgid "Spending proposal"
+msgstr "Đề xuất chi"
+
+msgid "Not yet verified"
+msgstr "Chưa xác minh"

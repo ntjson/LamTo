@@ -2,10 +2,14 @@
 {% load i18n staff_extras %}
 {% block title %}{% trans "Pilot metrics" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel" aria-labelledby="metrics-heading">
-  <h1 id="metrics-heading">{% trans "Pilot metrics" %}</h1>
-  <p class="lede">{% trans "Non-authoritative pilot numbers for this building. They do not drive workflow decisions." %}</p>
-  <dl class="detail-list detail-list-wide">
+<header class="page-header">
+  <div class="page-heading">
+    <h1 id="metrics-heading">{% trans "Pilot metrics" %}</h1>
+    <p class="page-subtitle">{% trans "Non-authoritative pilot numbers for this building. They do not drive workflow decisions." %}</p>
+  </div>
+</header>
+<section class="card" aria-labelledby="metrics-heading">
+  <dl class="detail-list metrics-list">
     {% for row in metric_rows %}
     <div>
       <dt>{{ row.label }}</dt>

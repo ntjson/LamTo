@@ -1,41 +1,61 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n staff_extras %}
+{% load i18n staff_extras icons %}
 {% block title %}{{ announcement.title }} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  <p><a class="back-link" href="{% url 'web:staff-announcement-list' %}">{% trans "Back to announcements" %}</a></p>
-  <h1>{{ announcement.title }}</h1>
-  <p>{{ announcement.body|linebreaksbr }}</p>
-  <dl class="detail-list detail-list-wide">
-    <div><dt>{% trans "State" %}</dt><dd>{{ announcement.get_state_display }}</dd></div>
-    <div><dt>{% trans "Revision" %}</dt><dd>{{ announcement.revision }}</dd></div>
-    <div><dt>{% trans "Created" %}</dt><dd>{{ announcement.created_by }} · {{ announcement.created_at|staff_datetime }}</dd></div>
-    <div><dt>{% trans "Updated" %}</dt><dd>{{ announcement.updated_by }} · {{ announcement.updated_at|staff_datetime }}</dd></div>
-  </dl>
+<header class="page-header">
+  <div class="page-heading">
+    <a class="back-link" href="{% url 'web:staff-announcement-list' %}">{% icon "chevron-left" %}<span>{% trans "Back to announcements" %}</span></a>
+    <h1>{{ announcement.title }} <span class="status {% if announcement.state == 'PUBLISHED' %}status-verified{% else %}status-neutral{% endif %}"><span class="status-icon" aria-hidden="true">●</span> {{ announcement.get_state_display }}</span></h1>
+  </div>
+</header>
+<div class="record-layout">
+  <div class="record-summary">
+    <div class="card">
+      <div class="card-body">
+        <p class="lede announcement-body">{{ announcement.body|linebreaksbr }}</p>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <div><dt>{% trans "State" %}</dt><dd>{{ announcement.get_state_display }}</dd></div>
+          <div><dt>{% trans "Revision" %}</dt><dd>{{ announcement.revision }}</dd></div>
+          <div><dt>{% trans "Created" %}</dt><dd>{{ announcement.created_by }} · {{ announcement.created_at|staff_datetime }}</dd></div>
+          <div><dt>{% trans "Updated" %}</dt><dd>{{ announcement.updated_by }} · {{ announcement.updated_at|staff_datetime }}</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
   {% if announcement.state == "PUBLISHED" %}
+  <div class="record-action">
     {% if form %}
-    <div class="workflow-section workflow-primary">
+    <div class="action-card is-primary">
       <h2>{% trans "Edit announcement" %}</h2>
       <form method="post" action="{% url 'web:staff-announcement-edit' announcement.pk %}" class="stack-form" data-busy-on-submit>
         {% csrf_token %}
         {% for field in form %}
+        {% if field.is_hidden %}{{ field }}{% if field.errors %}<p class="field-error" role="alert">{{ field.errors|striptags }}</p>{% endif %}{% else %}
         <div class="field">
           <label for="{{ field.id_for_label }}">{{ field.label }}</label>
           {{ field|describe_errors }}
           {% if field.errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ field.errors|striptags }}</p>{% endif %}
         </div>
+        {% endif %}
         {% endfor %}
-        <button type="submit" class="button button-primary">{% trans "Save announcement" %}</button>
+        <button type="submit" class="button button-primary button-block">{% trans "Save announcement" %}</button>
       </form>
     </div>
     {% else %}
-    <p><a class="button" href="{% url 'web:staff-announcement-edit' announcement.pk %}">{% trans "Edit announcement" %}</a></p>
+    <div class="action-card">
+      <a class="button button-secondary button-block" href="{% url 'web:staff-announcement-edit' announcement.pk %}">{% trans "Edit announcement" %}</a>
+    </div>
     {% endif %}
-    <form method="post" action="{% url 'web:staff-announcement-withdraw' announcement.pk %}" data-busy-on-submit>
-      {% csrf_token %}
-      <input type="hidden" name="expected_revision" value="{{ announcement.revision }}">
-      <button type="submit" class="button button-secondary">{% trans "Withdraw announcement" %}</button>
-    </form>
+    <div class="action-card">
+      <form method="post" action="{% url 'web:staff-announcement-withdraw' announcement.pk %}" data-busy-on-submit>
+        {% csrf_token %}
+        <input type="hidden" name="expected_revision" value="{{ announcement.revision }}">
+        <button type="submit" class="button button-destructive button-block">{% trans "Withdraw announcement" %}</button>
+      </form>
+    </div>
+  </div>
   {% endif %}
-</section>
+</div>
 {% endblock %}

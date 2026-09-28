@@ -1,39 +1,56 @@
 {% extends "web/staff/shell.html" %}
-{% load humanize i18n staff_extras %}
+{% load humanize i18n staff_extras icons %}
 {% block title %}{{ bill.title }} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  <p><a class="back-link" href="{% url 'web:staff-bill-list' %}">{% trans "Back to bills" %}</a></p>
-  <h1>{{ bill.title }}</h1>
-  <dl class="detail-list detail-list-wide">
-    <div><dt>{% trans "Resident" %}</dt><dd>{{ bill.resident }}</dd></div>
-    <div><dt>{% trans "Amount" %}</dt><dd>{{ bill.amount_vnd|intcomma }} VND</dd></div>
-    <div><dt>{% trans "Status" %}</dt><dd>{{ bill.get_status_display }}</dd></div>
-    {% if bill.document_id %}
-    <div><dt>{% trans "Bill document" %}</dt><dd><a href="{% url 'web:staff-document' bill.document_id %}">{{ bill.document.filename }}</a></dd></div>
-    {% endif %}
-    {% if bill.status == "PAID" %}
-    <div><dt>{% trans "Payment" %}</dt><dd>{% trans "Resident-reported, not bank-verified" %} · {{ bill.paid_confirmed_by }} · {{ bill.paid_at|staff_datetime }}</dd></div>
-    {% endif %}
-  </dl>
-  {% if bill.status == "ISSUED" %}
-  <h2>{% trans "Payment QR (demo)" %}</h2>
-  <div class="bill-qr" role="img" aria-label="{% blocktrans with ref=bill.reference %}Payment QR for bill {{ ref }}{% endblocktrans %}">{{ qr_svg }}</div>
-  <div class="workflow-section">
-    <h2>{% trans "Void bill" %}</h2>
-    <p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "Voiding closes this bill and cannot be undone." %}</p>
-    <form method="post" action="{% url 'web:staff-bill-void' bill.pk %}" class="stack-form" data-busy-on-submit>
-      {% csrf_token %}
-      {% for field in void_form %}
-      <div class="field">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field|describe_errors }}
-        {% if field.errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ field.errors|striptags }}</p>{% endif %}
+<header class="page-header">
+  <div class="page-heading">
+    <a class="back-link" href="{% url 'web:staff-bill-list' %}">{% icon "chevron-left" %}<span>{% trans "Back to bills" %}</span></a>
+    <h1>{{ bill.title }} <span class="status {% if bill.status == 'PAID' %}status-verified{% elif bill.status == 'VOID' %}status-neutral{% else %}status-warning{% endif %}"><span class="status-icon" aria-hidden="true">●</span> {{ bill.get_status_display }}</span></h1>
+    <p class="page-subtitle">{{ bill.resident }}</p>
+  </div>
+</header>
+<div class="record-layout">
+  <div class="record-summary">
+    <div class="card">
+      <div class="card-body">
+        <dl class="detail-list">
+          <div><dt>{% trans "Amount" %}</dt><dd class="figure">{{ bill.amount_vnd|intcomma }} VND</dd></div>
+          <div><dt>{% trans "Resident" %}</dt><dd>{{ bill.resident }}</dd></div>
+          <div><dt>{% trans "Status" %}</dt><dd>{{ bill.get_status_display }}</dd></div>
+          {% if bill.document_id %}
+          <div><dt>{% trans "Bill document" %}</dt><dd><a class="document-link" href="{% url 'web:staff-document' bill.document_id %}">{% icon "doc" %}<span>{{ bill.document.filename }}</span></a></dd></div>
+          {% endif %}
+          {% if bill.status == "PAID" %}
+          <div><dt>{% trans "Payment" %}</dt><dd>{% trans "Resident-reported, not bank-verified" %} · {{ bill.paid_confirmed_by }} · {{ bill.paid_at|staff_datetime }}</dd></div>
+          {% endif %}
+        </dl>
       </div>
-      {% endfor %}
-      <button type="submit" class="button button-secondary">{% trans "Void bill" %}</button>
-    </form>
+    </div>
+  </div>
+  {% if bill.status == "ISSUED" %}
+  <div class="record-action">
+    <div class="action-card">
+      <h2>{% trans "Payment QR (demo)" %}</h2>
+      <div class="bill-qr" role="img" aria-label="{% blocktrans with ref=bill.reference %}Payment QR for bill {{ ref }}{% endblocktrans %}">{{ qr_svg }}</div>
+    </div>
+    <details class="action-card"{% if void_form.errors %} open{% endif %}>
+      <summary>{% trans "Void bill" %}</summary>
+      <p class="consequence-note">{% trans "Voiding closes this bill and cannot be undone." %}</p>
+      <form method="post" action="{% url 'web:staff-bill-void' bill.pk %}" class="stack-form" data-busy-on-submit>
+        {% csrf_token %}
+        {% for field in void_form %}
+        {% if field.is_hidden %}{{ field }}{% if field.errors %}<p class="field-error" role="alert">{{ field.errors|striptags }}</p>{% endif %}{% else %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field|describe_errors }}
+          {% if field.errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ field.errors|striptags }}</p>{% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+        <button type="submit" class="button button-destructive">{% trans "Void bill" %}</button>
+      </form>
+    </details>
   </div>
   {% endif %}
-</section>
+</div>
 {% endblock %}

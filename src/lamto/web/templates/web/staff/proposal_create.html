@@ -1,55 +1,67 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n humanize l10n %}
+{% load i18n humanize l10n icons %}
 {% block title %}{% trans "Create proposal" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  {% if case %}
-  <h1>{% blocktrans with id=case.pk %}Create proposal · Case #{{ id }}{% endblocktrans %}</h1>
-  <p class="hint">{% blocktrans with category=case.get_category_display %}Case category (locked on this proposal): {{ category }}{% endblocktrans %}</p>
-  {% else %}
-  <h1>{% trans "Create standalone proposal" %}</h1>
-  <p class="hint">{% trans "A spending proposal without a maintenance case. Publication freezes it either way." %}</p>
-  {% endif %}
+<header class="page-header">
+  <div class="page-heading">
+    {% if case %}
+    <a class="back-link" href="{% url 'web:case-detail' case.pk %}">{% icon "chevron-left" %}<span>{% blocktrans with id=case.pk %}Case #{{ id }}{% endblocktrans %}</span></a>
+    <h1>{% blocktrans with id=case.pk %}Create proposal · Case #{{ id }}{% endblocktrans %}</h1>
+    <p class="page-subtitle">{% blocktrans with category=case.get_category_display %}Case category (locked on this proposal): {{ category }}{% endblocktrans %}</p>
+    {% else %}
+    <a class="back-link" href="{% url 'web:proposal-list' %}">{% icon "chevron-left" %}<span>{% trans "Back to proposals" %}</span></a>
+    <h1>{% trans "Create standalone proposal" %}</h1>
+    <p class="page-subtitle">{% trans "A spending proposal without a maintenance case. Publication freezes it either way." %}</p>
+    {% endif %}
+  </div>
+</header>
 
-  <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
-    {% csrf_token %}
-    <input type="hidden" name="action" value="prepare">
-    <p class="consequence-note">{% trans "Publishing freezes the amount, contractor, scope, schedule, and quotation evidence. The published proposal cannot be edited." %}</p>
-    {{ create_form.non_field_errors }}
-    {% for field in create_form %}
-      {% if field.is_hidden %}
-        {{ field }}
-      {% else %}
-      <p>
-        {{ field.errors }}
-        {{ field.label_tag }}
-        {% if field.name == "amount_vnd" and case %}
-        <span class="input-with-button">
+<div class="record-layout">
+  <div class="record-summary">
+    <form method="post" class="card card-body stack-form" enctype="multipart/form-data" data-busy-on-submit>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="prepare">
+      {{ create_form.non_field_errors }}
+      {% for field in create_form %}
+        {% if field.is_hidden %}
           {{ field }}
-          <button type="button" class="button button-secondary" data-price-compare
-            data-compare-url="{% url 'web:proposal-price-compare' pk=case.pk %}"
-            data-has-reference-price="{% if reference_price %}true{% else %}false{% endif %}"
-            data-category-label="{{ case.get_category_display }}"
-            {% if reference_price %}
-            data-average="{{ reference_price.average|unlocalize }}"
-            data-range-formatted="{{ reference_price.minimum|intcomma }} – {{ reference_price.maximum|intcomma }} VND"
-            {% endif %}
-          >{% trans "Compare" %}</button>
-        </span>
-        <span class="price-comparison-result" aria-live="polite" data-price-comparison-result></span>
         {% else %}
-        {{ field }}
+        <p>
+          {{ field.errors }}
+          {{ field.label_tag }}
+          {% if field.name == "amount_vnd" and case %}
+          <span class="input-with-button">
+            {{ field }}
+            <button type="button" class="button button-secondary" data-price-compare
+              data-compare-url="{% url 'web:proposal-price-compare' pk=case.pk %}"
+              data-has-reference-price="{% if reference_price %}true{% else %}false{% endif %}"
+              data-category-label="{{ case.get_category_display }}"
+              {% if reference_price %}
+              data-average="{{ reference_price.average|unlocalize }}"
+              data-range-formatted="{{ reference_price.minimum|intcomma }} – {{ reference_price.maximum|intcomma }} VND"
+              {% endif %}
+            >{% trans "Compare" %}</button>
+          </span>
+          <span class="price-comparison-result" aria-live="polite" data-price-comparison-result></span>
+          {% else %}
+          {{ field }}
+          {% endif %}
+          {% if field.help_text %}
+          <span class="hint">{{ field.help_text|safe }}</span>
+          {% endif %}
+        </p>
         {% endif %}
-        {% if field.help_text %}
-        <span class="hint">{{ field.help_text|safe }}</span>
-        {% endif %}
-      </p>
-      {% endif %}
-    {% endfor %}
-    <p class="hint">{% trans "Upload the quotation (PDF). Amounts are integer VND." %}</p>
-    <button type="submit" class="button button-primary">{% trans "Publish proposal" %}</button>
-  </form>
-</section>
+      {% endfor %}
+      <p class="hint">{% trans "Upload the quotation (PDF). Amounts are integer VND." %}</p>
+      <button type="submit" class="button button-primary">{% trans "Publish proposal" %}</button>
+    </form>
+  </div>
+  <aside class="record-action">
+    <div class="action-card">
+      <p class="state-line tone-info">{% icon "lock" %}<span>{% trans "Publishing freezes the amount, contractor, scope, schedule, and quotation evidence. The published proposal cannot be edited." %}</span></p>
+    </div>
+  </aside>
+</div>
 {% endblock %}
 {% block extra_js %}
 {% if case %}

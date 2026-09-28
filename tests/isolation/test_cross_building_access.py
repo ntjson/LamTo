@@ -38,7 +38,7 @@ from lamto.maintenance.models import BuildingLocation, IssueReport, MaintenanceC
 from lamto.notifications.models import NotificationDelivery
 from lamto.notifications.announcements import publish_announcement
 from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
-from lamto.web.staff import nav_items_for
+from lamto.web.staff import nav_sections_for
 
 _TEMP_STORAGE = tempfile.mkdtemp(prefix="lamto-isolation-")
 
@@ -356,14 +356,26 @@ class CrossBuildingAccessTests(TestCase):
             assert not overlap, f"API route classified more than once: {overlap}"
             seen |= bucket
 
-    def test_management_has_five_areas_and_non_manager_is_denied(self):
+    def test_management_sees_every_area_and_non_manager_is_denied(self):
         manager = self.seed_a.management_memberships[0]
-        assert [item["active_key"] for item in nav_items_for(manager)] == [
+        assert [
+            item["key"]
+            for section in nav_sections_for(manager)
+            for item in section["items"]
+        ] == [
             "inbox",
             "cases",
-            "finance",
-            "building",
-            "ops",
+            "proposals",
+            "settlements",
+            "fund",
+            "gate",
+            "registrations",
+            "announcements",
+            "bills",
+            "health",
+            "exceptions",
+            "metrics",
+            "exports",
         ]
         self._management_login()
         assert self.client.get(reverse("web:case-list")).status_code == 200

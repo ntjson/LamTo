@@ -1,0 +1,6 @@
+{% load i18n %}
+<nav class="segmented" aria-label="{% trans 'Gate' %}">
+  {% for item in gate_nav_items %}
+  <a href="{% url item.url_name %}"{% if gate_active == item.active_key %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
+  {% endfor %}
+</nav>

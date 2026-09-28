@@ -1,63 +1,70 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n humanize %}
+{% load i18n humanize icons %}
 {% block title %}{% if list_mode %}{% trans "Proposals" %}{% else %}{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
-<section class="panel" aria-labelledby="proposals-heading">
-  <div class="panel-header">
-    <div>
-      <h1 id="proposals-heading">{% if publish_only %}{% trans "Pending publication" %}{% else %}{% trans "Proposals" %}{% endif %}</h1>
-      <p class="hint">{% trans "Spending proposals for this building, from draft through publication. Each row shows the next step." %}</p>
-    </div>
+<header class="page-header">
+  <div class="page-heading">
+    <h1 id="proposals-heading">{% if publish_only %}{% trans "Pending publication" %}{% else %}{% trans "Proposals" %}{% endif %}</h1>
+    <p class="page-subtitle">{% trans "Spending proposals for this building, from draft through publication. Each row shows the next step." %}</p>
   </div>
-  {% translate "Status" as status_filter_label %}
-  {% include "web/staff/_list_toolbar.html" with filter_label=status_filter_label %}
-  {% translate "No proposals need attention." as proposals_empty_label %}
-  {% include "web/staff/_list.html" with items=proposal_items empty_label=proposals_empty_label %}
-</section>
+  <div class="page-actions">
+    <a class="button button-primary" href="{% url 'web:standalone-proposal-create' %}">{% icon "plus" %}{% trans "New proposal" %}</a>
+  </div>
+</header>
+{% translate "Status" as status_filter_label %}
+{% include "web/staff/_list_toolbar.html" with filter_label=status_filter_label %}
+{% translate "No proposals need attention." as proposals_empty_label %}
+{% include "web/staff/_list.html" with items=proposal_items empty_label=proposals_empty_label %}
 {% else %}
-<section class="panel">
-  <p><a class="back-link" href="{% url 'web:proposal-list' %}">{% trans "Back to proposals" %}</a></p>
-  <h1>{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}</h1>
-  <div class="record-layout">
-    <div class="record-summary">
-      <h2>{% trans "Proposal record" %}</h2>
-      {% if version %}<p class="lede">{{ version.purpose }}</p>{% endif %}
-      {% if version %}<p>{% trans "The amount, contractor, scope, schedule, and quotation evidence are frozen." %}</p>{% endif %}
-      <dl class="detail-list detail-list-wide">
-        <div><dt>{% trans "Status" %}</dt><dd>{{ proposal.get_status_display }}</dd></div>
-        {% if version %}
-        <div><dt>{% trans "Amount" %}</dt><dd>{{ version.amount_vnd|intcomma }} VND</dd></div>
-        {% if price_comparison %}
-        <div>
-          <dt>{% trans "Price comparison" %}</dt>
-          <dd>
-            <span class="price-comparison-result">
-              {% if price_comparison.arrow %}<span class="price-comparison-arrow {{ price_comparison.arrow_class }}" aria-hidden="true">{{ price_comparison.arrow }}</span> {% endif %}{{ price_comparison.comparison_text }}
-              {% if price_comparison.reasoning %}<div class="price-comparison-reasoning">{{ price_comparison.reasoning }}</div>{% endif %}
-            </span>
-          </dd>
+<header class="page-header">
+  <div class="page-heading">
+    <a class="back-link" href="{% url 'web:proposal-list' %}">{% icon "chevron-left" %}<span>{% trans "Back to proposals" %}</span></a>
+    <h1>{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %} <span class="status {% if proposal.status == 'COMPLETED' or proposal.status == 'CLOSED' %}status-verified{% elif proposal.status == 'NOT_PROCEEDING' or proposal.status == 'DRAFT' %}status-neutral{% else %}status-info{% endif %}"><span class="status-icon" aria-hidden="true">●</span> {{ proposal.get_status_display }}</span></h1>
+    {% if version %}<p class="page-subtitle">{{ version.purpose }}</p>{% endif %}
+  </div>
+</header>
+
+<div class="record-layout">
+  <div class="record-summary">
+    <section aria-labelledby="proposal-record-heading">
+      <div class="section-header">
+        <h2 id="proposal-record-heading">{% trans "Proposal record" %}</h2>
+        {% if version %}<p class="hint">{% trans "The amount, contractor, scope, schedule, and quotation evidence are frozen." %}</p>{% endif %}
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <dl class="detail-list">
+            {% if version %}<div><dt>{% trans "Amount" %}</dt><dd class="figure">{{ version.amount_vnd|intcomma }} VND</dd></div>{% endif %}
+            <div><dt>{% trans "Status" %}</dt><dd>{{ proposal.get_status_display }}</dd></div>
+            {% if version %}
+            {% if price_comparison %}
+            <div>
+              <dt>{% trans "Price comparison" %}</dt>
+              <dd>
+                <span class="price-comparison-result">
+                  {% if price_comparison.arrow %}<span class="price-comparison-arrow {{ price_comparison.arrow_class }}" aria-hidden="true">{{ price_comparison.arrow }}</span> {% endif %}{{ price_comparison.comparison_text }}
+                  {% if price_comparison.reasoning %}<span class="price-comparison-reasoning">{{ price_comparison.reasoning }}</span>{% endif %}
+                </span>
+              </dd>
+            </div>
+            {% endif %}
+            <div><dt>{% trans "Contractor" %}</dt><dd>{{ version.contractor_name }}</dd></div>
+            <div><dt>{% trans "Expected schedule" %}</dt><dd>{{ version.expected_schedule }}</dd></div>
+            {% if proposal.case_id %}<div><dt>{% trans "Maintenance case" %}</dt><dd><a href="{% url 'web:case-detail' proposal.case_id %}">{{ proposal.case.get_category_display }} · {% blocktrans with id=proposal.case_id %}Case #{{ id }}{% endblocktrans %}</a></dd></div>{% endif %}
+            <div><dt>{% trans "Evidence" %}</dt><dd>
+              {% with quotes=version.quotations.all %}
+              {% if quotes %}
+              <ul class="evidence-thumbs">{% for q in quotes %}<li><a class="document-link" href="{% url 'web:staff-document' q.pk %}">{% icon "doc" %}<span>{{ q.filename }}</span></a></li>{% endfor %}</ul>
+              {% else %}
+              {% trans "No quotation files linked" %}
+              {% endif %}
+              {% endwith %}
+            </dd></div>
+            {% endif %}
+          </dl>
         </div>
-        {% endif %}
-        <div><dt>{% trans "Contractor" %}</dt><dd>{{ version.contractor_name }}</dd></div>
-        <div><dt>{% trans "Expected schedule" %}</dt><dd>{{ version.expected_schedule }}</dd></div>
-        {% if proposal.case_id %}<div><dt>{% trans "Maintenance case" %}</dt><dd><a href="{% url 'web:case-detail' proposal.case_id %}">{{ proposal.case.get_category_display }} · {% blocktrans with id=proposal.case_id %}Case #{{ id }}{% endblocktrans %}</a></dd></div>{% endif %}
-        <div><dt>{% trans "Evidence" %}</dt><dd>
-          {% with quotes=version.quotations.all %}
-          {% if quotes %}
-          <ul class="inline-list">{% for q in quotes %}<li><a href="{% url 'web:staff-document' q.pk %}">{{ q.filename }}</a></li>{% endfor %}</ul>
-          {% else %}
-          {% trans "No quotation files linked" %}
-          {% endif %}
-          {% endwith %}
-        </dd></div>
-        {% endif %}
-      </dl>
-
-      {% if accountability_stages %}
-      {% include "web/staff/_accountability_chain.html" %}
-      {% endif %}
-
+      </div>
       {% if version %}
       {% if proposal.public_token %}
       {% include "web/staff/_evidence_anchor.html" with event=version.outbox_event token=proposal.public_token %}
@@ -74,65 +81,86 @@
       </details>
       {% endif %}
       {% endif %}
-    </div>
+    </section>
 
-    <div class="record-action">
-      {% if action_panel == "publish" %}
-      <div class="workflow-section workflow-primary">
-        <h2>{% trans "Publish settled expense" %}</h2>
-        <p class="consequence-note">{% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
-        <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form.as_p }}<button type="submit" class="button button-primary">{% trans "Publish to resident ledger" %}</button></form>
-      </div>
-      {% elif action_panel == "decide" %}
-      <div class="workflow-section workflow-primary">
-        <h2>{% trans "Decide whether to proceed" %}</h2>
-        <p class="consequence-note">{% trans "“Do not proceed” closes this proposal permanently in your name; it cannot be reopened, and new spending needs a new proposal." %}</p>
-        <form method="post" class="stack-form" data-busy-on-submit>
-          {% csrf_token %}
-          <input type="hidden" name="action" value="decide">
-          {{ decision_form.non_field_errors }}
-          <fieldset class="field choice-group">
-            <legend>{{ decision_form.decision.label }}</legend>
-            {{ decision_form.decision.errors }}
+    {% if accountability_stages %}
+    {% include "web/staff/_accountability_chain.html" %}
+    {% endif %}
+  </div>
+
+  <div class="record-action">
+    {% if action_panel == "publish" %}
+    <div class="action-card is-primary">
+      <p class="eyebrow">{% trans "Next step" %}</p>
+      <h2>{% trans "Publish settled expense" %}</h2>
+      <p class="consequence-note">{% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
+      <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form.as_p }}<button type="submit" class="button button-primary button-block">{% trans "Publish to resident ledger" %}</button></form>
+    </div>
+    {% elif action_panel == "decide" %}
+    <div class="action-card is-primary">
+      <p class="eyebrow">{% trans "Next step" %}</p>
+      <h2>{% trans "Decide whether to proceed" %}</h2>
+      <p class="consequence-note">{% trans "“Do not proceed” closes this proposal permanently in your name; it cannot be reopened, and new spending needs a new proposal." %}</p>
+      <form method="post" class="stack-form" data-busy-on-submit>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="decide">
+        {{ decision_form.non_field_errors }}
+        <fieldset class="field choice-group">
+          <legend>{{ decision_form.decision.label }}</legend>
+          {{ decision_form.decision.errors }}
+          <div class="choice-list">
             {% for radio in decision_form.decision %}
             <label class="choice">{{ radio.tag }} <span>{{ radio.choice_label }}</span></label>
             {% endfor %}
-          </fieldset>
-          <div class="field">
-            <label for="{{ decision_form.note.id_for_label }}">{{ decision_form.note.label }}</label>
-            {{ decision_form.note.errors }}
-            {{ decision_form.note }}
-            <p class="hint">{% trans "Required when not proceeding; it is recorded with the decision." %}</p>
           </div>
-          <button type="submit" class="button button-primary">{% trans "Record decision" %}</button>
-        </form>
-      </div>
-      {% elif action_panel == "case" %}
-      <div class="workflow-section workflow-primary">
-        <h2>{% trans "Work tracked on maintenance case" %}</h2>
-        <p class="consequence-note">{% trans "Work on this proposal is recorded through its maintenance case. Open the case to publish progress or mark the work complete." %}</p>
-        <a class="button button-primary" href="{% url 'web:case-detail' proposal.case_id %}">{% trans "Open maintenance case" %}</a>
-      </div>
-      {% elif action_panel == "settle" %}
-      <div class="workflow-section workflow-primary">
-        <h2>{% trans "Record settlement" %}</h2>
-        <p class="consequence-note">{% trans "The work is complete and this proposal is waiting to be paid. Filing the transfer proof settles it and anchors the evidence." %}</p>
-        <a class="button button-primary" href="{% url 'web:settlement-record' proposal.pk %}">{% trans "Record settlement" %}</a>
-      </div>
-      {% elif action_panel == "progress" %}
-      <div class="workflow-section workflow-primary">
-        <h2>{% trans "Publish work progress" %}</h2>
-        <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form.as_p }}<button name="action" value="progress" class="button button-primary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-secondary">{% trans "Complete work" %}</button></form>
-      </div>
-      {% elif action_panel == "failed" %}
-      <div class="workflow-section"><h2>{% trans "Evidence anchoring failed" %}</h2><p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "The signed proposal is saved, but anchoring failed. Review Operations health before retrying any action." %}</p><a class="button button-secondary" href="{% url 'web:ops-health' %}">{% trans "Review Operations health" %}</a></div>
-      {% elif action_panel == "mismatch" %}
-      <div class="workflow-section"><h2>{% trans "Evidence mismatch detected" %}</h2><p class="status status-mismatch"><span class="status-icon" aria-hidden="true">●</span> {% trans "The saved proposal does not match independently observed evidence. Stop and review Operations health." %}</p><a class="button button-secondary" href="{% url 'web:ops-health' %}">{% trans "Review Operations health" %}</a></div>
-      {% else %}
-      <p class="empty">{% trans "No action is assigned to this membership. Review the proposal summary and return to the action inbox." %}</p>
-      {% endif %}
+        </fieldset>
+        <div class="field">
+          <label for="{{ decision_form.note.id_for_label }}">{{ decision_form.note.label }}</label>
+          {{ decision_form.note.errors }}
+          {{ decision_form.note }}
+          <p class="hint">{% trans "Required when not proceeding; it is recorded with the decision." %}</p>
+        </div>
+        <button type="submit" class="button button-primary button-block">{% trans "Record decision" %}</button>
+      </form>
     </div>
+    {% elif action_panel == "case" %}
+    <div class="action-card is-primary">
+      <p class="eyebrow">{% trans "Next step" %}</p>
+      <h2>{% trans "Work tracked on maintenance case" %}</h2>
+      <p class="consequence-note">{% trans "Work on this proposal is recorded through its maintenance case. Open the case to publish progress or mark the work complete." %}</p>
+      <a class="button button-primary button-block" href="{% url 'web:case-detail' proposal.case_id %}">{% trans "Open maintenance case" %}</a>
+    </div>
+    {% elif action_panel == "settle" %}
+    <div class="action-card is-primary">
+      <p class="eyebrow">{% trans "Next step" %}</p>
+      <h2>{% trans "Record settlement" %}</h2>
+      <p class="consequence-note">{% trans "The work is complete and this proposal is waiting to be paid. Filing the transfer proof settles it and anchors the evidence." %}</p>
+      <a class="button button-primary button-block" href="{% url 'web:settlement-record' proposal.pk %}">{% trans "Record settlement" %}</a>
+    </div>
+    {% elif action_panel == "progress" %}
+    <div class="action-card is-primary">
+      <p class="eyebrow">{% trans "Next step" %}</p>
+      <h2>{% trans "Publish work progress" %}</h2>
+      <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form.as_p }}<div class="form-actions"><button name="action" value="progress" class="button button-primary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-secondary">{% trans "Complete work" %}</button></div></form>
+    </div>
+    {% elif action_panel == "failed" %}
+    <div class="action-card">
+      <h2>{% trans "Evidence anchoring failed" %}</h2>
+      <p class="state-line tone-mismatch">{% icon "error" %}<span>{% trans "The signed proposal is saved, but anchoring failed. Review Operations health before retrying any action." %}</span></p>
+      <a class="button button-secondary button-block" href="{% url 'web:ops-health' %}">{% trans "Review Operations health" %}</a>
+    </div>
+    {% elif action_panel == "mismatch" %}
+    <div class="action-card">
+      <h2>{% trans "Evidence mismatch detected" %}</h2>
+      <p class="state-line tone-mismatch">{% icon "error" %}<span>{% trans "The saved proposal does not match independently observed evidence. Stop and review Operations health." %}</span></p>
+      <a class="button button-secondary button-block" href="{% url 'web:ops-health' %}">{% trans "Review Operations health" %}</a>
+    </div>
+    {% else %}
+    <div class="action-card">
+      <p class="empty">{% trans "No action is assigned to this membership. Review the proposal summary and return to the action inbox." %}</p>
+    </div>
+    {% endif %}
   </div>
-</section>
+</div>
 {% endif %}
 {% endblock %}

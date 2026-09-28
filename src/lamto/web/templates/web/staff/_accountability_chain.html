@@ -1,14 +1,18 @@
-{% load i18n %}
+{% load i18n icons %}
 {% if accountability_stages %}
-<div class="accountability-chain" role="group" aria-label="{% trans 'Accountability chain' %}">
-  <ol class="accountability-stages">
-    {% for stage in accountability_stages %}
-    {# The live stage is exactly one of current/pending/blocked — "you are here" holds for all three. #}
-    <li class="accountability-stage accountability-stage-{{ stage.state }}"{% if stage.state == "current" or stage.state == "pending" or stage.state == "blocked" %} aria-current="step"{% endif %}>
-      <span class="accountability-stage-label">{{ stage.label }}</span>
-      <span class="accountability-stage-state">{{ stage.state_label|default:stage.state }}</span>
-    </li>
-    {% endfor %}
-  </ol>
-</div>
+<section class="section" aria-labelledby="accountability-heading">
+  <div class="section-header"><h2 id="accountability-heading">{% trans "Accountability chain" %}</h2></div>
+  <div class="card accountability-chain" role="group" aria-labelledby="accountability-heading">
+    <ol class="accountability-stages">
+      {% for stage in accountability_stages %}
+      {# The live stage is exactly one of current/pending/blocked — "you are here" holds for all three. #}
+      <li class="accountability-stage accountability-stage-{{ stage.state }}"{% if stage.state == "current" or stage.state == "pending" or stage.state == "blocked" %} aria-current="step"{% endif %}>
+        <span class="accountability-stage-marker" aria-hidden="true">{% if stage.state == "complete" %}{% icon "check" %}{% elif stage.state == "blocked" %}{% icon "close" %}{% endif %}</span>
+        <span class="accountability-stage-label">{{ stage.label }}</span>
+        <span class="accountability-stage-state">{{ stage.state_label|default:stage.state }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
 {% endif %}

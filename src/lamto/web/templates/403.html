@@ -1,18 +1,21 @@
 {% extends "web/base.html" %}
-{% load i18n %}
+{% load i18n icons %}
 {% block title %}{% trans "Access denied" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel" aria-labelledby="error-heading">
+<section class="error-card" aria-labelledby="error-heading">
+  <span class="empty-state-icon">{% icon "lock" %}</span>
   <h1 id="error-heading">{% trans "Access denied" %}</h1>
   {% if user.is_authenticated %}
   <p>{% trans "Your account does not have access to this page. Nothing was changed." %}</p>
-  <p>
+  <div class="inline-actions">
     <a class="button button-primary" href="{% url 'web:action-inbox' %}">{% trans "Back to Action inbox" %}</a>
     <a class="button button-secondary" href="{% url 'login' %}">{% trans "Sign in with another account" %}</a>
-  </p>
+  </div>
   {% else %}
   <p>{% trans "Sign in with a Management account that has access to this page." %}</p>
-  <a class="button button-primary" href="{% url 'login' %}">{% trans "Go to sign in" %}</a>
+  <div class="inline-actions">
+    <a class="button button-primary" href="{% url 'login' %}">{% trans "Go to sign in" %}</a>
+  </div>
   {% endif %}
 </section>
 {% endblock %}

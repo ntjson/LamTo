@@ -1,49 +1,63 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n %}
+{% load i18n icons %}
 {% block title %}{% trans "Gate review" %} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel-header">
+<header class="page-header">
+  <div class="page-heading">
     <h1>{% trans "Gate review" %}</h1>
-    <p class="hint">{% trans "Review resident face and vehicle plate enrolments." %}</p>
+    <p class="page-subtitle">{% trans "Review resident face and vehicle plate enrolments." %}</p>
   </div>
-  <section class="workflow-section">
-    <h2>{% trans "Faces" %}</h2>
-    <ul class="task-list">
-      {% for x in pending_faces %}
-      <li>
-        {% blocktrans with resident=x.occupancy.user.display_name asvar approve_label %}Approve face for {{ resident }}{% endblocktrans %}
-        {% blocktrans with resident=x.occupancy.user.display_name asvar reject_label %}Reject face for {{ resident }}{% endblocktrans %}
-        <article class="task-row task-row-simple">
-          <img src="{% url 'web:gate-face-photo' x.pk %}" alt="{% blocktrans with resident=x.occupancy.user.display_name %}Enrollment photo for {{ resident }}{% endblocktrans %}" width="320" loading="lazy">
-          <div><strong class="task-action">{{ x.occupancy.user.display_name }}</strong><p class="task-subject">{% blocktrans with unit=x.occupancy.unit.label %}Unit {{ unit }}{% endblocktrans %}</p></div>
+</header>
+{% include "web/staff/_gate_nav.html" %}
+
+<section class="section" aria-labelledby="faces-heading">
+  <div class="section-header"><h2 id="faces-heading">{% trans "Faces" %}</h2>{% if pending_faces %}<span class="section-meta">{{ pending_faces|length }}</span>{% endif %}</div>
+  <ul class="task-list">
+    {% for x in pending_faces %}
+    <li>
+      {% blocktrans with resident=x.occupancy.user.display_name asvar approve_label %}Approve face for {{ resident }}{% endblocktrans %}
+      {% blocktrans with resident=x.occupancy.user.display_name asvar reject_label %}Reject face for {{ resident }}{% endblocktrans %}
+      <article class="control-row">
+        <div class="control-row-summary">
+          <img class="control-row-media" src="{% url 'web:gate-face-photo' x.pk %}" alt="{% blocktrans with resident=x.occupancy.user.display_name %}Enrollment photo for {{ resident }}{% endblocktrans %}" width="160" height="160" loading="lazy">
           <div>
-            <form method="post" action="{% url 'web:gate-face-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<button class="button button-primary" name="decision" value="approve" aria-label="{{ approve_label }}">{% trans "Approve" %}</button></form>
-            <form method="post" action="{% url 'web:gate-face-decide' x.pk %}" class="stack-form" data-busy-on-submit>{% csrf_token %}<label for="face-reject-reason-{{ x.pk }}">{% trans "Rejection reason" %}</label><input id="face-reject-reason-{{ x.pk }}" name="note" required maxlength="255"><button class="button button-secondary" name="decision" value="reject" aria-label="{{ reject_label }}">{% trans "Reject" %}</button></form>
+            <p class="control-row-title">{{ x.occupancy.user.display_name }}</p>
+            <p class="control-row-meta">{% blocktrans with unit=x.occupancy.unit.label %}Unit {{ unit }}{% endblocktrans %}</p>
           </div>
-        </article>
-      </li>
-      {% empty %}<li class="empty-state">{% trans "No faces are waiting for review." %}</li>{% endfor %}
-    </ul>
-  </section>
-  <section class="workflow-section">
-    <h2>{% trans "Plates" %}</h2>
-    <ul class="task-list">
-      {% for x in pending_plates %}
-      <li>
-        {% blocktrans with plate=x.plate asvar approve_label %}Approve plate {{ plate }}{% endblocktrans %}
-        {% blocktrans with plate=x.plate asvar reject_label %}Reject plate {{ plate }}{% endblocktrans %}
-        <article class="task-row task-row-simple">
-          <strong class="task-action">{{ x.plate }}</strong>
-          <p class="task-subject">{% blocktrans with resident=x.occupancy.user.display_name unit=x.occupancy.unit.label %}{{ resident }}, unit {{ unit }}{% endblocktrans %}</p>
-          <div>
-            <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<button class="button button-primary" name="decision" value="approve" aria-label="{{ approve_label }}">{% trans "Approve" %}</button></form>
-            <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}" class="stack-form" data-busy-on-submit>{% csrf_token %}<label for="plate-reject-reason-{{ x.pk }}">{% trans "Rejection reason" %}</label><input id="plate-reject-reason-{{ x.pk }}" name="note" required maxlength="255"><button class="button button-secondary" name="decision" value="reject" aria-label="{{ reject_label }}">{% trans "Reject" %}</button></form>
-          </div>
-        </article>
-      </li>
-      {% empty %}<li class="empty-state">{% trans "No plates are waiting for review." %}</li>{% endfor %}
-    </ul>
-  </section>
+        </div>
+        <div class="control-row-actions">
+          <form method="post" action="{% url 'web:gate-face-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<button class="button button-primary" name="decision" value="approve" aria-label="{{ approve_label }}">{% trans "Approve" %}</button></form>
+          <form method="post" action="{% url 'web:gate-face-decide' x.pk %}" class="reject-form" data-busy-on-submit>{% csrf_token %}<label for="face-reject-reason-{{ x.pk }}" class="form-label">{% trans "Rejection reason" %}</label><span class="input-with-button"><input id="face-reject-reason-{{ x.pk }}" name="note" required maxlength="255"><button class="button button-destructive" name="decision" value="reject" aria-label="{{ reject_label }}">{% trans "Reject" %}</button></span></form>
+        </div>
+      </article>
+    </li>
+    {% empty %}
+    <li><p class="empty-inline">{% trans "No faces are waiting for review." %}</p></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="section" aria-labelledby="plates-heading">
+  <div class="section-header"><h2 id="plates-heading">{% trans "Plates" %}</h2>{% if pending_plates %}<span class="section-meta">{{ pending_plates|length }}</span>{% endif %}</div>
+  <ul class="task-list">
+    {% for x in pending_plates %}
+    <li>
+      {% blocktrans with plate=x.plate asvar approve_label %}Approve plate {{ plate }}{% endblocktrans %}
+      {% blocktrans with plate=x.plate asvar reject_label %}Reject plate {{ plate }}{% endblocktrans %}
+      <article class="control-row">
+        <div>
+          <p class="control-row-title plate">{{ x.plate }}</p>
+          <p class="control-row-meta">{% blocktrans with resident=x.occupancy.user.display_name unit=x.occupancy.unit.label %}{{ resident }}, unit {{ unit }}{% endblocktrans %}</p>
+        </div>
+        <div class="control-row-actions">
+          <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}" data-busy-on-submit>{% csrf_token %}<button class="button button-primary" name="decision" value="approve" aria-label="{{ approve_label }}">{% trans "Approve" %}</button></form>
+          <form method="post" action="{% url 'web:gate-plate-decide' x.pk %}" class="reject-form" data-busy-on-submit>{% csrf_token %}<label for="plate-reject-reason-{{ x.pk }}" class="form-label">{% trans "Rejection reason" %}</label><span class="input-with-button"><input id="plate-reject-reason-{{ x.pk }}" name="note" required maxlength="255"><button class="button button-destructive" name="decision" value="reject" aria-label="{{ reject_label }}">{% trans "Reject" %}</button></span></form>
+        </div>
+      </article>
+    </li>
+    {% empty %}
+    <li><p class="empty-inline">{% trans "No plates are waiting for review." %}</p></li>
+    {% endfor %}
+  </ul>
 </section>
 {% endblock %}

@@ -1,36 +1,37 @@
-{% load i18n static assets %}
+{% load i18n static assets icons %}
 {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#2f3a8f">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#161618" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}{% trans "Management" %} · LamTo{% endblock %}</title>
   <link rel="icon" type="image/png" href="{% static 'web/brand/favicon.png' %}">
   <link rel="stylesheet" href="{% asset 'web/app.css' %}">
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="auth {% block body_class %}{% endblock %}">
   <a class="skip-link" href="#main">{% trans "Skip to content" %}</a>
   <header class="site-header" role="banner">
-    <div class="brand">
-      <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="">
+    <span class="brand">
+      <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="" width="28" height="28">
       <span class="brand-name">{% trans "Làm Tổ Management" %}</span>
-    </div>
+    </span>
   </header>
 
-  {% if messages %}
-  <section class="flash-messages" role="status" tabindex="-1" aria-labelledby="messages-heading">
-    <h2 id="messages-heading" class="sr-only">{% trans "Messages" %}</h2>
-    <ul class="messages">
-    {% for message in messages %}
-    <li class="message message-{{ message.tags }}"><span class="status-icon" aria-hidden="true">●</span> <strong>{% if "error" in message.tags %}{% trans "Error:" %}{% elif "warning" in message.tags %}{% trans "Warning:" %}{% elif "info" in message.tags %}{% trans "Info:" %}{% else %}{% trans "Success:" %}{% endif %}</strong> {{ message }}</li>
-    {% endfor %}
-    </ul>
-  </section>
-  {% endif %}
-
   <main id="main" class="site-main" role="main">
+    {% if messages %}
+    <section class="flash-messages" role="status" tabindex="-1" aria-labelledby="messages-heading">
+      <h2 id="messages-heading" class="sr-only">{% trans "Messages" %}</h2>
+      <ul class="messages">
+      {% for message in messages %}
+      <li class="message message-{{ message.tags }}">{% if "error" in message.tags %}{% icon "error" %}{% elif "warning" in message.tags %}{% icon "warning" %}{% elif "info" in message.tags %}{% icon "info" %}{% else %}{% icon "check-circle" %}{% endif %}<span><strong class="sr-only">{% if "error" in message.tags %}{% trans "Error:" %}{% elif "warning" in message.tags %}{% trans "Warning:" %}{% elif "info" in message.tags %}{% trans "Info:" %}{% else %}{% trans "Success:" %}{% endif %}</strong> {{ message }}</span></li>
+      {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

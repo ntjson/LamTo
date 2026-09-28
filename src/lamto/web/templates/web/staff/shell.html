@@ -1,107 +1,118 @@
-{% load i18n static assets %}
+{% load i18n static assets icons %}
 {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE }}">
+<html lang="{{ LANGUAGE_CODE }}" class="no-js">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#2f3a8f">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#161618" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}{% trans "Management" %} · LamTo{% endblock %}</title>
   <link rel="icon" type="image/png" href="{% static 'web/brand/favicon.png' %}">
   <link rel="stylesheet" href="{% asset 'web/app.css' %}">
+  <script>document.documentElement.classList.replace("no-js", "js");</script>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="staff">
   <a class="skip-link" href="#main">{% trans "Skip to content" %}</a>
-  <header class="site-header" role="banner">
-    <div class="brand">
-      <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="">
-      <span class="brand-name">{% trans "Làm Tổ Management" %}</span>
-    </div>
-    {% if membership and membership_count <= 1 %}
-    <p class="building-label">
-      {{ membership.building.name }}
-    </p>
-    {% elif membership and membership_count > 1 %}
-    <details class="membership-switcher">
-      <summary class="building-label membership-switcher-summary">
-        <span class="sr-only">{% trans "Switch building" %}: </span>{{ membership.building.name }}
-      </summary>
-      <div class="membership-bar membership-bar-disclosure" role="region" aria-label="{% trans 'Active membership' %}">
-        <form method="post" action="{% url 'web:switch-building' %}" class="membership-form" data-busy-on-submit>
-          {% csrf_token %}
-          <label for="active-building">{% trans "Switch building" %}</label>
-          <select id="active-building" name="building" class="input">
+  <div class="app">
+    <aside class="sidebar" id="app-sidebar" aria-label="{% trans 'Management' %}">
+      <div class="sidebar-header">
+        <a class="brand" href="{% url 'web:action-inbox' %}">
+          <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="" width="32" height="32">
+          <span class="brand-name">Làm Tổ<span class="brand-suffix">{% trans "Management" %}</span></span>
+        </a>
+        <button type="button" class="button button-plain button-compact sidebar-close" data-nav-close aria-label="{% trans 'Close menu' %}">{% icon "close" %}</button>
+      </div>
+
+      {% if membership and membership_count <= 1 %}
+      <div class="building-context">
+        <p class="building-label">{% icon "building" %}<span class="building-label-name">{{ membership.building.name }}</span></p>
+      </div>
+      {% elif membership and membership_count > 1 %}
+      <details class="building-context membership-switcher">
+        <summary class="building-label membership-switcher-summary">
+          {% icon "building" %}
+          <span class="building-label-name"><span class="sr-only">{% trans "Switch building" %}: </span>{{ membership.building.name }}</span>
+          {% icon "chevrons-vertical" %}
+        </summary>
+        <div class="membership-menu" role="region" aria-label="{% trans 'Active membership' %}">
+          <p class="membership-menu-title">{% trans "Switch building" %}</p>
+          <form method="post" action="{% url 'web:switch-building' %}" class="membership-form" data-busy-on-submit>
+            {% csrf_token %}
             {% for m in memberships %}
-            <option value="{{ m.pk }}" {% if membership and m.pk == membership.pk %}selected{% endif %}>
-              {{ m.building.name }}
-            </option>
+            <button type="submit" name="building" value="{{ m.pk }}" class="membership-option"{% if m.pk == membership.pk %} aria-current="true"{% endif %}>
+              {% icon "check" %}<span>{{ m.building.name }}</span>
+            </button>
             {% endfor %}
-          </select>
-          <button type="submit" class="button button-secondary">{% trans "Switch" %}</button>
+          </form>
+        </div>
+      </details>
+      {% endif %}
+
+      <nav class="sidebar-nav staff-nav" aria-label="{% trans 'Management' %}">
+        {% for section in nav_sections %}
+        <div class="nav-section">
+          {% if section.label %}<h2 class="nav-section-label" id="nav-section-{{ forloop.counter }}">{{ section.label }}</h2>{% endif %}
+          <ul class="nav-list"{% if section.label %} aria-labelledby="nav-section-{{ forloop.counter }}"{% endif %}>
+            {% for item in section.items %}
+            <li>
+              <a class="nav-link{% if item.is_active %} is-active{% endif %}"{% if item.is_active %} aria-current="page"{% endif %} href="{% url item.url_name %}">
+                {% icon item.icon %}<span>{{ item.label }}</span>
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </nav>
+
+      <div class="sidebar-footer">
+        {% if user.is_authenticated %}
+        <div class="account">
+          <span class="avatar" aria-hidden="true">{{ user.display_name|default:user.email|slice:":1"|upper }}</span>
+          <span class="account-text">
+            <span class="account-name">{{ user.display_name|default:user.email }}</span>
+            {% if user.display_name and user.email %}<span class="account-detail">{{ user.email }}</span>{% endif %}
+          </span>
+        </div>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}" class="logout-form" data-busy-on-submit>
+          {% csrf_token %}
+          <button type="submit" class="nav-link logout-button">{% icon "logout" %}<span>{% trans "Sign out" %}</span></button>
         </form>
       </div>
-    </details>
-    {% endif %}
-    <form method="post" action="{% url 'logout' %}" class="logout-form" data-busy-on-submit>
-      {% csrf_token %}
-      <button type="submit" class="button button-secondary button-compact">{% trans "Sign out" %}</button>
-    </form>
-  </header>
+    </aside>
+    <div class="scrim" data-nav-close hidden></div>
 
-  <nav class="staff-nav" role="navigation" aria-label="{% trans 'Management' %}">
-    {% for item in nav_items %}
-    <a class="{% if item.is_active %}is-active{% endif %}"
-       {% if item.is_active %}aria-current="page"{% endif %}
-       href="{% url item.url_name %}">{{ item.label }}</a>
-    {% endfor %}
-  </nav>
+    <div class="content">
+      <header class="topbar">
+        <button type="button" class="button button-plain button-compact topbar-menu" data-nav-toggle aria-controls="app-sidebar" aria-expanded="false">
+          {% icon "sidebar" %}<span class="sr-only">{% trans "Open menu" %}</span>
+        </button>
+        <a class="brand" href="{% url 'web:action-inbox' %}">
+          <img class="brand-mark" src="{% static 'web/brand/lamto-mark.png' %}" alt="" width="28" height="28">
+          <span class="brand-name">Làm Tổ</span>
+        </a>
+        {% if membership %}<span class="topbar-context">{{ membership.building.name }}</span>{% endif %}
+      </header>
 
-  {% if nav_top_active == "finance" and finance_nav_items %}
-  <nav class="sub-nav finance-nav" aria-label="{% trans 'Finance' %}">
-    {% for item in finance_nav_items %}
-    <a href="{% url item.url_name %}"{% if finance_active == item.active_key %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
-    {% endfor %}
-  </nav>
-  {% endif %}
-
-  {% if nav_top_active == "building" and building_nav_items %}
-  <nav class="sub-nav building-nav" aria-label="{% trans 'Building' %}">
-    {% for item in building_nav_items %}
-    <a href="{% url item.url_name %}"{% if building_active == item.active_key or nav_active == item.active_key or nav_active == "gate" and item.active_key == "gate" %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
-    {% endfor %}
-  </nav>
-  {% endif %}
-
-  {% if nav_active == "gate" and gate_nav_items %}
-  <nav class="sub-nav gate-nav" aria-label="{% trans 'Gate' %}">
-    {% for item in gate_nav_items %}
-    <a href="{% url item.url_name %}"{% if gate_active == item.active_key %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
-    {% endfor %}
-  </nav>
-  {% endif %}
-
-  {% if nav_top_active == "ops" and ops_nav_items %}
-  <nav class="sub-nav ops-nav" aria-label="{% trans 'Ops' %}">
-    {% for item in ops_nav_items %}
-    <a href="{% url item.url_name %}"{% if ops_active == item.active_key %} class="is-active" aria-current="page"{% endif %}>{{ item.label }}</a>
-    {% endfor %}
-  </nav>
-  {% endif %}
-
-  <main id="main" class="site-main" role="main">
-    {% if messages %}
-    <section class="flash-messages" role="status" tabindex="-1" aria-labelledby="messages-heading">
-      <h2 id="messages-heading" class="sr-only">{% trans "Messages" %}</h2>
-      <ul class="messages">
-      {% for message in messages %}
-      <li class="message message-{{ message.tags }}"><span class="status-icon" aria-hidden="true">●</span> <strong>{% if "error" in message.tags %}{% trans "Error:" %}{% elif "warning" in message.tags %}{% trans "Warning:" %}{% elif "info" in message.tags %}{% trans "Info:" %}{% else %}{% trans "Success:" %}{% endif %}</strong> {{ message }}</li>
-      {% endfor %}
-      </ul>
-    </section>
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
+      <main id="main" class="site-main" role="main">
+        {% if messages %}
+        <section class="flash-messages" role="status" tabindex="-1" aria-labelledby="messages-heading">
+          <h2 id="messages-heading" class="sr-only">{% trans "Messages" %}</h2>
+          <ul class="messages">
+          {% for message in messages %}
+          <li class="message message-{{ message.tags }}">{% if "error" in message.tags %}{% icon "error" %}{% elif "warning" in message.tags %}{% icon "warning" %}{% elif "info" in message.tags %}{% icon "info" %}{% else %}{% icon "check-circle" %}{% endif %}<span><strong class="sr-only">{% if "error" in message.tags %}{% trans "Error:" %}{% elif "warning" in message.tags %}{% trans "Warning:" %}{% elif "info" in message.tags %}{% trans "Info:" %}{% else %}{% trans "Success:" %}{% endif %}</strong> {{ message }}</span></li>
+          {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
 
   <script>
     window.lamtoI18n = {

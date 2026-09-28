@@ -5,7 +5,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from lamto.accounts.models import Building, ManagementMembership
-from lamto.web.staff import finance_nav_items_for, gate_nav_items_for, nav_items_for
+from lamto.web.staff import gate_nav_items_for, nav_sections_for
 
 
 @override_settings(LANGUAGE_CODE="en", ROOT_URLCONF="lamto.config.urls")
@@ -23,23 +23,52 @@ class ManagementShellTests(TestCase):
         self.client.force_login(user)
 
     def test_management_user_sees_staff_areas(self):
-        labels = [str(item["label"]) for item in nav_items_for(self.membership)]
-        for label in (
-            "Inbox",
-            "Cases",
-            "Finance",
-            "Building",
-            "Ops",
-        ):
-            self.assertIn(label, labels)
-        self.assertEqual(len(labels), 5)
+        sections = nav_sections_for(self.membership)
+        labels = [str(item["label"]) for section in sections for item in section["items"]]
+        # Every destination sits in the one sidebar; actions such as
+        # "New proposal" are page buttons, not places, so they are absent.
         self.assertEqual(
-            [str(item["label"]) for item in finance_nav_items_for(self.membership)],
-            ["Proposals", "New proposal", "Settlements", "Fund"],
+            labels,
+            [
+                "Inbox",
+                "Cases",
+                "Proposals",
+                "Settlements",
+                "Maintenance fund",
+                "Gate",
+                "Resident registrations",
+                "Announcements",
+                "Bills",
+                "Health",
+                "Exceptions",
+                "Metrics",
+                "Exports",
+            ],
         )
+        self.assertNotIn("New proposal", labels)
         self.assertEqual(
             [str(item["label"]) for item in gate_nav_items_for(self.membership)],
             ["Review", "Registrations", "Readers", "Activity"],
+        )
+
+    def test_sidebar_marks_the_current_destination(self):
+        self._login(self.user)
+        response = self.client.get(reverse("web:fund-home"))
+
+        html = response.content.decode()
+        self.assertIn(
+            f'class="nav-link is-active" aria-current="page" href="{reverse("web:fund-home")}"',
+            html,
+        )
+        self.assertEqual(html.count('aria-current="page"'), 1)
+
+    def test_proposal_list_offers_new_proposal_as_an_action(self):
+        self._login(self.user)
+        response = self.client.get(reverse("web:proposal-list"))
+
+        self.assertContains(
+            response,
+            f'<a class="button button-primary" href="{reverse("web:standalone-proposal-create")}">',
         )
 
     def test_base_template_uses_the_product_identity(self):

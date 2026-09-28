@@ -1,15 +1,18 @@
-{% load i18n humanize staff_extras %}
-<dl class="detail-list">
-  <div><dt>{% trans "Type" %}</dt><dd>{{ entry.get_entry_type_display }}</dd></div>
-  <div><dt>{% trans "Amount" %}</dt><dd>{{ entry.amount_vnd|intcomma }} VND</dd></div>
-  <div><dt>{% trans "Recorded" %}</dt><dd>{{ entry.recorded_at|staff_datetime }}</dd></div>
-</dl>
+{% load i18n humanize staff_extras icons %}
+<div class="card">
+  <dl class="detail-list">
+    <div><dt>{% trans "Type" %}</dt><dd>{{ entry.get_entry_type_display }}</dd></div>
+    <div><dt>{% trans "Amount" %}</dt><dd><strong>{{ entry.amount_vnd|intcomma }} VND</strong></dd></div>
+    <div><dt>{% trans "Recorded" %}</dt><dd>{{ entry.recorded_at|staff_datetime }}</dd></div>
+  </dl>
+</div>
 {% if already_verified %}
-<p class="hint">{% trans "This source is already verified." %}</p>
+<p class="state-line tone-verified">{% icon "check-circle" %}<span>{% trans "This source is already verified." %}</span></p>
 {% else %}
-<div class="workflow-section workflow-primary">
+<div class="action-card is-primary">
+  <p class="eyebrow">{% trans "Next step" %}</p>
   <h2>{% trans "Verify source" %}</h2>
-  <p class="hint">{% trans "Verification is the sign-off that lets this source count in the fund balance. Check the frozen values above against the evidence before confirming." %}</p>
+  <p class="consequence-note">{% trans "Verification is the sign-off that lets this source count in the fund balance. Check the frozen values above against the evidence before confirming." %}</p>
   <form method="post" class="stack-form" data-busy-on-submit>
     {% csrf_token %}
     <button type="submit" class="button button-primary">{% trans "Verify source" %}</button>

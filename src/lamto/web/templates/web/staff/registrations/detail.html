@@ -1,13 +1,18 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n staff_extras %}
+{% load i18n staff_extras icons %}
 {% block title %}{{ registration.full_name }} · LamTo{% endblock %}
 {% block content %}
-<section class="panel">
-  <p><a class="back-link" href="{% url 'web:staff-registration-list' %}">{% trans "Back to registrations" %}</a></p>
-  <h1>{{ registration.full_name }}</h1>
-  <div class="record-layout">
-    <div class="record-summary">
-      <dl class="detail-list detail-list-wide">
+<header class="page-header">
+  <div class="page-heading">
+    <a class="back-link" href="{% url 'web:staff-registration-list' %}">{% icon "chevron-left" %}<span>{% trans "Back to registrations" %}</span></a>
+    <h1>{{ registration.full_name }} <span class="status {% if registration.status == 'PENDING' %}status-warning{% else %}status-neutral{% endif %}"><span class="status-icon" aria-hidden="true">●</span> {{ registration.get_status_display }}</span></h1>
+    <p class="page-subtitle">{{ registration.building.name }} · {% blocktrans with unit=registration.unit.label %}Unit {{ unit }}{% endblocktrans %}</p>
+  </div>
+</header>
+<div class="record-layout">
+  <div class="record-summary">
+    <div class="card">
+      <dl class="detail-list">
         <div><dt>{% trans "Phone" %}</dt><dd>{{ registration.phone }}</dd></div>
         {% if registration.email %}<div><dt>{% trans "Email" %}</dt><dd>{{ registration.email }}</dd></div>{% endif %}
         <div><dt>{% trans "Building" %}</dt><dd>{{ registration.building.name }}</dd></div>
@@ -16,25 +21,29 @@
         <div><dt>{% trans "Status" %}</dt><dd>{{ registration.get_status_display }}</dd></div>
       </dl>
     </div>
-    <div class="record-action">
-      {% if registration.status == "PENDING" %}
-      <div class="workflow-section workflow-primary">
-        <h2>{% trans "Decide" %}</h2>
-        <form method="post" action="{% url 'web:staff-registration-approve' registration.pk %}" data-busy-on-submit>
-          {% csrf_token %}
-          <button type="submit" class="button button-primary">{% trans "Approve" %}</button>
-        </form>
-        <form method="post" action="{% url 'web:staff-registration-reject' registration.pk %}" class="stack-form" data-busy-on-submit>
-          {% csrf_token %}
-          <div class="field">
-            <label for="rejection-reason">{% trans "Rejection reason" %}</label>
-            <textarea id="rejection-reason" name="reason" class="input" required></textarea>
-          </div>
-          <button type="submit" class="button button-secondary">{% trans "Reject" %}</button>
-        </form>
-      </div>
-      {% endif %}
-    </div>
   </div>
-</section>
+  <div class="record-action">
+    {% if registration.status == "PENDING" %}
+    <div class="action-card is-primary">
+      <p class="eyebrow">{% trans "Next step" %}</p>
+      <h2>{% trans "Decide" %}</h2>
+      <form method="post" action="{% url 'web:staff-registration-approve' registration.pk %}" data-busy-on-submit>
+        {% csrf_token %}
+        <button type="submit" class="button button-primary button-block">{% trans "Approve" %}</button>
+      </form>
+    </div>
+    <details class="action-card">
+      <summary>{% trans "Reject" %}</summary>
+      <form method="post" action="{% url 'web:staff-registration-reject' registration.pk %}" class="stack-form" data-busy-on-submit>
+        {% csrf_token %}
+        <div class="field">
+          <label for="rejection-reason">{% trans "Rejection reason" %}</label>
+          <textarea id="rejection-reason" name="reason" class="input" required></textarea>
+        </div>
+        <button type="submit" class="button button-destructive">{% trans "Reject" %}</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
