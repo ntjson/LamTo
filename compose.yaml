@@ -15,29 +15,25 @@ services:
       - "postgres-data:/var/lib/postgresql/data"
       - "./ops/postgres-init.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro"
   minio:
-    image: localstack/localstack:3.8.0
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    command: server /data --console-address :9001
     environment:
-      SERVICES: s3
-      AWS_ACCESS_KEY_ID: lamto-local
-      AWS_SECRET_ACCESS_KEY: lamto-local-secret
-      AWS_DEFAULT_REGION: us-east-1
-    ports: ["127.0.0.1:4566:4566"]
-    volumes: ["localstack-data:/var/lib/localstack"]
+      MINIO_ROOT_USER: lamto-local
+      MINIO_ROOT_PASSWORD: lamto-local-secret
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes: ["minio-data:/data"]
   minio-init:
-    image: amazon/aws-cli:2.37.1
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on: [minio]
-    environment:
-      AWS_ACCESS_KEY_ID: lamto-local
-      AWS_SECRET_ACCESS_KEY: lamto-local-secret
-      AWS_DEFAULT_REGION: us-east-1
     entrypoint: >-
-      /bin/sh -c "until aws --endpoint-url http://minio:4566 s3api head-bucket --bucket lamto-documents 2>/dev/null || aws --endpoint-url http://minio:4566 s3api create-bucket --bucket lamto-documents; do sleep 1; done;
-      aws --endpoint-url http://minio:4566 s3api put-bucket-versioning --bucket lamto-documents --versioning-configuration Status=Enabled"
+      /bin/sh -c "until mc alias set local http://minio:9000 lamto-local lamto-local-secret; do sleep 1; done;
+      mc mb --ignore-existing local/lamto-documents;
+      mc version enable local/lamto-documents"
   clamav:
     image: clamav/clamav:stable
     ports: ["127.0.0.1:3310:3310"]
     volumes: ["clamav-data:/var/lib/clamav"]
 volumes:
   postgres-data:
-  localstack-data:
+  minio-data:
   clamav-data:

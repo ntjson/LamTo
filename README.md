@@ -135,8 +135,7 @@ POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner \
 | `docs/api/openapi-v1.yaml` | Resident API contract |
 | `tests/` | Cross-cutting and end-to-end tests |
 
-More detail: [product model](PRODUCT.md), [design system](DESIGN.md),
-[pilot runbook](ops/pilot-runbook.md), and
+More detail: [pilot runbook](ops/pilot-runbook.md) and
 [OpenAPI contract](docs/api/openapi-v1.yaml).
 
 ## Status
