@@ -1487,6 +1487,25 @@ a.task-row:focus-visible {
   font-weight: 600;
 }
 
+.segmented + .section {
+  margin-top: 0;
+}
+
+/* On a phone the control spans the column with equal-weight segments, so
+   every section stays on one line instead of one wrapping on its own. */
+@media (max-width: 640px) {
+  .segmented {
+    display: flex;
+  }
+
+  .segmented a {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 var(--space-2);
+    white-space: nowrap;
+  }
+}
+
 /* --- Pagination ---------------------------------------------------------- */
 
 .pagination {
@@ -1637,7 +1656,6 @@ form[aria-busy="true"] .button {
   margin: 0;
 }
 
-.stack-form > p > label,
 .field > label,
 .field > legend,
 .form-label {
@@ -1646,30 +1664,9 @@ form[aria-busy="true"] .button {
   color: var(--label);
 }
 
-.stack-form > p > .helptext,
-.stack-form > p > .hint,
 .field > .hint {
   font-size: 0.8125rem;
   color: var(--label-secondary);
-}
-
-/* Consent rows: the box sits beside its label. */
-.stack-form > p:has(> input[type="checkbox"]) {
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  column-gap: var(--space-3);
-}
-
-.stack-form > p:has(> input[type="checkbox"]) > input[type="checkbox"] {
-  grid-column: 1;
-  grid-row: 1;
-  margin-top: 2px;
-}
-
-.stack-form > p:has(> input[type="checkbox"]) > label {
-  grid-column: 2;
-  grid-row: 1;
-  font-weight: 500;
 }
 
 .stack-form > .button,
@@ -1684,8 +1681,8 @@ form[aria-busy="true"] .button {
   gap: var(--space-2);
 }
 
-.input,
-input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+:where(.input),
+input:where(:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"])),
 select,
 textarea {
   width: 100%;
@@ -1724,13 +1721,13 @@ select[multiple] {
   background-image: none;
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):hover,
+input:where(:not([type="checkbox"], [type="radio"], [type="file"])):hover,
 select:hover,
 textarea:hover {
   border-color: color-mix(in srgb, var(--control-border) 50%, var(--label-secondary));
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+input:where(:not([type="checkbox"], [type="radio"], [type="file"])):focus,
 select:focus,
 textarea:focus {
   outline: none;
@@ -1760,6 +1757,10 @@ input[type="file"] {
   font: inherit;
   font-size: 0.875rem;
   cursor: pointer;
+}
+
+input[type="file"][aria-invalid="true"] {
+  border-color: var(--red);
 }
 
 input[type="file"]::file-selector-button {
@@ -1795,7 +1796,7 @@ input[type="date"] {
 }
 
 .input-with-button .input,
-.input-with-button input:not([type="checkbox"]):not([type="radio"]) {
+.input-with-button input:where(:not([type="checkbox"], [type="radio"])) {
   flex: 1 1 12rem;
   width: auto;
 }
@@ -1884,24 +1885,37 @@ input[type="date"] {
   cursor: pointer;
 }
 
-.field-error,
-.form-errors,
-.errorlist {
+/* What stopped the whole form, at its top. */
+.form-errors {
   margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
   background: var(--red-soft);
   color: var(--red);
   font-size: 0.875rem;
   font-weight: 500;
 }
 
-.errorlist {
+.form-errors:focus {
+  outline: none;
+}
+
+.form-errors .errorlist {
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 
-.errorlist + .errorlist {
-  margin-top: var(--space-2);
+.form-errors .errorlist li + li {
+  margin-top: var(--space-1);
+}
+
+/* A field's own error sits right under it; the red border marks the field. */
+.field-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 /* --- Status pills -------------------------------------------------------- */

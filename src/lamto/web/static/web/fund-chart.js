@@ -69,9 +69,13 @@
         order: 1,
       },
       {
+        // Outflows are drawn by size beside inflows, so a small outflow does
+        // not open an empty band below zero; colour and legend carry the
+        // direction, and the tooltip keeps the signed amount.
         type: "bar",
         label: canvas.dataset.labelOutflows || "Outflows",
-        data: points.map(function (p) { return p.outflows_vnd; }),
+        data: points.map(function (p) { return Math.abs(p.outflows_vnd); }),
+        signed: points.map(function (p) { return p.outflows_vnd; }),
         backgroundColor: withAlpha(secondary, 0.4),
         borderRadius: 4,
         maxBarThickness: 18,
@@ -136,7 +140,8 @@
           bodyFont: { family: font.family, size: 12 },
           callbacks: {
             label: function (ctx) {
-              return ctx.dataset.label + ": " + vnd(ctx.parsed.y) + " VND";
+              var value = ctx.dataset.signed ? ctx.dataset.signed[ctx.dataIndex] : ctx.parsed.y;
+              return ctx.dataset.label + ": " + vnd(value) + " VND";
             },
           },
         },

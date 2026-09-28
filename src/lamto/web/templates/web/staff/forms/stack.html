@@ -1,0 +1,11 @@
+{% load staff_extras %}{% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in hidden_fields %}{{ field }}{% if field.errors %}<div class="form-errors" role="alert">{{ field.errors }}</div>{% endif %}{% endfor %}
+{% for field, errors in fields %}
+<div class="field">
+  {% if field.use_fieldset %}<fieldset class="choice-group">{% if field.label %}{{ field.legend_tag }}{% endif %}{% elif field.label %}{{ field.label_tag }}{% endif %}
+  {{ field|describe_errors }}
+  {% if field.help_text %}<p class="hint" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</p>{% endif %}
+  {% if errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ errors|join:" " }}</p>{% endif %}
+  {% if field.use_fieldset %}</fieldset>{% endif %}
+</div>
+{% endfor %}

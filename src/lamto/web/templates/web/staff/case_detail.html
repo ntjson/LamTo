@@ -152,7 +152,7 @@
           <p class="hint">{% trans "Possibly missing:" %}</p>
           <ul class="hint">{% for item in suggestion.missing_information %}<li>{{ item }}</li>{% endfor %}</ul>
           {% endif %}
-          <p class="consequence-note">{% trans "The form on the right is prefilled from this suggestion. Select a location, change any field if needed, then confirm." %}</p>
+          <p class="consequence-note">{% trans "The Confirm triage form is prefilled from this suggestion. Select a location, change any field if needed, then confirm." %}</p>
           <details class="technical-proof">
             <summary>{% trans "Technical proof" %}</summary>
             <dl class="detail-list">
@@ -189,7 +189,7 @@
       <p>{% blocktrans with ts=case.started_at|staff_datetime %}Work started {{ ts }}.{% endblocktrans %}</p>
       <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit aria-label="{% trans 'Publish progress' %}">
         {% csrf_token %}
-        {{ work_form.as_p }}
+        {{ work_form }}
         <div class="form-actions">
           <button name="action" value="publish_progress" type="submit" class="button button-primary">{% trans "Publish progress" %}</button>
           <button name="action" value="complete_work" type="submit" class="button button-secondary">{% trans "Complete work" %}</button>
@@ -215,19 +215,19 @@
       <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Confirm triage' %}">
         {% csrf_token %}
         <input type="hidden" name="action" value="confirm_triage">
-        {{ form.as_p }}
+        {{ form }}
         <button type="submit" class="button button-primary button-block">{% trans "Confirm triage" %}</button>
       </form>
     </div>
     {% if not terminal %}
     <details class="action-card"{% if info_form.errors %} open{% endif %}>
       <summary>{% trans "Request information" %}</summary>
-      <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Request information' %}">{% csrf_token %}<input type="hidden" name="action" value="request_info">{{ info_form.as_p }}<button type="submit" class="button button-secondary">{% trans "Request information" %}</button></form>
+      <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Request information' %}">{% csrf_token %}<input type="hidden" name="action" value="request_info">{{ info_form }}<button type="submit" class="button button-secondary">{% trans "Request information" %}</button></form>
     </details>
     <details class="action-card"{% if decline_form.errors %} open{% endif %}>
       <summary>{% trans "Decline request" %}</summary>
       <p class="consequence-note">{% trans "Declining sends this reason to the resident and closes the report. This cannot be undone." %}</p>
-      <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Decline request' %}">{% csrf_token %}<input type="hidden" name="action" value="decline">{{ decline_form.as_p }}<button type="submit" class="button button-destructive">{% trans "Decline request" %}</button></form>
+      <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Decline request' %}">{% csrf_token %}<input type="hidden" name="action" value="decline">{{ decline_form }}<button type="submit" class="button button-destructive">{% trans "Decline request" %}</button></form>
     </details>
     {% endif %}
     {% endif %}

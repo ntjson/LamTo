@@ -15,7 +15,7 @@
     <div class="field">
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field|describe_errors }}
-      {% if field.errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ field.errors|striptags }}</p>{% endif %}
+      {% if field.errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ field.errors|join:" " }}</p>{% endif %}
     </div>
     {% endfor %}
     <button type="submit" class="button button-primary">{% trans "Sign in" %}</button>

@@ -89,7 +89,7 @@
       <h2>{% trans "Record settlement" %}</h2>
       <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
         {% csrf_token %}
-        {{ settle_form.as_p }}
+        {{ settle_form }}
         <p><button type="submit" class="button button-primary button-block">{% trans "Record settlement" %}</button></p>
       </form>
     </div>

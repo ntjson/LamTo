@@ -51,11 +51,17 @@ def staff_category(value):
 
 @register.filter
 def describe_errors(bound_field):
-    """Widget with aria-describedby/aria-invalid wired to its error block."""
+    """Widget with aria-describedby/aria-invalid wired to its error block.
+
+    Help text stays described too, so the error does not replace the hint.
+    """
     if not getattr(bound_field, "errors", None):
         return bound_field
+    described_by = [f"{bound_field.auto_id}-error"]
+    if bound_field.help_text:
+        described_by.insert(0, f"{bound_field.auto_id}_helptext")
     return bound_field.as_widget(attrs={
-        "aria-describedby": f"{bound_field.auto_id}-error",
+        "aria-describedby": " ".join(described_by),
         "aria-invalid": "true",
     })
 

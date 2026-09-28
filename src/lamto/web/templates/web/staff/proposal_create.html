@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n humanize l10n icons %}
+{% load i18n humanize l10n icons staff_extras %}
 {% block title %}{% trans "Create proposal" %} · LamTo{% endblock %}
 {% block content %}
 <header class="page-header">
@@ -21,17 +21,16 @@
     <form method="post" class="card card-body stack-form" enctype="multipart/form-data" data-busy-on-submit>
       {% csrf_token %}
       <input type="hidden" name="action" value="prepare">
-      {{ create_form.non_field_errors }}
+      {% if create_form.non_field_errors %}<div class="form-errors" role="alert">{{ create_form.non_field_errors }}</div>{% endif %}
       {% for field in create_form %}
         {% if field.is_hidden %}
-          {{ field }}
+          {{ field }}{% if field.errors %}<div class="form-errors" role="alert">{{ field.errors }}</div>{% endif %}
         {% else %}
-        <p>
-          {{ field.errors }}
+        <div class="field">
           {{ field.label_tag }}
           {% if field.name == "amount_vnd" and case %}
           <span class="input-with-button">
-            {{ field }}
+            {{ field|describe_errors }}
             <button type="button" class="button button-secondary" data-price-compare
               data-compare-url="{% url 'web:proposal-price-compare' pk=case.pk %}"
               data-has-reference-price="{% if reference_price %}true{% else %}false{% endif %}"
@@ -44,12 +43,13 @@
           </span>
           <span class="price-comparison-result" aria-live="polite" data-price-comparison-result></span>
           {% else %}
-          {{ field }}
+          {{ field|describe_errors }}
           {% endif %}
           {% if field.help_text %}
-          <span class="hint">{{ field.help_text|safe }}</span>
+          <span class="hint" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</span>
           {% endif %}
-        </p>
+          {% if field.errors %}<p class="field-error" id="{{ field.auto_id }}-error">{{ field.errors|join:" " }}</p>{% endif %}
+        </div>
         {% endif %}
       {% endfor %}
       <p class="hint">{% trans "Upload the quotation (PDF). Amounts are integer VND." %}</p>

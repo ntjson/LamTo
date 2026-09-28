@@ -91,11 +91,6 @@
       }
     );
   });
-  // Announce form validation errors to assistive technology.
-  document.querySelectorAll("ul.errorlist").forEach(function (el) {
-    el.setAttribute("role", "alert");
-  });
-
   // Copy feedback swaps the button's own text; the live region makes the
   // swap announced.
   document.querySelectorAll("[data-copy]").forEach(function (el) {
@@ -207,9 +202,15 @@
   });
 
   // Every mutation is a full page navigation; nothing announces the outcome
-  // unless focus lands on the flash region.
+  // unless focus lands on it. A form sent back with errors starts at the
+  // first thing to fix: a form-level error, or the first invalid field,
+  // which is read with its label and error (aria-describedby).
+  var problem = document.querySelector('main .form-errors, main [aria-invalid="true"]');
   var flash = document.querySelector(".flash-messages");
-  if (flash) {
+  if (problem) {
+    if (problem.classList.contains("form-errors")) problem.tabIndex = -1;
+    problem.focus();
+  } else if (flash) {
     flash.focus();
   }
 })();

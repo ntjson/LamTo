@@ -15,7 +15,12 @@ from lamto.web.forms.fields import WholeVndField
 
 
 class WorkspaceForm(forms.Form):
-    """Labels sit on their own line above the field, so they carry no colon."""
+    """Labels sit on their own line above the field, so they carry no colon.
+
+    Rendered with ``{{ form }}``: each field's error sits directly under it.
+    """
+
+    template_name = "web/staff/forms/stack.html"
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("label_suffix", "")

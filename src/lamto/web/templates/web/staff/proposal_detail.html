@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n humanize icons %}
+{% load i18n humanize icons staff_extras %}
 {% block title %}{% if list_mode %}{% trans "Proposals" %}{% else %}{% blocktrans with id=proposal.pk %}Proposal #{{ id }}{% endblocktrans %}{% endif %} · LamTo{% endblock %}
 {% block content %}
 {% if list_mode %}
@@ -94,7 +94,7 @@
       <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Publish settled expense" %}</h2>
       <p class="consequence-note">{% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
-      <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form.as_p }}<button type="submit" class="button button-primary button-block">{% trans "Publish to resident ledger" %}</button></form>
+      <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form }}<button type="submit" class="button button-primary button-block">{% trans "Publish to resident ledger" %}</button></form>
     </div>
     {% elif action_panel == "decide" %}
     <div class="action-card is-primary">
@@ -104,21 +104,21 @@
       <form method="post" class="stack-form" data-busy-on-submit>
         {% csrf_token %}
         <input type="hidden" name="action" value="decide">
-        {{ decision_form.non_field_errors }}
-        <fieldset class="field choice-group">
+        {% if decision_form.non_field_errors %}<div class="form-errors" role="alert">{{ decision_form.non_field_errors }}</div>{% endif %}
+        <fieldset class="field choice-group"{% if decision_form.decision.errors %} aria-describedby="{{ decision_form.decision.auto_id }}-error"{% endif %}>
           <legend>{{ decision_form.decision.label }}</legend>
-          {{ decision_form.decision.errors }}
           <div class="choice-list">
             {% for radio in decision_form.decision %}
             <label class="choice">{{ radio.tag }} <span>{{ radio.choice_label }}</span></label>
             {% endfor %}
           </div>
+          {% if decision_form.decision.errors %}<p class="field-error" id="{{ decision_form.decision.auto_id }}-error">{{ decision_form.decision.errors|join:" " }}</p>{% endif %}
         </fieldset>
         <div class="field">
           <label for="{{ decision_form.note.id_for_label }}">{{ decision_form.note.label }}</label>
-          {{ decision_form.note.errors }}
-          {{ decision_form.note }}
+          {{ decision_form.note|describe_errors }}
           <p class="hint">{% trans "Required when not proceeding; it is recorded with the decision." %}</p>
+          {% if decision_form.note.errors %}<p class="field-error" id="{{ decision_form.note.auto_id }}-error">{{ decision_form.note.errors|join:" " }}</p>{% endif %}
         </div>
         <button type="submit" class="button button-primary button-block">{% trans "Record decision" %}</button>
       </form>
@@ -141,7 +141,7 @@
     <div class="action-card is-primary">
       <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Publish work progress" %}</h2>
-      <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form.as_p }}<div class="form-actions"><button name="action" value="progress" class="button button-primary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-secondary">{% trans "Complete work" %}</button></div></form>
+      <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form }}<div class="form-actions"><button name="action" value="progress" class="button button-primary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-secondary">{% trans "Complete work" %}</button></div></form>
     </div>
     {% elif action_panel == "failed" %}
     <div class="action-card">
