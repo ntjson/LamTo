@@ -50,7 +50,7 @@ void main() {
     expect(find.text('Quỹ bảo trì'), findsOneWidget);
     expect(find.textContaining('₫'), findsWidgets);
 
-    // Report tab: text + seeded location, submit without photos.
+    // Report, the primary action: text + seeded location, no photos.
     await tester.tap(find.text('Phản ánh').last);
     await tester.pumpAndSettle();
     final reportText =
@@ -58,12 +58,24 @@ void main() {
     await tester.enterText(find.byType(TextField).first, reportText);
     await tester.tap(find.text('Chọn vị trí'));
     await tester.pumpAndSettle(const Duration(seconds: 3));
-    // Pick the first leaf row shown by the seeded location tree.
+    // The seeded tree is floors, then places: open the first floor, then pick
+    // its first place (the row above the places, "Chọn tại đây", would pick
+    // the whole floor).
     await tester.tap(find.byType(ListTile).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Gửi phản ánh'));
+    await tester.tap(find.byType(ListTile).at(1));
+    await tester.pumpAndSettle();
+    // The screen title is also "Gửi phản ánh"; send with the button.
+    final send = find.widgetWithText(FilledButton, 'Gửi phản ánh');
+    await tester.ensureVisible(send);
+    await tester.pumpAndSettle();
+    await tester.tap(send);
     await tester.pumpAndSettle(const Duration(seconds: 5));
     expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
+
+    // The form sits on top of the tabs; close it to get back to them.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
 
     // My Issues: the new report is listed.
     await tester.tap(find.text('Việc của tôi').last);
