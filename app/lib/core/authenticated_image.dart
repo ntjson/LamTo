@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
+import '../theme.dart';
 import 'providers.dart';
 
 /// Fetches a signed relative URL through the shared Dio (knox token attached)
@@ -107,6 +108,13 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
                 ? null
                 : (width * MediaQuery.devicePixelRatioOf(context)).round(),
             gaplessPlayback: true,
+            // Bytes that arrive but will not decode still read as a photo
+            // slot, not as empty space.
+            errorBuilder: (context, _, _) => _Tile(
+              width: width,
+              height: widget.height,
+              child: const Icon(Icons.broken_image_outlined),
+            ),
           );
         }
         if (snapshot.hasError) {
@@ -116,29 +124,52 @@ class _AuthenticatedImageState extends ConsumerState<AuthenticatedImage> {
             label: _stateLabel(
               l10n?.photoLoadFailed ?? 'The photo could not be loaded.',
             ),
-            child: SizedBox(
+            child: _Tile(
               width: widget.width,
               height: widget.height,
-              child: Center(
-                child: IconButton(
-                  key: const Key('authenticated_image_retry'),
-                  tooltip: retryLabel,
-                  icon: const Icon(Icons.refresh),
-                  onPressed: _retry,
-                ),
+              child: IconButton(
+                key: const Key('authenticated_image_retry'),
+                tooltip: retryLabel,
+                icon: const Icon(Icons.refresh),
+                onPressed: _retry,
               ),
             ),
           );
         }
         return Semantics(
           label: _stateLabel(l10n?.photoLoading ?? 'Loading photo…'),
-          child: SizedBox(
+          child: _Tile(
             width: widget.width,
             height: widget.height,
-            child: const Center(child: CircularProgressIndicator.adaptive()),
+            child: const CircularProgressIndicator.adaptive(),
           ),
         );
       },
     );
   }
+}
+
+/// The photo's slot while it loads or fails: a quiet fill at the photo's
+/// size, so the layout never jumps and an empty photo never looks like space.
+class _Tile extends StatelessWidget {
+  const _Tile({required this.child, this.width, this.height});
+
+  final double? width;
+  final double? height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: LamToPalette.of(context).fill,
+    child: SizedBox(
+      width: width,
+      height: height,
+      child: Center(
+        child: IconTheme.merge(
+          data: IconThemeData(color: LamToPalette.of(context).muted),
+          child: child,
+        ),
+      ),
+    ),
+  );
 }

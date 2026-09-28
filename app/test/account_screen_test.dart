@@ -369,6 +369,8 @@ void main() {
     final auth = await _pumpForSignOut(tester);
 
     await tester.ensureVisible(find.text('Đăng xuất'));
+    // Lay out the scrolled page before tapping at its new position.
+    await tester.pump();
     await tester.tap(find.text('Đăng xuất'));
     await tester.pumpAndSettle();
 
@@ -389,6 +391,8 @@ void main() {
     final auth = await _pumpForSignOut(tester);
 
     await tester.ensureVisible(find.text('Đăng xuất'));
+    // Lay out the scrolled page before tapping at its new position.
+    await tester.pump();
     await tester.tap(find.text('Đăng xuất'));
     await tester.pumpAndSettle();
     // The dialog's confirm action names the action, never "OK".
@@ -409,6 +413,8 @@ void main() {
       final auth = await _pumpForSignOut(tester);
 
       await tester.ensureVisible(find.text('Đăng xuất mọi thiết bị'));
+      // Lay out the scrolled page before tapping at its new position.
+      await tester.pump();
       await tester.tap(find.text('Đăng xuất mọi thiết bị'));
       await tester.pumpAndSettle();
 

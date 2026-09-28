@@ -11,6 +11,7 @@ import '../../core/format.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import '../ledger/evidence_explorer_tile.dart';
 import '../ledger/evidence_labels.dart';
 import 'proposals_list_screen.dart';
@@ -60,10 +61,11 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     Proposal proposal,
   ) {
     final settlement = proposal.settlement;
-    final titleStyle = Theme.of(context).textTheme.titleMedium;
+    final theme = Theme.of(context);
+    final palette = LamToPalette.of(context);
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
       children: [
         Align(
           alignment: Alignment.centerLeft,
@@ -72,55 +74,127 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
             label: proposalStatusLabel(proposal.status, l10n),
           ),
         ),
-        _Field(l10n.proposalProblem, proposal.purpose),
-        _Field(l10n.proposalAction, proposal.proposedAction),
-        _Field(l10n.proposalCost, formatVnd(proposal.amountVnd), amount: true),
-        if (proposal.comparison != null)
-          _PriceComparisonField(comparison: proposal.comparison!),
-        _Field(l10n.proposalContractor, proposal.contractorName),
-        _Field(l10n.proposalSchedule, proposal.expectedSchedule),
-        const Divider(height: 32),
-        Text(l10n.proposalVersions, style: titleStyle),
-        for (final version in proposal.versions) ...[
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.proposalVersion('${version.number}')),
-            subtitle: Text(_date(version.publishedAt)),
-            trailing: EvidenceBadge(level: version.evidenceLevel),
-          ),
-          for (final document in version.supportingDocuments)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
-              child: Row(
+        const SizedBox(height: 16),
+        InsetGroup(
+          children: [
+            InfoRow(
+              label: l10n.proposalCost,
+              value: formatVnd(proposal.amountVnd),
+              valueStyle: heroAmountStyle(context)?.copyWith(fontSize: 26),
+            ),
+            if (proposal.comparison != null)
+              _PriceComparisonField(comparison: proposal.comparison!),
+            InfoRow(label: l10n.proposalProblem, value: proposal.purpose),
+            InfoRow(label: l10n.proposalAction, value: proposal.proposedAction),
+            InfoRow(
+              label: l10n.proposalContractor,
+              value: proposal.contractorName,
+            ),
+            InfoRow(
+              label: l10n.proposalSchedule,
+              value: proposal.expectedSchedule,
+            ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        SectionHeader(l10n.proposalVersions),
+        InsetGroup(
+          children: [
+            for (final version in proposal.versions)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.proposalVersion('${version.number}'),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      _date(version.publishedAt),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    EvidenceBadge(level: version.evidenceLevel),
+                    for (final document in version.supportingDocuments)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.description_outlined,
+                              size: 20,
+                              color: palette.muted,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(document.filename)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        if (proposal.progress.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          SectionHeader(l10n.progressTitle),
+          InsetGroup(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.description_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(document.filename)),
+                  for (final (index, update) in proposal.progress.indexed)
+                    TimelineStep(
+                      icon: Icons.build_outlined,
+                      isLast: index == proposal.progress.length - 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            update.result,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${update.cause} · ${_date(update.createdAt)}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
-            ),
-        ],
-        if (proposal.progress.isNotEmpty) ...[
-          const Divider(height: 32),
-          Text(l10n.progressTitle, style: titleStyle),
-          for (final update in proposal.progress)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.build_outlined),
-              title: Text(update.result),
-              subtitle: Text('${update.cause} · ${_date(update.createdAt)}'),
-            ),
+            ],
+          ),
         ],
         if (settlement != null) ...[
-          const Divider(height: 32),
-          Text(l10n.proposalSettlement, style: titleStyle),
-          const SizedBox(height: 8),
-          Text(l10n.proposalSettled),
+          const SizedBox(height: 28),
+          SectionHeader(l10n.proposalSettlement),
+          InsetGroup(
+            children: [
+              ListTile(
+                minTileHeight: 56,
+                leading: const IconWell(
+                  Icons.check_circle_outline,
+                  tone: StatusTone.success,
+                ),
+                title: Text(l10n.proposalSettled),
+              ),
+            ],
+          ),
         ],
         if (proposal.explorerUrl != null &&
             proposal.explorerUrl!.isNotEmpty) ...[
-          const Divider(height: 32),
-          EvidenceExplorerTile(url: proposal.explorerUrl!),
+          const SizedBox(height: 16),
+          InsetGroup(
+            children: [EvidenceExplorerTile(url: proposal.explorerUrl!)],
+          ),
         ],
         // Inline where the rate CTA sits (visible on iOS, unlike a SnackBar).
         if (_rated) ...[
@@ -154,24 +228,6 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
 
 String _date(DateTime value) =>
     DateFormat('dd/MM/yyyy').format(value.toLocal());
-
-class _Field extends StatelessWidget {
-  const _Field(this.label, this.value, {this.amount = false});
-
-  final String label;
-  final Object? value;
-  final bool amount;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    title: Text(label),
-    subtitle: Text(
-      value?.toString() ?? '',
-      style: amount ? listAmountStyle(context) : null,
-    ),
-  );
-}
 
 class _PriceComparisonField extends StatelessWidget {
   const _PriceComparisonField({required this.comparison});
@@ -210,46 +266,51 @@ class _PriceComparisonField extends StatelessWidget {
     final mutedColor = Theme.of(context).colorScheme.onSurfaceVariant;
     final textTheme = Theme.of(context).textTheme;
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(l10n.proposalPriceComparison),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 2),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (arrow.isNotEmpty) ...[
-                Text(
-                  arrow,
-                  style: TextStyle(
-                    color: arrowColor,
-                    fontWeight: FontWeight.bold,
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.proposalPriceComparison, style: textTheme.bodySmall),
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (arrow.isNotEmpty) ...[
+                  Text(
+                    arrow,
+                    style: TextStyle(
+                      color: arrowColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
+                  child: Text(
+                    comparisonText,
+                    style: textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 4),
               ],
-              Expanded(
-                child: Text(
-                  comparisonText,
-                ),
+            ),
+            if (comparison.reasoning.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                comparison.reasoning,
+                style: textTheme.bodySmall?.copyWith(color: mutedColor),
               ),
             ],
-          ),
-          if (comparison.reasoning.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              comparison.reasoning,
+              l10n.proposalPriceComparisonCaveat,
               style: textTheme.bodySmall?.copyWith(color: mutedColor),
             ),
           ],
-          const SizedBox(height: 4),
-          Text(
-            l10n.proposalPriceComparisonCaveat,
-            style: textTheme.bodySmall?.copyWith(color: mutedColor),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -281,10 +342,10 @@ class _RateProposalSheetState extends ConsumerState<_RateProposalSheet> {
     final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 16 + MediaQuery.viewInsetsOf(context).bottom,
+        left: 20,
+        right: 20,
+        top: 4,
+        bottom: 24 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -292,19 +353,21 @@ class _RateProposalSheetState extends ConsumerState<_RateProposalSheet> {
         children: [
           Text(
             l10n.rateWorkTitle,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           SegmentedButton<bool>(
             segments: [
               ButtonSegment(value: true, label: Text(l10n.rateSatisfied)),
               ButtonSegment(value: false, label: Text(l10n.rateNotSatisfied)),
             ],
             selected: {_satisfied},
+            showSelectedIcon: false,
             onSelectionChanged: _busy
                 ? null
                 : (value) => setState(() => _satisfied = value.first),
           ),
+          const SizedBox(height: 16),
           TextField(
             controller: _comment,
             maxLength: 500,

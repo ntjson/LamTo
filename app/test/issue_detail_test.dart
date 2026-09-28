@@ -325,6 +325,8 @@ void main() {
   testWidgets('rates eligible case as satisfied and refreshes', (tester) async {
     final repo = _FakeRepo(_detail(canRate: true));
     await _pump(tester, repo);
+    await tester.ensureVisible(find.text('Đánh giá công việc'));
+    await tester.pump();
     await tester.tap(find.text('Đánh giá công việc'));
     await tester.pumpAndSettle();
 
@@ -341,6 +343,8 @@ void main() {
   testWidgets('rates eligible case as not satisfied', (tester) async {
     final repo = _FakeRepo(_detail(canRate: true));
     await _pump(tester, repo);
+    await tester.ensureVisible(find.text('Đánh giá công việc'));
+    await tester.pump();
     await tester.tap(find.text('Đánh giá công việc'));
     await tester.pumpAndSettle();
 
@@ -357,6 +361,8 @@ void main() {
   ) async {
     final repo = _FakeRepo(_detail(canRate: true));
     await _pump(tester, repo);
+    await tester.ensureVisible(find.text('Đánh giá công việc'));
+    await tester.pump();
     await tester.tap(find.text('Đánh giá công việc'));
     await tester.pumpAndSettle();
 

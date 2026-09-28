@@ -395,7 +395,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, 300));
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 300),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(ErrorRetry), findsOneWidget);

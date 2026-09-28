@@ -11,6 +11,8 @@ import '../../core/load_more_button.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
+import '../shell/tab_page.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
 import '../proposals/proposals_list_screen.dart';
 import '../transparency/fund_chart.dart';
@@ -88,7 +90,9 @@ class _LedgerSegmentControl extends ConsumerWidget {
   }
 }
 
-/// Ledger tab (spec 6.3(6)). Body-only: the shell owns chrome.
+/// Ledger tab (spec 6.3(6)). Body-only: the shell owns the tab chrome,
+/// [TabPage] the collapsing title. One segmented control switches between
+/// the published ledger and the proposals behind it.
 class LedgerScreen extends ConsumerWidget {
   const LedgerScreen({super.key});
 
@@ -96,23 +100,45 @@ class LedgerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final segment = ref.watch(ledgerSegmentProvider);
-    if (segment == 1) {
-      return const Material(
-        color: Colors.transparent,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: SizedBox(
-                width: double.infinity,
-                child: _LedgerSegmentControl(),
-              ),
-            ),
-            Expanded(child: ProposalsListScreen(showTitle: false)),
-          ],
-        ),
-      );
-    }
+    final header = SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      sliver: const SliverToBoxAdapter(
+        child: SizedBox(width: double.infinity, child: _LedgerSegmentControl()),
+      ),
+    );
+    return Material(
+      color: Colors.transparent,
+      child: TabPage(
+        title: l10n.ledgerTitle,
+        onRefresh: () async {
+          // The error branches are the retry surfaces; a failed refresh
+          // must not escape as an unhandled zone error.
+          try {
+            if (segment == 1) {
+              ref.invalidate(proposalsListProvider);
+              await ref.read(proposalsListProvider.future);
+            } else {
+              ref.invalidate(ledgerListProvider);
+              await ref.read(ledgerListProvider.future);
+            }
+          } catch (_) {}
+        },
+        slivers: [
+          header,
+          if (segment == 1) const ProposalsSliver() else const _LedgerEntries(),
+        ],
+      ),
+    );
+  }
+}
+
+/// The trailing-year fund chart, the period filter, and the entries.
+class _LedgerEntries extends ConsumerWidget {
+  const _LedgerEntries();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final entries = ref.watch(ledgerListProvider);
     final controller = ref.read(ledgerListProvider.notifier);
     final year = ref.watch(ledgerYearProvider);
@@ -121,142 +147,132 @@ class LedgerScreen extends ConsumerWidget {
     final years = [for (var y = currentYear; y >= 2000; y--) y];
     final localeName = Localizations.localeOf(context).toString();
 
-    final header = <Widget>[
-      const SizedBox(width: double.infinity, child: _LedgerSegmentControl()),
-      const SizedBox(height: 16),
-      Text(l10n.ledgerTitle, style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 8),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<int?>(
-              initialValue: year,
-              decoration: InputDecoration(labelText: l10n.ledgerYearLabel),
-              items: [
-                DropdownMenuItem(value: null, child: Text(l10n.ledgerAllTime)),
-                for (final y in years)
-                  DropdownMenuItem(value: y, child: Text('$y')),
-              ],
-              onChanged: (value) {
-                // Month is a within-year refinement; a new year resets it.
-                ref.read(ledgerYearProvider.notifier).state = value;
-                ref.read(ledgerMonthProvider.notifier).state = null;
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: DropdownButtonFormField<int?>(
-              initialValue: month,
-              decoration: InputDecoration(labelText: l10n.ledgerMonthLabel),
-              items: [
-                DropdownMenuItem(value: null, child: Text(l10n.ledgerAllTime)),
-                for (var m = 1; m <= 12; m++)
+    final intro = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InsetGroup(
+          header: l10n.fundChartTitle,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          children: [FundChart(range: '12m')],
+        ),
+        const SizedBox(height: 28),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<int?>(
+                initialValue: year,
+                decoration: InputDecoration(labelText: l10n.ledgerYearLabel),
+                items: [
                   DropdownMenuItem(
-                    value: m,
-                    child: Text(formatMonthLabel(m, localeName)),
+                    value: null,
+                    child: Text(l10n.ledgerAllTime),
                   ),
-              ],
-              onChanged: year == null
-                  ? null
-                  : (value) =>
-                        ref.read(ledgerMonthProvider.notifier).state = value,
+                  for (final y in years)
+                    DropdownMenuItem(value: y, child: Text('$y')),
+                ],
+                onChanged: (value) {
+                  // Month is a within-year refinement; a new year resets it.
+                  ref.read(ledgerYearProvider.notifier).state = value;
+                  ref.read(ledgerMonthProvider.notifier).state = null;
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<int?>(
+                initialValue: month,
+                decoration: InputDecoration(labelText: l10n.ledgerMonthLabel),
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(l10n.ledgerAllTime),
+                  ),
+                  for (var m = 1; m <= 12; m++)
+                    DropdownMenuItem(
+                      value: m,
+                      child: Text(formatMonthLabel(m, localeName)),
+                    ),
+                ],
+                onChanged: year == null
+                    ? null
+                    : (value) =>
+                          ref.read(ledgerMonthProvider.notifier).state = value,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+
+    final list = switch (entries) {
+      // Builder-based so a long paginated history lays out lazily.
+      AsyncData(:final value) when value.isNotEmpty => [
+        SliverList.builder(
+          itemCount: value.length,
+          itemBuilder: (context, i) => GroupedListItem(
+            isFirst: i == 0,
+            isLast: i == value.length - 1,
+            child: _entryTile(context, l10n, value[i]),
+          ),
+        ),
+        if (controller.hasMore)
+          SliverToBoxAdapter(
+            child: LoadMoreButton(
+              label: l10n.ledgerLoadMore,
+              onLoadMore: controller.loadMore,
             ),
           ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.fundChartTitle,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          FundChart(range: '12m'),
-          const SizedBox(height: 24),
-        ],
-      ),
-    ];
-
-    return Material(
-      color: Colors.transparent,
-      child: RefreshIndicator.adaptive(
-        onRefresh: () async {
-          // The error branch below is the retry surface; a failed refresh
-          // must not escape as an unhandled zone error.
-          ref.invalidate(ledgerListProvider);
-          try {
-            await ref.read(ledgerListProvider.future);
-          } catch (_) {}
-        },
-        child: switch (entries) {
-          // Builder-based so a long paginated history lays out lazily.
-          AsyncData(:final value) when value.isNotEmpty => ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            itemCount:
-                header.length + value.length + (controller.hasMore ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index < header.length) return header[index];
-              final i = index - header.length;
-              if (i == value.length) {
-                return LoadMoreButton(
-                  label: l10n.ledgerLoadMore,
-                  onLoadMore: controller.loadMore,
-                );
-              }
-              return _entryTile(context, l10n, value[i]);
-            },
-          ),
-          _ => ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+      ],
+      AsyncData() => [
+        SliverToBoxAdapter(
+          child: InsetGroup(
             children: [
-              ...header,
-              switch (entries) {
-                AsyncData() => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Column(
-                    children: [
-                      Text(l10n.ledgerEmpty),
-                      const SizedBox(height: 12),
-                      AdaptiveOutlinedButton(
-                        onPressed: year == null
-                            ? () =>
-                                  ref
-                                          .read(ledgerSegmentProvider.notifier)
-                                          .state =
-                                      1
-                            : () {
-                                ref.read(ledgerYearProvider.notifier).state =
-                                    null;
-                                ref.read(ledgerMonthProvider.notifier).state =
-                                    null;
-                              },
-                        child: Text(
-                          year == null
-                              ? l10n.proposalsSegment
-                              : l10n.ledgerAllTime,
-                        ),
-                      ),
-                    ],
+              EmptyState(
+                icon: Icons.account_balance_outlined,
+                message: l10n.ledgerEmpty,
+                action: AdaptiveOutlinedButton(
+                  onPressed: year == null
+                      ? () => ref.read(ledgerSegmentProvider.notifier).state = 1
+                      : () {
+                          ref.read(ledgerYearProvider.notifier).state = null;
+                          ref.read(ledgerMonthProvider.notifier).state = null;
+                        },
+                  child: Text(
+                    year == null ? l10n.proposalsSegment : l10n.ledgerAllTime,
                   ),
                 ),
-                AsyncError(:final error) => ErrorRetry(
-                  error: error,
-                  onRetry: () => ref.invalidate(ledgerListProvider),
-                ),
-                _ => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator.adaptive()),
-                ),
-              },
+              ),
             ],
           ),
-        },
+        ),
+      ],
+      AsyncError(:final error) => [
+        SliverToBoxAdapter(
+          child: ErrorRetry(
+            error: error,
+            onRetry: () => ref.invalidate(ledgerListProvider),
+          ),
+        ),
+      ],
+      _ => [
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator.adaptive()),
+          ),
+        ),
+      ],
+    };
+
+    return SliverPadding(
+      padding: tabContentPadding,
+      sliver: SliverMainAxisGroup(
+        slivers: [
+          SliverToBoxAdapter(child: intro),
+          ...list,
+        ],
       ),
     );
   }
@@ -266,8 +282,8 @@ class LedgerScreen extends ConsumerWidget {
     AppLocalizations l10n,
     LedgerEntryList entry,
   ) => ListTile(
-    minTileHeight: 64,
-    contentPadding: EdgeInsets.zero,
+    minTileHeight: 72,
+    contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
     // Lead with the story subject; the constant title is only the fallback
     // so a row never renders a bare blank.
     title: Text(
@@ -277,19 +293,29 @@ class LedgerScreen extends ConsumerWidget {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     ),
-    subtitle: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          entry.contractorName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        Text(formatVnd(entry.actualCostVnd), style: listAmountStyle(context)),
-        const SizedBox(height: 4),
-        EvidenceBadge(level: entry.evidenceLevel),
-      ],
+    subtitle: Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            entry.contractorName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (!figuresTrail(context))
+            Text(
+              formatVnd(entry.actualCostVnd),
+              style: listAmountStyle(context),
+            ),
+          const SizedBox(height: 8),
+          EvidenceBadge(level: entry.evidenceLevel),
+        ],
+      ),
     ),
+    trailing: figuresTrail(context)
+        ? Text(formatVnd(entry.actualCostVnd), style: listAmountStyle(context))
+        : null,
     onTap: () => Navigator.push(
       context,
       adaptivePageRoute(builder: (_) => LedgerDetailScreen(entryId: entry.id)),

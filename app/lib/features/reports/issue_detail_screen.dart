@@ -14,6 +14,7 @@ import '../../core/failure.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import '../ledger/ledger_detail_screen.dart';
 import 'category_labels.dart';
 import 'photo_thumbnail.dart';
@@ -21,6 +22,7 @@ import 'report_draft.dart';
 import 'report_photo_files.dart';
 import 'report_submitter.dart';
 import 'reports_repository.dart';
+import 'my_issues_screen.dart' show reportStatusLabel, reportStatusTone;
 import 'report_form_screen.dart';
 
 String _date(DateTime value) =>
@@ -67,8 +69,8 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
     AppLocalizations l10n,
     ReportDetail report,
   ) {
-    // Tone only where states differ (pending vs done); default ink elsewhere
-    // so color keeps carrying meaning (DESIGN.md Separate States Rule).
+    final theme = Theme.of(context);
+    final palette = LamToPalette.of(context);
     String caseLine(ReportCase caseItem) {
       final category = categoryLabel(caseItem.category, l10n);
       return category == null
@@ -76,25 +78,71 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
           : l10n.timelineCase(category);
     }
 
-    final steps = <(IconData, String, StatusTone?)>[
+    final triaged =
+        report.triageStatus == 'SUCCEEDED' ||
+        report.triageStatus == 'NEEDS_MANUAL' ||
+        report.cases.isNotEmpty;
+    final noUpdates = report.cases.every(
+      (caseItem) => caseItem.updates.isEmpty,
+    );
+
+    // One story, oldest first: what the resident did, what management did,
+    // what the work produced. Tone only where states differ (pending vs
+    // done); the words carry the meaning.
+    final timeline = <({IconData icon, StatusTone? tone, Widget child})>[
       (
-        Icons.send_outlined,
-        '${l10n.timelineSubmitted} · ${_date(report.createdAt)}',
-        null,
+        icon: Icons.send_outlined,
+        tone: StatusTone.success,
+        child: _StepText(
+          '${l10n.timelineSubmitted} · ${_date(report.createdAt)}',
+        ),
       ),
-      if (report.triageStatus == 'SUCCEEDED' ||
-          report.triageStatus == 'NEEDS_MANUAL' ||
-          report.cases.isNotEmpty)
-        (Icons.fact_check_outlined, l10n.timelineTriageDone, null)
+      if (triaged)
+        (
+          icon: Icons.fact_check_outlined,
+          tone: StatusTone.success,
+          child: _StepText(l10n.timelineTriageDone),
+        )
       else
-        (Icons.hourglass_empty, l10n.timelineTriagePending, StatusTone.warning),
+        (
+          icon: Icons.hourglass_empty,
+          tone: StatusTone.warning,
+          child: _StepText(l10n.timelineTriagePending),
+        ),
       for (final caseItem in report.cases) ...[
         (
-          Icons.folder_open_outlined,
-          '${caseLine(caseItem)}\n'
-              '${caseItem.completedAt != null ? l10n.timelineCompleted : l10n.timelineWork(caseItem.updates.isNotEmpty ? l10n.workStatusInProgress : l10n.workStatusAssigned, _date(caseItem.deadlineAt))}',
-          null,
+          icon: Icons.folder_open_outlined,
+          tone: StatusTone.info,
+          child: _StepText(
+            caseLine(caseItem),
+            detail: caseItem.completedAt != null
+                ? l10n.timelineCompleted
+                : l10n.timelineWork(
+                    caseItem.updates.isNotEmpty
+                        ? l10n.workStatusInProgress
+                        : l10n.workStatusAssigned,
+                    _date(caseItem.deadlineAt),
+                  ),
+          ),
         ),
+        for (final update in caseItem.updates)
+          (
+            icon: Icons.build_outlined,
+            tone: null,
+            child: _ProgressTile(
+              createdAt: update.createdAt,
+              cause: update.cause,
+              result: update.result,
+            ),
+          ),
+        if (caseItem.completedAt != null)
+          (
+            icon: Icons.check,
+            tone: StatusTone.success,
+            child: _StepText(
+              '${l10n.progressCompleted} · ${_date(caseItem.completedAt!)}',
+            ),
+          ),
       ],
     ];
     final rateable = report.cases.where((caseItem) => caseItem.canRate);
@@ -106,38 +154,63 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
         const <String>[];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
       children: [
-        Text(report.text, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: StatusChip(
+            tone: reportStatusTone(report.status),
+            label: reportStatusLabel(report.status, l10n),
+          ),
+        ),
+        const SizedBox(height: 12),
         Text(
-          '${report.locationPathSnapshot} · ${report.unitLabel}',
-          style: Theme.of(context).textTheme.bodySmall,
+          report.text,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.place_outlined, size: 18, color: palette.muted),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '${report.locationPathSnapshot} · ${report.unitLabel}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: palette.muted,
+                ),
+              ),
+            ),
+          ],
         ),
         if (report.status == StatusEnum.NEEDS_INFO &&
             infoRequestMessage is String) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _InfoRequestBanner(
             message: infoRequestMessage,
             onReply: () => _showReplySheet(context, ref, report.id),
           ),
         ],
         if (report.photos.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           SizedBox(
-            height: 96,
+            height: 104,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
                 for (final (index, photo) in report.photos.indexed)
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: 10),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(14),
                       child: AuthenticatedImage(
                         photo.downloadUrl,
-                        width: 96,
-                        height: 96,
+                        width: 104,
+                        height: 104,
                         semanticLabel: l10n.photoNofM(
                           index + 1,
                           report.photos.length,
@@ -150,32 +223,10 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
           ),
         ],
         if (pendingReplyPhotos.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Builder(
-            builder: (context) {
-              final colors = statusToneColors(context, StatusTone.warning);
-              return Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colors.bg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: colors.fg),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.infoReplyPendingPhotosTitle,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: colors.fg),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          const SizedBox(height: 16),
+          StatusNotice(
+            tone: StatusTone.warning,
+            message: l10n.infoReplyPendingPhotosTitle,
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -193,54 +244,56 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
           ),
         ],
         if (report.declinedReason != null) ...[
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              title: Text(l10n.declinedTitle),
-              subtitle: Text(report.declinedReason!),
-            ),
-          ),
-          const SizedBox(height: 12),
-          AdaptiveFilledButton(
-            onPressed: () => openReportForm(context),
-            icon: const Icon(Icons.edit_note_outlined),
-            child: Text(l10n.declinedCorrectedReportCta),
+          const SizedBox(height: 20),
+          InsetGroup(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(l10n.declinedTitle, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(report.declinedReason!),
+                  const SizedBox(height: 16),
+                  AdaptiveFilledButton(
+                    onPressed: () => openReportForm(context),
+                    icon: const Icon(Icons.edit_note_outlined),
+                    child: Text(l10n.declinedCorrectedReportCta),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
-        const SizedBox(height: 16),
-        for (final (icon, label, tone) in steps)
-          ListTile(
-            minTileHeight: 48,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              icon,
-              color: tone == null ? null : statusToneColors(context, tone).fg,
+        const SizedBox(height: 28),
+        SectionHeader(l10n.progressTitle),
+        InsetGroup(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (index, step) in timeline.indexed)
+                  TimelineStep(
+                    icon: step.icon,
+                    tone: step.tone,
+                    isLast: index == timeline.length - 1 && !noUpdates,
+                    child: step.child,
+                  ),
+                if (noUpdates)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 42),
+                    child: Text(
+                      l10n.progressEmpty,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: palette.muted,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            title: Text(label),
-          ),
-        const SizedBox(height: 16),
-        Text(
-          l10n.progressTitle,
-          style: Theme.of(context).textTheme.titleMedium,
+          ],
         ),
-        if (report.cases.every((caseItem) => caseItem.updates.isEmpty))
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              l10n.progressEmpty,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        for (final caseItem in report.cases) ...[
-          for (final update in caseItem.updates)
-            _ProgressTile(
-              createdAt: update.createdAt,
-              cause: update.cause,
-              result: update.result,
-            ),
-          if (caseItem.completedAt != null)
-            _CompletedMarker(at: caseItem.completedAt!),
-        ],
         // Inline where the rate CTA sat (the refreshed detail drops the CTA).
         if (_rated)
           Padding(
@@ -253,7 +306,7 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
         for (final caseItem in rateable)
           if (report.status != StatusEnum.DECLINED)
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.only(top: 20),
               child: AdaptiveFilledButton(
                 icon: const Icon(Icons.star_outline),
                 child: Text(l10n.rateWorkCta),
@@ -262,7 +315,7 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
             ),
         for (final entryId in report.ledgerEntryIds)
           Padding(
-            padding: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.only(top: 12),
             child: AdaptiveOutlinedButton(
               icon: const Icon(Icons.account_balance_outlined),
               child: Text(l10n.ledgerDetailTitle),
@@ -352,6 +405,30 @@ Future<bool> _uploadPendingReplyPhoto({
   return true;
 }
 
+/// A plain timeline line, with an optional quieter second line.
+class _StepText extends StatelessWidget {
+  const _StepText(this.text, {this.detail});
+
+  final String text;
+  final String? detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(text, style: theme.textTheme.bodyLarge),
+        if (detail != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(detail!, style: theme.textTheme.bodySmall),
+          ),
+      ],
+    );
+  }
+}
+
 class _ProgressTile extends StatelessWidget {
   const _ProgressTile({
     required this.createdAt,
@@ -364,46 +441,22 @@ class _ProgressTile extends StatelessWidget {
   final String result;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Row(
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 2),
-          child: Icon(Icons.build_outlined),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(cause, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(result),
-              Text(_date(createdAt)),
-            ],
+        Text(
+          cause,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
           ),
         ),
+        const SizedBox(height: 2),
+        Text(result, style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 2),
+        Text(_date(createdAt), style: theme.textTheme.bodySmall),
       ],
-    ),
-  );
-}
-
-class _CompletedMarker extends StatelessWidget {
-  const _CompletedMarker({required this.at});
-
-  final DateTime at;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = statusToneColors(context, StatusTone.success);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(Icons.check_circle_outline, color: colors.fg),
-      title: Text(
-        '${AppLocalizations.of(context)!.progressCompleted} · ${_date(at)}',
-      ),
     );
   }
 }
@@ -418,35 +471,34 @@ class _InfoRequestBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colors = statusToneColors(context, StatusTone.warning);
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.bg,
-        border: Border.all(color: colors.fg),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.info_outline, color: colors.fg),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: colors.fg, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
                   l10n.infoRequestTitle,
-                  style: Theme.of(context).textTheme.titleSmall,
+                  style: theme.textTheme.titleSmall?.copyWith(color: colors.fg),
                 ),
-                const SizedBox(height: 4),
-                Text(message),
-                const SizedBox(height: 8),
-                AdaptiveFilledButton(
-                  onPressed: onReply,
-                  child: Text(l10n.infoReplySubmit),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(message, style: theme.textTheme.bodyLarge),
+          const SizedBox(height: 14),
+          AdaptiveFilledButton(
+            onPressed: onReply,
+            child: Text(l10n.infoReplySubmit),
           ),
         ],
       ),
@@ -550,10 +602,10 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
     final editingLocked = _busy || _committed;
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 16 + MediaQuery.viewInsetsOf(context).bottom,
+        left: 20,
+        right: 20,
+        top: 4,
+        bottom: 24 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -562,9 +614,9 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
           children: [
             Text(
               l10n.infoRequestTitle,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             TextField(
               controller: _text,
               minLines: 3,
@@ -784,10 +836,10 @@ class _RateCaseSheetState extends ConsumerState<_RateCaseSheet> {
     final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 16 + MediaQuery.viewInsetsOf(context).bottom,
+        left: 20,
+        right: 20,
+        top: 4,
+        bottom: 24 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -795,19 +847,21 @@ class _RateCaseSheetState extends ConsumerState<_RateCaseSheet> {
         children: [
           Text(
             l10n.rateWorkTitle,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           SegmentedButton<bool>(
             segments: [
               ButtonSegment(value: true, label: Text(l10n.rateSatisfied)),
               ButtonSegment(value: false, label: Text(l10n.rateNotSatisfied)),
             ],
             selected: {_satisfied},
+            showSelectedIcon: false,
             onSelectionChanged: _busy
                 ? null
                 : (selection) => setState(() => _satisfied = selection.first),
           ),
+          const SizedBox(height: 16),
           TextField(
             controller: _comment,
             maxLength: 500,

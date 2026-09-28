@@ -9,6 +9,8 @@ import '../../core/load_more_button.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
+import '../shell/tab_page.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
 import 'proposal_detail_screen.dart';
 import 'proposals_repository.dart';
@@ -60,6 +62,71 @@ final proposalsListProvider =
       ProposalsListController.new,
     );
 
+/// The proposals list as one sliver, so it can sit under the Ledger tab's
+/// segmented control inside the tab's scroll view.
+class ProposalsSliver extends ConsumerWidget {
+  const ProposalsSliver({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final proposals = ref.watch(proposalsListProvider);
+    final slivers = switch (proposals) {
+      AsyncData(:final value) when value.isEmpty => <Widget>[
+        SliverToBoxAdapter(
+          child: InsetGroup(
+            children: [
+              EmptyState(
+                icon: Icons.description_outlined,
+                message: l10n.ledgerEmpty,
+              ),
+            ],
+          ),
+        ),
+      ],
+      // Builder-based so a long paginated history lays out lazily.
+      AsyncData(:final value) => <Widget>[
+        SliverList.builder(
+          itemCount: value.length,
+          itemBuilder: (context, i) => GroupedListItem(
+            isFirst: i == 0,
+            isLast: i == value.length - 1,
+            child: _ProposalTile(proposal: value[i]),
+          ),
+        ),
+        if (ref.read(proposalsListProvider.notifier).hasMore)
+          SliverToBoxAdapter(
+            child: LoadMoreButton(
+              label: l10n.ledgerLoadMore,
+              onLoadMore: ref.read(proposalsListProvider.notifier).loadMore,
+            ),
+          ),
+      ],
+      AsyncError(:final error) => <Widget>[
+        SliverToBoxAdapter(
+          child: ErrorRetry(
+            error: error,
+            onRetry: () => ref.invalidate(proposalsListProvider),
+          ),
+        ),
+      ],
+      _ => <Widget>[
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.only(top: 48),
+            child: Center(child: CircularProgressIndicator.adaptive()),
+          ),
+        ),
+      ],
+    };
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverMainAxisGroup(slivers: slivers),
+    );
+  }
+}
+
+/// Standalone proposals list (the same rows the Ledger tab shows).
 class ProposalsListScreen extends ConsumerWidget {
   const ProposalsListScreen({this.showTitle = true, super.key});
 
@@ -68,65 +135,34 @@ class ProposalsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final proposals = ref.watch(proposalsListProvider);
-    final title = showTitle
-        ? Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              l10n.proposalsSegment,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          )
-        : const SizedBox(height: 8);
-
     return Material(
       color: Colors.transparent,
-      child: switch (proposals) {
-        AsyncData(:final value) => RefreshIndicator.adaptive(
-          onRefresh: () async {
-            ref.invalidate(proposalsListProvider);
-            try {
-              await ref.read(proposalsListProvider.future);
-            } catch (_) {}
-          },
-          // Builder-based so a long paginated history lays out lazily.
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount:
-                1 +
-                value.length +
-                (ref.read(proposalsListProvider.notifier).hasMore ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == 0) return title;
-              final i = index - 1;
-              if (i == value.length) {
-                return LoadMoreButton(
-                  label: l10n.ledgerLoadMore,
-                  onLoadMore: ref.read(proposalsListProvider.notifier).loadMore,
-                );
-              }
-              return _ProposalTile(proposal: value[i]);
-            },
-          ),
-        ),
-        AsyncError(:final error) => ListView(
-          children: [
-            title,
-            const SizedBox(height: 48),
-            ErrorRetry(
-              error: error,
-              onRetry: () => ref.invalidate(proposalsListProvider),
+      child: RefreshIndicator.adaptive(
+        onRefresh: () async {
+          ref.invalidate(proposalsListProvider);
+          try {
+            await ref.read(proposalsListProvider.future);
+          } catch (_) {}
+        },
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: showTitle
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                      child: Text(
+                        l10n.proposalsSegment,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    )
+                  : const SizedBox(height: 8),
             ),
+            const ProposalsSliver(),
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
-        _ => ListView(
-          children: [
-            title,
-            const SizedBox(height: 48),
-            const Center(child: CircularProgressIndicator.adaptive()),
-          ],
-        ),
-      },
+      ),
     );
   }
 }
@@ -141,20 +177,34 @@ class _ProposalTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return ListTile(
       minTileHeight: 72,
-      title: Align(
-        alignment: Alignment.centerLeft,
-        child: StatusChip(
-          tone: proposalStatusTone(proposal.status),
-          label: proposalStatusLabel(proposal.status, l10n),
+      contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+      title: Text(
+        proposal.purpose,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!figuresTrail(context)) ...[
+              Text(
+                formatVnd(proposal.amountVnd),
+                style: listAmountStyle(context),
+              ),
+              const SizedBox(height: 6),
+            ],
+            StatusChip(
+              tone: proposalStatusTone(proposal.status),
+              label: proposalStatusLabel(proposal.status, l10n),
+            ),
+          ],
         ),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(proposal.purpose, maxLines: 2, overflow: TextOverflow.ellipsis),
-          Text(formatVnd(proposal.amountVnd), style: listAmountStyle(context)),
-        ],
-      ),
+      trailing: figuresTrail(context)
+          ? Text(formatVnd(proposal.amountVnd), style: listAmountStyle(context))
+          : null,
       onTap: () => Navigator.push(
         context,
         adaptivePageRoute(

@@ -82,11 +82,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         tabBar: CupertinoTabBar(
           items: [
             BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.home),
+              icon: const Icon(CupertinoIcons.house),
+              activeIcon: const Icon(CupertinoIcons.house_fill),
               label: l10n.tabHome,
             ),
             BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.list_bullet),
+              icon: const Icon(CupertinoIcons.square_list),
+              activeIcon: const Icon(CupertinoIcons.square_list_fill),
               label: l10n.tabIssues,
             ),
             BottomNavigationBarItem(
@@ -94,45 +96,29 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               // Icons.account_balance institution glyph. Never a currency
               // symbol ("$" fronting a VND fund).
               icon: const Icon(CupertinoIcons.book),
+              activeIcon: const Icon(CupertinoIcons.book_fill),
               label: l10n.tabLedger,
             ),
             BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.person),
+              icon: const Icon(CupertinoIcons.person_crop_circle),
+              activeIcon: const Icon(CupertinoIcons.person_crop_circle_fill),
               label: l10n.tabAccount,
             ),
           ],
         ),
+        // Each tab root draws its own collapsing large title (TabPage), so
+        // the scaffold adds no bar and no top inset of its own.
         tabBuilder: (context, index) => CupertinoPageScaffold(
-          navigationBar: CupertinoNavigationBar(
-            middle: Text(
-              [
-                l10n.tabHome,
-                l10n.tabIssues,
-                l10n.tabLedger,
-                l10n.tabAccount,
-              ][index],
-            ),
-            trailing: Semantics(
-              label: l10n.tabReport,
-              button: true,
-              excludeSemantics: true,
-              child: CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () => openReportForm(context),
-                child: const Icon(CupertinoIcons.add),
-              ),
-            ),
-          ),
-          child: SafeArea(child: PageBody(child: bodies[index])),
+          child: PageBody(child: bodies[index]),
         ),
       );
     }
 
     final destinations = [
-      (Icons.home_outlined, l10n.tabHome),
-      (Icons.list_alt_outlined, l10n.tabIssues),
-      (Icons.account_balance_outlined, l10n.tabLedger),
-      (Icons.person_outline, l10n.tabAccount),
+      (Icons.home_outlined, Icons.home, l10n.tabHome),
+      (Icons.list_alt_outlined, Icons.list_alt, l10n.tabIssues),
+      (Icons.account_balance_outlined, Icons.account_balance, l10n.tabLedger),
+      (Icons.person_outline, Icons.person, l10n.tabAccount),
     ];
     final expanded = MediaQuery.sizeOf(context).width >= kExpandedWidthMin;
 
@@ -140,11 +126,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // Medium/expanded window class: navigation rail instead of a
       // stretched phone bottom bar (Material 3 adaptive navigation).
       return Scaffold(
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => openReportForm(context),
-          icon: const Icon(Icons.add),
-          label: Text(l10n.tabReport),
-        ),
+        floatingActionButton: _reportButton(l10n),
         body: SafeArea(
           child: Row(
             children: [
@@ -155,10 +137,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   setState(() => _index = i);
                 },
                 labelType: NavigationRailLabelType.all,
+                groupAlignment: -0.9,
                 destinations: [
-                  for (final (icon, label) in destinations)
+                  for (final (icon, selectedIcon, label) in destinations)
                     NavigationRailDestination(
                       icon: Icon(icon),
+                      selectedIcon: Icon(selectedIcon),
                       label: Text(label),
                     ),
                 ],
@@ -173,22 +157,36 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     return Scaffold(
       body: SafeArea(child: PageBody(child: bodies[_index])),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => openReportForm(context),
-        tooltip: l10n.tabReport,
-        child: const Icon(Icons.add),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) {
-          ref.read(shellTabProvider.notifier).state = i;
-          setState(() => _index = i);
-        },
-        destinations: [
-          for (final (icon, label) in destinations)
-            NavigationDestination(icon: Icon(icon), label: label),
-        ],
+      floatingActionButton: _reportButton(l10n),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Theme.of(context).dividerColor),
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: (i) {
+            ref.read(shellTabProvider.notifier).state = i;
+            setState(() => _index = i);
+          },
+          destinations: [
+            for (final (icon, selectedIcon, label) in destinations)
+              NavigationDestination(
+                icon: Icon(icon),
+                selectedIcon: Icon(selectedIcon),
+                label: label,
+              ),
+          ],
+        ),
       ),
     );
   }
+
+  /// Report is a task, not a place: the labelled primary action.
+  Widget _reportButton(AppLocalizations l10n) => FloatingActionButton.extended(
+    onPressed: () => openReportForm(context),
+    icon: const Icon(Icons.add),
+    label: Text(l10n.tabReport),
+  );
 }

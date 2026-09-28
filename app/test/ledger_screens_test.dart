@@ -199,7 +199,6 @@ class _IntegrityRepo extends _FakeRepo {
 
 /// Serves a PDF, so the document tile reaches its viewer.
 class _PdfDocumentRepo extends _FakeRepo {
-
   @override
   Future<Uint8List> fetchDocument(String downloadUrl) async {
     documentCalls++;
@@ -330,6 +329,9 @@ void main() {
     // Month is a within-year refinement: disabled until a year is chosen
     // (a tap opens no menu, so the item text exists only once, in the field).
     expect(repo.periods, [(null, null)]);
+    // The filters sit under the chart; bring them on screen before tapping.
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<int?>).last);
+    await tester.pump();
     await tester.tap(find.byType(DropdownButtonFormField<int?>).last);
     await tester.pumpAndSettle();
     expect(find.text('Tháng 3', skipOffstage: false), findsOneWidget);
@@ -377,7 +379,13 @@ void main() {
       find.text('Thay bóng đèn hành lang', skipOffstage: false),
       findsOneWidget,
     );
-    // Subject empty: the constant title stands in.
+    // Subject empty: the constant title stands in. Rows build lazily
+    // below the chart, so scroll the list to it.
+    await tester.scrollUntilVisible(
+      find.text('Chi tiết khoản chi'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(
       find.text('Chi tiết khoản chi', skipOffstage: false),
       findsOneWidget,
@@ -581,10 +589,7 @@ void main() {
         scrollable: find.byType(Scrollable).last,
       );
       expect(find.text('Xác minh độc lập'), findsOneWidget);
-      expect(
-        find.textContaining('Đã ký — chưa bật neo'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Đã ký — chưa bật neo'), findsOneWidget);
 
       // Raw-hash ExpansionTile is gone
       expect(find.text('Chi tiết xác thực'), findsNothing);
@@ -630,10 +635,7 @@ void main() {
         scrollable: find.byType(Scrollable).last,
       );
       expect(find.text('Xác minh độc lập'), findsOneWidget);
-      expect(
-        find.textContaining('Đã ký — chưa bật neo'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Đã ký — chưa bật neo'), findsOneWidget);
 
       // ExpansionTile is present
       await tester.scrollUntilVisible(
@@ -671,7 +673,10 @@ void main() {
       );
       await tester.ensureVisible(find.text('hoa-don.pdf'));
       await tester.pumpAndSettle();
-      expect(find.text('Transfer proof'), findsNWidgets(2)); // Step 4 + Document row
+      expect(
+        find.text('Transfer proof'),
+        findsNWidgets(2),
+      ); // Step 4 + Document row
     },
   );
 }

@@ -71,21 +71,22 @@ class FundChart extends ConsumerWidget {
     if (compact) {
       return InkWell(
         onTap: onTap,
-        child: SizedBox(height: 140, child: line),
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(height: 120, child: line),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: 180, child: line),
-        const SizedBox(height: 16),
+        SizedBox(height: 160, child: line),
+        const SizedBox(height: 20),
         Text(
           l10n.fundChartFlowsTitle,
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
-        SizedBox(height: 120, child: _flowsBars(context, points)),
-        const SizedBox(height: 8),
+        SizedBox(height: 100, child: _flowsBars(context, points)),
+        const SizedBox(height: 10),
         // Names each series; color never carries the meaning alone.
         Wrap(
           spacing: 16,
@@ -107,31 +108,26 @@ class FundChart extends ConsumerWidget {
     );
   }
 
-  // Tabular Column Rule: money-flow series use the brand/info pair — never
-  // success/error, which are reserved for evidence state.
-  Color _inflowColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-      ? LamToColorsDark.primary
-      : LamToColors.primary;
+  // Money-flow series use the tint and a neutral — never success/error,
+  // which are reserved for evidence state.
+  Color _inflowColor(BuildContext context) => LamToPalette.of(context).primary;
 
   Color _outflowColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-      ? LamToColorsDark.info
-      : LamToColors.info;
+      LamToPalette.of(context).muted.withValues(alpha: 0.55);
 
   Widget _legendItem(BuildContext context, Color color, String label) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 12,
-        height: 12,
+        width: 10,
+        height: 10,
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(3),
         ),
       ),
       const SizedBox(width: 6),
-      Text(label, style: Theme.of(context).textTheme.labelSmall),
+      Text(label, style: Theme.of(context).textTheme.labelMedium),
     ],
   );
 
@@ -141,10 +137,16 @@ class FundChart extends ConsumerWidget {
       : const Duration(milliseconds: 200);
 
   Widget _balanceLine(BuildContext context, List<FundSeriesPoint> points) {
-    final scheme = Theme.of(context).colorScheme;
+    final palette = LamToPalette.of(context);
+    final tint = palette.primary;
     return LineChart(
       LineChartData(
-        gridData: const FlGridData(show: false),
+        gridData: FlGridData(
+          show: !compact,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) =>
+              FlLine(color: palette.border, strokeWidth: 1),
+        ),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           leftTitles: const AxisTitles(),
@@ -153,6 +155,7 @@ class FundChart extends ConsumerWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: !compact,
+              reservedSize: 24,
               interval: (points.length / 6).ceilToDouble(),
               getTitlesWidget: (value, _) =>
                   _periodLabel(context, points, value),
@@ -166,12 +169,24 @@ class FundChart extends ConsumerWidget {
               for (var i = 0; i < points.length; i++)
                 FlSpot(i.toDouble(), points[i].balanceVnd.toDouble()),
             ],
-            isCurved: false,
-            color: scheme.primary,
+            isCurved: true,
+            curveSmoothness: 0.25,
+            preventCurveOverShooting: true,
+            color: tint,
+            barWidth: 2.5,
+            isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
+            // The area fades out so the line reads first.
             belowBarData: BarAreaData(
               show: true,
-              color: scheme.primary.withValues(alpha: 0.12),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  tint.withValues(alpha: 0.22),
+                  tint.withValues(alpha: 0.0),
+                ],
+              ),
             ),
           ),
         ],
@@ -183,9 +198,15 @@ class FundChart extends ConsumerWidget {
   Widget _flowsBars(BuildContext context, List<FundSeriesPoint> points) {
     final inflow = _inflowColor(context);
     final outflow = _outflowColor(context);
+    final palette = LamToPalette.of(context);
+    const rod = BorderRadius.all(Radius.circular(3));
     return BarChart(
       BarChartData(
-        gridData: const FlGridData(show: false),
+        gridData: FlGridData(
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) =>
+              FlLine(color: palette.border, strokeWidth: 1),
+        ),
         borderData: FlBorderData(show: false),
         titlesData: const FlTitlesData(
           leftTitles: AxisTitles(),
@@ -197,16 +218,19 @@ class FundChart extends ConsumerWidget {
           for (var i = 0; i < points.length; i++)
             BarChartGroupData(
               x: i,
+              barsSpace: 3,
               barRods: [
                 BarChartRodData(
                   toY: points[i].inflowsVnd.toDouble(),
                   color: inflow,
-                  width: 6,
+                  width: 7,
+                  borderRadius: rod,
                 ),
                 BarChartRodData(
                   toY: points[i].outflowsVnd.toDouble(),
                   color: outflow,
-                  width: 6,
+                  width: 7,
+                  borderRadius: rod,
                 ),
               ],
             ),
@@ -229,8 +253,13 @@ class FundChart extends ConsumerWidget {
       Localizations.localeOf(context).toLanguageTag(),
     ).format(points[i].periodStart);
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(color: LamToPalette.of(context).muted),
+      ),
     );
   }
 }

@@ -15,6 +15,7 @@ import '../../core/format.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import '../documents/document_viewer_screen.dart';
 import '../proposals/proposal_detail_screen.dart';
 import '../transparency/transparency_repository.dart';
@@ -61,183 +62,240 @@ class LedgerDetailScreen extends ConsumerWidget {
     final verification = entry.verification;
     // Wire values (serializers.py effective_integrity_status): VERIFIED,
     // MISMATCH, UNAVAILABLE, UNCHECKED. Tampering (MISMATCH) must not dress
-    // as routine pending, so it gets its own Mismatch Red conclusion; the
-    // amber branch keeps the genuinely-pending states.
+    // as routine pending, so it gets its own red conclusion; the amber branch
+    // keeps the genuinely-pending states.
     final verified = entry.integrityStatus == 'VERIFIED';
     final mismatch = entry.integrityStatus == 'MISMATCH';
-    final mono = Theme.of(context).textTheme.bodySmall?.copyWith(
+    final theme = Theme.of(context);
+    final palette = LamToPalette.of(context);
+    final mono = theme.textTheme.bodySmall?.copyWith(
       fontFamily: 'SFMono-Regular',
       fontFamilyFallback: const ['Menlo', 'Roboto Mono', 'monospace'],
     );
-    final titleStyle = Theme.of(context).textTheme.titleMedium;
     final proposalId = (entry.payload?.value as Map?)?['proposal_id'] as int?;
-    final conclusionColor = statusToneColors(
-      context,
-      verified
-          ? StatusTone.success
-          : mismatch
-          ? StatusTone.error
-          : StatusTone.warning,
-    ).fg;
+    final tone = verified
+        ? StatusTone.success
+        : mismatch
+        ? StatusTone.error
+        : StatusTone.warning;
+    final toneColors = statusToneColors(context, tone);
+
+    final chain = [
+      (title: l10n.ledgerChainReports, body: entry.why, child: null),
+      (title: l10n.ledgerChainWork, body: entry.whatWasFixed, child: null),
+      (
+        title: l10n.ledgerChainApprovals,
+        body: entry.approvers
+            .map(
+              (a) => approverLine(
+                _jsonField(a, 'role'),
+                _jsonField(a, 'name'),
+                l10n,
+              ),
+            )
+            .join('\n'),
+        child: null,
+      ),
+      (
+        title: l10n.ledgerChainPayment,
+        body:
+            '${l10n.ledgerAmount}: ${formatVnd(entry.actualCostVnd)}\n'
+            '${l10n.ledgerContractor}: ${entry.contractorName}\n'
+            '${l10n.ledgerPublishedOn(date)}',
+        child: null,
+      ),
+      (
+        title: l10n.ledgerChainVerification,
+        body: [
+          if (verification != null)
+            l10n.ledgerVerifiedBy(verification.verifiedBy),
+          integrityStatusLabel(entry.integrityStatus, l10n),
+        ].join('\n'),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: EvidenceBadge(level: entry.proof.evidenceLevel),
+        ),
+      ),
+    ];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
       children: [
+        // The verdict first: what a resident needs to know before any proof.
         Semantics(
           container: true,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: InsetGroup(
+            padding: const EdgeInsets.all(20),
             children: [
-              Icon(
-                verified
-                    ? Icons.verified_outlined
-                    : mismatch
-                    ? Icons.error_outline
-                    : Icons.pending_outlined,
-                color: conclusionColor,
-                size: 32,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      verified
-                          ? l10n.ledgerConclusionVerified
-                          : mismatch
-                          ? l10n.ledgerConclusionMismatch
-                          : l10n.ledgerConclusionUnverified,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: conclusionColor,
-                        fontWeight: FontWeight.w700,
-                      ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: toneColors.bg,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
+                    child: Icon(
                       verified
-                          ? l10n.ledgerConclusionVerifiedBody
+                          ? Icons.verified_outlined
                           : mismatch
-                          ? l10n.ledgerConclusionMismatchBody
-                          : l10n.ledgerConclusionUnverifiedBody,
+                          ? Icons.error_outline
+                          : Icons.pending_outlined,
+                      color: toneColors.fg,
+                      size: 28,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          verified
+                              ? l10n.ledgerConclusionVerified
+                              : mismatch
+                              ? l10n.ledgerConclusionMismatch
+                              : l10n.ledgerConclusionUnverified,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: toneColors.fg,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          verified
+                              ? l10n.ledgerConclusionVerifiedBody
+                              : mismatch
+                              ? l10n.ledgerConclusionMismatchBody
+                              : l10n.ledgerConclusionUnverifiedBody,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        if (proposalId != null) ...[
-          ListTile(
-            minTileHeight: 48,
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.proposalViewFromLedger),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              adaptivePageRoute(
-                builder: (_) => ProposalDetailScreen(proposalId: proposalId),
-              ),
-            ),
-          ),
-          const Divider(),
-        ],
-        Text(l10n.ledgerChainTitle, style: titleStyle),
-        const SizedBox(height: 4),
-        Text(l10n.ledgerChainHint),
-        _ChainStep(number: 1, title: l10n.ledgerChainReports, body: entry.why),
-        _ChainStep(
-          number: 2,
-          title: l10n.ledgerChainWork,
-          body: entry.whatWasFixed,
-        ),
-        _ChainStep(
-          number: 3,
-          title: l10n.ledgerChainApprovals,
-          body: entry.approvers
-              .map(
-                (a) => approverLine(
-                  _jsonField(a, 'role'),
-                  _jsonField(a, 'name'),
-                  l10n,
-                ),
-              )
-              .join('\n'),
-        ),
-        _ChainStep(
-          number: 4,
-          title: l10n.ledgerChainPayment,
-          body:
-              '${l10n.ledgerAmount}: ${formatVnd(entry.actualCostVnd)}\n'
-              '${l10n.ledgerContractor}: ${entry.contractorName}\n'
-              '${l10n.ledgerPublishedOn(date)}',
-        ),
-        _ChainStep(
-          number: 5,
-          title: l10n.ledgerChainVerification,
-          body: [
-            if (verification != null)
-              l10n.ledgerVerifiedBy(verification.verifiedBy),
-            integrityStatusLabel(entry.integrityStatus, l10n),
-          ].join('\n'),
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: EvidenceBadge(level: entry.proof.evidenceLevel),
           ),
         ),
         const SizedBox(height: 16),
-        Text(l10n.ledgerDocuments, style: titleStyle),
-        if (entry.documents.isNotEmpty)
-          for (final doc in entry.documents) _DocumentTile(document: doc),
-        const Divider(height: 32),
-        if (entry.explorerUrl != null && entry.explorerUrl!.isNotEmpty)
-          EvidenceExplorerTile(url: entry.explorerUrl!)
-        else
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(bottom: 16),
-            title: Text(l10n.ledgerProofTitle, style: titleStyle),
-            children: [
+        InsetGroup(
+          children: [
+            InfoRow(
+              label: l10n.ledgerAmount,
+              value: formatVnd(entry.actualCostVnd),
+              valueStyle: heroAmountStyle(context)?.copyWith(fontSize: 26),
+            ),
+            InfoRow(label: l10n.ledgerContractor, value: entry.contractorName),
+            if (proposalId != null)
               ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.ledgerProofHash),
-                subtitle: Text(entry.proof.payloadHash, style: mono),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  l10n.ledgerProofEvents,
-                  style: Theme.of(context).textTheme.labelLarge,
+                minTileHeight: 52,
+                title: Text(l10n.proposalViewFromLedger),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: palette.muted.withValues(alpha: 0.6),
                 ),
-              ),
-              for (final event in entry.proof.events)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(event.eventId, style: mono),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (event.transactionHash.isNotEmpty)
-                        Text(event.transactionHash, style: mono),
-                      const SizedBox(height: 4),
-                      EvidenceBadge(level: event.evidenceLevel),
-                    ],
+                onTap: () => Navigator.push(
+                  context,
+                  adaptivePageRoute(
+                    builder: (_) =>
+                        ProposalDetailScreen(proposalId: proposalId),
                   ),
                 ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        SectionHeader(l10n.ledgerChainTitle),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+          child: Text(
+            l10n.ledgerChainHint,
+            style: theme.textTheme.bodyMedium?.copyWith(color: palette.muted),
+          ),
+        ),
+        InsetGroup(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (index, step) in chain.indexed)
+                  _ChainStep(
+                    number: index + 1,
+                    title: step.title,
+                    body: step.body,
+                    isLast: index == chain.length - 1,
+                    child: step.child,
+                  ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        SectionHeader(l10n.ledgerDocuments),
+        if (entry.documents.isNotEmpty)
+          InsetGroup(
+            dividerIndent: 68,
+            children: [
+              for (final doc in entry.documents) _DocumentTile(document: doc),
+            ],
+          ),
+        const SizedBox(height: 16),
+        if (entry.explorerUrl != null && entry.explorerUrl!.isNotEmpty)
+          InsetGroup(children: [EvidenceExplorerTile(url: entry.explorerUrl!)])
+        else
+          InsetGroup(
+            children: [
+              ExpansionTile(
+                title: Text(
+                  l10n.ledgerProofTitle,
+                  style: theme.textTheme.bodyLarge,
+                ),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.ledgerProofHash, style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 2),
+                  Text(entry.proof.payloadHash, style: mono),
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n.ledgerProofEvents,
+                    style: theme.textTheme.labelLarge,
+                  ),
+                  for (final event in entry.proof.events)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(event.eventId, style: mono),
+                          if (event.transactionHash.isNotEmpty)
+                            Text(event.transactionHash, style: mono),
+                          const SizedBox(height: 4),
+                          EvidenceBadge(level: event.evidenceLevel),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         if (entry.corrections.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(l10n.ledgerCorrections, style: titleStyle),
-          for (final correction in entry.corrections)
-            ListTile(
-              minTileHeight: 48,
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.change_circle_outlined),
-              title: Text(_jsonField(correction, 'reason')),
-              subtitle: Text(l10n.ledgerCorrectionRecorded),
-            ),
+          const SizedBox(height: 28),
+          SectionHeader(l10n.ledgerCorrections),
+          InsetGroup(
+            children: [
+              for (final correction in entry.corrections)
+                ListTile(
+                  minTileHeight: 52,
+                  leading: const Icon(Icons.change_circle_outlined),
+                  title: Text(_jsonField(correction, 'reason')),
+                  subtitle: Text(l10n.ledgerCorrectionRecorded),
+                ),
+            ],
+          ),
         ],
       ],
     );
@@ -249,36 +307,74 @@ class _ChainStep extends StatelessWidget {
     required this.number,
     required this.title,
     required this.body,
+    required this.isLast,
     this.child,
   });
 
   final int number;
   final String title;
   final String body;
+  final bool isLast;
   final Widget? child;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    final palette = LamToPalette.of(context);
+    final theme = Theme.of(context);
+    return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-            foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-            child: Text('$number'),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+          SizedBox(
+            width: 28,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
-                if (body.isNotEmpty) ...[const SizedBox(height: 4), Text(body)],
-                ?child,
+                Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: palette.primarySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$number',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: palette.primary,
+                    ),
+                  ),
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      color: palette.border,
+                    ),
+                  ),
               ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(top: 3, bottom: isLast ? 0 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (body.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(body, style: theme.textTheme.bodyMedium),
+                  ],
+                  ?child,
+                ],
+              ),
             ),
           ),
         ],
@@ -343,7 +439,7 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
     return ListTile(
       minTileHeight: 56,
       contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.description_outlined),
+      leading: const IconWell(Icons.description_outlined),
       title: Text(ledgerDocumentKindLabel(widget.document.kind, l10n)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

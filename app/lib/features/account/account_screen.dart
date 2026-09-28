@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_page_route.dart';
 import '../../core/failure.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
+import '../../widgets/grouped.dart';
+import '../shell/tab_page.dart';
 import '../auth/session_controller.dart';
 import '../reports/reports_repository.dart';
 import '../settings/api_base_url_tile.dart';
@@ -59,97 +61,174 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       (pref) => pref.emailEnabled && pref.pushEnabled,
     );
 
+    final theme = Theme.of(context);
+    final palette = LamToPalette.of(context);
+    final contact = [
+      if (me.email != null && me.email!.isNotEmpty) me.email!,
+      if (me.phone != null && me.phone!.isNotEmpty) me.phone!,
+    ];
+    final initial = me.displayName.trim().isEmpty
+        ? '?'
+        : me.displayName.trim().characters.first.toUpperCase();
+
     return Material(
       color: Colors.transparent,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(me.displayName, style: Theme.of(context).textTheme.titleLarge),
-            if (me.email != null && me.email!.isNotEmpty)
-              Text(me.email!, style: Theme.of(context).textTheme.bodySmall),
-            if (me.phone != null && me.phone!.isNotEmpty)
-              Text(me.phone!, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 24),
-            Text(
-              l10n.accountOccupancies,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            RadioGroup<int>(
-              groupValue: holder.occupancyId,
-              onChanged: (id) {
-                if (id != null) {
-                  ref
-                      .read(sessionControllerProvider.notifier)
-                      .selectOccupancy(me, id);
-                }
-              },
+      child: TabPage(
+        title: l10n.tabAccount,
+        slivers: [
+          SliverPadding(
+            padding: tabContentPadding,
+            // Short, bounded content: built whole, like a plain column.
+            sliver: SliverToBoxAdapter(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final occupancy in me.occupancies)
-                    RadioListTile<int>(
-                      contentPadding: EdgeInsets.zero,
-                      value: occupancy.id,
-                      title: Text(
-                        '${occupancy.buildingName} · ${occupancy.unitLabel}',
+                  InsetGroup(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Row(
+                        children: [
+                          ExcludeSemantics(
+                            child: CircleAvatar(
+                              radius: 30,
+                              backgroundColor: LamToColors.brand,
+                              foregroundColor: Colors.white,
+                              child: Text(
+                                initial,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  me.displayName,
+                                  style: theme.textTheme.titleLarge,
+                                ),
+                                for (final line in contact) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    line,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: palette.muted,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  RadioGroup<int>(
+                    groupValue: holder.occupancyId,
+                    onChanged: (id) {
+                      if (id != null) {
+                        ref
+                            .read(sessionControllerProvider.notifier)
+                            .selectOccupancy(me, id);
+                      }
+                    },
+                    child: InsetGroup(
+                      header: l10n.accountOccupancies,
+                      dividerIndent: 56,
+                      children: [
+                        for (final occupancy in me.occupancies)
+                          RadioListTile<int>(
+                            value: occupancy.id,
+                            title: Text(
+                              '${occupancy.buildingName} · ${occupancy.unitLabel}',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  InsetGroup(
+                    header: l10n.accountPreferences,
+                    children: [
+                      SwitchListTile.adaptive(
+                        key: const Key('notifications_all'),
+                        title: Text(l10n.accountPrefAll),
+                        value: _all ?? serverAll,
+                        onChanged: _setAll,
+                      ),
+                    ],
+                  ),
+                  if (_prefError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        _prefError!,
+                        key: const Key('account_pref_error'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
                       ),
                     ),
+                  ],
+                  const SizedBox(height: 28),
+                  InsetGroup(
+                    dividerIndent: 68,
+                    children: [
+                      ListTile(
+                        minTileHeight: 56,
+                        leading: const IconWell(Icons.door_front_door_outlined),
+                        title: Text(l10n.gateAccountAction),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: palette.muted.withValues(alpha: 0.6),
+                        ),
+                        onTap: () => Navigator.of(context).push(
+                          adaptivePageRoute<void>(
+                            builder: (_) => GateRegistrationScreen(
+                              repository: ref.read(gateRepositoryProvider),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  // Session actions, not the tab's primary CTA: destructive
+                  // rows, never the filled tint reserved for primary actions.
+                  InsetGroup(
+                    children: [
+                      ListTile(
+                        minTileHeight: 52,
+                        title: Text(
+                          l10n.signOut,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                        onTap: () => _confirmSignOut(),
+                      ),
+                      ListTile(
+                        minTileHeight: 52,
+                        title: Text(
+                          l10n.accountSignOutAll,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                        onTap: () => _confirmSignOut(allDevices: true),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  // Not debug-gated: a released APK must be retargetable at a
+                  // fresh quick-tunnel URL without a rebuild.
+                  const InsetGroup(children: [ApiBaseUrlTile()]),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              l10n.accountPreferences,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (_prefError != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _prefError!,
-                key: const Key('account_pref_error'),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-            ],
-            SwitchListTile.adaptive(
-              key: const Key('notifications_all'),
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.accountPrefAll),
-              value: _all ?? serverAll,
-              onChanged: _setAll,
-            ),
-            const SizedBox(height: 24),
-            AdaptiveOutlinedButton(
-              onPressed: () => Navigator.of(context).push(
-                adaptivePageRoute<void>(
-                  builder: (_) => GateRegistrationScreen(
-                    repository: ref.read(gateRepositoryProvider),
-                  ),
-                ),
-              ),
-              icon: const Icon(Icons.door_front_door_outlined),
-              child: Text(l10n.gateAccountAction),
-            ),
-            const SizedBox(height: 24),
-            const ApiBaseUrlTile(),
-            const SizedBox(height: 24),
-            // Session actions, not the tab's primary CTA: outlined/text, never
-            // the filled Accountability Indigo reserved for primary actions.
-            AdaptiveOutlinedButton(
-              fullWidth: true,
-              onPressed: () => _confirmSignOut(),
-              child: Text(l10n.signOut),
-            ),
-            const SizedBox(height: 8),
-            AdaptiveTextButton(
-              fullWidth: true,
-              onPressed: () => _confirmSignOut(allDevices: true),
-              child: Text(l10n.accountSignOutAll),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
