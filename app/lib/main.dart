@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 
 import 'app.dart';
+import 'theme.dart';
 import 'core/config.dart';
 import 'features/gate/reader/gate_reader_screen.dart';
 import 'features/gate/reader/reader_repository.dart';
@@ -25,6 +26,8 @@ Future<void> main() async {
   final dio = Dio(BaseOptions(baseUrl: apiBaseUrl));
   runApp(
     MaterialApp(
+      theme: lamToTheme(Brightness.light),
+      darkTheme: lamToTheme(Brightness.dark),
       home: GateReaderScreen(
         camera: CameraReader(controller),
         repositoryFor: (credential) => ReaderRepository(dio, credential),

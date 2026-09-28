@@ -78,7 +78,7 @@ class ProposalsSliver extends ConsumerWidget {
             children: [
               EmptyState(
                 icon: Icons.description_outlined,
-                message: l10n.ledgerEmpty,
+                message: l10n.proposalsEmpty,
               ),
             ],
           ),

@@ -24,6 +24,7 @@ import 'features/shell/home_shell.dart';
 import 'l10n/app_localizations.dart';
 import 'theme.dart';
 import 'widgets/brand_identity.dart';
+import 'widgets/grouped.dart';
 
 class LamToApp extends StatelessWidget {
   const LamToApp({super.key});
@@ -181,8 +182,8 @@ class _AppRouterState extends ConsumerState<AppRouter> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                BrandIdentity(width: 220),
-                SizedBox(height: 24),
+                BrandIdentity(width: 180),
+                SizedBox(height: 32),
                 CircularProgressIndicator.adaptive(),
               ],
             ),
@@ -235,12 +236,14 @@ class BootstrapErrorScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const BrandIdentity(width: 180),
-                  const SizedBox(height: 20),
-                  ErrorRetry(error: failure, onRetry: onRetry),
+                  const BrandIdentity(width: 160),
                   const SizedBox(height: 16),
+                  ErrorRetry(error: failure, onRetry: onRetry),
+                  const SizedBox(height: 8),
                   // Expanded so tunnel URL is visible without hunting.
-                  const ApiBaseUrlTile(initiallyExpanded: true),
+                  const InsetGroup(
+                    children: [ApiBaseUrlTile(initiallyExpanded: true)],
+                  ),
                   const SizedBox(height: 16),
                   AdaptiveTextButton(
                     onPressed: () =>

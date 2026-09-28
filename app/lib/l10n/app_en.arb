@@ -286,6 +286,10 @@
   "fundChartRange6m": "6 months",
   "fundChartRange12m": "12 months",
   "proposalsSegment": "Proposals",
+  "proposalsEmpty": "No proposals have been published yet.",
+  "@proposalsEmpty": {
+    "description": "Proposals segment when the building has not published any proposal."
+  },
   "ledgerSegment": "Ledger",
   "proposalStatusPublished": "Published",
   "proposalStatusInProgress": "In progress",

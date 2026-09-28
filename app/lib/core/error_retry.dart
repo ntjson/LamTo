@@ -16,18 +16,23 @@ class ErrorRetry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             failureMessage(Failure.fromObject(error), l10n),
             textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 12),
-          AdaptiveFilledButton(
+          const SizedBox(height: 14),
+          AdaptiveOutlinedButton(
             onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
             child: Text(l10n.commonRetry),
           ),
         ],

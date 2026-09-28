@@ -15,6 +15,7 @@ import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import 'issue_detail_screen.dart';
 import 'location_picker_screen.dart';
 import 'my_issues_screen.dart';
@@ -466,69 +467,108 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     final editingLocked = _busy || _committed;
     // Body-only: shell owns Scaffold/CupertinoPageScaffold chrome (no nested
     // AppBar). Material provides ink/TextField surface without a second scaffold.
+    final theme = Theme.of(context);
+    final palette = LamToPalette.of(context);
     return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: theme.scaffoldBackgroundColor,
       child: ListView(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
-          TextField(
-            controller: _text,
-            maxLines: 4,
-            enabled: !editingLocked,
-            decoration: InputDecoration(labelText: l10n.reportTextLabel),
+          InsetGroup(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: TextField(
+                  controller: _text,
+                  maxLines: 4,
+                  enabled: !editingLocked,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: l10n.reportTextLabel,
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
           ),
-          if (_draftSaveState != _DraftSaveState.idle) ...[
-            const SizedBox(height: 8),
-            Semantics(
-              liveRegion: true,
-              child: Text(switch (_draftSaveState) {
-                _DraftSaveState.saving => l10n.reportDraftSaving,
-                _DraftSaveState.saved => l10n.reportDraftSaved,
-                _DraftSaveState.failed => l10n.reportDraftSaveFailed,
-                _DraftSaveState.idle => '',
-              }, style: Theme.of(context).textTheme.bodySmall),
+          if (_draftSaveState != _DraftSaveState.idle)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(switch (_draftSaveState) {
+                  _DraftSaveState.saving => l10n.reportDraftSaving,
+                  _DraftSaveState.saved => l10n.reportDraftSaved,
+                  _DraftSaveState.failed => l10n.reportDraftSaveFailed,
+                  _DraftSaveState.idle => '',
+                }, style: theme.textTheme.bodySmall),
+              ),
             ),
-          ],
-          const SizedBox(height: 12),
-          ListTile(
-            minTileHeight: 56,
-            shape: RoundedRectangleBorder(
-              side: BorderSide(color: Theme.of(context).dividerColor),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            leading: const Icon(Icons.place_outlined),
-            title: Text(l10n.reportLocationEmpty),
-            subtitle: _draft.locationLabel.isEmpty
-                ? null
-                : Text(_draft.locationLabel),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: editingLocked ? null : _pickLocation,
-          ),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.privateToggleTitle),
-            subtitle: Text(l10n.privateToggleSubtitle),
-            value: _draft.isPrivate,
-            onChanged: editingLocked
-                ? null
-                : (value) async {
-                    setState(() {
-                      _draft = _draft.copyWith(isPrivate: value);
-                    });
-                    await _persist();
-                  },
+          const SizedBox(height: 16),
+          InsetGroup(
+            dividerIndent: 68,
+            children: [
+              ListTile(
+                minTileHeight: 56,
+                leading: const IconWell(Icons.place_outlined),
+                // Empty: the action ("Choose location"). Chosen: the field
+                // name over the value, so the path is read as the answer.
+                title: Text(
+                  _draft.locationLabel.isEmpty
+                      ? l10n.reportLocationEmpty
+                      : l10n.reportLocationLabel,
+                ),
+                subtitle: _draft.locationLabel.isEmpty
+                    ? null
+                    : Text(
+                        _draft.locationLabel,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: palette.muted.withValues(alpha: 0.6),
+                ),
+                onTap: editingLocked ? null : _pickLocation,
+              ),
+              SwitchListTile.adaptive(
+                secondary: const IconWell(Icons.lock_outline),
+                title: Text(l10n.privateToggleTitle),
+                subtitle: Text(l10n.privateToggleSubtitle),
+                value: _draft.isPrivate,
+                onChanged: editingLocked
+                    ? null
+                    : (value) async {
+                        setState(() {
+                          _draft = _draft.copyWith(isPrivate: value);
+                        });
+                        await _persist();
+                      },
+              ),
+            ],
           ),
           // Committed-result hides the attached list: uploaded photos are on
           // the server (their local copies deleted); failures keep their own
           // retry thumbnails below the notice.
           if (!_committed) ...[
-            const SizedBox(height: 16),
-            Text(l10n.reportPhotosLabel(maxReportPhotos)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                l10n.reportPhotosLabel(maxReportPhotos),
+                style: theme.textTheme.titleSmall,
+              ),
+            ),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 for (final (index, path) in _draft.photoPaths.indexed)
                   PhotoThumbnail(
@@ -554,41 +594,9 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           ],
           if (_notice != null) ...[
             const SizedBox(height: 16),
-            Builder(
-              builder: (context) {
-                final colors = statusToneColors(context, _noticeTone);
-                final icon = switch (_noticeTone) {
-                  StatusTone.success => Icons.check_circle_outline,
-                  StatusTone.warning => Icons.info_outline,
-                  StatusTone.error => Icons.error_outline,
-                  StatusTone.info => Icons.info_outline,
-                };
-                return Semantics(
-                  liveRegion: true,
-                  child: Container(
-                    key: _noticeKey,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colors.bg,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(icon, color: colors.fg),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _notice!,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.copyWith(color: colors.fg),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+            KeyedSubtree(
+              key: _noticeKey,
+              child: StatusNotice(tone: _noticeTone, message: _notice!),
             ),
           ],
           if (failedPhotos.isNotEmpty) ...[
@@ -608,7 +616,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             ),
           ],
           if (_committed) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             if (!_pushRequested)
               AdaptiveFilledButton(
                 tonal: true,

@@ -109,8 +109,12 @@ class _BillScanScreenState extends ConsumerState<BillScanScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(l10n.billScanInstruction, textAlign: TextAlign.center),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: Text(
+              l10n.billScanInstruction,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
           ),
           if (_failure case final failure?)
             Padding(
@@ -118,16 +122,27 @@ class _BillScanScreenState extends ConsumerState<BillScanScreen> {
               child: StatusNotice(tone: StatusTone.error, message: failure),
             ),
           Expanded(
-            child: Semantics(
-              label: l10n.billScanInstruction,
-              child: MobileScanner(
-                onDetect: _onDetect,
-                errorBuilder: (context, error) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      l10n.billCameraUnavailable,
-                      textAlign: TextAlign.center,
+            // The camera sits in a rounded frame: it reads as a viewfinder
+            // to aim with, not as the whole screen going dark.
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Semantics(
+                  label: l10n.billScanInstruction,
+                  child: MobileScanner(
+                    onDetect: _onDetect,
+                    errorBuilder: (context, error) => ColoredBox(
+                      color: LamToPalette.of(context).fill,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            l10n.billCameraUnavailable,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

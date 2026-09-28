@@ -11,6 +11,7 @@ import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import '../../widgets/brand_identity.dart';
 import 'registration_status_screen.dart';
 import 'registration_status_store.dart';
@@ -178,23 +179,28 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         l10n,
       );
     }
+    const gap = SizedBox(height: 8);
     return _page(
       PageBody(
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
-              const BrandIdentity(width: 96),
-              const SizedBox(height: 12),
+              // Compact on purpose: the whole request, submit included,
+              // fits a small phone without scrolling.
+              const BrandMark(size: 64),
+              const SizedBox(height: 20),
               TextFormField(
                 key: const Key('registration_name'),
                 controller: _name,
+                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   labelText: l10n.registrationFullName,
                 ),
                 validator: _required,
               ),
+              gap,
               TextFormField(
                 key: const Key('registration_phone'),
                 controller: _phone,
@@ -202,12 +208,14 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 decoration: InputDecoration(labelText: l10n.registrationPhone),
                 validator: _required,
               ),
+              gap,
               TextFormField(
                 key: const Key('registration_email'),
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(labelText: l10n.registrationEmail),
               ),
+              gap,
               TextFormField(
                 key: const Key('registration_password'),
                 controller: _password,
@@ -219,6 +227,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 onFieldSubmitted: (_) => _busy ? null : _submit(),
                 validator: _required,
               ),
+              gap,
               DropdownButtonFormField<int>(
                 key: const Key('registration_building'),
                 initialValue: _buildingId,
@@ -237,6 +246,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 validator: (value) =>
                     value == null ? l10n.registrationRequired : null,
               ),
+              gap,
               KeyedSubtree(
                 key: ValueKey(_buildingId),
                 child: DropdownButtonFormField<int>(
@@ -260,17 +270,16 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   key: const Key('registration_error'),
                   liveRegion: true,
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                    padding: const EdgeInsets.only(top: 16),
+                    child: StatusNotice(
+                      tone: StatusTone.error,
+                      message: _error!,
                     ),
                   ),
                 ),
               const SizedBox(height: 20),
               AdaptiveFilledButton(
+                busy: _busy,
                 onPressed: _busy ? null : _submit,
                 child: Text(l10n.registrationSubmit),
               ),

@@ -890,6 +890,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get proposalsSegment => 'Đề xuất';
 
   @override
+  String get proposalsEmpty => 'Chưa có đề xuất nào được công bố.';
+
+  @override
   String get ledgerSegment => 'Sổ quỹ';
 
   @override

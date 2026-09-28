@@ -6,6 +6,7 @@ import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/grouped.dart';
 import 'session_controller.dart';
 
 class OccupancyPickerScreen extends ConsumerWidget {
@@ -31,16 +32,26 @@ class OccupancyPickerScreen extends ConsumerWidget {
       title: l10n.occupancyPickerTitle,
       body: PageBody(
         child: ListView(
-          children: current.occupancies.map((Occupancy o) {
-            return ListTile(
-              title: Text('${o.buildingName} · ${o.unitLabel}'),
-              onTap: () async {
-                await ref
-                    .read(sessionControllerProvider.notifier)
-                    .selectOccupancy(current, o.id);
-              },
-            );
-          }).toList(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          children: [
+            InsetGroup(
+              dividerIndent: 68,
+              children: [
+                for (final o in current.occupancies)
+                  ListTile(
+                    minTileHeight: 60,
+                    leading: const IconWell(Icons.apartment_outlined),
+                    title: Text('${o.buildingName} · ${o.unitLabel}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await ref
+                          .read(sessionControllerProvider.notifier)
+                          .selectOccupancy(current, o.id);
+                    },
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -58,22 +69,14 @@ class _NoOccupancyScreen extends StatelessWidget {
     return AdaptiveScaffold(
       title: l10n.noOccupancyTitle,
       body: PageBody(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                l10n.noOccupancyBody,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 24),
-              AdaptiveFilledButton(
-                onPressed: onSignOut,
-                child: Text(l10n.signOut),
-              ),
-            ],
+        child: Center(
+          child: EmptyState(
+            icon: Icons.apartment_outlined,
+            message: l10n.noOccupancyBody,
+            action: AdaptiveFilledButton(
+              onPressed: onSignOut,
+              child: Text(l10n.signOut),
+            ),
           ),
         ),
       ),

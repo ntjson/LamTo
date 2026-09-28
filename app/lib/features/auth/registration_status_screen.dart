@@ -10,7 +10,9 @@ import '../../core/adaptive_page_route.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
 import '../../widgets/brand_identity.dart';
+import '../../widgets/grouped.dart';
 import 'login_screen.dart';
 import 'registration_screen.dart';
 import 'registration_status_store.dart';
@@ -110,7 +112,7 @@ class _RegistrationStatusScreenState
     return _page(
       PageBody(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: status == null
               ? Center(
                   child: _error == null
@@ -133,80 +135,39 @@ class _RegistrationStatusScreenState
               : Semantics(
                   key: const Key('registration_status_state'),
                   liveRegion: true,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  child: ListView(
                     children: [
-                      const BrandIdentity(width: 160),
-                      const SizedBox(height: 20),
-                      Text(
-                        '${status.building} · ${status.unit}',
-                        style: Theme.of(context).textTheme.titleLarge,
+                      const SizedBox(height: 8),
+                      const BrandMark(size: 64),
+                      const SizedBox(height: 28),
+                      _StatusCard(
+                        place: '${status.building} · ${status.unit}',
+                        status: status,
+                        busy: _busy,
+                        onRefresh: _refresh,
+                        onNewRequest: _newRequest,
+                        onLogin: _login,
                       ),
-                      const SizedBox(height: 16),
-                      if (status.status == RegistrationStatusEnum.PENDING) ...[
-                        Text(
-                          l10n.registrationPendingTitle,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(l10n.registrationPendingBody),
-                        const SizedBox(height: 16),
-                        AdaptiveOutlinedButton(
-                          onPressed: _busy ? null : _refresh,
-                          child: Text(l10n.registrationRefresh),
-                        ),
-                      ] else if (status.status ==
-                          RegistrationStatusEnum.REJECTED) ...[
-                        Text(
-                          l10n.registrationRejectedTitle,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(status.rejectionReason!),
-                        const SizedBox(height: 16),
-                        AdaptiveFilledButton(
-                          onPressed: _newRequest,
-                          child: Text(l10n.registrationNewRequest),
-                        ),
-                      ] else if (status.status ==
-                          RegistrationStatusEnum.APPROVED) ...[
-                        Text(
-                          l10n.registrationApprovedTitle,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(l10n.registrationApprovedBody),
-                        const SizedBox(height: 16),
-                        AdaptiveFilledButton(
-                          onPressed: _login,
-                          child: Text(l10n.registrationContinueLogin),
-                        ),
-                      ] else ...[
-                        Text(
-                          l10n.registrationExpiredTitle,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(l10n.registrationExpiredBody),
-                        const SizedBox(height: 16),
-                        AdaptiveFilledButton(
-                          onPressed: _newRequest,
-                          child: Text(l10n.registrationNewRequest),
-                        ),
-                      ],
                       if (_error != null)
                         Semantics(
                           key: const Key('registration_status_error'),
                           liveRegion: true,
-                          child: Column(
-                            children: [
-                              Text(
-                                _error!,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                StatusNotice(
+                                  tone: StatusTone.error,
+                                  message: _error!,
                                 ),
-                              ),
-                              AdaptiveOutlinedButton(
-                                onPressed: _refresh,
-                                child: Text(l10n.commonRetry),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                AdaptiveOutlinedButton(
+                                  onPressed: _refresh,
+                                  child: Text(l10n.commonRetry),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                     ],
@@ -230,6 +191,114 @@ class _RegistrationStatusScreenState
     return Scaffold(
       appBar: AppBar(title: Text(l10n.registrationTitle)),
       body: child,
+    );
+  }
+}
+
+/// Where the request stands, in one card: a state glyph, the place, what it
+/// means, and the one next step.
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({
+    required this.place,
+    required this.status,
+    required this.busy,
+    required this.onRefresh,
+    required this.onNewRequest,
+    required this.onLogin,
+  });
+
+  final String place;
+  final RegistrationStatus status;
+  final bool busy;
+  final VoidCallback onRefresh;
+  final VoidCallback onNewRequest;
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final (icon, tone, title, body, action) = switch (status.status) {
+      RegistrationStatusEnum.PENDING => (
+        Icons.hourglass_top_rounded,
+        StatusTone.warning,
+        l10n.registrationPendingTitle,
+        l10n.registrationPendingBody,
+        AdaptiveOutlinedButton(
+          onPressed: busy ? null : onRefresh,
+          child: Text(l10n.registrationRefresh),
+        ),
+      ),
+      RegistrationStatusEnum.REJECTED => (
+        Icons.cancel_outlined,
+        StatusTone.error,
+        l10n.registrationRejectedTitle,
+        status.rejectionReason!,
+        AdaptiveFilledButton(
+          onPressed: onNewRequest,
+          child: Text(l10n.registrationNewRequest),
+        ),
+      ),
+      RegistrationStatusEnum.APPROVED => (
+        Icons.check_circle_outline,
+        StatusTone.success,
+        l10n.registrationApprovedTitle,
+        l10n.registrationApprovedBody,
+        AdaptiveFilledButton(
+          onPressed: onLogin,
+          child: Text(l10n.registrationContinueLogin),
+        ),
+      ),
+      _ => (
+        Icons.schedule,
+        StatusTone.warning,
+        l10n.registrationExpiredTitle,
+        l10n.registrationExpiredBody,
+        AdaptiveFilledButton(
+          onPressed: onNewRequest,
+          child: Text(l10n.registrationNewRequest),
+        ),
+      ),
+    };
+    final colors = statusToneColors(context, tone);
+    return InsetGroup(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: colors.bg,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: colors.fg, size: 30),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              place,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(body, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            action,
+          ],
+        ),
+      ],
     );
   }
 }

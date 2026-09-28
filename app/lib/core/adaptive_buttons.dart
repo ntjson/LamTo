@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../theme.dart';
+
 /// Platform button vocabulary (DESIGN.md §5: native roles at 44pt / 48dp).
 /// Material's filled / outlined / text roles map onto Cupertino's filled and
 /// plain roles — iOS has no outlined button; secondary and tertiary actions
@@ -67,10 +69,26 @@ class AdaptiveFilledButton extends StatelessWidget {
     final pressed = busy ? null : onPressed;
     final content = busy ? _busyOverlay(child) : child;
     if (_isCupertino) {
-      final label = _withIcon(icon, content);
+      var label = _withIcon(icon, content);
+      if (pressed == null && !busy) {
+        // Cupertino's disabled fill pairs placeholder-grey text with a grey
+        // fill; keep a disabled label readable while still reading as off.
+        final muted = LamToPalette.of(context).muted;
+        label = IconTheme.merge(
+          data: IconThemeData(color: muted),
+          child: DefaultTextStyle.merge(
+            style: TextStyle(color: muted),
+            child: label,
+          ),
+        );
+      }
       return tonal
           ? CupertinoButton.tinted(onPressed: pressed, child: label)
-          : CupertinoButton.filled(onPressed: pressed, child: label);
+          : CupertinoButton.filled(
+              onPressed: pressed,
+              disabledColor: LamToPalette.of(context).fill,
+              child: label,
+            );
     }
     if (icon != null) {
       return tonal
@@ -192,10 +210,6 @@ class AdaptiveIconButton extends StatelessWidget {
         ),
       );
     }
-    return IconButton(
-      onPressed: onPressed,
-      icon: Icon(icon),
-      tooltip: label,
-    );
+    return IconButton(onPressed: onPressed, icon: Icon(icon), tooltip: label);
   }
 }

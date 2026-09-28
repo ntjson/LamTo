@@ -1712,6 +1712,12 @@ abstract class AppLocalizations {
   /// **'Proposals'**
   String get proposalsSegment;
 
+  /// Proposals segment when the building has not published any proposal.
+  ///
+  /// In en, this message translates to:
+  /// **'No proposals have been published yet.'**
+  String get proposalsEmpty;
+
   /// No description provided for @ledgerSegment.
   ///
   /// In en, this message translates to:

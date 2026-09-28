@@ -35,8 +35,15 @@ class AdaptiveScaffold extends StatelessWidget {
         ),
       );
     }
+    final titleStyle = Theme.of(
+      context,
+    ).textTheme.titleLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w600);
     return Scaffold(
-      appBar: AppBar(title: Text(title), actions: actions),
+      appBar: AppBar(
+        title: Text(title),
+        titleTextStyle: titleStyle,
+        actions: actions,
+      ),
       body: body,
     );
   }

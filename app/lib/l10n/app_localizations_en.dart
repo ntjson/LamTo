@@ -890,6 +890,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proposalsSegment => 'Proposals';
 
   @override
+  String get proposalsEmpty => 'No proposals have been published yet.';
+
+  @override
   String get ledgerSegment => 'Ledger';
 
   @override

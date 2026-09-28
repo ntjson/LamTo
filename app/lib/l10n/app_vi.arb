@@ -287,6 +287,7 @@
   "fundChartRange6m": "6 tháng",
   "fundChartRange12m": "12 tháng",
   "proposalsSegment": "Đề xuất",
+  "proposalsEmpty": "Chưa có đề xuất nào được công bố.",
   "ledgerSegment": "Sổ quỹ",
   "proposalStatusPublished": "Đã công bố",
   "proposalStatusInProgress": "Đang thực hiện",

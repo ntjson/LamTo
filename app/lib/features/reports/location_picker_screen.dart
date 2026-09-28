@@ -6,6 +6,8 @@ import '../../core/error_retry.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import 'reports_repository.dart';
 
 /// Drill-down location tree (spec 6.3): large rows, explicit selection at
@@ -62,31 +64,46 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
       for (final loc in all)
         if (loc.parentId != null) loc.parentId!,
     };
+    final palette = LamToPalette.of(context);
     return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        if (parent != null)
-          ListTile(
-            minTileHeight: 56,
-            leading: const Icon(Icons.check_circle_outline),
-            title: Text(l10n.locationChooseHere),
-            subtitle: Text(parent.name),
-            onTap: () => Navigator.pop(context, parent),
+        if (parent != null) ...[
+          InsetGroup(
+            children: [
+              ListTile(
+                minTileHeight: 56,
+                leading: IconWell(Icons.check_circle_outline),
+                title: Text(l10n.locationChooseHere),
+                subtitle: Text(parent.name),
+                onTap: () => Navigator.pop(context, parent),
+              ),
+            ],
           ),
-        for (final loc in children)
-          ListTile(
-            minTileHeight: 56,
-            title: Text(loc.name),
-            trailing: hasChildren.contains(loc.id)
-                ? const Icon(Icons.chevron_right)
-                : null,
-            onTap: () {
-              if (hasChildren.contains(loc.id)) {
-                setState(() => _path.add(loc));
-              } else {
-                Navigator.pop(context, loc);
-              }
-            },
-          ),
+          const SizedBox(height: 20),
+        ],
+        InsetGroup(
+          children: [
+            for (final loc in children)
+              ListTile(
+                minTileHeight: 56,
+                title: Text(loc.name),
+                trailing: hasChildren.contains(loc.id)
+                    ? Icon(
+                        Icons.chevron_right,
+                        color: palette.muted.withValues(alpha: 0.6),
+                      )
+                    : null,
+                onTap: () {
+                  if (hasChildren.contains(loc.id)) {
+                    setState(() => _path.add(loc));
+                  } else {
+                    Navigator.pop(context, loc);
+                  }
+                },
+              ),
+          ],
+        ),
       ],
     );
   }

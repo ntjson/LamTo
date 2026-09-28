@@ -10,6 +10,7 @@ import '../../core/format.dart';
 import '../../core/page_body.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import 'bill_detail_screen.dart';
 import 'bills_repository.dart';
 
@@ -41,65 +42,77 @@ class BillsScreen extends ConsumerWidget {
     BuildContext context,
     AppLocalizations l10n,
     List<BillSummary> bills,
-  ) => ListView(
-    physics: const AlwaysScrollableScrollPhysics(),
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    children: [
-      if (bills.isEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 120),
-          child: Center(
-            child: Column(
-              children: [
-                Text(l10n.billNone),
-                const SizedBox(height: 12),
-                AdaptiveOutlinedButton(
-                  onPressed: () => Navigator.maybePop(context),
-                  child: Text(
-                    MaterialLocalizations.of(context).backButtonTooltip,
+  ) {
+    if (bills.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          EmptyState(
+            icon: Icons.receipt_long_outlined,
+            message: l10n.billNone,
+            action: AdaptiveOutlinedButton(
+              onPressed: () => Navigator.maybePop(context),
+              child: Text(MaterialLocalizations.of(context).backButtonTooltip),
+            ),
+          ),
+        ],
+      );
+    }
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      children: [
+        InsetGroup(
+          children: [
+            for (final bill in bills)
+              ListTile(
+                minTileHeight: 72,
+                contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+                title: Text(bill.title),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!figuresTrail(context)) ...[
+                        Text(
+                          formatVnd(bill.amountVnd),
+                          style: listAmountStyle(context),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+                      StatusChip(
+                        tone: switch (bill.status) {
+                          BillStatusEnum.PAID => StatusTone.success,
+                          BillStatusEnum.VOID => StatusTone.error,
+                          _ => StatusTone.warning,
+                        },
+                        label: switch (bill.status) {
+                          BillStatusEnum.PAID => l10n.billStatusPaid,
+                          BillStatusEnum.VOID => l10n.billStatusVoid,
+                          _ => l10n.billStatusIssued,
+                        },
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
+                trailing: figuresTrail(context)
+                    ? Text(
+                        formatVnd(bill.amountVnd),
+                        style: listAmountStyle(context),
+                      )
+                    : null,
+                onTap: () => Navigator.push(
+                  context,
+                  adaptivePageRoute(
+                    builder: (_) => BillDetailScreen(billId: bill.id),
+                  ),
+                ),
+              ),
+          ],
         ),
-      for (final bill in bills) ...[
-        ListTile(
-          minTileHeight: 64,
-          contentPadding: EdgeInsets.zero,
-          title: Text(switch (bill.status) {
-            BillStatusEnum.PAID => l10n.billStatusPaid,
-            BillStatusEnum.VOID => l10n.billStatusVoid,
-            _ => l10n.billStatusIssued,
-          }),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(bill.title),
-              Text(formatVnd(bill.amountVnd), style: listAmountStyle(context)),
-            ],
-          ),
-          trailing: StatusChip(
-            tone: switch (bill.status) {
-              BillStatusEnum.PAID => StatusTone.success,
-              BillStatusEnum.VOID => StatusTone.error,
-              _ => StatusTone.warning,
-            },
-            label: switch (bill.status) {
-              BillStatusEnum.PAID => l10n.billStatusPaid,
-              BillStatusEnum.VOID => l10n.billStatusVoid,
-              _ => l10n.billStatusIssued,
-            },
-          ),
-          onTap: () => Navigator.push(
-            context,
-            adaptivePageRoute(
-              builder: (_) => BillDetailScreen(billId: bill.id),
-            ),
-          ),
-        ),
-        const Divider(height: 1),
       ],
-    ],
-  );
+    );
+  }
 }

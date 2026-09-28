@@ -12,11 +12,14 @@ import '../../core/load_more_button.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme.dart';
+import '../../widgets/grouped.dart';
 import '../bills/bill_detail_screen.dart';
 import '../ledger/ledger_detail_screen.dart';
 import '../reports/issue_detail_screen.dart';
 import '../reports/reports_repository.dart' show cursorFromNext;
 import '../shell/home_shell.dart';
+import '../shell/tab_page.dart';
 import '../transparency/transparency_repository.dart';
 import 'deep_link.dart';
 
@@ -143,70 +146,47 @@ class NotificationsScreen extends ConsumerWidget {
                 await ref.read(notificationsProvider.future);
               } catch (_) {}
             },
-            // Builder-based so a long paginated feed lays out lazily.
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: value.isEmpty
-                  ? 1
-                  : value.length + (controller.hasMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (value.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 120),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Text(l10n.notificationsEmpty),
-                          const SizedBox(height: 12),
-                          AdaptiveOutlinedButton(
-                            onPressed: () => Navigator.maybePop(context),
-                            child: Text(
-                              MaterialLocalizations.of(
-                                context,
-                              ).backButtonTooltip,
-                            ),
+            child: value.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      const SizedBox(height: 80),
+                      EmptyState(
+                        icon: Icons.notifications_none,
+                        message: l10n.notificationsEmpty,
+                        action: AdaptiveOutlinedButton(
+                          onPressed: () => Navigator.maybePop(context),
+                          child: Text(
+                            MaterialLocalizations.of(context).backButtonTooltip,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                }
-                if (index == value.length) {
-                  return LoadMoreButton(
-                    label: l10n.notificationsLoadMore,
-                    onLoadMore: controller.loadMore,
-                  );
-                }
-                final notice = value[index];
-                return ListTile(
-                  minTileHeight: 64,
-                  // The glyph/weight difference is visual only; the state
-                  // word makes unread audible (Separate States Rule).
-                  leading: Semantics(
-                    label: notice.readAt == null
-                        ? l10n.notificationUnread
-                        : l10n.notificationRead,
-                    child: Icon(
-                      notice.readAt == null
-                          ? Icons.circle_notifications
-                          : Icons.notifications_none,
-                    ),
+                    ],
+                  )
+                // Builder-based so a long paginated feed lays out lazily.
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    itemCount: value.length + (controller.hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == value.length) {
+                        return LoadMoreButton(
+                          label: l10n.notificationsLoadMore,
+                          onLoadMore: controller.loadMore,
+                        );
+                      }
+                      final notice = value[index];
+                      return GroupedListItem(
+                        isFirst: index == 0,
+                        isLast: index == value.length - 1,
+                        dividerIndent: 40,
+                        child: _NoticeTile(
+                          notice: notice,
+                          onTap: () => _open(context, ref, controller, notice),
+                        ),
+                      );
+                    },
                   ),
-                  title: Text(
-                    notice.subject,
-                    style: notice.readAt == null
-                        ? const TextStyle(fontWeight: FontWeight.w600)
-                        : null,
-                  ),
-                  subtitle: Text(
-                    notice.body,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () => _open(context, ref, controller, notice),
-                );
-              },
-            ),
           ),
           AsyncError(:final error) => Center(
             child: ErrorRetry(
@@ -250,5 +230,51 @@ class NotificationsScreen extends ConsumerWidget {
           adaptivePageRoute(builder: (_) => BillDetailScreen(billId: id)),
         );
     }
+  }
+}
+
+/// One notice: an unread dot, the subject in full weight while unread, and
+/// two lines of the body. The dot is visual only; the state word makes
+/// unread audible.
+class _NoticeTile extends StatelessWidget {
+  const _NoticeTile({required this.notice, required this.onTap});
+
+  final NotificationFeed notice;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final palette = LamToPalette.of(context);
+    final unread = notice.readAt == null;
+    return ListTile(
+      minTileHeight: 68,
+      contentPadding: const EdgeInsets.fromLTRB(12, 6, 16, 6),
+      horizontalTitleGap: 8,
+      leading: Semantics(
+        label: unread ? l10n.notificationUnread : l10n.notificationRead,
+        child: SizedBox(
+          width: 20,
+          child: unread
+              ? Center(
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: palette.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                )
+              : null,
+        ),
+      ),
+      title: Text(
+        notice.subject,
+        style: unread ? const TextStyle(fontWeight: FontWeight.w600) : null,
+      ),
+      subtitle: Text(notice.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+      onTap: onTap,
+    );
   }
 }
