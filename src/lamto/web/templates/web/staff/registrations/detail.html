@@ -13,19 +13,17 @@
   <div class="record-summary">
     <div class="card">
       <dl class="detail-list">
-        <div><dt>{% trans "Phone" %}</dt><dd>{{ registration.phone }}</dd></div>
+        <div><dt>{% trans "Phone" %}</dt><dd>{{ registration.phone|phone_display }}</dd></div>
         {% if registration.email %}<div><dt>{% trans "Email" %}</dt><dd>{{ registration.email }}</dd></div>{% endif %}
         <div><dt>{% trans "Building" %}</dt><dd>{{ registration.building.name }}</dd></div>
         <div><dt>{% trans "Unit" %}</dt><dd>{{ registration.unit.label }}</dd></div>
         <div><dt>{% trans "Submitted" %}</dt><dd>{{ registration.created_at|staff_datetime }}</dd></div>
-        <div><dt>{% trans "Status" %}</dt><dd>{{ registration.get_status_display }}</dd></div>
       </dl>
     </div>
   </div>
   <div class="record-action">
     {% if registration.status == "PENDING" %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Decide" %}</h2>
       <form method="post" action="{% url 'web:staff-registration-approve' registration.pk %}" data-busy-on-submit>
         {% csrf_token %}

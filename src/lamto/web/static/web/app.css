@@ -9,57 +9,184 @@
 
 /* --- Tokens -------------------------------------------------------------- */
 
+/* Be Vietnam Pro: drawn for Vietnamese, so stacked diacritics (ệ, ổ, ữ)
+   sit inside the line instead of colliding. Self-hosted, OFL (fonts/OFL.txt). */
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-vietnamese-400-normal.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-vietnamese-500-normal.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-vietnamese-600-normal.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-vietnamese-700-normal.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/be-vietnam-pro-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   color-scheme: light;
 
-  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text",
-    "Segoe UI", Inter, Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display",
-    "Segoe UI", Inter, Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  --font-text: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  --font-display: var(--font-text);
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* Brand: the logo navy. The tint is the same hue, lifted so it reads as
-     something to press rather than as more ink. */
-  --brand: #003081;
-  --tint: #0a4fc4;
-  --tint-hover: #0843a8;
-  --tint-active: #07388c;
-  --tint-soft: #e8effc;
-  --tint-soft-hover: #dbe6fa;
+  /* Brand: a nest-violet. One hue does the acting (links, the primary
+     button, the selected item, the fund's spending shade); the band at the
+     top of the home screens is the same hue at full strength. */
+  --brand: #4b1fa8;
+  --tint: #6a2fd8;
+  --tint-hover: #5d26c4;
+  --tint-active: #511fb0;
+  --tint-soft: #efe8ff;
+  --tint-soft-hover: #e4d8fe;
   --on-tint: #ffffff;
-  --focus: #0a4fc4;
+  --focus: #6a2fd8;
+  --band: #6a2fd8;
+  --on-band: #ffffff;
+  --on-band-secondary: #e9e0fd;
 
-  --bg: #f5f5f7;
+  --bg: #f6f4fb;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --fill: #ededf0;
-  --fill-hover: #e4e4e9;
-  --row-hover: #f7f7f9;
-  --label: #1d1d1f;
-  --label-secondary: #6e6e73;
-  --label-tertiary: #86868b;
-  --separator: #e5e5ea;
-  --control-border: #d2d2d7;
-  --scrim: rgba(0, 0, 0, 0.32);
+  --fill: #f1eef8;
+  --fill-hover: #e7e2f2;
+  --row-hover: #faf8fe;
+  --label: #1c1530;
+  --label-secondary: #5c556f;
+  --label-tertiary: #6f6882;
+  --separator: #ebe7f3;
+  --control-border: #d6d0e4;
+  --scrim: rgba(20, 10, 40, 0.36);
 
-  --green: #1e7b34;
-  --green-soft: #e8f5ec;
-  --orange: #9a4f00;
-  --orange-soft: #fff4e5;
-  --red: #c4271d;
-  --red-soft: #fdecec;
-  --red-hover: #a82018;
+  --green: #1d7a4c;
+  --green-soft: #def5e9;
+  --orange: #8a5300;
+  --orange-soft: #fff2d6;
+  --red: #b42344;
+  --red-soft: #ffe6ec;
+  --red-hover: #961c38;
   --blue: var(--tint);
   --blue-soft: var(--tint-soft);
 
-  --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.035), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-float: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 12px 32px -8px rgba(0, 0, 0, 0.18);
-  --sidebar-bg: #f0f0f3;
+  /* Queue tiles: one pale hue per queue, ink of the same hue. */
+  --q-now-bg: #ece4ff;   --q-now-ink: #3d1a8f;
+  --q-soon-bg: #fff0c7;  --q-soon-ink: #6a4100;
+  --q-exc-bg: #ffe1ea;   --q-exc-ink: #891237;
+  --q-all-bg: #d9f4e8;   --q-all-ink: #0b5636;
 
-  --radius-sm: 8px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* The fund calendar: a day's spending as one of four violet steps. */
+  --cal-0: #f4f1fa;
+  --cal-1: #efe8ff;
+  --cal-2: #e0d1ff;
+  --cal-3: #c9adff;
+  --cal-4: #a983fb;
+  --cal-ink-4: #22095e;
+
+  --shadow-card: 0 0 0 1px rgba(46, 22, 102, 0.06), 0 1px 2px rgba(46, 22, 102, 0.04);
+  --shadow-float: 0 0 0 1px rgba(46, 22, 102, 0.06), 0 16px 36px -10px rgba(46, 22, 102, 0.24);
+  --sidebar-bg: #ffffff;
+
+  --radius-sm: 12px;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -74,6 +201,7 @@
   --touch: 44px;
   --sidebar-width: 256px;
   --content-max: 1120px;
+  --band-height: 264px;
   --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -82,38 +210,53 @@
   :root {
     color-scheme: dark;
 
-    --tint: #5b9bff;
-    --tint-hover: #7aafff;
-    --tint-active: #4a8cf5;
-    --tint-soft: #172a4d;
-    --tint-soft-hover: #1d3560;
-    --on-tint: #0b1220;
-    --focus: #7aafff;
+    --tint: #b398ff;
+    --tint-hover: #c4afff;
+    --tint-active: #a385fa;
+    --tint-soft: #2c2350;
+    --tint-soft-hover: #352a60;
+    --on-tint: #170c33;
+    --focus: #c4afff;
+    --band: #3b2380;
+    --on-band: #ffffff;
+    --on-band-secondary: #dcd0fb;
 
-    --bg: #161618;
-    --surface: #1f1f22;
-    --surface-raised: #26262a;
-    --fill: #2c2c30;
-    --fill-hover: #36363b;
-    --row-hover: #26262a;
-    --label: #f5f5f7;
-    --label-secondary: #a1a1a6;
-    --label-tertiary: #8e8e93;
-    --separator: #333337;
-    --control-border: #48484d;
+    --bg: #141220;
+    --surface: #1d1a2b;
+    --surface-raised: #262237;
+    --fill: #29253a;
+    --fill-hover: #332e47;
+    --row-hover: #232034;
+    --label: #f4f1fb;
+    --label-secondary: #b4adc8;
+    --label-tertiary: #9e97b3;
+    --separator: #312c44;
+    --control-border: #4a4462;
     --scrim: rgba(0, 0, 0, 0.55);
 
-    --green: #5ad08a;
-    --green-soft: #12301e;
-    --orange: #ffb340;
-    --orange-soft: #33250d;
-    --red: #ff7a70;
-    --red-soft: #3a1614;
-    --red-hover: #ff958d;
+    --green: #5fd59a;
+    --green-soft: #12301f;
+    --orange: #ffbf5a;
+    --orange-soft: #33260d;
+    --red: #ff8099;
+    --red-soft: #3a1520;
+    --red-hover: #ff9cb0;
+
+    --q-now-bg: #2f2557;   --q-now-ink: #dcd0ff;
+    --q-soon-bg: #3a2d10;  --q-soon-ink: #ffdc8a;
+    --q-exc-bg: #3d1826;   --q-exc-ink: #ffb7cb;
+    --q-all-bg: #133528;   --q-all-ink: #9fe8c6;
+
+    --cal-0: #221f31;
+    --cal-1: #2c2547;
+    --cal-2: #3b2f66;
+    --cal-3: #553f96;
+    --cal-4: #7457c9;
+    --cal-ink-4: #ffffff;
 
     --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06);
     --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 16px 40px -8px rgba(0, 0, 0, 0.6);
-    --sidebar-bg: #1b1b1e;
+    --sidebar-bg: #191627;
   }
 }
 
@@ -3063,6 +3206,787 @@ a.status:hover {
   .evidence-timeline-step + .evidence-timeline-step::before {
     left: calc(var(--space-5) + 13px);
   }
+}
+
+/* --- Home band: the violet field behind the title on home screens -------- */
+
+/* A flat band of the brand hue runs behind the title of the home screens
+   (inbox, fund); the first card rides over its lower edge, so the screen's
+   answer sits at the seam where the eye lands. Other screens stay plain. */
+.has-band .content {
+  position: relative;
+  isolation: isolate;
+}
+
+.has-band .content::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto 0;
+  height: var(--band-height);
+  background: var(--band);
+}
+
+.band-header h1,
+.band-header .page-subtitle {
+  color: var(--on-band);
+}
+
+.band-header .page-subtitle {
+  color: var(--on-band-secondary);
+}
+
+.band-header .button-primary {
+  background: var(--surface);
+  color: var(--tint);
+}
+
+.band-header .button-primary:hover {
+  background: var(--tint-soft);
+}
+
+.band-header :focus-visible {
+  outline-color: var(--on-band);
+}
+
+/* --- The fund's month: the figure that answers, and the days it came from */
+
+.fund-month {
+  display: grid;
+  gap: var(--space-6) var(--space-8);
+  margin-bottom: var(--space-6);
+  padding: var(--space-7);
+  border-radius: var(--radius-xl);
+}
+
+@media (min-width: 1100px) {
+  .fund-month {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    align-items: start;
+  }
+}
+
+.fund-month-figures {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.figure-label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--label-secondary);
+}
+
+.fund-month .amount {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.fund-month-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: var(--space-2) var(--space-7);
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.fund-month-facts div {
+  display: grid;
+  gap: 2px;
+}
+
+.fund-month-facts dt {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+}
+
+.fund-month-facts dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fund-month-figures > .button {
+  margin-top: var(--space-2);
+}
+
+/* Where this month's money went, by day: the three largest. */
+.top-days {
+  justify-self: stretch;
+  margin: var(--space-2) 0 var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--separator);
+}
+
+.top-days-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.top-days-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: 6px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.top-days-list li + li {
+  border-top: 1px solid var(--separator);
+}
+
+.top-days-date {
+  color: var(--label-secondary);
+  font-size: 0.875rem;
+}
+
+.top-days-amount {
+  font-weight: 600;
+}
+
+.top-days-empty {
+  margin: var(--space-2) 0 0;
+  font-size: 0.875rem;
+  color: var(--label-secondary);
+}
+
+.unit {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--label-secondary);
+}
+
+/* Calendar: weeks Monday-Sunday, each day a soft tile. */
+.fund-calendar {
+  margin: 0;
+  min-width: 0;
+}
+
+.fund-calendar-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.fund-calendar-month {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+.fund-calendar-key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+}
+
+.key-swatch {
+  width: 28px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cal-1) 0 25%, var(--cal-2) 25% 50%, var(--cal-3) 50% 75%, var(--cal-4) 75%);
+}
+
+.key-in {
+  margin-left: var(--space-2);
+  font-weight: 600;
+  color: var(--green);
+}
+
+.fund-calendar-grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 6px;
+  margin: -6px;
+  width: calc(100% + 12px);
+}
+
+.fund-calendar-grid th {
+  padding: 0 0 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--label-tertiary);
+  text-align: center;
+}
+
+.fund-calendar-grid td.day {
+  position: relative;
+  height: 58px;
+  padding: 6px 4px;
+  border-radius: 14px;
+  background: var(--cal-0);
+  text-align: center;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.fund-calendar-grid td.is-blank {
+  background: transparent;
+}
+
+.fund-calendar-grid td.level-1 { background: var(--cal-1); }
+.fund-calendar-grid td.level-2 { background: var(--cal-2); }
+.fund-calendar-grid td.level-3 { background: var(--cal-3); }
+.fund-calendar-grid td.level-4 { background: var(--cal-4); color: var(--cal-ink-4); }
+
+.fund-calendar-grid td.is-future {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.fund-calendar-grid td.is-today {
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+
+.day-num {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--label-secondary);
+}
+
+.level-4 .day-num {
+  color: inherit;
+}
+
+/* A day with no spending still prints its zero, quietly. */
+.level-0 .day-out {
+  font-weight: 500;
+  color: var(--label-tertiary);
+}
+
+.day-out {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.day-in {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--green);
+  white-space: nowrap;
+}
+
+/* On a shaded day green would fail contrast; the "+" carries the meaning. */
+.level-1 .day-in,
+.level-2 .day-in,
+.level-3 .day-in {
+  color: var(--label);
+}
+
+.level-4 .day-in {
+  color: inherit;
+}
+
+@media (max-width: 560px) {
+  .fund-month {
+    padding: var(--space-5);
+  }
+
+  .fund-calendar-grid {
+    border-spacing: 3px;
+    margin: -3px;
+    width: calc(100% + 6px);
+  }
+
+  .fund-calendar-grid td.day {
+    height: 50px;
+    padding: 4px 1px;
+    border-radius: 10px;
+  }
+
+  .day-out {
+    font-size: 0.6875rem;
+  }
+
+  /* Too narrow for two amounts: money in becomes a green dot; the cell's
+     title and the screen-reader text keep the figure. */
+  .day-in {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    font-size: 0;
+  }
+
+  .key-plus {
+    display: none;
+  }
+
+  .key-in::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 4px;
+    border-radius: 50%;
+    background: var(--green);
+    vertical-align: middle;
+  }
+
+  .fund-month-facts {
+    gap: var(--space-2) var(--space-5);
+  }
+
+  .fund-month-facts dd {
+    font-size: 0.9375rem;
+  }
+}
+
+/* --- Queue tiles: how much each queue holds, and the way into it -------- */
+
+.queue-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-7);
+}
+
+.queue-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 104px;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--q-bg);
+  color: var(--q-ink);
+  text-decoration: none;
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+
+.queue-tile:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -12px var(--q-ink);
+}
+
+.queue-tile.is-active {
+  box-shadow: inset 0 0 0 2px var(--q-ink);
+}
+
+.queue-tile-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.queue-tile-count {
+  align-self: flex-end;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-do_now { --q-bg: var(--q-now-bg); --q-ink: var(--q-now-ink); }
+.queue-due_soon { --q-bg: var(--q-soon-bg); --q-ink: var(--q-soon-ink); }
+.queue-exceptions { --q-bg: var(--q-exc-bg); --q-ink: var(--q-exc-ink); }
+.queue-all { --q-bg: var(--q-all-bg); --q-ink: var(--q-all-ink); }
+
+@media (max-width: 760px) {
+  .queue-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .queue-tile {
+    min-height: 88px;
+  }
+
+  .queue-tile-count {
+    font-size: 1.625rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .queue-tile:hover {
+    transform: none;
+  }
+}
+
+/* --- Task cards: each open task its own soft card, ringed by its queue --- */
+
+.task-cards {
+  display: grid;
+  gap: var(--space-2);
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.task-cards > li + li::before {
+  content: none;
+}
+
+.task-cards .task-row {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "ring action meta"
+    "ring subject meta"
+    "ring amount meta";
+  column-gap: var(--space-4);
+  min-height: 72px;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.task-cards a.task-row {
+  padding-right: calc(var(--space-5) + 20px);
+}
+
+.task-cards a.task-row:hover {
+  background: var(--row-hover);
+  box-shadow: 0 0 0 1px var(--tint-soft-hover), 0 6px 16px -10px rgba(46, 22, 102, 0.3);
+}
+
+.task-ring {
+  grid-area: ring;
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--ring, var(--tint));
+  border-radius: 50%;
+}
+
+.task-group-do_now { --ring: var(--tint); }
+.task-group-due_soon { --ring: var(--orange); }
+.task-group-exceptions { --ring: var(--red); }
+
+.task-group + .task-group {
+  margin-top: var(--space-6);
+}
+
+.deadline-badge .icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+/* --- Soft-world overrides of the shared components --------------------- */
+
+.sidebar {
+  border-right-color: var(--separator);
+}
+
+.nav-link {
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+}
+
+.nav-link.is-active {
+  background: var(--tint-soft);
+  color: var(--tint);
+}
+
+.building-label {
+  background: var(--fill);
+  box-shadow: none;
+  border-radius: var(--radius-sm);
+}
+
+.button {
+  border-radius: 999px;
+}
+
+.button-compact {
+  border-radius: 999px;
+}
+
+.empty-state-icon {
+  background: var(--tint-soft);
+  color: var(--tint);
+}
+
+.empty-state-icon .icon {
+  color: var(--tint);
+}
+
+.page-heading > h1 {
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--tint-soft-hover);
+  color: var(--label);
+}
+
+/* --- Audit fixes: shared behaviour ------------------------------------- */
+
+/* Cards placed by a grid take the grid's gap, not the stacked-card margin;
+   otherwise every card after the first sits 20px low and rows go ragged. */
+[class*="-grid"] > .card + .card,
+[class*="-grid"] > .panel + .panel {
+  margin-top: 0;
+}
+
+/* A pill whose sentence wraps keeps its dot on the first line. */
+.status .status-icon {
+  align-self: flex-start;
+  /* The icon's own font-size is 0, so the first line's height is spelled
+     out: 13px text at line-height 1.3. */
+  margin-top: calc((0.8125rem * 1.3 - 7px) / 2);
+}
+
+/* Textareas start at a few lines and grow with what is typed. */
+textarea,
+textarea.input {
+  height: 7.5rem;
+  max-height: 28rem;
+  field-sizing: content;
+}
+
+/* Money inputs echo the amount as it will be recorded. */
+.money-echo {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--tint);
+  font-variant-numeric: tabular-nums;
+}
+
+.money-echo:empty {
+  display: none;
+}
+
+/* File picker: the browser's button, dressed in the product's pill. */
+input[type="file"]::file-selector-button {
+  margin-right: var(--space-3);
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tint-soft);
+  color: var(--tint);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: var(--tint-soft-hover);
+}
+
+/* The action card states its job in its heading; no label above it. */
+.action-card.is-primary > h2 {
+  color: var(--label);
+}
+
+/* A record with nothing left to do says so plainly, with the way back. */
+.action-card.is-done {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.action-card.is-done > p {
+  margin: 0;
+  color: var(--label-secondary);
+  font-size: 0.875rem;
+}
+
+.action-card .state-line {
+  margin: 0;
+}
+
+/* Below the two-column width, the step to take comes before the record. */
+@media (max-width: 1099px) {
+  .record-layout:has(.record-action .action-card.is-primary) > .record-action {
+    order: -1;
+  }
+}
+
+/* Phone filters: search on its own row, the selects and Apply share one. */
+@media (max-width: 640px) {
+  .queue-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3) var(--space-2);
+  }
+
+  .queue-toolbar .toolbar-search,
+  .queue-toolbar .toolbar-actions {
+    grid-column: 1 / -1;
+  }
+
+  .queue-toolbar:not(:has(label:nth-of-type(3))) label:nth-of-type(2) {
+    grid-column: 1 / -1;
+  }
+
+  .queue-toolbar .toolbar-actions .button {
+    flex: 1;
+  }
+}
+
+/* Download rows look like what they do. */
+.download-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--tint-soft);
+  color: var(--tint);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.download-chip .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* A form's preview shows the resident's side of what is being sent. */
+.resident-preview {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.resident-preview > h2 {
+  margin: 0;
+}
+
+.resident-preview > p {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+}
+
+.preview-notice {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--fill);
+}
+
+.preview-notice p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.preview-app {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+
+.preview-app .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--tint);
+}
+
+.preview-title {
+  font-weight: 650;
+}
+
+.preview-amount {
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  font-size: 0.875rem;
+  color: var(--label-secondary);
+}
+
+.preview-body {
+  font-size: 0.875rem;
+  color: var(--label-secondary);
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.preview-notice .is-placeholder {
+  color: var(--label-tertiary);
+  font-weight: 500;
+}
+
+/* A row that is a download shows the chip, not a navigation chevron. */
+a.task-row:has(.download-chip) {
+  padding-right: var(--space-5);
+}
+
+a.task-row:has(.download-chip)::after {
+  content: none;
+}
+
+/* --- Sign-in, error and public pages share the home band -------------- */
+
+body.auth,
+body.public {
+  position: relative;
+  isolation: isolate;
+}
+
+body.auth::before,
+body.public::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto 0;
+  height: 300px;
+  background: var(--band);
+}
+
+body.auth::before {
+  height: min(44vh, 360px);
+}
+
+.auth .site-header,
+.public .site-header {
+  position: static;
+  background: transparent;
+  border-bottom-color: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.auth .site-header .brand-name,
+.public .site-header .brand-name {
+  color: var(--on-band);
+}
+
+.public .explorer-hero,
+.public .site-main > .card:first-child {
+  box-shadow: var(--shadow-float);
 }
 
 /* --- Motion -------------------------------------------------------------- */

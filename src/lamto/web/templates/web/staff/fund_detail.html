@@ -1,9 +1,10 @@
 {% extends "web/staff/shell.html" %}
 {% load i18n humanize static assets staff_extras icons %}
 {% block title %}{% trans "Fund" %} · LamTo{% endblock %}
+{% block body_class %}{% if list_mode %} has-band{% endif %}{% endblock %}
 {% block content %}
 {% if list_mode %}
-<header class="page-header">
+<header class="page-header band-header">
   <div class="page-heading">
     <h1 id="fund-heading">{% trans "Maintenance fund" %}</h1>
     <p class="page-subtitle">{{ membership.building.name }}</p>
@@ -15,26 +16,20 @@
   {% endif %}
 </header>
 
-<section class="card fund-hero" aria-labelledby="fund-heading">
-  <div class="fund-hero-figures">
-    <div>
-      <p class="eyebrow">{% trans "Balance" %}</p>
-      <p class="balance-value">
-        <span class="amount">{{ balance_vnd|intcomma }}</span>
-        <span class="currency">VND</span>
-      </p>
-    </div>
-    <dl class="flow-pills">
-      <div>
-        <dt>{% trans "Inflows (30d)" %}</dt>
-        <dd>{{ period_inflows|intcomma }} VND</dd>
-      </div>
-      <div>
-        <dt>{% trans "Outflows (30d)" %}</dt>
-        <dd>{{ period_outflows|intcomma }} VND</dd>
-      </div>
+<section class="card fund-month" aria-labelledby="fund-heading">
+  <div class="fund-month-figures">
+    <p class="figure-label">{% trans "Balance" %}</p>
+    <p class="balance-value">
+      <span class="amount">{{ balance_vnd|intcomma }}</span>
+      <span class="currency">VND</span>
+    </p>
+    <dl class="fund-month-facts">
+      <div><dt>{% trans "Inflows (30d)" %}</dt><dd>{{ period_inflows|intcomma }} <span class="unit">VND</span></dd></div>
+      <div><dt>{% trans "Outflows (30d)" %}</dt><dd>{{ period_outflows|vnd_abs|intcomma }} <span class="unit">VND</span></dd></div>
     </dl>
+    {% include "web/staff/_fund_top_days.html" %}
   </div>
+  {% include "web/staff/_fund_calendar.html" %}
 </section>
 
 <section class="section" aria-labelledby="fund-chart-heading">

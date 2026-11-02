@@ -1,0 +1,30 @@
+{% load i18n humanize staff_extras %}
+{# One month of verified fund flows. Shade = share of the month's largest day of spending; a green line = money in. #}
+<figure class="fund-calendar">
+  <figcaption class="fund-calendar-caption">
+    <span class="fund-calendar-month">{{ fund_calendar.month|date:"F Y" }}</span>
+    <span class="fund-calendar-key"><span class="key-swatch" aria-hidden="true"></span>{% trans "Spent" %}<span class="key-in"><span class="key-plus">+</span> {% trans "Received" %}</span></span>
+  </figcaption>
+  <table class="fund-calendar-grid">
+    <thead><tr>{% for wd in calendar_weekdays %}<th scope="col">{{ wd }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for week in fund_calendar.weeks %}
+      <tr>
+        {% for cell in week %}
+        {% if cell %}
+        <td class="day level-{{ cell.level }}{% if cell.is_today %} is-today{% endif %}{% if cell.is_future %} is-future{% endif %}"
+            title="{{ cell.date|date:'d/m/Y' }} · {% trans 'Spent' %} {{ cell.outflows_vnd|vnd_abs|intcomma }} VND · {% trans 'Received' %} {{ cell.inflows_vnd|intcomma }} VND"
+            {% if cell.is_today %}aria-current="date"{% endif %}>
+          <span class="day-num">{{ cell.day }}</span>
+          {% if cell.inflows_vnd %}<span class="day-in"><span class="sr-only">{% trans "Received" %} </span>+{{ cell.inflows_vnd|vnd_compact }}</span>{% endif %}
+          {% if cell.is_future %}<span class="day-out" aria-hidden="true"></span>{% else %}<span class="day-out"><span class="sr-only">{% trans "Spent" %} </span>{{ cell.outflows_vnd|vnd_compact }}</span>{% endif %}
+        </td>
+        {% else %}
+        <td class="day is-blank" aria-hidden="true"></td>
+        {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</figure>

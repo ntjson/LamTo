@@ -213,4 +213,47 @@
   } else if (flash) {
     flash.focus();
   }
+
+  // Money inputs take whole đồng with no separators; echo the amount with
+  // separators underneath so 1240000 can be checked as 1.240.000 VND.
+  var moneyFormat = new Intl.NumberFormat("vi-VN");
+  document.querySelectorAll("input[data-money]").forEach(function (input) {
+    var echo = document.createElement("p");
+    echo.className = "money-echo";
+    echo.setAttribute("aria-live", "polite");
+    var anchor = input.closest(".input-with-button") || input;
+    anchor.insertAdjacentElement("afterend", echo);
+    var update = function () {
+      var raw = String(input.value || "").trim();
+      echo.textContent = /^\d+$/.test(raw) && Number(raw) > 0
+        ? (window.lamtoI18n && window.lamtoI18n.moneyEcho ? window.lamtoI18n.moneyEcho + " " : "") + moneyFormat.format(Number(raw)) + " VND"
+        : "";
+    };
+    input.addEventListener("input", update);
+    update();
+  });
+
+  // Previews beside a form mirror what the resident will receive.
+  document.querySelectorAll("[data-mirror]").forEach(function (target) {
+    var scope = target.closest(".record-layout") || document;
+    var input = scope.querySelector('[name="' + target.dataset.mirror + '"]');
+    if (!input) return;
+    var render = function () {
+      var raw = String(input.value || "").trim();
+      var text = raw;
+      if (raw && target.hasAttribute("data-mirror-money")) {
+        text = /^\d+$/.test(raw) ? moneyFormat.format(Number(raw)) + " VND" : "";
+      }
+      if (raw && target.hasAttribute("data-mirror-date")) {
+        var m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        text = m ? m[3] + "/" + m[2] + "/" + m[1] : raw;
+      }
+      if (text && target.dataset.mirrorPrefix) text = target.dataset.mirrorPrefix + text;
+      target.textContent = text || target.dataset.mirrorEmpty || "";
+      target.classList.toggle("is-placeholder", !text);
+    };
+    input.addEventListener("input", render);
+    input.addEventListener("change", render);
+    render();
+  });
 })();

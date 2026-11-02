@@ -9,9 +9,10 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import pgettext_lazy
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from lamto.finance.selectors import fund_series
+from lamto.finance.selectors import fund_month_calendar, fund_series
 from lamto.web.action_inbox import ACTION_KIND_LABELS, action_items_for
 from lamto.web.staff import require_management_context, staff_context, switch_building_redirect
 
@@ -71,6 +72,43 @@ def _action_group(item):
     return "do_now"
 
 
+def queue_tiles(items, *, active_status=""):
+    """One tile per task group plus "All", counted over every open item.
+
+    Counts ignore the current filter so the tiles always say how much work
+    each queue holds; the active tile is the one the list is filtered to.
+    """
+    counts = {value: 0 for value, _label in ACTION_GROUPS}
+    for item in items:
+        counts[_action_group(item)] += 1
+    tiles = [
+        {"value": value, "label": label, "count": counts[value], "active": value == active_status}
+        for value, label in ACTION_GROUPS
+    ]
+    tiles.append({"value": "", "label": _("All"), "count": len(items), "active": not active_status})
+    return tiles
+
+
+# Column heads of the fund calendar, Monday first (vi: T2 ... CN).
+CALENDAR_WEEKDAYS = (
+    pgettext_lazy("calendar column", "Mon"),
+    pgettext_lazy("calendar column", "Tue"),
+    pgettext_lazy("calendar column", "Wed"),
+    pgettext_lazy("calendar column", "Thu"),
+    pgettext_lazy("calendar column", "Fri"),
+    pgettext_lazy("calendar column", "Sat"),
+    pgettext_lazy("calendar column", "Sun"),
+)
+
+
+def fund_calendar_context(building_id):
+    """Template context for the month-of-flows calendar (web/staff/_fund_calendar.html)."""
+    return {
+        "fund_calendar": fund_month_calendar(building_id),
+        "calendar_weekdays": CALENDAR_WEEKDAYS,
+    }
+
+
 def prepare_action_inbox(
     items, *, query="", kind="", status="", page_number=1, querystring=""
 ):
@@ -105,7 +143,7 @@ def prepare_action_inbox(
     ]
     return {
         "groups": [
-            {"label": label, "items": grouped[value]}
+            {"value": value, "label": label, "items": grouped[value]}
             for value, label in ACTION_GROUPS
             if grouped[value]
         ],
@@ -153,12 +191,10 @@ def action_inbox(request):
             membership,
             memberships,
             nav_active="inbox",
-            fund_chart_points=[
-                {**row, "period_start": row["period_start"].isoformat()}
-                for row in series
-            ],
             fund_balance_vnd=series[-1]["balance_vnd"] if series else 0,
             fund_link_ok=True,
+            **fund_calendar_context(membership.building_id),
+            queue_tiles=queue_tiles(items, active_status=inbox["active_status"]),
             action_groups=inbox["groups"],
             action_page=inbox["page"],
             kind_filters=inbox["kind_filters"],

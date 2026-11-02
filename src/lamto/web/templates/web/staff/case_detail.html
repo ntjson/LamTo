@@ -177,14 +177,12 @@
     </div>
     {% elif not case.started_at %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Start work" %}</h2>
       <p class="consequence-note">{% trans "Progress and completion open once work has started. If this repair needs a spending proposal, create it first — starting work closes that option for good." %}</p>
       <form method="post" data-busy-on-submit aria-label="{% trans 'Start work' %}">{% csrf_token %}<input type="hidden" name="action" value="start_work"><button type="submit" class="button button-primary button-block">{% trans "Start work" %}</button></form>
     </div>
     {% elif work_form %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Publish progress" %}</h2>
       <p>{% blocktrans with ts=case.started_at|staff_datetime %}Work started {{ ts }}.{% endblocktrans %}</p>
       <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit aria-label="{% trans 'Publish progress' %}">
@@ -210,7 +208,6 @@
     {% endif %}
     {% elif form %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Confirm triage" %}</h2>
       <form method="post" class="stack-form" data-busy-on-submit aria-label="{% trans 'Confirm triage' %}">
         {% csrf_token %}

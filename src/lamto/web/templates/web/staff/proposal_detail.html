@@ -36,7 +36,6 @@
         <div class="card-body">
           <dl class="detail-list">
             {% if version %}<div><dt>{% trans "Amount" %}</dt><dd class="figure">{{ version.amount_vnd|intcomma }} VND</dd></div>{% endif %}
-            <div><dt>{% trans "Status" %}</dt><dd>{{ proposal.get_status_display }}</dd></div>
             {% if version %}
             {% if price_comparison %}
             <div>
@@ -91,14 +90,12 @@
   <div class="record-action">
     {% if action_panel == "publish" %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Publish settled expense" %}</h2>
       <p class="consequence-note">{% trans "Publishing adds this settled expense to the resident ledger. Verify the frozen proposal and settlement evidence before continuing." %}</p>
       <form method="post" class="stack-form" data-busy-on-submit>{% csrf_token %}<input type="hidden" name="action" value="publish">{{ publish_form }}<button type="submit" class="button button-primary button-block">{% trans "Publish to resident ledger" %}</button></form>
     </div>
     {% elif action_panel == "decide" %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Decide whether to proceed" %}</h2>
       <p class="consequence-note">{% trans "“Do not proceed” closes this proposal permanently in your name; it cannot be reopened, and new spending needs a new proposal." %}</p>
       <form method="post" class="stack-form" data-busy-on-submit>
@@ -125,21 +122,18 @@
     </div>
     {% elif action_panel == "case" %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Work tracked on maintenance case" %}</h2>
       <p class="consequence-note">{% trans "Work on this proposal is recorded through its maintenance case. Open the case to publish progress or mark the work complete." %}</p>
       <a class="button button-primary button-block" href="{% url 'web:case-detail' proposal.case_id %}">{% trans "Open maintenance case" %}</a>
     </div>
     {% elif action_panel == "settle" %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Record settlement" %}</h2>
       <p class="consequence-note">{% trans "The work is complete and this proposal is waiting to be paid. Filing the transfer proof settles it and anchors the evidence." %}</p>
       <a class="button button-primary button-block" href="{% url 'web:settlement-record' proposal.pk %}">{% trans "Record settlement" %}</a>
     </div>
     {% elif action_panel == "progress" %}
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Publish work progress" %}</h2>
       <form method="post" enctype="multipart/form-data" class="stack-form" data-busy-on-submit>{% csrf_token %}{{ progress_form }}<div class="form-actions"><button name="action" value="progress" class="button button-primary">{% trans "Publish progress" %}</button><button name="action" value="complete" class="button button-secondary">{% trans "Complete work" %}</button></div></form>
     </div>
@@ -156,8 +150,10 @@
       <a class="button button-secondary button-block" href="{% url 'web:ops-health' %}">{% trans "Review Operations health" %}</a>
     </div>
     {% else %}
-    <div class="action-card">
-      <p class="empty">{% trans "No action is assigned to this membership. Review the proposal summary and return to the action inbox." %}</p>
+    <div class="action-card is-done">
+      <h2>{% trans "Nothing needs your action here" %}</h2>
+      <p>{% trans "This proposal has no open step for you. Its record stays on this page for reference." %}</p>
+      <a class="button button-secondary button-block" href="{% url 'web:action-inbox' %}">{% trans "Back to action inbox" %}</a>
     </div>
     {% endif %}
   </div>

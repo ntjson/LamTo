@@ -49,7 +49,7 @@ class ProposalSettlementHandoffTests(TestCase):
             response,
             reverse("web:settlement-record", kwargs={"pk": self.proposal.pk}),
         )
-        self.assertNotContains(response, "No action is assigned to this membership")
+        self.assertNotContains(response, "Nothing needs your action here")
 
     def test_settled_proposal_moves_past_the_settlement_step(self):
         PilotDomainDriver(self.seed).record_settlement()

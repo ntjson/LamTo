@@ -1,4 +1,5 @@
 from django import forms
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from lamto.web.forms.fields import WholeVndField
@@ -13,7 +14,7 @@ class BillForm(forms.Form):
         required=False,
         strip=True,
         label=_("Period"),
-        widget=forms.TextInput(attrs={"class": "input", "placeholder": "2026-07"}),
+        widget=forms.TextInput(attrs={"class": "input"}),
     )
     due_date = forms.DateField(
         required=False,
@@ -33,6 +34,8 @@ class BillForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.label_suffix = ""
         self.fields["resident"].choices = list(resident_choices)
+        # The example period is this month, so it never reads as stale.
+        self.fields["period"].widget.attrs["placeholder"] = timezone.localdate().strftime("%Y-%m")
 
 
 class VoidBillForm(forms.Form):

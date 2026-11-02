@@ -32,10 +32,13 @@ class WholeVndField(forms.IntegerField):
 
     def __init__(self, **kwargs):
         kwargs.setdefault("min_value", 1)
+        kwargs.setdefault("help_text", _("Whole VND, digits only — for example 18900000."))
         kwargs.setdefault("widget", forms.NumberInput(attrs={"class": "input"}))
         super().__init__(**kwargs)
         self.widget.attrs.setdefault("step", "1")
         self.widget.attrs.setdefault("inputmode", "numeric")
+        # staff.js echoes the amount with separators under the field.
+        self.widget.attrs.setdefault("data-money", "")
 
     def to_python(self, value):
         if value not in self.empty_values and not WHOLE_NUMBER.fullmatch(str(value).strip()):

@@ -317,22 +317,22 @@ class ActionInboxChartTests(TestCase):
         session.save()
         return membership
 
-    def test_inbox_shows_compact_chart_with_fund_link_for_fund_staff(self):
+    def test_inbox_shows_month_calendar_with_fund_link_for_fund_staff(self):
         seed = seed_pilot_world(building_name="Inbox Chart B", email_prefix="ich")
         self._login(seed, "fund_recorder")
         resp = self.client.get(reverse("web:action-inbox"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'id="fund-chart-data"')
-        self.assertContains(resp, 'data-compact="1"')
+        self.assertContains(resp, 'class="fund-calendar"')
+        self.assertContains(resp, 'aria-current="date"')
         self.assertContains(resp, reverse("web:fund-home"))
-        self.assertEqual(len(resp.context["fund_chart_points"]), 6)
+        self.assertEqual(resp.context["fund_calendar"]["month"], timezone.localdate().replace(day=1))
         self.assertTrue(resp.context["fund_link_ok"])
 
-    def test_inbox_chart_has_fund_link_for_management(self):
+    def test_inbox_calendar_has_fund_link_for_management(self):
         seed = seed_pilot_world(building_name="Inbox Chart D", email_prefix="icd")
         self._login(seed, "maintenance")
         resp = self.client.get(reverse("web:action-inbox"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'id="fund-chart-data"')
+        self.assertContains(resp, 'class="fund-calendar"')
         self.assertContains(resp, reverse("web:fund-home"))
         self.assertTrue(resp.context["fund_link_ok"])

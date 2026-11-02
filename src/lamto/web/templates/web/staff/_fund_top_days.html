@@ -1,0 +1,13 @@
+{% load i18n humanize staff_extras %}
+<div class="top-days">
+  <h3 class="figure-label">{% trans "Biggest spending days" %}</h3>
+  {% if fund_calendar.top_days %}
+  <ol class="top-days-list">
+    {% for cell in fund_calendar.top_days %}
+    <li><span class="top-days-date">{{ cell.date|date:"d/m" }}</span><span class="top-days-amount">{{ cell.outflows_vnd|vnd_abs|intcomma }} <span class="unit">VND</span></span></li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="top-days-empty">{% trans "No spending from the fund this month yet." %}</p>
+  {% endif %}
+</div>

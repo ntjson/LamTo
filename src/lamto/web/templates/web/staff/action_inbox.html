@@ -1,40 +1,41 @@
 {% extends "web/staff/shell.html" %}
 {% load i18n humanize static assets staff_extras icons %}
 {% block title %}{% trans "Action inbox" %} · LamTo{% endblock %}
+{% block body_class %} has-band{% endblock %}
 {% block content %}
-<header class="page-header">
+<header class="page-header band-header">
   <div class="page-heading">
     <h1 id="inbox-heading">{% trans "Action inbox" %}</h1>
     <p class="page-subtitle">{% blocktrans with building=membership.building.name %}Work assigned to Management at {{ building }}.{% endblocktrans %}{% if action_page.paginator.count %} <span class="tabular">{% staff_task_count action_page.paginator.count %}</span>{% endif %}</p>
   </div>
 </header>
 
-<section class="card fund-strip" aria-labelledby="fund-chart-card-heading">
-  <div>
-    <h2 id="fund-chart-card-heading" class="eyebrow">{% trans "Maintenance fund" %}</h2>
+<section class="card fund-month" aria-labelledby="fund-month-heading">
+  <div class="fund-month-figures">
+    <h2 id="fund-month-heading" class="figure-label">{% trans "Spent from the fund this month" %}</h2>
     <p class="balance-value">
-      <span class="amount">{{ fund_balance_vnd|intcomma }}</span>
+      <span class="amount">{{ fund_calendar.outflows_vnd|vnd_abs|intcomma }}</span>
       <span class="currency">VND</span>
     </p>
+    <dl class="fund-month-facts">
+      <div><dt>{% trans "Received this month" %}</dt><dd>{{ fund_calendar.inflows_vnd|intcomma }} <span class="unit">VND</span></dd></div>
+      <div><dt>{% trans "Balance" %}</dt><dd>{{ fund_balance_vnd|intcomma }} <span class="unit">VND</span></dd></div>
+    </dl>
+    {% include "web/staff/_fund_top_days.html" %}
+    {% if fund_link_ok %}<a class="button button-secondary" href="{% url 'web:fund-home' %}">{% trans "View fund" %}{% icon "chevron-right" %}</a>{% endif %}
   </div>
-  <div class="chart-box chart-box-compact">
-    <canvas id="fund-chart" role="img" data-compact="1"
-            aria-label="{% trans 'Fund balance chart' %}"
-            data-label-balance="{% trans 'Balance' %}"></canvas>
-    {# Sibling, not canvas fallback: role="img" hides descendants from AT. #}
-    <div class="sr-only"><table>
-      <caption>{% trans "Fund balance by period" %}</caption>
-      <thead><tr><th scope="col">{% trans "Period" %}</th><th scope="col">{% trans "Balance" %}</th><th scope="col">{% trans "Inflows" %}</th><th scope="col">{% trans "Outflows" %}</th></tr></thead>
-      <tbody>
-        {% for point in fund_chart_points %}
-        <tr><td>{{ point.period_start }}</td><td>{{ point.balance_vnd|intcomma }} VND</td><td>{{ point.inflows_vnd|intcomma }} VND</td><td>{{ point.outflows_vnd|intcomma }} VND</td></tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-  </div>
-  {{ fund_chart_points|json_script:"fund-chart-data" }}
-  {% if fund_link_ok %}<a class="button button-secondary" href="{% url 'web:fund-home' %}">{% trans "View fund" %}</a>{% endif %}
+  {% include "web/staff/_fund_calendar.html" %}
 </section>
+
+<nav class="queue-tiles" aria-label="{% trans 'Task group' %}">
+  {% for tile in queue_tiles %}
+  <a class="queue-tile queue-{{ tile.value|default:'all' }}{% if tile.active %} is-active{% endif %}"
+     href="?{% if tile.value %}status={{ tile.value }}{% endif %}"{% if tile.active %} aria-current="true"{% endif %}>
+    <span class="queue-tile-label">{{ tile.label }}</span>
+    <span class="queue-tile-count">{{ tile.count }}</span>
+  </a>
+  {% endfor %}
+</nav>
 
 <section aria-labelledby="inbox-heading">
   {% translate "Task group" as group_filter_label %}
@@ -42,16 +43,17 @@
 
   {% if action_groups %}
   {% for group in action_groups %}
-  <section class="task-group" aria-labelledby="task-group-{{ forloop.counter }}">
+  <section class="task-group task-group-{{ group.value }}" aria-labelledby="task-group-{{ forloop.counter }}">
     <div class="section-header"><h2 id="task-group-{{ forloop.counter }}">{{ group.label }}</h2><span class="section-meta">{{ group.items|length }}</span></div>
-    <ul class="task-list">
+    <ul class="task-list task-cards">
       {% for item in group.items %}
       <li>
         <a class="task-row" href="{{ item.url }}">
+          <span class="task-ring" aria-hidden="true"></span>
           <span class="task-action">{{ item.title }}</span>
           <span class="task-subject">{{ item.summary }}</span>
           <span class="task-amount">{% if item.amount_vnd != None %}{{ item.amount_vnd|intcomma }} VND{% endif %}</span>
-          <span class="task-meta">{% if item.deadline_at %}<span class="deadline-badge deadline-{{ item.deadline_tone }}">{% trans "Deadline" %} {{ item.deadline_at|staff_datetime }}</span>{% endif %}</span>
+          <span class="task-meta">{% if item.deadline_at %}<span class="deadline-badge deadline-{{ item.deadline_tone }}">{% icon "clock" %}{% trans "Deadline" %} {{ item.deadline_at|staff_datetime }}</span>{% endif %}</span>
         </a>
       </li>
       {% endfor %}
@@ -71,9 +73,4 @@
   </div>
   {% endif %}
 </section>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% asset 'web/chart.umd.js' %}"></script>
-<script src="{% asset 'web/fund-chart.js' %}"></script>
 {% endblock %}

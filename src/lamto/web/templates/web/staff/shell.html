@@ -5,8 +5,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#161618" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f6f4fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151320" media="(prefers-color-scheme: dark)">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}{% trans "Management" %} · LamTo{% endblock %}</title>
   <link rel="icon" type="image/png" href="{% static 'web/brand/favicon.png' %}">
@@ -14,7 +14,7 @@
   <script>document.documentElement.classList.replace("no-js", "js");</script>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="staff">
+<body class="staff{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#main">{% trans "Skip to content" %}</a>
   <div class="app">
     <aside class="sidebar" id="app-sidebar" aria-label="{% trans 'Management' %}">
@@ -117,7 +117,8 @@
   <script>
     window.lamtoI18n = {
       copied: "{% filter escapejs %}{% trans 'Copied' %}{% endfilter %}",
-      copyFailed: "{% filter escapejs %}{% trans 'Copy failed. Select the value and copy it manually.' %}{% endfilter %}"
+      copyFailed: "{% filter escapejs %}{% trans 'Copy failed. Select the value and copy it manually.' %}{% endfilter %}",
+      moneyEcho: "{% filter escapejs %}{% trans 'Recorded as' %}{% endfilter %}"
     };
   </script>
   <script src="{% asset 'web/staff.js' %}" defer></script>

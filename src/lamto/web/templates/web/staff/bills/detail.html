@@ -16,7 +16,6 @@
         <dl class="detail-list">
           <div><dt>{% trans "Amount" %}</dt><dd class="figure">{{ bill.amount_vnd|intcomma }} VND</dd></div>
           <div><dt>{% trans "Resident" %}</dt><dd>{{ bill.resident }}</dd></div>
-          <div><dt>{% trans "Status" %}</dt><dd>{{ bill.get_status_display }}</dd></div>
           {% if bill.document_id %}
           <div><dt>{% trans "Bill document" %}</dt><dd><a class="document-link" href="{% url 'web:staff-document' bill.document_id %}">{% icon "doc" %}<span>{{ bill.document.filename }}</span></a></dd></div>
           {% endif %}

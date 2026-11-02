@@ -96,7 +96,12 @@ def _proposal_next_action(proposal: Proposal) -> str:
             return _("Follow work on case")
         return _("Publish progress or complete")
     if proposal.status == Proposal.Status.COMPLETED:
-        return _("Record settlement")
+        # Only an unpaid proposal still needs a settlement; a paid one waits
+        # for publication, and a published one is done.
+        if getattr(proposal, "settlement", None) is None:
+            return _("Record settlement")
+        if getattr(proposal, "published_ledger_entry", None) is None:
+            return _("Publish to resident ledger")
     return ""
 
 
@@ -112,7 +117,9 @@ def proposal_list(request):
         proposals_qs = proposals_qs.filter(status=status)
     list_meta = prepare_record_list(
         request,
-        proposals_qs.select_related("current_version", "case"),
+        proposals_qs.select_related(
+            "current_version", "case", "settlement", "published_ledger_entry"
+        ),
         search_fields=(
             "current_version__contractor_name",
             "case__category",

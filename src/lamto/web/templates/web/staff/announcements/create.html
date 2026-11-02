@@ -9,7 +9,7 @@
     <p class="page-subtitle">{% blocktrans with building=membership.building.name %}Publish a notice to residents of {{ building }}.{% endblocktrans %}</p>
   </div>
 </header>
-<div class="narrow">
+<div class="record-layout">
   <form method="post" action="{% url 'web:staff-announcement-create' %}" class="card card-body stack-form" data-busy-on-submit aria-labelledby="publish-announcement-heading">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
@@ -24,5 +24,16 @@
     {% endfor %}
     <button type="submit" class="button button-primary">{% trans "Publish announcement" %}</button>
   </form>
+  <aside class="record-action" aria-labelledby="announcement-preview-heading">
+    <div class="action-card resident-preview">
+      <h2 id="announcement-preview-heading">{% trans "What residents receive" %}</h2>
+      <div class="preview-notice">
+        <p class="preview-app">{% icon "megaphone" %}<span>Làm Tổ · {{ membership.building.name }}</span></p>
+        <p class="preview-title" data-mirror="title" data-mirror-empty="{% trans 'Announcement title' %}"></p>
+        <p class="preview-body" data-mirror="body" data-mirror-empty="{% trans 'The message residents read appears here.' %}"></p>
+      </div>
+      <p>{% trans "Every resident of the building gets it in the app, with a push notification where they allow one." %}</p>
+    </div>
+  </aside>
 </div>
 {% endblock %}

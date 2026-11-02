@@ -2854,3 +2854,136 @@ msgstr "Đề xuất chi"
 
 msgid "Not yet verified"
 msgstr "Chưa xác minh"
+
+msgid "Spent"
+msgstr "Đã chi"
+
+msgid "Received"
+msgstr "Đã thu"
+
+msgid "Spent from the fund this month"
+msgstr "Chi từ quỹ tháng này"
+
+msgid "Received this month"
+msgstr "Thu tháng này"
+
+msgctxt "compact money"
+msgid "B"
+msgstr "Tỷ"
+
+msgctxt "compact money"
+msgid "M"
+msgstr "Tr"
+
+msgctxt "compact money"
+msgid "K"
+msgstr "N"
+
+msgctxt "calendar column"
+msgid "Mon"
+msgstr "T2"
+
+msgctxt "calendar column"
+msgid "Tue"
+msgstr "T3"
+
+msgctxt "calendar column"
+msgid "Wed"
+msgstr "T4"
+
+msgctxt "calendar column"
+msgid "Thu"
+msgstr "T5"
+
+msgctxt "calendar column"
+msgid "Fri"
+msgstr "T6"
+
+msgctxt "calendar column"
+msgid "Sat"
+msgstr "T7"
+
+msgctxt "calendar column"
+msgid "Sun"
+msgstr "CN"
+
+msgid "Biggest spending days"
+msgstr "Ngày chi nhiều nhất"
+
+msgid "No spending from the fund this month yet."
+msgstr "Tháng này quỹ chưa chi khoản nào."
+
+msgid "Nothing needs your action here"
+msgstr "Không còn việc nào cần bạn làm"
+
+msgid "This proposal has no open step for you. Its record stays on this page for reference."
+msgstr "Đề xuất này không còn bước nào đang chờ bạn. Hồ sơ vẫn được giữ ở đây để tra cứu."
+
+msgid "This settlement has no open step for you. Its record stays on this page for reference."
+msgstr "Thanh toán này không còn bước nào đang chờ bạn. Hồ sơ vẫn được giữ ở đây để tra cứu."
+
+msgid "Back to action inbox"
+msgstr "Về Hộp việc"
+
+msgid "Evidence anchoring"
+msgstr "Neo bằng chứng"
+
+msgid "Recorded as"
+msgstr "Ghi nhận là"
+
+msgid "Whole VND, digits only — for example 18900000."
+msgstr "VND nguyên, chỉ gồm chữ số — ví dụ 18900000."
+
+msgid "The contractor's quotation as a PDF."
+msgstr "Báo giá của nhà thầu, định dạng PDF."
+
+msgid "The bank statement or contract that proves the source, as a PDF."
+msgstr "Sao kê ngân hàng hoặc hợp đồng chứng minh nguồn tiền, định dạng PDF."
+
+msgid "Delivery queue is slow: the oldest item has waited %(age)s. It retries on its own."
+msgstr "Hàng đợi gửi đang chậm: mục cũ nhất đã chờ %(age)s. Hệ thống tự thử lại."
+
+msgid "%(days)d d %(hours)d h"
+msgstr "%(days)d ngày %(hours)d giờ"
+
+msgid "%(hours)d h %(minutes)d min"
+msgstr "%(hours)d giờ %(minutes)d phút"
+
+msgid "%(minutes)d min"
+msgstr "%(minutes)d phút"
+
+msgid "%(seconds)d s"
+msgstr "%(seconds)d giây"
+
+msgid "Residents can see this announcement"
+msgstr "Cư dân đang thấy thông báo này"
+
+msgid "Editing sends residents the corrected version as a new revision."
+msgstr "Khi sửa, cư dân nhận bản đã chỉnh dưới dạng phiên bản mới."
+
+msgid "Withdrawing removes this announcement from the resident app. It stays in this list as withdrawn and cannot be republished."
+msgstr "Rút thông báo sẽ gỡ nó khỏi ứng dụng cư dân. Thông báo vẫn nằm trong danh sách với trạng thái đã rút và không thể công bố lại."
+
+msgid "What residents receive"
+msgstr "Cư dân sẽ nhận được"
+
+msgid "Announcement title"
+msgstr "Tiêu đề thông báo"
+
+msgid "The message residents read appears here."
+msgstr "Nội dung cư dân đọc sẽ hiện ở đây."
+
+msgid "Every resident of the building gets it in the app, with a push notification where they allow one."
+msgstr "Mọi cư dân của tòa nhà nhận được trong ứng dụng, kèm thông báo đẩy nếu họ cho phép."
+
+msgid "What the resident receives"
+msgstr "Cư dân sẽ nhận được"
+
+msgid "Bill title"
+msgstr "Tiêu đề hóa đơn"
+
+msgid "Due"
+msgstr "Hạn"
+
+msgid "The resident sees the bill with a payment QR code and the attached document."
+msgstr "Cư dân thấy hóa đơn kèm mã QR thanh toán và tài liệu đính kèm."

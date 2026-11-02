@@ -9,7 +9,7 @@
     <p class="page-subtitle">{% blocktrans with building=membership.building.name %}Issue a resident bill for {{ building }}.{% endblocktrans %}</p>
   </div>
 </header>
-<div class="narrow">
+<div class="record-layout">
   <form method="post" action="{% url 'web:staff-bill-create' %}" enctype="multipart/form-data" class="card card-body stack-form" data-busy-on-submit aria-labelledby="issue-bill-heading">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
@@ -25,5 +25,17 @@
     {% endfor %}
     <button type="submit" class="button button-primary">{% trans "Issue bill" %}</button>
   </form>
+  <aside class="record-action" aria-labelledby="bill-preview-heading">
+    <div class="action-card resident-preview">
+      <h2 id="bill-preview-heading">{% trans "What the resident receives" %}</h2>
+      <div class="preview-notice">
+        <p class="preview-app">{% icon "receipt" %}<span>Làm Tổ · {{ membership.building.name }}</span></p>
+        <p class="preview-title" data-mirror="title" data-mirror-empty="{% trans 'Bill title' %}"></p>
+        <p class="preview-amount" data-mirror="amount_vnd" data-mirror-money data-mirror-empty="— VND"></p>
+        <p class="preview-meta"><span data-mirror="period" data-mirror-empty=""></span><span data-mirror="due_date" data-mirror-date data-mirror-prefix="{% trans 'Due' %} " data-mirror-empty=""></span></p>
+      </div>
+      <p>{% trans "The resident sees the bill with a payment QR code and the attached document." %}</p>
+    </div>
+  </aside>
 </div>
 {% endblock %}

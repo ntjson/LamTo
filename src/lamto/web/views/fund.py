@@ -39,7 +39,7 @@ FUND_CHART_RANGES = (
 @login_required
 @require_GET
 def fund_home(request):
-    from lamto.web.views.staff_common import prepare_record_list
+    from lamto.web.views.staff_common import fund_calendar_context, prepare_record_list
 
     membership, memberships = require_management_context(request)
     building_id = membership.building_id
@@ -89,6 +89,7 @@ def fund_home(request):
             pending_total=pending_total,
             pending_capped=pending_total > len(pending),
             chart_points=chart_points,
+            **fund_calendar_context(building_id),
             chart_range=range_key,
             chart_ranges=FUND_CHART_RANGES,
             window_opening_vnd=window_closing - window_inflows - window_outflows,

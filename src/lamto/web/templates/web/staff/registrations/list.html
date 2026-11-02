@@ -18,7 +18,7 @@
   <li>
     <a class="task-row" href="{% url 'web:staff-registration-detail' registration.pk %}">
       <span class="task-action">{{ registration.full_name }}</span>
-      <span class="task-subject">{% blocktrans with unit=registration.unit.label %}Unit {{ unit }}{% endblocktrans %} · {{ registration.phone }}</span>
+      <span class="task-subject">{% blocktrans with unit=registration.unit.label %}Unit {{ unit }}{% endblocktrans %} · {{ registration.phone|phone_display }}</span>
       <span class="task-meta"><span>{{ registration.created_at|staff_datetime }}</span></span>
     </a>
   </li>

@@ -9,6 +9,7 @@ from lamto.accounts.models import Building
 from lamto.finance.models import MaintenanceFund, MaintenanceFundEntry
 from lamto.finance.selectors import (
     FUND_SERIES_RANGE_KEYS,
+    fund_month_calendar_from_entries,
     fund_period_flows,
     fund_series,
     fund_series_from_entries,
@@ -175,3 +176,43 @@ class FundSeriesIntegrationTests(TestCase):
             # count; totalling them catches the unverified row wherever it
             # lands, including the bucket the opening balance shares.
             assert sum(row["inflows_vnd"] for row in series) == DEFAULT_FUND_OPENING_VND
+
+
+class FundMonthCalendarTests(TestCase):
+    """Pure core of the inbox/fund calendar: weeks, levels, month totals."""
+
+    TODAY = date(2026, 10, 26)
+
+    _hcm = staticmethod(FundSeriesTests._hcm)
+
+    def test_weeks_start_monday_and_pad_the_month(self):
+        cal = fund_month_calendar_from_entries([], today=self.TODAY)
+        assert cal["month"] == date(2026, 10, 1)
+        # 1 October 2026 is a Thursday: three blanks, then the 1st.
+        assert cal["weeks"][0][:3] == [None, None, None]
+        assert cal["weeks"][0][3]["day"] == 1
+        assert all(len(week) == 7 for week in cal["weeks"])
+        days = [cell["day"] for week in cal["weeks"] for cell in week if cell]
+        assert days == list(range(1, 32))
+        today = next(c for w in cal["weeks"] for c in w if c and c["is_today"])
+        assert today["day"] == 26
+        assert all(c["is_future"] for w in cal["weeks"] for c in w if c and c["day"] > 26)
+
+    def test_levels_rank_spending_and_totals_keep_signs(self):
+        entries = [
+            (self._hcm(2026, 9, 30), "OUTFLOW", -9_000_000),  # previous month
+            (self._hcm(2026, 10, 3), "OUTFLOW", -2_000_000),
+            (self._hcm(2026, 10, 7), "OUTFLOW", -12_000_000),
+            (self._hcm(2026, 10, 7), "OUTFLOW", -4_000_000),
+            (self._hcm(2026, 10, 5), "INFLOW", 48_000_000),
+        ]
+        cal = fund_month_calendar_from_entries(entries, today=self.TODAY)
+        by_day = {c["day"]: c for w in cal["weeks"] for c in w if c}
+        assert by_day[7]["outflows_vnd"] == -16_000_000
+        assert by_day[7]["level"] == 4
+        assert by_day[3]["level"] == 1
+        assert by_day[5]["level"] == 0
+        assert by_day[5]["inflows_vnd"] == 48_000_000
+        assert cal["outflows_vnd"] == -18_000_000
+        assert cal["inflows_vnd"] == 48_000_000
+        assert [c["day"] for c in cal["top_days"]] == [7, 3]

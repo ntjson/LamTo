@@ -27,16 +27,9 @@
   var surface = color("--surface-raised");
   var font = { family: getComputedStyle(document.body).fontFamily, size: 11 };
 
-  // The area under the balance fades out, so the line reads first.
-  var fill = function (context) {
-    var chart = context.chart;
-    var area = chart.chartArea;
-    if (!area) return withAlpha(tint, 0.12);
-    var gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-    gradient.addColorStop(0, withAlpha(tint, compact ? 0.22 : 0.16));
-    gradient.addColorStop(1, withAlpha(tint, 0));
-    return gradient;
-  };
+  // A flat, faint area: the line reads first, and no fade suggests values
+  // the ledger never recorded.
+  var fill = withAlpha(tint, 0.1);
 
   var datasets = [
     {
@@ -47,8 +40,9 @@
       borderWidth: 2,
       backgroundColor: fill,
       fill: true,
-      tension: 0.35,
-      cubicInterpolationMode: "monotone",
+      // Straight segments between period balances; a smoothed curve would
+      // invent amounts between them.
+      tension: 0,
       pointRadius: 0,
       pointHoverRadius: 4,
       pointHoverBackgroundColor: tint,

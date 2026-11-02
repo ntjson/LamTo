@@ -16,7 +16,6 @@
       </div>
       <div class="card-body">
         <dl class="detail-list">
-          <div><dt>{% trans "State" %}</dt><dd>{{ announcement.get_state_display }}</dd></div>
           <div><dt>{% trans "Revision" %}</dt><dd>{{ announcement.revision }}</dd></div>
           <div><dt>{% trans "Created" %}</dt><dd>{{ announcement.created_by }} · {{ announcement.created_at|staff_datetime }}</dd></div>
           <div><dt>{% trans "Updated" %}</dt><dd>{{ announcement.updated_by }} · {{ announcement.updated_at|staff_datetime }}</dd></div>
@@ -45,16 +44,20 @@
     </div>
     {% else %}
     <div class="action-card">
-      <a class="button button-secondary button-block" href="{% url 'web:staff-announcement-edit' announcement.pk %}">{% trans "Edit announcement" %}</a>
+      <h2>{% trans "Residents can see this announcement" %}</h2>
+      <p>{% trans "Editing sends residents the corrected version as a new revision." %}</p>
+      <a class="button button-secondary button-block" href="{% url 'web:staff-announcement-edit' announcement.pk %}">{% icon "doc" %}{% trans "Edit announcement" %}</a>
     </div>
     {% endif %}
-    <div class="action-card">
-      <form method="post" action="{% url 'web:staff-announcement-withdraw' announcement.pk %}" data-busy-on-submit>
+    <details class="action-card">
+      <summary>{% trans "Withdraw announcement" %}</summary>
+      <form method="post" action="{% url 'web:staff-announcement-withdraw' announcement.pk %}" class="stack-form" data-busy-on-submit>
         {% csrf_token %}
         <input type="hidden" name="expected_revision" value="{{ announcement.revision }}">
+        <p class="consequence-note">{% trans "Withdrawing removes this announcement from the resident app. It stays in this list as withdrawn and cannot be republished." %}</p>
         <button type="submit" class="button button-destructive button-block">{% trans "Withdraw announcement" %}</button>
       </form>
-    </div>
+    </details>
   </div>
   {% endif %}
 </div>

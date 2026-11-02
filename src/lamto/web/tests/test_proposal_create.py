@@ -140,7 +140,7 @@ class ProposalCreateTests(TestCase):
         self.assertEqual(response.context["publication_snapshot"], proposal.current_version)
         self.assertNotContains(response, "Publication awaiting confirmation")
         self.assertNotContains(response, "No further action is required from this membership")
-        self.assertNotContains(response, "No action is assigned to this membership")
+        self.assertNotContains(response, "Nothing needs your action here")
 
     @patch("lamto.web.staff_documents.scan_with_clamav", lambda _f: True)
     def test_published_proposal_decline_decision_closes_proposal_and_shows_empty_action_state(self):
@@ -165,7 +165,7 @@ class ProposalCreateTests(TestCase):
         detail_response = self.client.get(reverse("web:proposal-detail", kwargs={"pk": proposal.pk}))
         self.assertEqual(detail_response.status_code, 200)
         self.assertIsNone(detail_response.context["action_panel"])
-        self.assertContains(detail_response, "No action is assigned to this membership")
+        self.assertContains(detail_response, "Nothing needs your action here")
         self.assertNotContains(detail_response, 'name="action" value="decide"')
         self.assertNotContains(detail_response, "Publication awaiting confirmation")
 

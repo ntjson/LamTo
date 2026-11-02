@@ -194,6 +194,62 @@ def fund_series(building_id, *, range_key):
     )
 
 
+def fund_month_calendar_from_entries(entries, *, today):
+    """Pure core for fund_month_calendar: one month of daily flows as weeks.
+
+    entries iterates (recorded_at aware-datetime, entry_type, amount_vnd), the
+    same rows as fund_series. Weeks run Monday to Sunday; days outside the
+    month are None. ``level`` (0-4) ranks a day's outflow against the month's
+    largest, so the grid shades where the money went.
+    """
+    first = today.replace(day=1)
+    next_month = (first + timedelta(days=32)).replace(day=1)
+    flows = {}
+    for recorded_at, _entry_type, amount_vnd in entries:
+        day = timezone.localtime(recorded_at).date()
+        if first <= day < next_month:
+            slot = flows.setdefault(day, [0, 0])
+            slot[0 if amount_vnd > 0 else 1] += amount_vnd
+    peak = max((-out for _in, out in flows.values()), default=0)
+    cells = [None] * first.weekday()
+    day = first
+    while day < next_month:
+        inflows, outflows = flows.get(day, (0, 0))
+        spent = -outflows
+        cells.append(
+            {
+                "date": day,
+                "day": day.day,
+                "inflows_vnd": inflows,
+                "outflows_vnd": outflows,
+                "level": 0 if not spent else max(1, -(-4 * spent // peak)),
+                "is_today": day == today,
+                "is_future": day > today,
+            }
+        )
+        day += timedelta(days=1)
+    cells.extend([None] * (-len(cells) % 7))
+    spent_days = sorted(
+        (cell for cell in cells if cell and cell["outflows_vnd"]),
+        key=lambda cell: (cell["outflows_vnd"], cell["date"]),
+    )
+    return {
+        "month": first,
+        "top_days": spent_days[:3],
+        "weeks": [cells[i : i + 7] for i in range(0, len(cells), 7)],
+        "inflows_vnd": sum(slot[0] for slot in flows.values()),
+        "outflows_vnd": sum(slot[1] for slot in flows.values()),
+    }
+
+
+def fund_month_calendar(building_id):
+    """Current month's verified fund flows by day (same rows as fund_series)."""
+    rows = verified_fund_entries(building_id).values_list(
+        "recorded_at", "entry_type", "amount_vnd"
+    )
+    return fund_month_calendar_from_entries(rows, today=timezone.localdate())
+
+
 def ledger_story_fields(entry):
     """Resident-visible plain-language story for §6.3(6).
 

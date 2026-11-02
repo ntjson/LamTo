@@ -6,6 +6,7 @@ from django import template
 from django.utils import formats, timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy as _lazy
+from django.utils.translation import pgettext_lazy
 
 register = template.Library()
 
@@ -109,3 +110,63 @@ def staff_task_count(count):
     except (TypeError, ValueError):
         n = 0
     return _("%(count)d open task") % {"count": n} if n == 1 else _("%(count)d open tasks") % {"count": n}
+
+
+# Short money for tight cells (the fund calendar): 82 K, 1,5 M, 1 B. The
+# suffixes translate (vi: N, Tr, Tỷ); full amounts stay in titles and tables.
+COMPACT_VND_STEPS = (
+    (1_000_000_000, pgettext_lazy("compact money", "B")),
+    (1_000_000, pgettext_lazy("compact money", "M")),
+    (1_000, pgettext_lazy("compact money", "K")),
+)
+
+
+@register.filter
+def vnd_compact(value):
+    try:
+        amount = abs(int(value))
+    except (TypeError, ValueError):
+        return value
+    for step, suffix in COMPACT_VND_STEPS:
+        if amount >= step:
+            rounded = round(amount / step, 1)
+            short = formats.number_format(int(rounded) if rounded.is_integer() else rounded)
+            return f"{short} {suffix}"
+    return formats.number_format(amount)
+
+
+@register.filter
+def vnd_abs(value):
+    try:
+        return abs(int(value))
+    except (TypeError, ValueError):
+        return value
+
+
+@register.filter
+def staff_duration(seconds):
+    """A wait in words a manager reads at a glance: 45 s, 12 min, 3 h 42 min, 2 days 4 h."""
+    try:
+        total = int(seconds)
+    except (TypeError, ValueError):
+        return seconds
+    days, rest = divmod(total, 86_400)
+    hours, rest = divmod(rest, 3_600)
+    minutes, secs = divmod(rest, 60)
+    if days:
+        return _("%(days)d d %(hours)d h") % {"days": days, "hours": hours}
+    if hours:
+        return _("%(hours)d h %(minutes)d min") % {"hours": hours, "minutes": minutes}
+    if minutes:
+        return _("%(minutes)d min") % {"minutes": minutes}
+    return _("%(seconds)d s") % {"seconds": secs}
+
+
+@register.filter
+def phone_display(value):
+    """+84912345678 -> 0912 345 678; anything else passes through."""
+    text = str(value or "")
+    if text.startswith("+84") and text[3:].isdigit() and len(text) == 12:
+        local = "0" + text[3:]
+        return f"{local[:4]} {local[4:7]} {local[7:]}"
+    return text

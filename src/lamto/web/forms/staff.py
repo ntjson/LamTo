@@ -203,7 +203,7 @@ class RecordSettlementForm(WorkspaceForm):
     """
 
     event_id = forms.CharField(max_length=66, label=_("Event ID"), widget=forms.HiddenInput())
-    proof_upload = forms.FileField(label=_("Upload transfer proof"), widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    proof_upload = forms.FileField(label=_("Upload transfer proof"), widget=forms.ClearableFileInput(attrs={"class": "input", "accept": "application/pdf"}))
 
 
 class NotificationPreferenceForm(WorkspaceForm):
@@ -265,7 +265,11 @@ class CreateProposalForm(WorkspaceForm):
         label=_("Expected end"),
         widget=forms.DateInput(attrs={"type": "date", "class": "input"}),
     )
-    quotation = forms.FileField(label=_("Quotation"), widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    quotation = forms.FileField(
+        label=_("Quotation"),
+        help_text=_("The contractor's quotation as a PDF."),
+        widget=forms.ClearableFileInput(attrs={"class": "input", "accept": "application/pdf"}),
+    )
     confirm = forms.BooleanField(
         required=True,
         label=_("I understand publication freezes this proposal and it cannot be edited."),
@@ -310,5 +314,7 @@ class RecordFundSourceForm(WorkspaceForm):
     )
     amount_vnd = WholeVndField(label=_("Amount (VND)"))
     evidence = forms.FileField(
-        label=_("Evidence"), widget=forms.ClearableFileInput(attrs={"class": "input"})
+        label=_("Evidence"),
+        help_text=_("The bank statement or contract that proves the source, as a PDF."),
+        widget=forms.ClearableFileInput(attrs={"class": "input", "accept": "application/pdf"}),
     )

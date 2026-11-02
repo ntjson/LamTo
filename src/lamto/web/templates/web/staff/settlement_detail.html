@@ -1,5 +1,5 @@
 {% extends "web/staff/shell.html" %}
-{% load i18n humanize icons %}
+{% load i18n humanize icons staff_extras %}
 {% block title %}{% if list_mode %}{% trans "Settlements" %}{% else %}{% blocktrans with id=settlement.pk %}Settlement #{{ id }}{% endblocktrans %}{% endif %} · Làm Tổ{% endblock %}
 {% block content %}
 {% if list_mode %}
@@ -40,7 +40,7 @@
     <li>
       <a class="task-row task-row-simple" href="{% url 'web:settlement-detail' item.pk %}">
         <span class="task-action">{% trans "Review settlement" %}</span>
-        <span class="task-subject">{% blocktrans with id=item.pk %}Settlement #{{ id }}{% endblocktrans %}</span>
+        <span class="task-subject">{% blocktrans with id=item.pk %}Settlement #{{ id }}{% endblocktrans %}{% with version=item.proposal.current_version %}{% if version.contractor_name %} · {{ version.contractor_name }}{% endif %}{% if version.purpose %} · {{ version.purpose|truncatechars:60 }}{% endif %}{% endwith %}{% if item.settled_at %} · {{ item.settled_at|staff_datetime }}{% endif %}</span>
         <span class="task-amount">{{ item.amount_vnd|intcomma }} VND</span>
       </a>
     </li>
@@ -85,7 +85,6 @@
   </div>
   <div class="record-action">
     <div class="action-card is-primary">
-      <p class="eyebrow">{% trans "Next step" %}</p>
       <h2>{% trans "Record settlement" %}</h2>
       <form method="post" class="stack-form" enctype="multipart/form-data" data-busy-on-submit>
         {% csrf_token %}
@@ -134,8 +133,10 @@
   </div>
 
   <div class="record-action">
-    <div class="action-card">
-      <p class="empty">{% trans "No action is assigned to this membership. Review the settlement summary and return to the action inbox." %}</p>
+    <div class="action-card is-done">
+      <h2>{% trans "Nothing needs your action here" %}</h2>
+      <p>{% trans "This settlement has no open step for you. Its record stays on this page for reference." %}</p>
+      <a class="button button-secondary button-block" href="{% url 'web:action-inbox' %}">{% trans "Back to action inbox" %}</a>
     </div>
   </div>
 </div>

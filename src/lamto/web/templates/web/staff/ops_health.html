@@ -23,7 +23,7 @@
       {% else %}
       <p class="status status-warning">
         <span class="status-icon" aria-hidden="true">●</span>
-        {% blocktrans with age=health.queue_age_seconds %}Delivery queue is aging (oldest {{ age }}s); it retries on its own{% endblocktrans %}
+        {% blocktrans with age=health.queue_age_seconds|staff_duration %}Delivery queue is slow: the oldest item has waited {{ age }}. It retries on its own.{% endblocktrans %}
       </p>
       {% endif %}
       {% else %}
@@ -32,7 +32,7 @@
     </div>
     <dl class="detail-list">
       <div><dt>{% trans "Pending items" %}</dt><dd>{{ health.queue_count }}</dd></div>
-      <div><dt>{% trans "Oldest pending item age" %}</dt><dd>{% if health.queue_age_seconds != None %}{% blocktrans with s=health.queue_age_seconds %}{{ s }} seconds{% endblocktrans %}{% else %}<span class="sr-only">{% trans "Not available" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
+      <div><dt>{% trans "Oldest pending item age" %}</dt><dd>{% if health.queue_age_seconds != None %}<span title="{% blocktrans with s=health.queue_age_seconds %}{{ s }} seconds{% endblocktrans %}">{{ health.queue_age_seconds|staff_duration }}</span>{% else %}<span class="sr-only">{% trans "Not available" %}</span><span aria-hidden="true">—</span>{% endif %}</dd></div>
     </dl>
   </section>
 

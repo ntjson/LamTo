@@ -24,7 +24,7 @@ def settlement_list(request):
     membership, memberships = require_management_context(request)
     settlements_list = prepare_record_list(
         request,
-        Settlement.objects.filter(proposal__building_id=membership.building_id).select_related("proposal", "outbox_event").order_by("-pk"),
+        Settlement.objects.filter(proposal__building_id=membership.building_id).select_related("proposal", "proposal__current_version", "outbox_event").order_by("-pk"),
         sorts=(("", _("Newest first"), ("-pk",)),),
     )
     pending_qs = Proposal.objects.filter(building_id=membership.building_id, status=Proposal.Status.COMPLETED, settlement__isnull=True).order_by("-pk")

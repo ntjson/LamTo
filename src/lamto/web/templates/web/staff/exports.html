@@ -13,8 +13,8 @@
   <li>
     <a class="task-row task-row-simple" href="{% url 'web:audit-export' %}?kind={{ kind.key }}">
       <span class="task-action">{{ kind.label }}</span>
-      <span class="task-subject">{% trans "Download CSV" %}</span>
-      <span class="task-meta"><span class="tabular">{% blocktrans count counter=kind.count %}{{ counter }} row{% plural %}{{ counter }} rows{% endblocktrans %}</span></span>
+      <span class="task-subject tabular">{% blocktrans count counter=kind.count %}{{ counter }} row{% plural %}{{ counter }} rows{% endblocktrans %}</span>
+      <span class="task-meta"><span class="download-chip">{% icon "download" %}{% trans "Download CSV" %}</span></span>
     </a>
   </li>
   {% empty %}
