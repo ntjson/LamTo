@@ -71,10 +71,13 @@ def resident_report_timeline(report):
             }
         )
     info = report.info_requests.filter(resolved_at__isnull=True).first()
-    from lamto.finance.models import PublishedLedgerEntry
+    from lamto.finance.selectors import published_ledger_entries
 
+    # Same visibility as GET /ledger/{id}: an entry published before its
+    # evidence settles stays unlinked, or the app opens a page that 404s.
     ledger_entry_ids = list(
-        PublishedLedgerEntry.objects.filter(case__reports=report)
+        published_ledger_entries(report.building_id)
+        .filter(case__reports=report)
         .order_by("published_at", "pk")
         .values_list("pk", flat=True)
     )
