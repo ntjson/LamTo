@@ -76,11 +76,15 @@ resident app.
 docker compose up -d
 uv sync
 
-# Local demo environment: load defaults, generate a secret, and use local signing
+# Local demo environment: load defaults, generate a secret once, and use local signing.
+# The secret must stay the same across shells: `migrate` copies it into the
+# database, and signed writes fail with "evidence queue authorization is
+# invalid" if the server later runs with a different one.
+[ -f .env.local ] || echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(64))')" > .env.local
 set -a
 source .env.example
+source .env.local
 set +a
-export SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
 export DEBUG=1
 export EVIDENCE_ANCHORING_BACKEND=disabled
 
