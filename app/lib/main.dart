@@ -6,13 +6,16 @@ import 'package:dio/dio.dart';
 import 'app.dart';
 import 'theme.dart';
 import 'core/config.dart';
+import 'core/provider_retry.dart';
 import 'features/gate/reader/gate_reader_screen.dart';
 import 'features/gate/reader/reader_repository.dart';
 
 Future<void> main() async {
   const readerMode = bool.fromEnvironment('GATE_READER_MODE');
   if (!readerMode) {
-    runApp(const ProviderScope(child: LamToApp()));
+    runApp(
+      const ProviderScope(retry: retryTransientFailures, child: LamToApp()),
+    );
     return;
   }
   WidgetsFlutterBinding.ensureInitialized();
