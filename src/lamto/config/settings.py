@@ -187,6 +187,9 @@ SHORT_DATE_FORMAT = r"d/m/Y"
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+# Where `collectstatic` gathers the Management workspace assets for the front door (Caddy)
+# to serve with debug off. Unset in development, where runserver serves them.
+STATIC_ROOT = os.getenv("STATIC_ROOT") or None
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

@@ -1,0 +1,86 @@
+# The single origin: Caddy in front of everything.
+#
+#   /static/*  the collected Management workspace assets
+#   /app/*     the Resident app's web build (flutter build web --base-href /app/)
+#   anything else is proxied to gunicorn (ops/gunicorn.conf.py)
+#
+# Run it from anywhere:
+#
+#   STATIC_ROOT=/srv/lamto/static APP_WEB_ROOT=/srv/lamto/app \
+#     caddy run --config ops/Caddyfile --adapter caddyfile
+#
+# Environment (all optional; these are the defaults):
+#   CADDY_PORT    8080                port Caddy listens on, loopback only
+#   GUNICORN_PORT 8000                loopback port gunicorn listens on
+#   STATIC_ROOT   /srv/lamto/static   where `manage.py collectstatic` put the assets
+#   APP_WEB_ROOT  /srv/lamto/app      the web build directory (holds index.html)
+#
+# Caddy listens on loopback only: the one thing that reaches it from outside
+# is cloudflared, running on the same machine. TLS ends at Cloudflare, so
+# Caddy speaks plain HTTP and never asks for certificates.
+
+{
+	admin off
+	auto_https off
+
+	servers {
+		# cloudflared on loopback is the only proxy trusted. Nothing else is
+		# listed, and Caddy is not reachable from anywhere else.
+		trusted_proxies static 127.0.0.1/32 ::1/128
+		# Behind a trusted proxy, the client address is Cloudflare's
+		# connecting-IP header. Caddy ignores X-Forwarded-For for it.
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+http://:{$CADDY_PORT:8080} {
+	bind 127.0.0.1
+
+	redir /app /app/ 308
+
+	# The Resident app. It is the same product on the web (ADR 0009), served
+	# from the API's origin so the API needs no CORS.
+	handle_path /app/* {
+		root * {$APP_WEB_ROOT:/srv/lamto/app}
+
+		# Every file revalidates (ETag), so a rebuilt app is never served
+		# stale. Flutter's loader files keep one name across builds.
+		header Cache-Control "no-cache"
+
+		@wasm path *.wasm
+		header @wasm Content-Type application/wasm
+
+		# An unknown path below /app/ is the app's own route: hand it the
+		# index page and let the app work out what to show.
+		try_files {path} /index.html
+
+		# The build step leaves .br and .gz copies beside each file.
+		file_server {
+			precompressed br gzip
+		}
+	}
+
+	# Management workspace styles and scripts (STATIC_URL is /static/).
+	handle_path /static/* {
+		root * {$STATIC_ROOT:/srv/lamto/static}
+		header Cache-Control "no-cache"
+		encode gzip
+		file_server
+	}
+
+	# Everything else is Django under gunicorn.
+	handle {
+		reverse_proxy 127.0.0.1:{$GUNICORN_PORT:8000} {
+			# Django reads the client address from the first X-Forwarded-For
+			# entry (lamto.accounts.security.client_ip). Replace whatever the
+			# client sent with the address Caddy resolved from Cloudflare's
+			# connecting-IP header, so it can never be forged.
+			header_up X-Forwarded-For {client_ip}
+
+			# X-Forwarded-Proto is left alone: it comes from cloudflared as
+			# "https", Caddy passes it through because cloudflared is
+			# trusted, and Django (SECURE_PROXY_SSL_HEADER) then treats the
+			# request as secure.
+		}
+	}
+}

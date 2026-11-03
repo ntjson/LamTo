@@ -3,6 +3,10 @@ import struct
 
 from django.conf import settings
 
+# The scan runs inside the upload request, so the server's request timeout has
+# to stay comfortably above this (ops/gunicorn.conf.py).
+SCAN_TIMEOUT_SECONDS = 10
+
 
 class DocumentScanUnavailable(RuntimeError):
     pass
@@ -12,7 +16,8 @@ def scan_with_clamav(file_obj) -> bool:
     try:
         file_obj.seek(0)
         with socket.create_connection(
-            (settings.CLAMAV_HOST, int(settings.CLAMAV_PORT)), timeout=10
+            (settings.CLAMAV_HOST, int(settings.CLAMAV_PORT)),
+            timeout=SCAN_TIMEOUT_SECONDS,
         ) as connection:
             connection.sendall(b"zINSTREAM\0")
             while chunk := file_obj.read(8192):
