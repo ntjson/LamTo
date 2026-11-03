@@ -2987,3 +2987,9 @@ msgstr "Hạn"
 
 msgid "The resident sees the bill with a payment QR code and the attached document."
 msgstr "Cư dân thấy hóa đơn kèm mã QR thanh toán và tài liệu đính kèm."
+
+msgid "This case's spending proposal needs a Proceed decision before work can start."
+msgstr "Đề xuất chi của vụ việc này cần có quyết định triển khai trước khi bắt đầu công việc."
+
+msgid "Go to the Proceed decision"
+msgstr "Đến quyết định triển khai"

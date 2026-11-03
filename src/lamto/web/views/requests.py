@@ -19,7 +19,7 @@ from lamto.maintenance.ai import URGENCIES
 from lamto.maintenance.models import IssueReport, MaintenanceCase, TriageSuggestion
 from lamto.maintenance.cases import (
     TERMINAL_STATUSES, complete_case_work, decline_report, publish_progress,
-    request_information, start_case_work,
+    proposal_awaiting_decision, request_information, start_case_work,
 )
 from lamto.web.forms.staff import (
     ConfirmTriageForm,
@@ -261,16 +261,20 @@ def case_detail(request, pk):
     report = case.reports.order_by("pk").first()
 
     work_form = None
+    start_work_errors = []
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "start_work":
             try:
                 start_case_work(case, request.user)
-            except (ValidationError, PermissionDenied) as error:
-                messages.error(request, _("Work was not started. %(detail)s The case was not changed — try again.") % {"detail": "; ".join(getattr(error, "messages", [str(error)]))})
+            except ValidationError as error:
+                start_work_errors = list(error.messages)
+            except PermissionDenied as error:
+                messages.error(request, _("Work was not started. %(detail)s The case was not changed — try again.") % {"detail": str(error)})
+                return redirect("web:case-detail", pk=case.pk)
             else:
                 messages.success(request, _("Case work started."))
-            return redirect("web:case-detail", pk=case.pk)
+                return redirect("web:case-detail", pk=case.pk)
         if action in {"publish_progress", "complete_work"}:
             if case.started_at is None:
                 messages.error(
@@ -313,6 +317,12 @@ def case_detail(request, pk):
             case=case,
             form=None,
             work_form=work_form,
+            start_work_errors=start_work_errors,
+            proposal_awaiting_decision=(
+                case.started_at is None
+                and case.completed_at is None
+                and proposal_awaiting_decision(case) is not None
+            ),
             legacy_items=[],
             updates=case.updates.select_related("author").order_by("-created_at"),
             ratings=case.completion_ratings.select_related("resident").order_by("created_at"),

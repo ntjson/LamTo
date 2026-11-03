@@ -175,9 +175,17 @@
       <p class="state-line tone-verified">{% icon "check-circle" %}<span>{% trans "Completed" %}</span></p>
       <p>{% blocktrans with ts=case.completed_at|staff_datetime %}Finished {{ ts }}. No further action is required.{% endblocktrans %}</p>
     </div>
+    {% elif proposal_awaiting_decision %}
+    <div class="action-card is-primary">
+      <h2>{% trans "Start work" %}</h2>
+      {% for error in start_work_errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}
+      <p class="consequence-note">{% trans "This case's spending proposal needs a Proceed decision before work can start." %}</p>
+      <a class="button button-primary button-block" href="{% url 'web:proposal-detail' case.proposal.pk %}">{% trans "Go to the Proceed decision" %}</a>
+    </div>
     {% elif not case.started_at %}
     <div class="action-card is-primary">
       <h2>{% trans "Start work" %}</h2>
+      {% for error in start_work_errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}
       <p class="consequence-note">{% trans "Progress and completion open once work has started. If this repair needs a spending proposal, create it first — starting work closes that option for good." %}</p>
       <form method="post" data-busy-on-submit aria-label="{% trans 'Start work' %}">{% csrf_token %}<input type="hidden" name="action" value="start_work"><button type="submit" class="button button-primary button-block">{% trans "Start work" %}</button></form>
     </div>

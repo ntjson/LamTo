@@ -53,6 +53,7 @@ from lamto.maintenance.cases import (
     complete_case_work,
     complete_proposal_work,
     publish_progress,
+    proposal_awaiting_decision,
     start_case_work,
 )
 from lamto.maintenance.ratings import rate_completed_case, rate_completed_proposal
@@ -491,6 +492,9 @@ class PilotDomainDriver:
     def complete_assigned_work(self):
         work = self.seed.case or self._ctx["case"]
         work.refresh_from_db()
+        # A published proposal gates the work: proceeding is how it starts.
+        if proposal_awaiting_decision(work) is not None:
+            self.decide_proposal(proceed=True)
         if not work.reports.filter(status=IssueReport.Status.IN_PROGRESS).exists():
             work = start_case_work(work, self.seed.management_users[0])
         manager = self.seed.management_users[0]

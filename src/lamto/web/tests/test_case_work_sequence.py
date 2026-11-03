@@ -8,15 +8,18 @@ whose reports have moved on, without any chance of ever proposing the spend.
 
 from datetime import timedelta
 
-from django.test import TestCase
+from django.core.exceptions import ValidationError
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from lamto.accounts.models import Building, ManagementMembership, Unit, User
+from lamto.finance.models import Proposal, Settlement
 from lamto.maintenance.cases import start_case_work
 from lamto.maintenance.models import (
     BuildingLocation, CaseReport, IssueReport, MaintenanceCase, TriageDecision,
 )
+from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 
 class CaseWorkSequenceTests(TestCase):
@@ -94,3 +97,93 @@ class CaseWorkSequenceTests(TestCase):
             follow=True,
         )
         self.assertEqual(case.updates.count(), 0)
+
+
+@override_settings(LANGUAGE_CODE="en", ROOT_URLCONF="lamto.config.urls")
+class ProceedDecisionGatesWorkTests(TestCase):
+    """With a published proposal, the Proceed decision is the only way work starts."""
+
+    def setUp(self):
+        self.seed = seed_pilot_world(building_name="Gate B", email_prefix="gate")
+        self.driver = PilotDomainDriver(self.seed)
+        self.driver.submit_report("Lift jerks", "Lift 2")
+        self.driver.confirm_triage_case()
+        self.driver.publish_proposal()
+        self.case = self.seed.case
+        self.proposal = self.seed.proposal
+        membership = self.seed.management_memberships[0]
+        self.client.force_login(membership.user)
+        session = self.client.session
+        session["active_management_id"] = membership.pk
+        session.save()
+
+    def _case_url(self):
+        return reverse("web:case-detail", kwargs={"pk": self.case.pk})
+
+    def _proposal_url(self):
+        return reverse("web:proposal-detail", kwargs={"pk": self.proposal.pk})
+
+    def _start_work(self):
+        return self.client.post(self._case_url(), {"action": "start_work"})
+
+    def _decide(self, decision, note="Because"):
+        return self.client.post(
+            self._proposal_url(), {"action": "decide", "decision": decision, "note": note}
+        )
+
+    def test_undecided_proposal_refuses_start_work_and_page_links_to_the_decision(self):
+        page = self.client.get(self._case_url())
+        self.assertNotContains(page, 'value="start_work"')
+        self.assertContains(page, "needs a Proceed decision")
+        self.assertContains(page, f'href="{self._proposal_url()}"')
+
+        response = self._start_work()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "needs a Proceed decision")
+        self.case.refresh_from_db()
+        self.assertIsNone(self.case.started_at)
+
+    def test_proceeding_starts_the_cases_work(self):
+        self._decide("proceed")
+
+        self.case.refresh_from_db(); self.proposal.refresh_from_db()
+        self.assertEqual(self.proposal.status, Proposal.Status.IN_PROGRESS)
+        self.assertIsNotNone(self.case.started_at)
+        self.assertNotContains(self.client.get(self._case_url()), "needs a Proceed decision")
+
+    def test_after_not_proceeding_work_can_start_without_spending(self):
+        self._decide("decline")
+        self.assertContains(self.client.get(self._case_url()), 'value="start_work"')
+
+        self._start_work()
+
+        self.case.refresh_from_db(); self.proposal.refresh_from_db()
+        self.assertIsNotNone(self.case.started_at)
+        self.assertEqual(self.proposal.status, Proposal.Status.NOT_PROCEEDING)
+
+    def test_completing_after_not_proceeding_leaves_the_proposal_closed_and_unsettleable(self):
+        self._decide("decline")
+        self._start_work()
+        self.client.post(
+            self._case_url(),
+            {"action": "complete_work", "cause": "worn cable", "result": "replaced"},
+        )
+
+        self.case.refresh_from_db(); self.proposal.refresh_from_db()
+        self.assertIsNotNone(self.case.completed_at)
+        self.assertEqual(self.proposal.status, Proposal.Status.NOT_PROCEEDING)
+        self.assertIsNone(self.proposal.completed_at)
+        with self.assertRaisesMessage(ValidationError, "Only completed proposals can be settled."):
+            self.driver.record_settlement()
+        self.assertFalse(Settlement.objects.filter(proposal=self.proposal).exists())
+
+    def test_completing_a_proceeding_case_completes_its_proposal(self):
+        self._decide("proceed")
+        self.client.post(
+            self._case_url(),
+            {"action": "complete_work", "cause": "worn cable", "result": "replaced"},
+        )
+
+        self.proposal.refresh_from_db()
+        self.assertEqual(self.proposal.status, Proposal.Status.COMPLETED)

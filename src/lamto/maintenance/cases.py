@@ -48,10 +48,21 @@ def _append_update(case, manager, cause, result, proposal=None):
     return WorkUpdate.objects.create(case=case, proposal=proposal, author=manager, cause=cause.strip(), result=result.strip())
 
 
+def proposal_awaiting_decision(case, *, lock=False):
+    """The case's published proposal, if nobody has decided on it yet."""
+    from lamto.finance.models import Proposal
+    proposals = Proposal.objects.select_for_update() if lock else Proposal.objects
+    return proposals.filter(case=case, status=Proposal.Status.PUBLISHED).first()
+
+
 @transaction.atomic
 def start_case_work(case, manager) -> MaintenanceCase:
     case = _locked_case(case)
     membership = require_management(manager, case.building_id)
+    if proposal_awaiting_decision(case, lock=True) is not None:
+        raise ValidationError(
+            _("This case's spending proposal needs a Proceed decision before work can start.")
+        )
     if case.started_at is None:
         case.started_at = timezone.now()
         case.save(update_fields=["started_at"])
@@ -112,12 +123,13 @@ def complete_case_work(case, manager, cause, result) -> MaintenanceCase:
     update = _append_update(case, manager, cause, result)
     case.completed_at = timezone.now()
     case.save(update_fields=["completed_at"])
-    try:
-        proposal = case.proposal
-    except Exception:
-        proposal = None
+    from lamto.finance.models import Proposal
+    # Only a proposal someone decided to proceed with is completed by the case;
+    # one closed as not proceeding stays closed and can never be settled.
+    proposal = Proposal.objects.select_for_update().filter(
+        case=case, status=Proposal.Status.IN_PROGRESS
+    ).first()
     if proposal is not None:
-        from lamto.finance.models import Proposal
         proposal.status = Proposal.Status.COMPLETED
         proposal.completed_at = case.completed_at
         proposal.save(update_fields=["status", "completed_at"])

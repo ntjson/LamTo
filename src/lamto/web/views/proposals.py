@@ -220,12 +220,12 @@ def proposal_detail(request, pk):
                 proceed = decision_form.proceed
                 try:
                     with transaction.atomic():
-                        if proceed and proposal.case_id:
-                            start_case_work(proposal.case, request.user)
                         decide_proposal(
                             proposal, request.user, proceed,
                             decision_form.cleaned_data.get("note", ""),
                         )
+                        if proceed and proposal.case_id:
+                            start_case_work(proposal.case, request.user)
                 except (ValidationError, PermissionDenied) as error:
                     messages.error(request, "; ".join(getattr(error, "messages", [str(error)])))
                 else:
