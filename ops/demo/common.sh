@@ -23,11 +23,27 @@ DEMO_PORTS=(5432 9000 9001 3310)
 
 STEP="starting"
 
+step() { STEP="$1"; log "==> $2"; }
 log() { printf '%s\n' "$*" >&2; }
 die() { log "ERROR: $*"; exit 1; }
 
 compose() {
   docker compose -f "${ROOT_DIR}/compose.yaml" -p "${DEMO_PROJECT}" "$@"
+}
+
+# compose.yaml binds fixed host ports, so the development stack and the demo
+# cannot run together. Refuse, rather than stop or touch the other stack.
+refuse_if_dev_stack_up() {
+  local port holders holder
+  for port in "${DEMO_PORTS[@]}"; do
+    holders="$(docker ps --filter "publish=${port}" \
+      --format '{{with .Label "com.docker.compose.project"}}{{.}}{{else}}{{$.Names}}{{end}}')"
+    while IFS= read -r holder; do
+      if [[ -n "${holder}" && "${holder}" != "${DEMO_PROJECT}" ]]; then
+        die "The development stack is up ('${holder}' publishes port ${port}); the demo needs the same ports. Stop it first (docker compose stop in the repository); its data is kept."
+      fi
+    done <<<"${holders}"
+  done
 }
 
 require_cmd() {

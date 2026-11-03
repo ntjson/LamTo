@@ -8,6 +8,7 @@ so a phone and a laptop use one address:
 |---|---|
 | `/static/` | Caddy, from the directory `collectstatic` fills (`STATIC_ROOT`) |
 | `/app/` | Caddy, from the web build (`flutter build web --release --base-href /app/`) |
+| `/demo-kit/` | Caddy, the demo setup only ([`demo/README.md`](demo/README.md)) |
 | everything else | gunicorn, on loopback |
 
 Files: [`Caddyfile`](Caddyfile) and [`gunicorn.conf.py`](gunicorn.conf.py).

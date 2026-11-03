@@ -11,6 +11,7 @@ import os
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,6 +21,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CADDYFILE = REPO_ROOT / "ops" / "Caddyfile"
+DEMO_DIR = REPO_ROOT / "ops" / "demo"
 CADDY = os.getenv("CADDY_BIN") or shutil.which("caddy")
 
 pytestmark = pytest.mark.skipif(CADDY is None, reason="caddy binary not available")
@@ -48,9 +50,8 @@ class EchoUpstream(BaseHTTPRequestHandler):
         pass
 
 
-@pytest.fixture(scope="module")
-def front_door(tmp_path_factory):
-    root = tmp_path_factory.mktemp("front-door")
+def _front_door(root, extra_env=None):
+    """Caddy in front of a stand-in gunicorn, serving the site under `root`."""
     app = root / "app"
     (app / "assets").mkdir(parents=True)
     (app / "index.html").write_text("<html>resident app</html>")
@@ -77,6 +78,7 @@ def front_door(tmp_path_factory):
             "STATIC_ROOT": str(root / "static"),
             "APP_WEB_ROOT": str(app),
             "XDG_DATA_HOME": str(root / "caddy-data"),
+            **(extra_env or {}),
         },
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -96,6 +98,30 @@ def front_door(tmp_path_factory):
         caddy.terminate()
         caddy.wait(timeout=10)
         upstream.shutdown()
+
+
+@pytest.fixture(scope="module")
+def front_door(tmp_path_factory):
+    yield from _front_door(tmp_path_factory.mktemp("front-door"))
+
+
+@pytest.fixture(scope="module")
+def demo_front_door(tmp_path_factory):
+    """The same front door set up the way ops/demo/up.sh sets it up."""
+    root = tmp_path_factory.mktemp("demo-front-door")
+    kit = root / "kit"
+    subprocess.run(
+        [sys.executable, "-I", str(DEMO_DIR / "demo_up.py"), "kit-site",
+         str(REPO_ROOT / "ops" / "demo-kit" / "files"), str(kit)],
+        check=True, capture_output=True,
+    )
+    yield from _front_door(
+        root,
+        {
+            "CADDY_EXTRA_ROUTES": str(DEMO_DIR / "demo-kit.caddy"),
+            "DEMO_KIT_ROOT": str(kit),
+        },
+    )
 
 
 def request(port, path, headers=None, method="GET"):
@@ -227,3 +253,38 @@ class TestProxyToGunicorn:
     def test_a_forwarded_for_alone_is_never_the_client_address(self, front_door):
         seen = upstream_saw(front_door, headers={"X-Forwarded-For": "198.51.100.7"})
         assert "198.51.100.7" not in seen["x-forwarded-for"]
+
+
+KIT_PDF = "bao-gia-sua-thang-may-mau.pdf"
+
+
+class TestDemoKit:
+    def test_the_kit_is_not_served_outside_the_demo_setup(self, front_door):
+        # Without the demo's extra routes the path is just another Django URL.
+        assert upstream_saw(front_door, f"/demo-kit/{KIT_PDF}")["path"] == f"/demo-kit/{KIT_PDF}"
+
+    def test_the_index_page_is_vietnamese_and_lists_the_files(self, demo_front_door):
+        status, headers, body = request(demo_front_door, "/demo-kit/")
+        assert status == 200
+        assert headers["content-type"].startswith("text/html")
+        page = body.decode("utf-8")
+        assert '<html lang="vi">' in page
+        assert f'href="{KIT_PDF}"' in page
+
+    def test_a_kit_pdf_is_served_as_a_pdf(self, demo_front_door):
+        status, headers, body = request(demo_front_door, f"/demo-kit/{KIT_PDF}")
+        assert status == 200
+        assert headers["content-type"] == "application/pdf"
+        assert body == (REPO_ROOT / "ops" / "demo-kit" / "files" / KIT_PDF).read_bytes()
+
+    def test_the_kit_without_a_trailing_slash_redirects_to_it(self, demo_front_door):
+        status, headers, _ = request(demo_front_door, "/demo-kit")
+        assert status in (301, 308)
+        assert headers["location"] == "/demo-kit/"
+
+    def test_a_file_not_in_the_kit_is_not_found(self, demo_front_door):
+        status, _, _ = request(demo_front_door, "/demo-kit/nope.pdf")
+        assert status == 404
+
+    def test_the_rest_of_the_site_still_reaches_django(self, demo_front_door):
+        assert upstream_saw(demo_front_door, "/s/")["path"] == "/s/"

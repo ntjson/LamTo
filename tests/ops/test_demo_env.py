@@ -129,3 +129,51 @@ def test_fingerprints_fail_loudly_on_a_missing_signer_key(tmp_path):
 
     assert result.returncode != 0
     assert "PLATFORM_SIGNER_PRIVATE_KEY" in result.stderr
+
+
+class TestVerifyFingerprints:
+    @pytest.fixture
+    def recorded(self, env_file, tmp_path):
+        path = tmp_path / "fingerprints"
+        path.write_text(run("fingerprints", str(env_file)).stdout)
+        return path
+
+    def test_unchanged_keys_match_what_the_reset_recorded(self, env_file, recorded):
+        assert run("verify-fingerprints", str(env_file), str(recorded), check=False).returncode == 0
+
+    def test_a_changed_evidence_secret_is_named(self, env_file, recorded):
+        env = read_env(env_file)
+        env_file.write_text(
+            env_file.read_text().replace(env["EVIDENCE_WRITE_SECRET"], "a-different-secret")
+        )
+
+        result = run("verify-fingerprints", str(env_file), str(recorded), check=False)
+
+        assert result.returncode != 0
+        assert "evidence secret" in result.stderr.lower()
+        assert "signer" not in result.stderr.lower()
+        assert "a-different-secret" not in result.stderr
+
+    def test_a_changed_signer_key_is_named(self, env_file, recorded):
+        env = read_env(env_file)
+        env_file.write_text(
+            env_file.read_text().replace(env["PLATFORM_SIGNER_PRIVATE_KEY"], DEV_SIGNER_KEY)
+        )
+
+        result = run("verify-fingerprints", str(env_file), str(recorded), check=False)
+
+        assert result.returncode != 0
+        assert "signer" in result.stderr.lower()
+        assert DEV_SIGNER_KEY not in result.stderr
+
+    def test_no_recorded_fingerprints_means_the_reset_did_not_finish(self, env_file, tmp_path):
+        result = run("verify-fingerprints", str(env_file), str(tmp_path / "missing"), check=False)
+
+        assert result.returncode != 0
+        assert "reset" in result.stderr.lower()
+
+    def test_a_missing_environment_file_is_refused(self, tmp_path, recorded):
+        result = run("verify-fingerprints", str(tmp_path / "nope.env"), str(recorded), check=False)
+
+        assert result.returncode != 0
+        assert "reset" in result.stderr.lower()

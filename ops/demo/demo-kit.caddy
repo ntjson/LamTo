@@ -1,0 +1,11 @@
+# Extra routes for the demo only. ops/demo/up.sh points CADDY_EXTRA_ROUTES here
+# (ops/Caddyfile imports it) and DEMO_KIT_ROOT at the folder `demo_up.py kit-site`
+# fills: the kit's PDFs and a Vietnamese index.html listing them.
+
+redir /demo-kit /demo-kit/ 308
+
+handle_path /demo-kit/* {
+	root * {$DEMO_KIT_ROOT}
+	header Cache-Control "no-cache"
+	file_server
+}

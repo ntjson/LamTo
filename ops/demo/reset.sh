@@ -21,8 +21,6 @@ cd "${ROOT_DIR}"
 
 trap 'status=$?; [[ ${status} -eq 0 ]] || log "Reset stopped at step: ${STEP}"' EXIT
 
-step() { STEP="$1"; log "==> $2"; }
-
 # ---------------------------------------------------------------------------
 step preflight "Checking the machine"
 
@@ -30,17 +28,7 @@ for tool in docker flutter gzip brotli "${PYTHON}"; do
   require_cmd "${tool}"
 done
 
-# compose.yaml binds fixed host ports, so the development stack and the demo
-# cannot run together. Refuse, rather than stop or touch the other stack.
-for port in "${DEMO_PORTS[@]}"; do
-  holders="$(docker ps --filter "publish=${port}" \
-    --format '{{with .Label "com.docker.compose.project"}}{{.}}{{else}}{{$.Names}}{{end}}')"
-  while IFS= read -r holder; do
-    if [[ -n "${holder}" && "${holder}" != "${DEMO_PROJECT}" ]]; then
-      die "The development stack is up ('${holder}' publishes port ${port}); the demo needs the same ports. Stop it first (docker compose stop in the repository); its data is kept."
-    fi
-  done <<<"${holders}"
-done
+refuse_if_dev_stack_up
 
 # ---------------------------------------------------------------------------
 step env "Demo environment file"

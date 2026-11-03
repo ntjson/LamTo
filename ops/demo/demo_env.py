@@ -2,11 +2,15 @@
 
     python -I ops/demo/demo_env.py init-env ENV_FILE --static-root DIR --app-web-root DIR
     python -I ops/demo/demo_env.py fingerprints ENV_FILE
+    python -I ops/demo/demo_env.py verify-fingerprints ENV_FILE RECORDED_FILE
 
 ``init-env`` writes ENV_FILE on the first run only and never touches an
 existing file. ``fingerprints`` prints one ``name=value`` line each for the
 evidence secret and the signer address, derived from the file. It never prints
 a secret. The signer key is used only to find its address.
+
+``verify-fingerprints`` compares them with the ones the reset recorded and exits
+non-zero, naming what changed, when they differ or were never recorded.
 """
 
 from __future__ import annotations
@@ -111,6 +115,34 @@ def fingerprints(env_file: Path) -> dict[str, str]:
     }
 
 
+FINGERPRINT_LABELS = {
+    "evidence_secret": "the evidence secret",
+    "signer_address": "the platform signer key",
+}
+
+
+def verify_fingerprints(env_file: Path, recorded_file: Path) -> list[str]:
+    """What is wrong, in words; empty when the keys are the ones the reset recorded."""
+    if not env_file.exists():
+        return [f"The demo environment file {env_file} is missing. Run ops/demo/reset.sh."]
+    if not recorded_file.exists():
+        return [
+            f"No key fingerprints are recorded ({recorded_file}): the last reset did not "
+            "finish. Run ops/demo/reset.sh."
+        ]
+    recorded = dict(
+        line.split("=", 1) for line in recorded_file.read_text().split() if "=" in line
+    )
+    now = fingerprints(env_file)
+    return [
+        f"{label.capitalize()} is not the one the data was made with. Its fingerprint "
+        "changed since the last reset. Restore the old key in the demo environment "
+        "file, or run ops/demo/reset.sh."
+        for name, label in FINGERPRINT_LABELS.items()
+        if recorded.get(name) != now[name]
+    ]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -120,10 +152,18 @@ def main(argv: list[str] | None = None) -> int:
     init.add_argument("--app-web-root", type=Path, required=True)
     show = commands.add_parser("fingerprints")
     show.add_argument("env_file", type=Path)
+    verify = commands.add_parser("verify-fingerprints")
+    verify.add_argument("env_file", type=Path)
+    verify.add_argument("recorded_file", type=Path)
     args = parser.parse_args(argv)
 
     if args.command == "init-env":
         print(init_env(args.env_file, args.static_root, args.app_web_root))
+    elif args.command == "verify-fingerprints":
+        problems = verify_fingerprints(args.env_file, args.recorded_file)
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        return 1 if problems else 0
     else:
         for name, value in fingerprints(args.env_file).items():
             print(f"{name}={value}")

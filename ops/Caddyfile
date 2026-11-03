@@ -4,6 +4,9 @@
 #   /app/*     the Resident app's web build (flutter build web --base-href /app/)
 #   anything else is proxied to gunicorn (ops/gunicorn.conf.py)
 #
+# The demo adds one more route, /demo-kit/, through CADDY_EXTRA_ROUTES (see
+# ops/demo/demo-kit.caddy). Nothing else is served from here unless it is set.
+#
 # Run it from anywhere:
 #
 #   STATIC_ROOT=/srv/lamto/static APP_WEB_ROOT=/srv/lamto/app \
@@ -14,6 +17,7 @@
 #   GUNICORN_PORT 8000                loopback port gunicorn listens on
 #   STATIC_ROOT   /srv/lamto/static   where `manage.py collectstatic` put the assets
 #   APP_WEB_ROOT  /srv/lamto/app      the web build directory (holds index.html)
+#   CADDY_EXTRA_ROUTES  (none)        a file of extra routes, imported ahead of the proxy
 #
 # Caddy listens on loopback only: the one thing that reaches it from outside
 # is cloudflared, running on the same machine. TLS ends at Cloudflare, so
@@ -37,6 +41,9 @@ http://:{$CADDY_PORT:8080} {
 	bind 127.0.0.1
 
 	redir /app /app/ 308
+
+	# Routes only the demo adds (/demo-kit/). Empty when the variable is unset.
+	import {$CADDY_EXTRA_ROUTES:/dev/null}
 
 	# The Resident app. It is the same product on the web (ADR 0009), served
 	# from the API's origin so the API needs no CORS.
