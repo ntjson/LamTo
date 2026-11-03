@@ -18,7 +18,12 @@ from django.core.exceptions import ObjectDoesNotExist
 from lamto.api.downloads import content_disposition_inline
 from lamto.documents.access import DocumentIntegrityError, read_version_bytes
 from lamto.documents.models import DocumentVersion
-from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel, evidence_level
+from lamto.evidence.models import (
+    BlockchainOutboxEvent,
+    EvidenceLevel,
+    evidence_level,
+    is_settled,
+)
 from lamto.finance.models import Proposal, VerificationObservation
 from lamto.finance.selectors import ledger_story_fields, proceed_decision
 
@@ -37,6 +42,8 @@ EVIDENCE_LEVEL_TONES = {
     EvidenceLevel.PENDING: "warning",
     EvidenceLevel.MISMATCH: "mismatch",
 }
+
+NO_WORK_UPDATE_YET = "Chưa có cập nhật công việc"
 
 INTEGRITY_STATUS_LABELS = {
     VerificationObservation.Result.VERIFIED: "Bản ghi đã xác minh",
@@ -241,11 +248,17 @@ def explorer_page(request, public_token):
                 ),
                 "settled_by": settlement.settled_by.user.display_name,
                 "settled_at": settlement.settled_at,
-                "transfer": {
-                    "filename": settlement.transfer.filename,
-                    "sha256": settlement.transfer.sha256,
-                    "byte_size": settlement.transfer.byte_size,
-                },
+                # The Transfer proof is public only once its event settled,
+                # the rule the Resident app applies (api.downloads).
+                "transfer": (
+                    {
+                        "filename": settlement.transfer.filename,
+                        "sha256": settlement.transfer.sha256,
+                        "byte_size": settlement.transfer.byte_size,
+                    }
+                    if is_settled(settlement.outbox_event.status)
+                    else None
+                ),
                 "chain": chain_step,
             }
         )
@@ -267,7 +280,9 @@ def explorer_page(request, public_token):
             }
         )
 
-    # 3. Resident-ledger parity fields
+    # 3. Summary fields. "Why" is the resident-ledger story. "Work done" is
+    # what the work updates say and nothing else: the resident's report text,
+    # the category and the purpose are never published in its place.
     entry = None
     try:
         entry = proposal.published_ledger_entry
@@ -278,32 +293,26 @@ def explorer_page(request, public_token):
             entry = proposal.settlement.ledger_entry
         except (ObjectDoesNotExist, AttributeError):
             pass
+    case = proposal.case
+    latest_update = (
+        case.updates.order_by("-created_at", "-pk").first()
+        if case
+        else proposal.updates.order_by("-created_at", "-pk").first()
+    )
+    what_was_fixed = (
+        getattr(latest_update, "result", None) or ""
+    ).strip() or NO_WORK_UPDATE_YET
     if entry is not None:
-        story = ledger_story_fields(entry)
-        what_was_fixed = story["what_was_fixed"]
-        why = story["why"]
+        why = ledger_story_fields(entry)["why"]
         published_at = entry.published_at
     else:
-        case = proposal.case
-        work = (
-            case.updates.order_by("-created_at", "-pk").first()
-            if case
-            else proposal.updates.order_by("-created_at", "-pk").first()
-        )
-        report = None
-        decision = getattr(case, "decision", None) if case else None
-        if decision is not None:
-            report = getattr(decision, "report", None)
-        result = (getattr(work, "result", None) or "").strip()
-        cause = (getattr(work, "cause", None) or "").strip()
-        report_text = (getattr(report, "text", None) or "").strip() if report else ""
+        cause = (getattr(latest_update, "cause", None) or "").strip()
         category = (getattr(case, "category", None) or "").strip()
         purpose = (
             (getattr(proposal.current_version, "purpose", None) or "").strip()
             if proposal.current_version
             else ""
         )
-        what_was_fixed = result or report_text or category or purpose
         why = cause or category or purpose
         published_at = None
 
@@ -346,12 +355,17 @@ def _explorer_document(proposal, sha256):
     """Resolve one document this proposal's chain shows, by its SHA-256.
 
     The explorer publishes exactly two kinds of document — the quotations of
-    every published version and the Settlement's transfer proof — so those are
-    exactly what the download route resolves. A hash belonging to some other
-    proposal is not found here, however public that other proposal is.
+    every published version and the Settlement's transfer proof once its event
+    has settled — so those are exactly what the download route resolves. A hash
+    belonging to some other proposal is not found here, however public that
+    other proposal is.
     """
     settlement = getattr(proposal, "settlement", None)
-    if settlement is not None and settlement.transfer.sha256 == sha256:
+    if (
+        settlement is not None
+        and is_settled(settlement.outbox_event.status)
+        and settlement.transfer.sha256 == sha256
+    ):
         return settlement.transfer
     return DocumentVersion.objects.filter(
         proposal_versions__proposal=proposal, sha256=sha256
@@ -369,7 +383,9 @@ def document_download(request, public_token, sha256):
     document route).
     """
     proposal = (
-        Proposal.objects.select_related("settlement__transfer")
+        Proposal.objects.select_related(
+            "settlement__transfer", "settlement__outbox_event"
+        )
         .filter(public_token=public_token)
         .first()
     )

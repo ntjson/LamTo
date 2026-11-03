@@ -23,6 +23,7 @@ from lamto.finance.proposals import (
 )
 from lamto.finance.publication import publish_settlement_entry
 from lamto.finance.settlements import record_settlement
+from lamto.testing.factories import PilotDomainDriver, seed_pilot_world
 
 
 @override_settings(
@@ -84,7 +85,7 @@ class EvidenceExplorerPageTests(TestCase):
         proposal.refresh_from_db()
         return proposal
 
-    def settled_proposal(self, **kwargs):
+    def settled_proposal(self, settle_event=True, **kwargs):
         proposal = self.published_proposal(**kwargs)
         proof = self.stored_version(
             Document.Kind.PAYMENT_PROOF,
@@ -95,12 +96,16 @@ class EvidenceExplorerPageTests(TestCase):
             status=Proposal.Status.COMPLETED, completed_at=timezone.now()
         )
         proposal.refresh_from_db()
-        record_settlement(
+        settlement = record_settlement(
             proposal,
             self.membership,
             transfer=proof,
             event_id="0x" + secrets.token_hex(32),
         )
+        if settle_event:
+            BlockchainOutboxEvent.objects.filter(pk=settlement.outbox_event_id).update(
+                status=BlockchainOutboxEvent.Status.LOCAL
+            )
         return proposal, proof
 
     def explorer_url(self, token):
@@ -262,6 +267,31 @@ class EvidenceExplorerPageTests(TestCase):
             kwargs={"public_token": proposal.public_token, "sha256": proof.sha256},
         )
         self.assertIn(expected_doc_url, content)
+
+    def test_transfer_proof_withheld_until_the_settlement_event_settles(self):
+        proposal, proof = self.settled_proposal(settle_event=False)
+
+        response = self.client.get(self.explorer_url(proposal.public_token))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertNotIn(proof.sha256, content)
+        self.assertNotIn(proof.filename, content)
+        self.assertNotIn("Chứng từ thanh toán:", content)
+        self.assertIn("Chứng từ thanh toán sẽ được công khai", content)
+
+    def test_transfer_proof_listed_once_the_settlement_event_settles(self):
+        proposal, proof = self.settled_proposal(settle_event=False)
+        BlockchainOutboxEvent.objects.filter(
+            pk=proposal.settlement.outbox_event_id
+        ).update(status=BlockchainOutboxEvent.Status.CONFIRMED)
+
+        response = self.client.get(self.explorer_url(proposal.public_token))
+
+        content = response.content.decode("utf-8")
+        self.assertIn("Chứng từ thanh toán:", content)
+        self.assertIn(proof.sha256, content)
+        self.assertNotIn("Chứng từ thanh toán sẽ được công khai", content)
 
     def test_live_chain_confirmed_renders_with_chain_timestamp_and_verified_badge(self):
         proposal = self.published_proposal()
@@ -529,3 +559,96 @@ class EvidenceExplorerPageTests(TestCase):
         self.assertIn('class="evidence-doc-list"', content)
 
 
+
+
+_WORK_DONE_STORAGE = tempfile.mkdtemp(prefix="lamto-explorer-work-done-")
+
+
+@override_settings(
+    STORAGES={
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": _WORK_DONE_STORAGE},
+        },
+        "private": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": _WORK_DONE_STORAGE},
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+)
+class ExplorerWorkDoneTests(TestCase):
+    """The explorer never publishes the resident's report in place of work."""
+
+    REPORT_TEXT = "Thang máy rung lắc mạnh, cư dân tầng 9 báo"
+    NO_UPDATE = "Chưa có cập nhật công việc"
+
+    def setUp(self):
+        self.seed = seed_pilot_world(
+            building_name="Explorer Work Done",
+            email_prefix="expwd",
+            create_sample_report=False,
+        )
+        self.driver = PilotDomainDriver(self.seed)
+        self.driver.submit_report(self.REPORT_TEXT, "Lift 2")
+        self.driver.confirm_triage_case()
+        self.driver.publish_proposal()
+
+    def page(self):
+        proposal = self.seed.proposal
+        proposal.refresh_from_db()
+        response = self.client.get(
+            reverse("explorer:detail", kwargs={"public_token": proposal.public_token})
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode("utf-8")
+
+    def work_done(self, content):
+        match = re.search(
+            r"<dt>Công việc thực hiện</dt>\s*<dd>(.*?)</dd>", content, re.S
+        )
+        self.assertIsNotNone(match, "work done field missing")
+        return match.group(1).strip()
+
+    def test_work_done_is_the_placeholder_before_the_first_work_update(self):
+        content = self.page()
+
+        self.assertEqual(self.work_done(content), self.NO_UPDATE)
+        self.assertNotIn(self.REPORT_TEXT, content)
+
+    def test_why_keeps_its_fallbacks_before_any_work_update(self):
+        content = self.page()
+
+        match = re.search(
+            r"<dt>Báo cáo &amp; nhu cầu</dt>\s*<dd>(.*?)</dd>", content, re.S
+        )
+        self.assertIsNotNone(match)
+        self.assertEqual(
+            match.group(1).strip(), self.seed.case.category
+        )
+
+    def test_work_done_is_the_work_updates_result_after_it_exists(self):
+        self.driver.decide_proposal(proceed=True)
+        self.driver.start_assigned_work()
+        self.driver.publish_work_progress()
+
+        content = self.page()
+
+        self.assertEqual(self.work_done(content), "Cable secured")
+        self.assertNotIn(self.REPORT_TEXT, content)
+        why = re.search(r"<dt>Báo cáo &amp; nhu cầu</dt>\s*<dd>(.*?)</dd>", content, re.S)
+        self.assertEqual(why.group(1).strip(), "Worn cable")
+
+    def test_report_text_appears_nowhere_once_the_spend_is_published(self):
+        self.driver.complete_assigned_work()
+        self.driver.record_settlement()
+        self.driver.confirm_all_chain_events()
+        self.driver.publish_settlement_entry()
+        self.driver.confirm_all_chain_events()
+
+        content = self.page()
+
+        self.assertEqual(self.work_done(content), "Cable secured")
+        self.assertNotIn(self.REPORT_TEXT, content)

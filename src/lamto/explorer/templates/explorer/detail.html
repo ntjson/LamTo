@@ -26,7 +26,7 @@
     </div>
     <div>
       <dt>Công việc thực hiện</dt>
-      <dd>{{ what_was_fixed|default:"—" }}</dd>
+      <dd>{{ what_was_fixed }}</dd>
     </div>
     {% if proceed_decision %}
     <div>
@@ -165,6 +165,8 @@
             </li>
           </ul>
         </div>
+        {% else %}
+        <p class="hint">Chứng từ thanh toán sẽ được công khai sau khi bằng chứng của bước này được ghi nhận.</p>
         {% endif %}
         {% else %}
         <p class="hint">Khoản chi chưa thực hiện thanh toán. Bước này sẽ hoàn tất sau khi ban quản lý lập ủy nhiệm chi và xác nhận thanh toán.</p>

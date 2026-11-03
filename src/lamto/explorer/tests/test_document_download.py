@@ -12,6 +12,7 @@ from django.utils import timezone
 from lamto.accounts.models import Building, ManagementMembership, User
 from lamto.documents.access import DocumentIntegrityError
 from lamto.documents.models import Document, DocumentVersion
+from lamto.evidence.models import BlockchainOutboxEvent
 from lamto.finance.models import Proposal
 from lamto.finance.proposals import (
     create_standalone_proposal,
@@ -75,19 +76,23 @@ class ExplorerDocumentDownloadTests(TestCase):
         proposal.refresh_from_db()
         return proposal
 
-    def settled_proposal(self, payload=b"%PDF-1.7 transfer-proof"):
+    def settled_proposal(self, payload=b"%PDF-1.7 transfer-proof", settle_event=True):
         proposal = self.published_proposal()
         proof = self.stored_version(Document.Kind.PAYMENT_PROOF, "transfer", payload)
         Proposal.objects.filter(pk=proposal.pk).update(
             status=Proposal.Status.COMPLETED, completed_at=timezone.now()
         )
         proposal.refresh_from_db()
-        record_settlement(
+        settlement = record_settlement(
             proposal,
             self.membership,
             transfer=proof,
             event_id="0x" + secrets.token_hex(32),
         )
+        if settle_event:
+            BlockchainOutboxEvent.objects.filter(pk=settlement.outbox_event_id).update(
+                status=BlockchainOutboxEvent.Status.LOCAL
+            )
         return proposal, proof
 
     def document_url(self, token, sha256):
@@ -108,6 +113,20 @@ class ExplorerDocumentDownloadTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertIn("inline", response["Content-Disposition"])
         self.assertEqual(response["Cache-Control"], "no-store")
+
+    def test_transfer_proof_is_not_found_until_its_event_settles(self):
+        proposal, proof = self.settled_proposal(settle_event=False)
+        url = self.document_url(proposal.public_token, proof.sha256)
+
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+        BlockchainOutboxEvent.objects.filter(
+            pk=proposal.settlement.outbox_event_id
+        ).update(status=BlockchainOutboxEvent.Status.CONFIRMED)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"%PDF-1.7 transfer-proof")
 
     def test_quotation_document_is_served_by_its_hash(self):
         proposal = self.published_proposal()
