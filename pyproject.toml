@@ -29,6 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "fpdf2>=2.8,<3",
   "playwright>=1.50,<2",
   "pytest-playwright>=0.6,<1",
   "pytest>=8,<9",
