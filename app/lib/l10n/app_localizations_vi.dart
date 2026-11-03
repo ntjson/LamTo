@@ -721,6 +721,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get gateAccountAction => 'Đăng ký biển số và khuôn mặt';
 
   @override
+  String get gateAccountActionPlates => 'Đăng ký biển số';
+
+  @override
   String get gateRegistrationTitle => 'Đăng ký cổng';
 
   @override

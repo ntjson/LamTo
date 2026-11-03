@@ -230,6 +230,7 @@
   "signOutUnsentWorkWarning": "The report you are drafting and any unsent photos on this device will be deleted.",
   "commonCancel": "Cancel",
   "gateAccountAction": "Register plate and face",
+  "gateAccountActionPlates": "Register plate",
   "gateRegistrationTitle": "Gate registration",
   "gatePlateLabel": "License plate",
   "gateSubmitPlate": "Submit plate for approval",

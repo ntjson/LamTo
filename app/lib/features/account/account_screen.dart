@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/adaptive_page_route.dart';
 import '../../core/failure.dart';
+import '../../core/web_gaps.dart';
 import '../../core/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
@@ -182,7 +183,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       ListTile(
                         minTileHeight: 56,
                         leading: const IconWell(Icons.door_front_door_outlined),
-                        title: Text(l10n.gateAccountAction),
+                        // The web has no gate face enrolment (ADR 0009).
+                        title: Text(
+                          NativeOnly.gateFaceEnrolment
+                              ? l10n.gateAccountAction
+                              : l10n.gateAccountActionPlates,
+                        ),
                         trailing: Icon(
                           Icons.chevron_right,
                           color: palette.muted.withValues(alpha: 0.6),
@@ -220,10 +226,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 28),
                   // Not debug-gated: a released APK must be retargetable at a
-                  // fresh quick-tunnel URL without a rebuild.
-                  const InsetGroup(children: [ApiBaseUrlTile()]),
+                  // fresh quick-tunnel URL without a rebuild. The web build
+                  // always calls its own origin, so it offers no override.
+                  if (NativeOnly.apiAddressOverride) ...[
+                    const SizedBox(height: 28),
+                    const InsetGroup(children: [ApiBaseUrlTile()]),
+                  ],
                 ],
               ),
             ),

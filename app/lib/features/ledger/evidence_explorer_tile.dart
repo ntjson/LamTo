@@ -7,7 +7,7 @@ import '../../widgets/grouped.dart';
 /// Reusable Evidence explorer link row (spec 6.3(11) / issue 07 & 08).
 ///
 /// Tapping opens the public Evidence explorer page in the device's external
-/// browser so the full URL is visible and shareable.
+/// browser (a new tab on the web) so the full URL is visible and shareable.
 class EvidenceExplorerTile extends StatelessWidget {
   const EvidenceExplorerTile({required this.url, super.key});
 
@@ -28,7 +28,13 @@ class EvidenceExplorerTile extends StatelessWidget {
       onTap: () async {
         final uri = Uri.tryParse(url);
         if (uri != null) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          // The web opens a new browser tab, so the explorer's real address
+          // stays visible there too (ADR 0004).
+          await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+            webOnlyWindowName: '_blank',
+          );
         }
       },
     );

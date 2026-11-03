@@ -720,6 +720,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gateAccountAction => 'Register plate and face';
 
   @override
+  String get gateAccountActionPlates => 'Register plate';
+
+  @override
   String get gateRegistrationTitle => 'Gate registration';
 
   @override

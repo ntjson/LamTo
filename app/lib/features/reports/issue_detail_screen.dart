@@ -13,6 +13,7 @@ import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
 import '../../core/failure.dart';
 import '../../core/page_body.dart';
+import '../../core/web_gaps.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import '../../widgets/grouped.dart';
@@ -606,7 +607,7 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
     // lives only in memory.
     final owned = <PhotoUpload>[];
     for (final photo in pick.photos) {
-      final path = kIsWeb
+      final path = !NativeOnly.durablePhotos
           ? null
           : await _fileStore.saveReplyPhoto(
               reportId: widget.reportId,

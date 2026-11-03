@@ -1,3 +1,6 @@
+@Tags(['web'])
+library;
+
 import 'package:built_collection/built_collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -190,6 +193,25 @@ Future<_FakeAuth> _pumpForSignOut(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'the gate entry offers face enrolment and the API address override only '
+    'on native',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await _pumpForSignOut(tester);
+
+      if (kIsWeb) {
+        // ADR 0009: no gate face enrolment and no override on the web.
+        expect(find.text('Đăng ký biển số'), findsOneWidget);
+        expect(find.textContaining('khuôn mặt'), findsNothing);
+        expect(find.byKey(const Key('api_base_url_tile')), findsNothing);
+      } else {
+        expect(find.text('Đăng ký biển số và khuôn mặt'), findsOneWidget);
+        expect(find.byKey(const Key('api_base_url_tile')), findsOneWidget);
+      }
+    },
+  );
+
   testWidgets('phone-only account omits a blank email row', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(

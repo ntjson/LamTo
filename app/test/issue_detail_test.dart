@@ -1,8 +1,10 @@
-import 'dart:typed_data';
+@Tags(['web'])
+library;
 
 import 'package:built_collection/built_collection.dart';
 import 'package:built_value/json_object.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -197,6 +199,10 @@ Future<void> _pump(
   );
   await tester.pumpAndSettle();
 }
+
+/// The app-owned photo copies native keeps so a pending upload survives a
+/// restart. The web keeps photos only in memory, so it has none (ADR 0009).
+List<String> _owned(List<String> paths) => kIsWeb ? const [] : paths;
 
 void main() {
   testWidgets('renders progress updates in order with causes', (tester) async {
@@ -452,7 +458,9 @@ void main() {
     // Uploaded copies cleaned up; no pending record left behind.
     expect(
       fileStore.deleted,
-      containsAll(['/owned/reply_42/photo1.jpg', '/owned/reply_42/photo2.png']),
+      containsAll(
+        _owned(['/owned/reply_42/photo1.jpg', '/owned/reply_42/photo2.png']),
+      ),
     );
     expect(await InfoReplyPhotoStore().read(42), isEmpty);
 
@@ -495,7 +503,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(PhotoThumbnail), findsOneWidget);
-    expect(fileStore.deleted, ['/owned/reply_42/photo1.jpg']);
+    expect(fileStore.deleted, _owned(['/owned/reply_42/photo1.jpg']));
   });
 
   testWidgets(
@@ -538,9 +546,10 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(await InfoReplyPhotoStore().read(42), [
-        '/owned/reply_42/photo1.jpg',
-      ]);
+      expect(
+        await InfoReplyPhotoStore().read(42),
+        _owned(['/owned/reply_42/photo1.jpg']),
+      );
       expect(fileStore.deleted, isEmpty);
       // The committed reply is locked: no edit, no resend — only Close.
       expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
@@ -557,7 +566,7 @@ void main() {
       );
       expect(find.text('Thử lại'), findsNothing);
       expect(await InfoReplyPhotoStore().read(42), isEmpty);
-      expect(fileStore.deleted, ['/owned/reply_42/photo1.jpg']);
+      expect(fileStore.deleted, _owned(['/owned/reply_42/photo1.jpg']));
     },
   );
 

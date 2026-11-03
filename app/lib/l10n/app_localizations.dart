@@ -1406,6 +1406,12 @@ abstract class AppLocalizations {
   /// **'Register plate and face'**
   String get gateAccountAction;
 
+  /// No description provided for @gateAccountActionPlates.
+  ///
+  /// In en, this message translates to:
+  /// **'Register plate'**
+  String get gateAccountActionPlates;
+
   /// No description provided for @gateRegistrationTitle.
   ///
   /// In en, this message translates to:

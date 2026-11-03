@@ -1,3 +1,6 @@
+@Tags(['web'])
+library;
+
 import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -274,6 +277,9 @@ void main() {
         mockLauncher.launchOptions?.mode,
         PreferredLaunchMode.externalApplication,
       );
+      // On the web: a new browser tab, so the real address stays visible
+      // (ADR 0004).
+      expect(mockLauncher.launchOptions?.webOnlyWindowName, '_blank');
     },
   );
 

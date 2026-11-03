@@ -1,3 +1,6 @@
+@Tags(['web'])
+library;
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -613,6 +616,9 @@ void main() {
         mockLauncher.launchOptions?.mode,
         PreferredLaunchMode.externalApplication,
       );
+      // On the web: a new browser tab, so the real address stays visible
+      // (ADR 0004).
+      expect(mockLauncher.launchOptions?.webOnlyWindowName, '_blank');
     },
   );
 

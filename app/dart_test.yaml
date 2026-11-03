@@ -1,0 +1,4 @@
+tags:
+  # Also runs on the Chrome test platform (./tool/test_web.sh), because the
+  # behaviour under test differs on the web (ADR 0009).
+  web:

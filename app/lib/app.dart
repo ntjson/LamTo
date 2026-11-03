@@ -11,6 +11,7 @@ import 'core/error_retry.dart';
 import 'core/failure.dart';
 import 'core/occupancy.dart';
 import 'core/providers.dart';
+import 'core/web_gaps.dart';
 import 'features/auth/login_screen.dart';
 import 'features/settings/api_base_url_tile.dart';
 import 'features/auth/occupancy_picker_screen.dart';
@@ -212,8 +213,9 @@ class _AppRouterState extends ConsumerState<AppRouter> {
 
 /// Retryable bootstrap failure UI (clarification #1).
 ///
-/// Also exposes API URL editor + sign-out so a dead tunnel / wrong host does
-/// not trap the resident on "Retry" only (saved token + unreachable /me).
+/// Also exposes API URL editor (native only) + sign-out so a dead tunnel /
+/// wrong host does not trap the resident on "Retry" only (saved token +
+/// unreachable /me).
 class BootstrapErrorScreen extends ConsumerWidget {
   const BootstrapErrorScreen({
     required this.failure,
@@ -239,11 +241,14 @@ class BootstrapErrorScreen extends ConsumerWidget {
                   const BrandIdentity(width: 160),
                   const SizedBox(height: 16),
                   ErrorRetry(error: failure, onRetry: onRetry),
-                  const SizedBox(height: 8),
-                  // Expanded so tunnel URL is visible without hunting.
-                  const InsetGroup(
-                    children: [ApiBaseUrlTile(initiallyExpanded: true)],
-                  ),
+                  // Expanded so tunnel URL is visible without hunting. The
+                  // web build always calls its own origin: nothing to edit.
+                  if (NativeOnly.apiAddressOverride) ...[
+                    const SizedBox(height: 8),
+                    const InsetGroup(
+                      children: [ApiBaseUrlTile(initiallyExpanded: true)],
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   AdaptiveTextButton(
                     onPressed: () =>

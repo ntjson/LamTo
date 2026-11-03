@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/failure.dart';
+import '../../core/web_gaps.dart';
 import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/adaptive_page_route.dart';
@@ -135,9 +136,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Text(l10n.registrationOpen),
               ),
               // Not debug-gated: a released APK must be retargetable at a
-              // fresh quick-tunnel URL without a rebuild.
-              const SizedBox(height: 32),
-              const InsetGroup(children: [ApiBaseUrlTile()]),
+              // fresh quick-tunnel URL without a rebuild. The web build always
+              // calls its own origin, so it offers no override.
+              if (NativeOnly.apiAddressOverride) ...[
+                const SizedBox(height: 32),
+                const InsetGroup(children: [ApiBaseUrlTile()]),
+              ],
             ],
           ),
         ),

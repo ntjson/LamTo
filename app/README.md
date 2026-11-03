@@ -1,7 +1,7 @@
 # LamTo resident app
 
-Vietnamese-first Flutter client (iOS + Android) for apartment maintenance
-accountability. Talks to the Phase 1 resident API under `docs/api/openapi-v1.yaml`.
+Vietnamese-first Flutter client (Android, iOS and the web) for apartment
+maintenance accountability. Talks to the Phase 1 resident API under `docs/api/openapi-v1.yaml`.
 
 ## Local run
 
@@ -30,9 +30,26 @@ fresh `https://….trycloudflare.com`), and save. The value is stored in
 `SharedPreferences`; the next login uses it. Saving signs the user out so tokens
 are not reused against the wrong host.
 
+On the web the API address is always the origin the page was loaded from, so
+the override is not offered there (ADR 0009).
+
 Firebase platform config (`google-services.json` / `GoogleService-Info.plist`) is
 **not** committed. Without it, push degrades to a no-op (see
 [`docs/ops/push-smoke-checklist.md`](../docs/ops/push-smoke-checklist.md)).
+
+## Web build (ADR 0009)
+
+The web build is served under `/app/` (`/` belongs to the Management
+workspace) and calls the API at its own origin:
+
+```bash
+cd app
+flutter build web --release --base-href /app/
+```
+
+It leaves out bill scan, gate face enrolment and push (no Firebase is
+initialised). The gate reader kiosk (`--dart-define=GATE_READER_MODE=true`)
+is native-only; a web build ignores it.
 
 ## Unit / widget tests
 
@@ -40,7 +57,11 @@ Firebase platform config (`google-services.json` / `GoogleService-Info.plist`) i
 cd app
 flutter analyze
 flutter test
+./tool/test_web.sh   # tests tagged @Tags(['web']), on Chrome
 ```
+
+`tool/test_web.sh` runs the tests whose behaviour differs on the web on the
+Chrome test platform, using `$CHROME_EXECUTABLE` or the machine's Chromium.
 
 ## Nightly integration test (spec §6.5)
 

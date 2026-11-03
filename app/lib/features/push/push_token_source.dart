@@ -28,6 +28,29 @@ abstract class PushTokenSource {
   Stream<Map<String, String>> get onMessageOpened;
 }
 
+/// The web build has no push (ADR 0009): nothing is asked, nothing is
+/// registered, and Firebase is never touched, so no Firebase script is
+/// fetched.
+class NoPushTokenSource implements PushTokenSource {
+  const NoPushTokenSource();
+
+  @override
+  Future<PushPermissionResult> requestPermission() async =>
+      PushPermissionResult.unsupported;
+
+  @override
+  Future<String?> getToken() async => null;
+
+  @override
+  Stream<String> get onTokenRefresh => const Stream.empty();
+
+  @override
+  Future<Map<String, String>?> initialMessageData() async => null;
+
+  @override
+  Stream<Map<String, String>> get onMessageOpened => const Stream.empty();
+}
+
 /// Real source. Without platform config [Firebase.initializeApp] throws and
 /// every call degrades to unsupported (push is best-effort, spec 7.4).
 ///

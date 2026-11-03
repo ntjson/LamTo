@@ -37,3 +37,5 @@ jobs:
         run: ./tool/check_api_generated.sh
       - run: flutter analyze
       - run: flutter test
+      - name: Web-specific tests on Chrome (ADR 0009)
+        run: ./tool/test_web.sh

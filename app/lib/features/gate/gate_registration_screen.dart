@@ -7,6 +7,7 @@ import '../../core/adaptive_buttons.dart';
 import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
 import '../../core/page_body.dart';
+import '../../core/web_gaps.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/grouped.dart';
 import 'gate_repository.dart';
@@ -146,58 +147,62 @@ class _GateRegistrationScreenState extends State<GateRegistrationScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 28),
-            SectionHeader(l10n.gateFaceTitle),
-            InsetGroup(
-              footer: l10n.gateRetentionNotice,
-              children: [
-                ListTile(
-                  minTileHeight: 60,
-                  leading: const IconWell(Icons.face_outlined),
-                  title: Text(l10n.gateFaceTitle),
-                  subtitle: Text(
-                    face == null
-                        ? l10n.gateNotRegistered
-                        : _statusText(
-                            l10n,
-                            '${face['status']}',
-                            '${face['review_note'] ?? ''}',
-                          ),
+            // The web has no gate face enrolment (ADR 0009); plates still
+            // register there.
+            if (NativeOnly.gateFaceEnrolment) ...[
+              const SizedBox(height: 28),
+              SectionHeader(l10n.gateFaceTitle),
+              InsetGroup(
+                footer: l10n.gateRetentionNotice,
+                children: [
+                  ListTile(
+                    minTileHeight: 60,
+                    leading: const IconWell(Icons.face_outlined),
+                    title: Text(l10n.gateFaceTitle),
+                    subtitle: Text(
+                      face == null
+                          ? l10n.gateNotRegistered
+                          : _statusText(
+                              l10n,
+                              '${face['status']}',
+                              '${face['review_note'] ?? ''}',
+                            ),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              AdaptiveFilledButton(
+                busy: busy,
+                icon: const Icon(Icons.photo_camera_outlined),
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final photo = await (widget.picker ?? ImagePicker())
+                            .pickImage(
+                              source: ImageSource.camera,
+                              // Selfie flow: the resident photographs their
+                              // own face, not the room behind the phone.
+                              preferredCameraDevice: CameraDevice.front,
+                            );
+                        if (photo != null) {
+                          await _run(
+                            () => widget.repository.submitFace(photo.path),
+                          );
+                        }
+                      },
+                child: Text(l10n.gateCaptureFace),
+              ),
+              if (face != null) ...[
+                const SizedBox(height: 8),
+                AdaptiveTextButton(
+                  onPressed: () => _confirmRevoke(
+                    l10n.gateRevokeFace,
+                    widget.repository.deleteFace,
+                  ),
+                  child: Text(l10n.gateRevokeFace),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            AdaptiveFilledButton(
-              busy: busy,
-              icon: const Icon(Icons.photo_camera_outlined),
-              onPressed: busy
-                  ? null
-                  : () async {
-                      final photo = await (widget.picker ?? ImagePicker())
-                          .pickImage(
-                            source: ImageSource.camera,
-                            // Selfie flow: the resident photographs their
-                            // own face, not the room behind the phone.
-                            preferredCameraDevice: CameraDevice.front,
-                          );
-                      if (photo != null) {
-                        await _run(
-                          () => widget.repository.submitFace(photo.path),
-                        );
-                      }
-                    },
-              child: Text(l10n.gateCaptureFace),
-            ),
-            if (face != null) ...[
-              const SizedBox(height: 8),
-              AdaptiveTextButton(
-                onPressed: () => _confirmRevoke(
-                  l10n.gateRevokeFace,
-                  widget.repository.deleteFace,
-                ),
-                child: Text(l10n.gateRevokeFace),
-              ),
             ],
           ],
         ),

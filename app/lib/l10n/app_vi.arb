@@ -231,6 +231,7 @@
   "signOutUnsentWorkWarning": "Phản ánh đang soạn và ảnh chưa gửi trên thiết bị này sẽ bị xóa.",
   "commonCancel": "Hủy",
   "gateAccountAction": "Đăng ký biển số và khuôn mặt",
+  "gateAccountActionPlates": "Đăng ký biển số",
   "gateRegistrationTitle": "Đăng ký cổng",
   "gatePlateLabel": "Biển số xe",
   "gateSubmitPlate": "Gửi biển số để duyệt",

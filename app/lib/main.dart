@@ -11,8 +11,7 @@ import 'features/gate/reader/gate_reader_screen.dart';
 import 'features/gate/reader/reader_repository.dart';
 
 Future<void> main() async {
-  const readerMode = bool.fromEnvironment('GATE_READER_MODE');
-  if (!readerMode) {
+  if (!gateReaderMode) {
     runApp(
       const ProviderScope(retry: retryTransientFailures, child: LamToApp()),
     );

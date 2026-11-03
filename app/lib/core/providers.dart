@@ -14,6 +14,7 @@ import 'api_client.dart';
 import 'occupancy.dart';
 import 'occupancy_store.dart';
 import 'token_store.dart';
+import 'web_gaps.dart';
 
 export 'api_base_url.dart';
 
@@ -67,7 +68,8 @@ final gateRepositoryProvider = Provider<GateRepository>(
 );
 
 final pushTokenSourceProvider = Provider<PushTokenSource>(
-  (ref) => FirebasePushTokenSource(),
+  (ref) =>
+      NativeOnly.push ? FirebasePushTokenSource() : const NoPushTokenSource(),
 );
 final installIdStoreProvider = Provider<InstallIdStore>(
   (ref) => InstallIdStore(),

@@ -9,6 +9,7 @@ import '../../core/occupancy.dart';
 import '../../core/occupancy_store.dart';
 import '../../core/providers.dart';
 import '../../core/token_store.dart';
+import '../../core/web_gaps.dart';
 import '../reports/report_draft.dart';
 import '../reports/report_photo_files.dart';
 import 'auth_repository.dart';
@@ -73,6 +74,7 @@ class SessionController extends AsyncNotifier<SessionState> {
   /// (await pending deregister **then** re-register if consented — never race
   /// deactivate after register for the same install_id).
   void _schedulePendingDeregisterRetry() {
+    if (!NativeOnly.push) return; // the web registers no device
     unawaited(
       ref
           .read(pushRegistrarProvider)
@@ -140,9 +142,12 @@ class SessionController extends AsyncNotifier<SessionState> {
   Future<void> signOut({bool allDevices = false}) async {
     // Deactivate this install's push device first (spec 7.2 + A5); best-effort.
     // Failed deregister persists pending_device_deregister_install_id for retry.
-    try {
-      await ref.read(pushRegistrarProvider).deregister();
-    } catch (_) {}
+    // The web registers no device, so it has none to deactivate.
+    if (NativeOnly.push) {
+      try {
+        await ref.read(pushRegistrarProvider).deregister();
+      } catch (_) {}
+    }
     // Server-side revocation is best-effort: a network failure must never
     // trap the resident in a session (spec 6.4).
     try {
@@ -153,8 +158,11 @@ class SessionController extends AsyncNotifier<SessionState> {
     // Amendment 7: wipe sensitive draft text/paths on logout.
     await ReportDraftStore().clearAll();
     // Amendment 8: drop app-owned photo copies. path_provider may be
-    // unavailable or hang in widget tests — never block session clear.
-    unawaited(ReportPhotoFileStore().clearAll().catchError((Object _) {}));
+    // unavailable or hang in widget tests — never block session clear. The
+    // web keeps photos only in memory, so it has no copies to drop.
+    if (NativeOnly.durablePhotos) {
+      unawaited(ReportPhotoFileStore().clearAll().catchError((Object _) {}));
+    }
     // My Issues watches sessionControllerProvider and rebuilds on this state.
     state = const AsyncData(SessionUnauthenticated());
   }

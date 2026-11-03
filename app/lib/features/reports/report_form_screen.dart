@@ -13,6 +13,7 @@ import '../../core/adaptive_scaffold.dart';
 import '../../core/failure.dart';
 import '../../core/page_body.dart';
 import '../../core/providers.dart';
+import '../../core/web_gaps.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import '../../widgets/grouped.dart';
@@ -357,7 +358,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     final photoStore = ref.read(reportPhotoFileStoreProvider);
     final added = <PhotoUpload>[];
     for (final photo in pick.photos) {
-      final path = kIsWeb
+      final path = !NativeOnly.durablePhotos
           ? null
           : await photoStore.saveDraftPhoto(
               occupancyId: _occupancyId,
@@ -692,7 +693,8 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           ],
           if (_committed) ...[
             const SizedBox(height: 20),
-            if (!_pushRequested)
+            // The web has no push (ADR 0009), so it offers none.
+            if (NativeOnly.push && !_pushRequested)
               AdaptiveFilledButton(
                 tonal: true,
                 onPressed: _pushBusy ? null : _requestPushConsent,

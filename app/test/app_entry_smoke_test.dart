@@ -1,7 +1,12 @@
+@Tags(['web'])
+library;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/app.dart';
+import 'package:lamto/core/config.dart';
 import 'package:lamto/core/providers.dart';
 import 'package:lamto/core/token_store.dart';
 import 'package:lamto/features/auth/auth_repository.dart';
@@ -17,6 +22,16 @@ void main() {
     // Static structural check: main is a callable entry that builds the app tree.
     expect(app_main.main, isA<void Function()>());
   });
+
+  test(
+    'a web build never turns on the gate reader kiosk mode',
+    () {
+      // tool/test_web.sh asks for GATE_READER_MODE=true on the web run.
+      expect(gateReaderMode, isFalse);
+    },
+    // The kiosk is a native-only build mode (ADR 0009).
+    skip: !kIsWeb,
+  );
 
   testWidgets('LamToApp mounts from ProviderScope (entry smoke)', (
     tester,

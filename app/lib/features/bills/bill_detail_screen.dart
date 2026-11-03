@@ -11,6 +11,7 @@ import '../../core/adaptive_scaffold.dart';
 import '../../core/error_retry.dart';
 import '../../core/format.dart';
 import '../../core/page_body.dart';
+import '../../core/web_gaps.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 import '../../widgets/grouped.dart';
@@ -215,7 +216,9 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
             message: l10n.ledgerDocumentFailure,
           ),
         ],
-        if (issued) ...[
+        // Recording a payment means scanning the bill's QR, which the web
+        // does not offer (ADR 0009).
+        if (issued && NativeOnly.billScan) ...[
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),

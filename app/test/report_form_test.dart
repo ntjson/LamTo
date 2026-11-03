@@ -1,8 +1,11 @@
+@Tags(['web'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +19,7 @@ import 'package:lamto/features/reports/report_submitter.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/features/push/push_token_source.dart';
 import 'package:lamto/l10n/app_localizations.dart';
+import 'package:lamto/theme.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -121,8 +125,15 @@ Future<void> _pump(
   FakeImagePicker? picker,
   FakePhotoFileStore? fileStore,
   ReportsRepository? repository,
+  bool reload = false,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  // A reload keeps what the app stored (prefs) and drops everything held in
+  // memory: the widget tree is replaced and the draft is read back.
+  if (reload) {
+    await tester.pumpWidget(const SizedBox());
+  } else {
+    SharedPreferences.setMockInitialValues({});
+  }
   final drafts = ReportDraftStore();
   if (existingDraft != null) await drafts.write(7, existingDraft);
   final holder = OccupancyHolder()..occupancyId = 7;
@@ -251,6 +262,42 @@ void main() {
     expect(find.byType(PhotoThumbnail), findsOneWidget);
   });
 
+  testWidgets(
+    'a draft restored after a reload keeps its text; only native keeps its '
+    'photos',
+    (tester) async {
+      final repo = _FakeRepo();
+      final fileStore = FakePhotoFileStore();
+      final picker = FakeImagePicker([pickedFile(jpegBytes)]);
+      await _pump(tester, repo, picker: picker, fileStore: fileStore);
+
+      await tester.enterText(find.byType(TextField), 'Rò nước tầng 3');
+      await tester.pump(const Duration(milliseconds: 400)); // autosave
+      await tester.tap(find.text('Thêm ảnh'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn từ thư viện'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PhotoThumbnail), findsOneWidget);
+
+      await _pump(
+        tester,
+        repo,
+        picker: picker,
+        fileStore: fileStore,
+        reload: true,
+      );
+
+      expect(find.text('Rò nước tầng 3'), findsOneWidget);
+      // On the web a photo exists only in memory (ADR 0009), so the reload
+      // drops it quietly; native restores it from its app-owned copy.
+      expect(
+        find.byType(PhotoThumbnail),
+        kIsWeb ? findsNothing : findsOneWidget,
+      );
+      expect(find.byType(StatusNotice), findsNothing);
+    },
+  );
+
   Future<void> addPhotoFromGallery(WidgetTester tester) async {
     await tester.ensureVisible(find.text('Thêm ảnh'));
     await tester.tap(find.text('Thêm ảnh'));
@@ -319,6 +366,10 @@ void main() {
       expect(wire, contains(latin1.decode(pngBytes)));
       expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
     },
+    // Real Dio inside a widget test never completes on the web: its response
+    // waits on a timer the fake clock does not drive. The same multipart
+    // request is checked on the web by reports_repository_test.dart.
+    skip: kIsWeb,
   );
 
   testWidgets('a picked JPEG is sent as image/jpeg bytes', (tester) async {
@@ -476,7 +527,9 @@ void main() {
     expect(repo.refs, hasLength(1));
   });
 
-  testWidgets('push consent waits for the receipt action', (tester) async {
+  testWidgets('push consent waits for the receipt action, on native only', (
+    tester,
+  ) async {
     final repo = _FakeRepo();
     final push = _FakePushSource();
     final draft = ReportDraft.fresh().copyWith(
@@ -491,6 +544,11 @@ void main() {
     expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
     expect(push.requestCount, 0);
 
+    if (kIsWeb) {
+      // The web has no push (ADR 0009): nothing offers it, nothing prompts.
+      expect(find.text('Nhận thông báo cập nhật'), findsNothing);
+      return;
+    }
     await tester.tap(find.text('Nhận thông báo cập nhật'));
     await tester.pumpAndSettle();
     expect(push.requestCount, 1);

@@ -1,5 +1,7 @@
-import 'dart:typed_data';
+@Tags(['web'])
+library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,9 +95,8 @@ void main() {
     expect(share.shared, isEmpty);
   });
 
-  testWidgets('issued bill shows its amount, status, and payment action', (
-    tester,
-  ) async {
+  testWidgets('issued bill shows its amount, status, and, on native only, its '
+      'payment scan', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [billsRepositoryProvider.overrideWithValue(_FakeRepo())],
@@ -115,21 +116,24 @@ void main() {
     expect(find.text('250.000 ₫'), findsOneWidget);
     expect(find.text('Unpaid'), findsOneWidget);
     // The two-step transfer-then-record model precedes the scan CTA (item E).
+    // The web has no bill scan (ADR 0009), so none of it appears there.
+    final scanOffered = kIsWeb ? findsNothing : findsOneWidget;
     expect(
       find.text(
         'Scanning records a transfer you already made — it does not pay the bill.',
       ),
-      findsOneWidget,
+      scanOffered,
     );
     expect(
       find.text('1. Transfer the amount in your banking app.'),
-      findsOneWidget,
+      scanOffered,
     );
     expect(
       find.text('2. Come back here and scan the QR on the bill to record it.'),
-      findsOneWidget,
+      scanOffered,
     );
-    expect(find.text("I've paid"), findsOneWidget);
+    expect(find.text("I've paid"), scanOffered);
+    expect(find.byIcon(Icons.qr_code_scanner), scanOffered);
   });
 
   testWidgets('unpaid past-due bill names Quá hạn in the deadline pill', (
@@ -214,5 +218,6 @@ void main() {
       // The scan CTA is gone: the bill is no longer payable.
       expect(find.text('Tôi đã thanh toán'), findsNothing);
     },
+    skip: kIsWeb, // bill scan is native-only (ADR 0009)
   );
 }

@@ -14,7 +14,20 @@ final gifBytes = Uint8List.fromList([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0]);
 /// A picked file the way the web and native pickers hand it over: bytes behind
 /// a name that may say nothing (or lie) about the format.
 XFile pickedFile(Uint8List bytes, {String name = 'photo'}) =>
-    XFile.fromData(bytes, name: name);
+    _PickedFile(bytes, name: name);
+
+/// On the web a real [XFile] reads its bytes back through a browser
+/// FileReader event, which a widget test's fake-async zone never waits for.
+/// The bytes are already here, so hand them over directly on every platform.
+class _PickedFile extends XFile {
+  _PickedFile(this._bytes, {required String name})
+    : super.fromData(_bytes, name: name);
+
+  final Uint8List _bytes;
+
+  @override
+  Future<Uint8List> readAsBytes() async => _bytes;
+}
 
 /// In-memory picker: no native picker can run under `flutter test`.
 class FakeImagePicker extends ImagePicker {
