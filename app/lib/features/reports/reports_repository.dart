@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto_api/lamto_api.dart';
@@ -5,6 +7,7 @@ import 'package:lamto_api/lamto_api.dart';
 import '../../core/providers.dart';
 import '../../core/failure.dart';
 import 'report_draft.dart';
+import 'report_photo.dart';
 import 'report_photo_files.dart';
 
 /// Paths used by the reporting APIs — must exist in OpenAPI (contract tests).
@@ -25,10 +28,13 @@ abstract class ReportsRepository {
   });
   Future<PaginatedReportSummaryList> listReports({String? cursor});
   Future<ReportDetail> fetchReport(int id);
+
+  /// One upload path for every platform: the photo's bytes plus the format
+  /// detected from them (never from a filename).
   Future<ReportPhoto> uploadPhoto({
     required int reportId,
-    required String path,
-    required String filename,
+    required Uint8List bytes,
+    required PhotoFormat format,
   });
   Future<CaseRatingResult> rateCase({
     required int caseId,
@@ -85,17 +91,15 @@ class DioReportsRepository implements ReportsRepository {
   @override
   Future<ReportPhoto> uploadPhoto({
     required int reportId,
-    required String path,
-    required String filename,
+    required Uint8List bytes,
+    required PhotoFormat format,
   }) async {
-    final lower = filename.toLowerCase();
-    final subtype = lower.endsWith('.png') ? 'png' : 'jpeg';
     final res = await _reports.reportsPhotosCreate(
       id: reportId,
-      photo: await MultipartFile.fromFile(
-        path,
-        filename: filename,
-        contentType: DioMediaType('image', subtype),
+      photo: MultipartFile.fromBytes(
+        bytes,
+        filename: 'photo.${format.extension}',
+        contentType: DioMediaType.parse(format.contentType),
       ),
     );
     return res.data!;
@@ -159,12 +163,27 @@ final infoReplyPhotoStoreProvider = Provider<InfoReplyPhotoStore>(
   (ref) => InfoReplyPhotoStore(),
 );
 
+/// An info-reply photo whose upload has not landed: the app-owned file that
+/// outlives a restart, and its bytes ([photo] is null when the file is gone
+/// or is not a JPEG/PNG, so the thumbnail shows a broken-image icon).
+class PendingReplyPhoto {
+  const PendingReplyPhoto(this.path, this.photo);
+
+  final String path;
+  final PickedPhoto? photo;
+}
+
 /// Info-reply photos not yet uploaded for a report (fail-safe doctrine): the
 /// issue detail screen renders per-photo retry from this after restart.
 final infoReplyPendingPhotosProvider = FutureProvider.autoDispose
-    .family<List<String>, int>(
-      (ref, reportId) => ref.watch(infoReplyPhotoStoreProvider).read(reportId),
-    );
+    .family<List<PendingReplyPhoto>, int>((ref, reportId) async {
+      final paths = await ref.watch(infoReplyPhotoStoreProvider).read(reportId);
+      final files = ref.watch(reportPhotoFileStoreProvider);
+      return [
+        for (final path in paths)
+          PendingReplyPhoto(path, await files.tryLoad(path)),
+      ];
+    });
 
 /// Building-scoped caches rebuild on occupancy change (providers.dart contract).
 final locationsProvider = FutureProvider.autoDispose<List<Location>>((ref) {

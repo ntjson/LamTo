@@ -3,14 +3,20 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/uuid.dart';
+import 'report_photo.dart';
 
 /// App-owned durable copies of report draft photos (plan amendment 8).
 ///
 /// Picker/cache paths alone do not survive process death. Before a path is
-/// stored on a [ReportDraft], copy the selected image into application
-/// documents under `report_draft_photos/<occupancyId>/` via [importPickerPath].
+/// stored on a [ReportDraft], write the picked photo's bytes into application
+/// documents under `report_draft_photos/<occupancyId>/` via [saveDraftPhoto]
+/// (or `reply_<reportId>/` via [saveReplyPhoto]).
 /// Delete owned files when a photo is removed, a draft is cleared/committed,
 /// reminted without photos, abandoned, or wiped on logout.
+///
+/// The photo is held as bytes everywhere else (ADR 0009); this store is only
+/// the native durable copy that lets a draft keep its photos across restarts.
+/// File names carry the extension of the detected format, never the picker's.
 class ReportPhotoFileStore {
   /// [rootOverride] is for tests (temp dir). Production uses
   /// `getApplicationDocumentsDirectory()/report_draft_photos`.
@@ -21,13 +27,6 @@ class ReportPhotoFileStore {
   static const relativeRootName = 'report_draft_photos';
 
   String _join(String a, String b) => '$a${Platform.pathSeparator}$b';
-
-  String _extension(String path) {
-    final base = path.split(RegExp(r'[/\\]')).last;
-    final dot = base.lastIndexOf('.');
-    if (dot <= 0) return '';
-    return base.substring(dot);
-  }
 
   Future<Directory> _root() async {
     final override = _rootOverride;
@@ -54,38 +53,50 @@ class ReportPhotoFileStore {
     return dir;
   }
 
-  /// Copies [sourcePath] into app-owned storage for [occupancyId] and returns
-  /// the durable absolute path to store on the draft.
-  Future<String> importPickerPath({
+  /// Writes [photo] into app-owned storage for [occupancyId] and returns the
+  /// durable absolute path to store on the draft.
+  Future<String> saveDraftPhoto({
     required int occupancyId,
-    required String sourcePath,
+    required PickedPhoto photo,
   }) async {
     final dir = await _occupancyDir(occupancyId);
-    return _copyInto(dir, sourcePath);
+    return _write(dir, photo);
   }
 
-  /// Copies [sourcePath] into app-owned storage for a needs-info reply on
+  /// Writes [photo] into app-owned storage for a needs-info reply on
   /// [reportId] and returns the durable absolute path. Lives under
   /// `report_draft_photos/reply_<reportId>/` — the `reply_` prefix cannot
   /// collide with occupancy int dirs, and the logout [clearAll] wipe covers it.
-  Future<String> importReplyPickerPath({
+  Future<String> saveReplyPhoto({
     required int reportId,
-    required String sourcePath,
+    required PickedPhoto photo,
   }) async {
     final root = await _root();
     final dir = Directory(_join(root.path, 'reply_$reportId'));
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
-    return _copyInto(dir, sourcePath);
+    return _write(dir, photo);
   }
 
-  Future<String> _copyInto(Directory dir, String sourcePath) async {
-    final ext = _extension(sourcePath);
-    final destName = '${uuidV4()}${ext.isEmpty ? '.jpg' : ext}';
-    final destPath = _join(dir.path, destName);
-    await File(sourcePath).copy(destPath);
+  Future<String> _write(Directory dir, PickedPhoto photo) async {
+    final destPath = _join(dir.path, '${uuidV4()}.${photo.format.extension}');
+    await File(destPath).writeAsBytes(photo.bytes, flush: true);
     return destPath;
+  }
+
+  /// Reads an app-owned photo back as bytes. Throws when the file is gone
+  /// ([FileSystemException]) or is not a JPEG/PNG ([UnsupportedPhotoException]).
+  Future<PickedPhoto> load(String path) async =>
+      PickedPhoto.detect(await File(path).readAsBytes());
+
+  /// [load], or null when the photo cannot be read.
+  Future<PickedPhoto?> tryLoad(String path) async {
+    try {
+      return await load(path);
+    } on Object {
+      return null;
+    }
   }
 
   /// Best-effort delete of individual owned (or any) file paths.

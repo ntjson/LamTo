@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/features/reports/photo_thumbnail.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 
+import 'report_photo_fakes.dart';
+
 Widget _wrap(Widget child) => MaterialApp(
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
@@ -19,7 +21,7 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         PhotoThumbnail(
-          path: '/owned/a.jpg',
+          bytes: jpegBytes,
           index: 1,
           count: 2,
           onDelete: () => deleted = true,
@@ -29,6 +31,12 @@ void main() {
 
     // The picture (not a filename) is the confirmation.
     expect(find.byType(Image), findsOneWidget);
+    // Drawn from the held bytes, not from a file path.
+    final provider = tester.widget<Image>(find.byType(Image)).image;
+    expect(provider, isA<ResizeImage>());
+    final source = (provider as ResizeImage).imageProvider;
+    expect(source, isA<MemoryImage>());
+    expect((source as MemoryImage).bytes, jpegBytes);
     expect(find.text('a.jpg'), findsNothing);
     expect(find.bySemanticsLabel('Ảnh 1/2'), findsOneWidget);
 
@@ -45,7 +53,7 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         PhotoThumbnail(
-          path: '/owned/b.jpg',
+          bytes: pngBytes,
           index: 2,
           count: 3,
           onRetry: () => retried++,

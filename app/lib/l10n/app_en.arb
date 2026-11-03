@@ -67,6 +67,7 @@
   "reportDraftSaveFailed": "The draft could not be saved. Your text is still on screen; check your device and try again.",
   "reportSubmitted": "Your report was received.",
   "reportPhotosPending": "Some photos did not upload. Your report text is saved — retry each photo below.",
+  "reportPhotoUnsupported": "Only JPEG or PNG photos can be sent. A photo in another format was not added.",
   "reportPhotoRetry": "Retry",
   "reportConflict": "This report was already sent. Your edits will be sent as a new report — tap Send again.",
   "reportMissingFields": "Please describe the issue and choose a location. Nothing was sent yet.",

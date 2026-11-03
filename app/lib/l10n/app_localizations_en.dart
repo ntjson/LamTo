@@ -224,6 +224,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Some photos did not upload. Your report text is saved — retry each photo below.';
 
   @override
+  String get reportPhotoUnsupported =>
+      'Only JPEG or PNG photos can be sent. A photo in another format was not added.';
+
+  @override
   String get reportPhotoRetry => 'Retry';
 
   @override

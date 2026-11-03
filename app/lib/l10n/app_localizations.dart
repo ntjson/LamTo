@@ -500,6 +500,12 @@ abstract class AppLocalizations {
   /// **'Some photos did not upload. Your report text is saved — retry each photo below.'**
   String get reportPhotosPending;
 
+  /// No description provided for @reportPhotoUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Only JPEG or PNG photos can be sent. A photo in another format was not added.'**
+  String get reportPhotoUnsupported;
+
   /// No description provided for @reportPhotoRetry.
   ///
   /// In en, this message translates to:

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -19,6 +20,7 @@ import '../ledger/ledger_detail_screen.dart';
 import 'category_labels.dart';
 import 'photo_thumbnail.dart';
 import 'report_draft.dart';
+import 'report_photo.dart';
 import 'report_photo_files.dart';
 import 'report_submitter.dart';
 import 'reports_repository.dart';
@@ -151,7 +153,7 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
     // restored from the persisted record so retry survives process death.
     final pendingReplyPhotos =
         ref.watch(infoReplyPendingPhotosProvider(report.id)).value ??
-        const <String>[];
+        const <PendingReplyPhoto>[];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
@@ -233,12 +235,14 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final (index, path) in pendingReplyPhotos.indexed)
+              for (final (index, pending) in pendingReplyPhotos.indexed)
                 PhotoThumbnail(
-                  path: path,
+                  // Unreadable files draw as a broken image; retry stays.
+                  bytes: pending.photo?.bytes ?? Uint8List(0),
                   index: index + 1,
                   count: pendingReplyPhotos.length,
-                  onRetry: () => _retryPendingReplyPhoto(ref, report.id, path),
+                  onRetry: () =>
+                      _retryPendingReplyPhoto(ref, report.id, pending),
                 ),
             ],
           ),
@@ -364,44 +368,62 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
   Future<void> _retryPendingReplyPhoto(
     WidgetRef ref,
     int reportId,
-    String path,
+    PendingReplyPhoto pending,
   ) async {
-    final uploaded = await _uploadPendingReplyPhoto(
+    final photo = pending.photo;
+    if (photo == null) {
+      // The file is gone (or is not a JPEG/PNG): nothing can ever be sent, so
+      // retire the record instead of leaving a Retry that does nothing.
+      final files = ref.read(reportPhotoFileStoreProvider);
+      final records = ref.read(infoReplyPhotoStoreProvider);
+      await files.deletePaths([pending.path]);
+      await records.write(
+        reportId,
+        List<String>.from(await records.read(reportId))..remove(pending.path),
+      );
+      ref.invalidate(infoReplyPendingPhotosProvider(reportId));
+      return;
+    }
+    final uploaded = await _uploadReplyPhoto(
       repository: ref.read(reportsRepositoryProvider),
       files: ref.read(reportPhotoFileStoreProvider),
       records: ref.read(infoReplyPhotoStoreProvider),
       reportId: reportId,
-      path: path,
+      photo: photo,
+      path: pending.path,
     );
     ref.invalidate(infoReplyPendingPhotosProvider(reportId));
     if (uploaded) ref.invalidate(reportDetailProvider(reportId));
   }
 }
 
-/// One step of the info-reply photo choreography: upload a pending photo; on
-/// success delete the app-owned copy and shrink the persisted record. Returns
-/// whether the server now has the photo. Retrying is always safe — the server
-/// is idempotent by content SHA-256.
-Future<bool> _uploadPendingReplyPhoto({
+/// One step of the info-reply photo choreography: upload a photo; on success
+/// delete its app-owned copy (where there is one) and shrink the persisted
+/// record. Returns whether the server now has the photo. Retrying is always
+/// safe — the server is idempotent by content SHA-256.
+Future<bool> _uploadReplyPhoto({
   required ReportsRepository repository,
   required ReportPhotoFileStore files,
   required InfoReplyPhotoStore records,
   required int reportId,
-  required String path,
+  required PickedPhoto photo,
+  required String? path,
 }) async {
   try {
     await repository.uploadPhoto(
       reportId: reportId,
-      path: path,
-      filename: path.split('/').last,
+      bytes: photo.bytes,
+      format: photo.format,
     );
   } catch (_) {
     return false; // soft-fail: the reply text is committed; retry stays offered
   }
-  await files.deletePaths([path]);
-  final remaining = List<String>.from(await records.read(reportId))
-    ..remove(path);
-  await records.write(reportId, remaining);
+  if (path != null) {
+    await files.deletePaths([path]);
+    final remaining = List<String>.from(await records.read(reportId))
+      ..remove(path);
+    await records.write(reportId, remaining);
+  }
   return true;
 }
 
@@ -525,6 +547,10 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
   bool _committed = false;
   String? _error;
 
+  /// Set when a picked file was refused; unlike [_error] it says nothing about
+  /// the reply, which has not been sent yet.
+  String? _photoNotice;
+
   // Cached in initState — [ref] is unsafe after unmount, and the upload loop
   // keeps running (and must keep the record accurate) if the sheet closes.
   late ReportsRepository _repo;
@@ -546,7 +572,10 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
     if (!_committed && _photos.isNotEmpty) {
       unawaited(
         _fileStore
-            .deletePaths([for (final p in _photos) p.path])
+            .deletePaths([
+              for (final p in _photos)
+                if (p.path != null) p.path!,
+            ])
             .catchError((Object _) {}),
       );
     }
@@ -558,26 +587,41 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
     if (_busy || _committed) return;
     final remaining = maxReportPhotos - _photos.length;
     if (remaining <= 0) return;
-    final picked = await pickReportPhotos(
+    final pick = await pickReportPhotos(
       context,
       l10n,
       ref.read(imagePickerProvider),
       limit: remaining,
     );
-    if (picked.isEmpty) return;
-    // Durable app-owned copies before anything else (picker cache paths do
-    // not survive process death) — same rule as the report draft.
-    final owned = <PhotoUpload>[];
-    for (final xfile in picked) {
-      final path = await _fileStore.importReplyPickerPath(
-        reportId: widget.reportId,
-        sourcePath: xfile.path,
+    if (mounted) {
+      setState(
+        () => _photoNotice = pick.refused > 0
+            ? l10n.reportPhotoUnsupported
+            : null,
       );
-      owned.add(PhotoUpload(path: path, filename: path.split('/').last));
+    }
+    if (pick.photos.isEmpty) return;
+    // Native keeps a durable app-owned copy so a pending upload survives
+    // process death — same rule as the report draft. On the web a photo
+    // lives only in memory.
+    final owned = <PhotoUpload>[];
+    for (final photo in pick.photos) {
+      final path = kIsWeb
+          ? null
+          : await _fileStore.saveReplyPhoto(
+              reportId: widget.reportId,
+              photo: photo,
+            );
+      owned.add(PhotoUpload(photo: photo, path: path));
     }
     if (!mounted) {
       // Dispose already ran without these paths; do not leak the copies.
-      unawaited(_fileStore.deletePaths([for (final p in owned) p.path]));
+      unawaited(
+        _fileStore.deletePaths([
+          for (final p in owned)
+            if (p.path != null) p.path!,
+        ]),
+      );
       return;
     }
     setState(() => _photos.addAll(owned));
@@ -586,7 +630,8 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
   Future<void> _removePhoto(PhotoUpload photo) async {
     if (_busy || _committed) return;
     setState(() => _photos.remove(photo));
-    await _fileStore.deletePaths([photo.path]);
+    final path = photo.path;
+    if (path != null) await _fileStore.deletePaths([path]);
   }
 
   @override
@@ -636,7 +681,7 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
               children: [
                 for (final (index, photo) in _photos.indexed)
                   PhotoThumbnail(
-                    path: photo.path,
+                    bytes: photo.photo.bytes,
                     index: index + 1,
                     count: _photos.length,
                     onDelete: editingLocked ? null : () => _removePhoto(photo),
@@ -655,6 +700,16 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
                   ),
               ],
             ),
+            if (_photoNotice != null) ...[
+              const SizedBox(height: 8),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _photoNotice!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 8),
               Semantics(
@@ -723,7 +778,7 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
                 children: [
                   for (final photo in failed)
                     PhotoThumbnail(
-                      path: photo.path,
+                      bytes: photo.photo.bytes,
                       index: _photos.indexOf(photo) + 1,
                       count: _photos.length,
                       // _retryPhoto no-ops while busy, so the failed state
@@ -780,14 +835,18 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
     // Step 2: persist the pending record first (process death mid-upload
     // restores per-photo retry on the issue detail screen), then upload
     // photos one by one.
-    await _replyStore.write(widget.reportId, [for (final p in _photos) p.path]);
+    await _replyStore.write(widget.reportId, [
+      for (final p in _photos)
+        if (p.path != null) p.path!,
+    ]);
     if (mounted) setState(() {});
     for (final photo in _photos) {
-      final ok = await _uploadPendingReplyPhoto(
+      final ok = await _uploadReplyPhoto(
         repository: _repo,
         files: _fileStore,
         records: _replyStore,
         reportId: widget.reportId,
+        photo: photo.photo,
         path: photo.path,
       );
       photo.status = ok ? PhotoUploadStatus.uploaded : PhotoUploadStatus.failed;
@@ -799,11 +858,12 @@ class _InfoReplySheetState extends ConsumerState<_InfoReplySheet> {
   Future<void> _retryPhoto(PhotoUpload photo) async {
     if (_busy || photo.status == PhotoUploadStatus.uploaded) return;
     setState(() => _busy = true);
-    final ok = await _uploadPendingReplyPhoto(
+    final ok = await _uploadReplyPhoto(
       repository: _repo,
       files: _fileStore,
       records: _replyStore,
       reportId: widget.reportId,
+      photo: photo.photo,
       path: photo.path,
     );
     photo.status = ok ? PhotoUploadStatus.uploaded : PhotoUploadStatus.failed;

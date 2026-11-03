@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -6,15 +6,17 @@ import '../../core/adaptive_buttons.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
 
-/// 64px preview of a local (app-owned) photo, replacing the minted-UUID
-/// chips: residents confirm the picture itself, never a filename.
+/// 64px preview of a picked photo, drawn from its bytes (ADR 0009) so it
+/// looks the same on every platform. Replaces the minted-UUID chips:
+/// residents confirm the picture itself, never a filename. Bytes that cannot
+/// be decoded (or are empty) show a broken-image icon.
 ///
 /// [onDelete] shows a remove affordance (pre-submit / pre-send lists).
 /// [onRetry] marks the photo as failed-to-upload: error border + badge icon
 /// + a labeled retry action, so the state never rides on color alone.
 class PhotoThumbnail extends StatelessWidget {
   const PhotoThumbnail({
-    required this.path,
+    required this.bytes,
     required this.index,
     required this.count,
     this.onDelete,
@@ -24,7 +26,7 @@ class PhotoThumbnail extends StatelessWidget {
 
   static const double size = 64;
 
-  final String path;
+  final Uint8List bytes;
 
   /// 1-based position among [count] photos ("Ảnh {n}/{m}").
   final int index;
@@ -59,10 +61,10 @@ class PhotoThumbnail extends StatelessWidget {
                       ? Border.all(color: errorColors.fg, width: 2)
                       : null,
                 ),
-                child: Image.file(
-                  File(path),
+                child: Image.memory(
+                  bytes,
                   fit: BoxFit.cover,
-                  // Local files decoded at display density, never full-res.
+                  // Decoded at display density, never full-res.
                   cacheWidth: (size * MediaQuery.devicePixelRatioOf(context))
                       .round(),
                   errorBuilder: (_, _, _) =>

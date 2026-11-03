@@ -4,20 +4,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/failure.dart';
 import '../../core/uuid.dart';
 import 'report_draft.dart';
+import 'report_photo.dart';
 import 'reports_repository.dart';
 
 enum PhotoUploadStatus { pending, uploaded, failed }
 
 class PhotoUpload {
   PhotoUpload({
-    required this.path,
-    required this.filename,
+    required this.photo,
+    this.path,
     this.status = PhotoUploadStatus.pending,
     String? clientAttachmentId,
   }) : clientAttachmentId = clientAttachmentId ?? uuidV4();
 
-  final String path;
-  final String filename;
+  /// The photo's bytes and detected format: what is drawn and what is sent.
+  final PickedPhoto photo;
+
+  /// The app-owned file behind the photo, where the platform keeps one (null
+  /// on the web, where a photo exists only in memory).
+  final String? path;
 
   /// Stable in-session identity for this attachment (amendment 10).
   final String clientAttachmentId;
@@ -50,6 +55,7 @@ class ReportSubmitter {
   Future<SubmitOutcome> submit({
     required ReportDraft draft,
     required int occupancyId,
+    List<PhotoUpload> photos = const [],
   }) async {
     final int reportId;
     try {
@@ -69,10 +75,6 @@ class ReportSubmitter {
     // The report row exists: the text can never be lost now.
     await draftStore.clear(occupancyId);
 
-    final photos = [
-      for (final path in draft.photoPaths)
-        PhotoUpload(path: path, filename: path.split('/').last),
-    ];
     for (final photo in photos) {
       await _upload(reportId, photo);
     }
@@ -95,8 +97,8 @@ class ReportSubmitter {
     try {
       await repository.uploadPhoto(
         reportId: reportId,
-        path: photo.path,
-        filename: photo.filename,
+        bytes: photo.photo.bytes,
+        format: photo.photo.format,
       );
       photo.status = PhotoUploadStatus.uploaded;
     } catch (_) {

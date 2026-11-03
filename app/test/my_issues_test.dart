@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/features/reports/my_issues_screen.dart';
+import 'package:lamto/features/reports/report_photo.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto/l10n/app_localizations_en.dart';
@@ -70,8 +73,8 @@ class _FakeRepo implements ReportsRepository {
   @override
   Future<ReportPhoto> uploadPhoto({
     required int reportId,
-    required String path,
-    required String filename,
+    required Uint8List bytes,
+    required PhotoFormat format,
   }) => throw UnimplementedError();
 }
 

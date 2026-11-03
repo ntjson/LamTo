@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lamto/features/reports/report_photo.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -63,24 +64,70 @@ void main() {
     },
   );
 
-  test('uploadPhoto sends multipart field "photo"', () async {
-    answerWith(201, {
-      'id': 9,
-      'filename': 'p.jpg',
-      'sha256': 'aa',
-      'download_url': '/api/v1/documents/tok',
+  group('uploadPhoto', () {
+    final jpegBytes = Uint8List.fromList([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    final pngBytes = Uint8List.fromList([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 4, 5, 6, //
+    ]);
+
+    /// Answers 201 and captures the multipart body exactly as the adapter
+    /// receives it, i.e. what goes over the wire.
+    Future<List<int>> uploadAndCaptureBody(
+      Uint8List bytes,
+      PhotoFormat format,
+    ) async {
+      List<int> body = const [];
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((inv) async {
+        lastRequest = inv.positionalArguments[0] as RequestOptions;
+        final stream = inv.positionalArguments[1] as Stream<Uint8List>?;
+        body = [for (final chunk in await stream!.toList()) ...chunk];
+        return _json(201, {
+          'id': 9,
+          'filename': 'photo',
+          'sha256': 'aa',
+          'download_url': '/api/v1/documents/tok',
+        });
+      });
+      final photo = await repo.uploadPhoto(
+        reportId: 5,
+        bytes: bytes,
+        format: format,
+      );
+      expect(photo.id, 9);
+      expect(lastRequest.path, '/api/v1/reports/5/photos');
+      return body;
+    }
+
+    bool containsSequence(List<int> haystack, List<int> needle) {
+      for (var i = 0; i + needle.length <= haystack.length; i++) {
+        var hit = true;
+        for (var j = 0; j < needle.length; j++) {
+          if (haystack[i + j] != needle[j]) {
+            hit = false;
+            break;
+          }
+        }
+        if (hit) return true;
+      }
+      return false;
+    }
+
+    test('sends the photo bytes as image/jpeg for a JPEG', () async {
+      final body = await uploadAndCaptureBody(jpegBytes, PhotoFormat.jpeg);
+      final text = latin1.decode(body).toLowerCase();
+      expect(text, contains('name="photo"'));
+      expect(text, contains('content-type: image/jpeg'));
+      expect(containsSequence(body, jpegBytes), isTrue);
     });
-    // A real temp file so MultipartFile.fromFile can read it.
-    final photo = await repo.uploadPhoto(
-      reportId: 5,
-      path: _writeTempJpeg(),
-      filename: 'p.jpg',
-    );
-    expect(photo.id, 9);
-    expect(lastRequest.path, '/api/v1/reports/5/photos');
-    expect(lastRequest.data, isA<FormData>());
-    final form = lastRequest.data as FormData;
-    expect(form.files.single.key, 'photo');
+
+    test('sends image/png for a PNG whatever the filename', () async {
+      final body = await uploadAndCaptureBody(pngBytes, PhotoFormat.png);
+      final text = latin1.decode(body).toLowerCase();
+      expect(text, contains('name="photo"'));
+      expect(text, contains('content-type: image/png'));
+      expect(text, isNot(contains('image/jpeg')));
+      expect(containsSequence(body, pngBytes), isTrue);
+    });
   });
 
   test('cursorFromNext extracts the DRF cursor param', () {
@@ -124,11 +171,4 @@ void main() {
       expect(calls, 2);
     },
   );
-}
-
-String _writeTempJpeg() {
-  final file = File(
-    '${Directory.systemTemp.createTempSync('lamto').path}/p.jpg',
-  )..writeAsBytesSync([0xff, 0xd8, 0xff, 0xe0]);
-  return file.path;
 }

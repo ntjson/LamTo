@@ -9,9 +9,12 @@ import '../../core/uuid.dart';
 /// attached photo paths, and the client_ref minted when the draft was born
 /// so retries stay idempotent (spec 3.5).
 ///
-/// [photoPaths] must be **app-owned** durable paths only (copied via
+/// [photoPaths] must be **app-owned** durable paths only (written via
 /// [ReportPhotoFileStore] under application documents) — not transient
 /// picker/cache URIs, so drafts survive process death (plan amendment 8).
+/// They exist only on native platforms: a photo held purely in memory has no
+/// path, so it is never persisted (ADR 0009). The form holds the photos
+/// themselves as bytes; these paths are how a native restart finds them.
 class ReportDraft {
   const ReportDraft({
     required this.clientRef,

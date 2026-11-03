@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,12 +11,15 @@ import 'package:lamto/core/providers.dart';
 import 'package:lamto/features/reports/photo_thumbnail.dart';
 import 'package:lamto/features/reports/report_draft.dart';
 import 'package:lamto/features/reports/report_form_screen.dart';
+import 'package:lamto/features/reports/report_photo.dart';
 import 'package:lamto/features/reports/report_submitter.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto/features/push/push_token_source.dart';
 import 'package:lamto/l10n/app_localizations.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'report_photo_fakes.dart';
 
 ReportSummary _summary() => ReportSummary(
   (b) => b
@@ -28,6 +34,7 @@ ReportSummary _summary() => ReportSummary(
 class _FakeRepo implements ReportsRepository {
   final refs = <String>[];
   final privateValues = <bool>[];
+  final uploads = <(int, PhotoFormat, Uint8List)>[];
   bool conflict = false;
   Completer<ReportSummary>? createCompleter;
 
@@ -70,9 +77,18 @@ class _FakeRepo implements ReportsRepository {
   @override
   Future<ReportPhoto> uploadPhoto({
     required int reportId,
-    required String path,
-    required String filename,
-  }) => throw UnimplementedError();
+    required Uint8List bytes,
+    required PhotoFormat format,
+  }) async {
+    uploads.add((reportId, format, bytes));
+    return ReportPhoto(
+      (b) => b
+        ..id = uploads.length
+        ..filename = 'photo${uploads.length}'
+        ..sha256 = 'aa'
+        ..downloadUrl = '/photos/${uploads.length}',
+    );
+  }
 }
 
 class _FakePushSource implements PushTokenSource {
@@ -102,6 +118,9 @@ Future<void> _pump(
   _FakeRepo repo, {
   ReportDraft? existingDraft,
   _FakePushSource? pushSource,
+  FakeImagePicker? picker,
+  FakePhotoFileStore? fileStore,
+  ReportsRepository? repository,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final drafts = ReportDraftStore();
@@ -110,8 +129,14 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        reportsRepositoryProvider.overrideWithValue(repo),
+        reportsRepositoryProvider.overrideWithValue(repository ?? repo),
         reportDraftStoreProvider.overrideWithValue(drafts),
+        reportPhotoFileStoreProvider.overrideWithValue(
+          fileStore ?? FakePhotoFileStore(),
+        ),
+        imagePickerProvider.overrideWithValue(
+          picker ?? FakeImagePicker(const []),
+        ),
         occupancyHolderProvider.overrideWithValue(holder),
         if (pushSource != null)
           pushTokenSourceProvider.overrideWithValue(pushSource),
@@ -125,6 +150,52 @@ Future<void> _pump(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// Fake HTTP adapter: answers the two calls a submit makes and keeps the photo
+/// part's body exactly as it would go over the wire.
+class _CapturingAdapter implements HttpClientAdapter {
+  String? photoPath;
+  String photoBody = '';
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final Map<String, Object?> json;
+    if (options.path.endsWith('/photos')) {
+      photoPath = options.path;
+      final chunks = await requestStream!.toList();
+      photoBody = latin1.decode([for (final chunk in chunks) ...chunk]);
+      json = {
+        'id': 1,
+        'filename': 'photo.png',
+        'sha256': 'aa',
+        'download_url': '/api/v1/documents/tok',
+      };
+    } else {
+      json = {
+        'id': 42,
+        'text': 'Rò nước',
+        'status': 'SUBMITTED',
+        'is_private': false,
+        'location_path_snapshot': 'B / Hall',
+        'created_at': '2026-07-17T00:00:00Z',
+      };
+    }
+    return ResponseBody.fromString(
+      jsonEncode(json),
+      201,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
 }
 
 /// AppBar title and submit share the same VI string; target the button.
@@ -160,7 +231,17 @@ void main() {
       text: 'Rò nước',
       photoPaths: ['/owned/report_7/a.jpg', '/owned/report_7/b.jpg'],
     );
-    await _pump(tester, repo, existingDraft: draft);
+    // The app-owned copies that survived a restart; thumbnails read them back.
+    final fileStore = FakePhotoFileStore()
+      ..files['/owned/report_7/a.jpg'] = PickedPhoto(
+        jpegBytes,
+        PhotoFormat.jpeg,
+      )
+      ..files['/owned/report_7/b.jpg'] = PickedPhoto(
+        jpegBytes,
+        PhotoFormat.jpeg,
+      );
+    await _pump(tester, repo, existingDraft: draft, fileStore: fileStore);
 
     expect(find.byType(PhotoThumbnail), findsNWidgets(2));
     expect(find.text('a.jpg'), findsNothing); // no minted filenames
@@ -168,6 +249,124 @@ void main() {
     await tester.tap(find.byIcon(Icons.close).first);
     await tester.pump();
     expect(find.byType(PhotoThumbnail), findsOneWidget);
+  });
+
+  Future<void> addPhotoFromGallery(WidgetTester tester) async {
+    await tester.ensureVisible(find.text('Thêm ảnh'));
+    await tester.tap(find.text('Thêm ảnh'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chọn từ thư viện'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a picked PNG with no extension is sent as image/png bytes', (
+    tester,
+  ) async {
+    final repo = _FakeRepo();
+    final draft = ReportDraft.fresh().copyWith(
+      text: 'Rò nước',
+      locationId: 3,
+      locationLabel: 'Tòa A / Thang máy 2',
+    );
+    await _pump(
+      tester,
+      repo,
+      existingDraft: draft,
+      picker: FakeImagePicker([pickedFile(pngBytes)]),
+    );
+
+    await addPhotoFromGallery(tester);
+    expect(find.byType(PhotoThumbnail), findsOneWidget);
+
+    await tester.ensureVisible(_sendButton);
+    await tester.tap(_sendButton);
+    await tester.pumpAndSettle();
+
+    expect(repo.uploads.single, (42, PhotoFormat.png, pngBytes));
+    expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'the multipart request carries the bytes, image/png for an extensionless '
+    'PNG',
+    (tester) async {
+      // The real repository over a fake HTTP adapter: what goes on the wire.
+      final adapter = _CapturingAdapter();
+      final repo = DioReportsRepository(
+        Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = adapter,
+      );
+      final draft = ReportDraft.fresh().copyWith(
+        text: 'Rò nước',
+        locationId: 3,
+      );
+      await _pump(
+        tester,
+        _FakeRepo(),
+        existingDraft: draft,
+        picker: FakeImagePicker([pickedFile(pngBytes)]),
+        repository: repo,
+      );
+
+      await addPhotoFromGallery(tester);
+      await tester.ensureVisible(_sendButton);
+      await tester.tap(_sendButton);
+      await tester.pumpAndSettle();
+
+      expect(adapter.photoPath, '/api/v1/reports/42/photos');
+      final wire = adapter.photoBody;
+      expect(wire.toLowerCase(), contains('content-type: image/png'));
+      expect(wire.toLowerCase(), isNot(contains('image/jpeg')));
+      expect(wire, contains(latin1.decode(pngBytes)));
+      expect(find.text('Phản ánh của bạn đã được ghi nhận.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('a picked JPEG is sent as image/jpeg bytes', (tester) async {
+    final repo = _FakeRepo();
+    final draft = ReportDraft.fresh().copyWith(text: 'Rò nước', locationId: 3);
+    await _pump(
+      tester,
+      repo,
+      existingDraft: draft,
+      picker: FakeImagePicker([pickedFile(jpegBytes, name: 'IMG_1.heic')]),
+    );
+
+    await addPhotoFromGallery(tester);
+    await tester.ensureVisible(_sendButton);
+    await tester.tap(_sendButton);
+    await tester.pumpAndSettle();
+
+    expect(repo.uploads.single, (42, PhotoFormat.jpeg, jpegBytes));
+  });
+
+  testWidgets('a photo that is not a JPEG or PNG is refused and never sent', (
+    tester,
+  ) async {
+    final repo = _FakeRepo();
+    final draft = ReportDraft.fresh().copyWith(text: 'Rò nước', locationId: 3);
+    final fileStore = FakePhotoFileStore();
+    await _pump(
+      tester,
+      repo,
+      existingDraft: draft,
+      // A .jpg name on GIF bytes: the filename must not decide.
+      picker: FakeImagePicker([pickedFile(gifBytes, name: 'leak.jpg')]),
+      fileStore: fileStore,
+    );
+
+    await addPhotoFromGallery(tester);
+
+    expect(
+      find.textContaining('Chỉ gửi được ảnh JPEG hoặc PNG'),
+      findsOneWidget,
+    );
+    expect(find.byType(PhotoThumbnail), findsNothing);
+    expect(fileStore.files, isEmpty);
+
+    await tester.ensureVisible(_sendButton);
+    await tester.tap(_sendButton);
+    await tester.pumpAndSettle();
+    expect(repo.uploads, isEmpty);
   });
 
   testWidgets('submits a private report when the switch is enabled', (

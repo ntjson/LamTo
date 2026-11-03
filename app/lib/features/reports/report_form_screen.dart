@@ -21,6 +21,7 @@ import 'location_picker_screen.dart';
 import 'my_issues_screen.dart';
 import 'photo_thumbnail.dart';
 import 'report_draft.dart';
+import 'report_photo.dart';
 import 'report_submitter.dart';
 import 'reports_repository.dart';
 
@@ -31,10 +32,24 @@ const _photoQuality = 85;
 /// Injectable so widget tests can fake picking (native picker cannot run).
 final imagePickerProvider = Provider<ImagePicker>((_) => ImagePicker());
 
+/// What a pick produced: the photos that were read and recognised as JPEG or
+/// PNG, and how many picked files were refused because their bytes are
+/// neither (the caller shows [refused] to the resident; nothing is sent).
+class PhotoPick {
+  const PhotoPick(this.photos, {this.refused = 0});
+
+  static const none = PhotoPick([]);
+
+  final List<PickedPhoto> photos;
+  final int refused;
+}
+
 /// Shared photo-pick flow (report form + needs-info reply sheet): camera or
 /// gallery via a source sheet, native downscale to max edge 2048 + JPEG
-/// re-encode (spec 6.3). Returns at most [limit] files; empty on cancel.
-Future<List<XFile>> pickReportPhotos(
+/// re-encode (spec 6.3). Reads each file as bytes and detects its format from
+/// them, never from the filename (ADR 0009). Takes at most [limit] files;
+/// [PhotoPick.none] on cancel.
+Future<PhotoPick> pickReportPhotos(
   BuildContext context,
   AppLocalizations l10n,
   ImagePicker picker, {
@@ -84,7 +99,7 @@ Future<List<XFile>> pickReportPhotos(
             ),
           ),
         );
-  if (source == null) return const [];
+  if (source == null) return PhotoPick.none;
   final picked = source == ImageSource.gallery
       ? await picker.pickMultiImage(
           maxWidth: _maxPhotoEdge,
@@ -99,7 +114,16 @@ Future<List<XFile>> pickReportPhotos(
             imageQuality: _photoQuality,
           ),
         ].nonNulls.toList();
-  return picked.take(limit).toList();
+  final photos = <PickedPhoto>[];
+  var refused = 0;
+  for (final file in picked.take(limit)) {
+    try {
+      photos.add(PickedPhoto.detect(await file.readAsBytes()));
+    } on UnsupportedPhotoException {
+      refused++;
+    }
+  }
+  return PhotoPick(photos, refused: refused);
 }
 
 enum _DraftSaveState { idle, saving, saved, failed }
@@ -135,6 +159,11 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   final _scrollController = ScrollController();
   final _noticeKey = GlobalKey();
   ReportDraft _draft = ReportDraft.fresh();
+
+  /// The attached photos, held as bytes. [_draft].photoPaths mirrors the ones
+  /// that have a durable app-owned file, which is what a native restart
+  /// restores.
+  final _photos = <PhotoUpload>[];
   bool _restored = false;
   bool _busy = false;
   bool _pushBusy = false;
@@ -212,11 +241,24 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   Future<void> _restore() async {
     _ensureDepsCached();
     final occupancyId = _occupancyId;
+    final files = ref.read(reportPhotoFileStoreProvider);
     final saved = await _store.read(occupancyId);
+    // Read the surviving photo files back as bytes; one that is gone or is
+    // not a JPEG/PNG cannot be uploaded, so it is dropped from the draft.
+    final restored = <PhotoUpload>[];
+    if (saved != null) {
+      for (final path in saved.photoPaths) {
+        final photo = await files.tryLoad(path);
+        if (photo != null) restored.add(PhotoUpload(photo: photo, path: path));
+      }
+    }
     if (!mounted) return;
     setState(() {
       if (saved != null) {
-        _draft = saved;
+        _draft = saved.copyWith(
+          photoPaths: [for (final p in restored) p.path!],
+        );
+        _photos.addAll(restored);
         _text.text = saved.text;
       }
       _restored = true;
@@ -281,43 +323,66 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     await _persist();
   }
 
+  /// Keeps the draft's persisted photo list in step with [_photos].
+  void _syncDraftPhotos() {
+    _draft = _draft.copyWith(
+      photoPaths: [
+        for (final p in _photos)
+          if (p.path != null) p.path!,
+      ],
+    );
+  }
+
   Future<void> _addPhoto(AppLocalizations l10n) async {
     if (_committed || _busy) return;
-    final remaining = maxReportPhotos - _draft.photoPaths.length;
+    final remaining = maxReportPhotos - _photos.length;
     if (remaining <= 0) return;
-    final picked = await pickReportPhotos(
+    final pick = await pickReportPhotos(
       context,
       l10n,
       ref.read(imagePickerProvider),
       limit: remaining,
     );
-    if (picked.isEmpty) return;
+    if (pick.refused > 0 && mounted) {
+      setState(() {
+        _notice = l10n.reportPhotoUnsupported;
+        _noticeTone = StatusTone.warning;
+      });
+      _revealNotice();
+    }
+    if (pick.photos.isEmpty) return;
 
-    // Amendment 8: copy into app-owned durable storage before draft paths.
+    // Amendment 8: native keeps a durable app-owned copy so the draft survives
+    // process death. On the web a photo lives only in memory.
     final photoStore = ref.read(reportPhotoFileStoreProvider);
-    final owned = <String>[];
-    for (final xfile in picked) {
-      final path = await photoStore.importPickerPath(
-        occupancyId: _occupancyId,
-        sourcePath: xfile.path,
-      );
-      owned.add(path);
+    final added = <PhotoUpload>[];
+    for (final photo in pick.photos) {
+      final path = kIsWeb
+          ? null
+          : await photoStore.saveDraftPhoto(
+              occupancyId: _occupancyId,
+              photo: photo,
+            );
+      added.add(PhotoUpload(photo: photo, path: path));
     }
     if (!mounted) return;
     setState(() {
-      _draft = _draft.copyWith(photoPaths: [..._draft.photoPaths, ...owned]);
+      _photos.addAll(added);
+      _syncDraftPhotos();
     });
     await _persist();
   }
 
-  Future<void> _removePhoto(String path) async {
+  Future<void> _removePhoto(PhotoUpload photo) async {
     if (_committed || _busy) return;
     setState(() {
-      _draft = _draft.copyWith(
-        photoPaths: _draft.photoPaths.where((p) => p != path).toList(),
-      );
+      _photos.remove(photo);
+      _syncDraftPhotos();
     });
-    await ref.read(reportPhotoFileStoreProvider).deletePaths([path]);
+    final path = photo.path;
+    if (path != null) {
+      await ref.read(reportPhotoFileStoreProvider).deletePaths([path]);
+    }
     await _persist();
   }
 
@@ -336,17 +401,25 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
       _busy = true;
       _notice = null;
     });
-    final photoPathsSnapshot = List<String>.from(_draft.photoPaths);
+    final photoPathsSnapshot = [
+      for (final p in _photos)
+        if (p.path != null) p.path!,
+    ];
     try {
       final outcome = await ref
           .read(reportSubmitterProvider)
-          .submit(draft: _draft, occupancyId: _occupancyId);
+          .submit(
+            draft: _draft,
+            occupancyId: _occupancyId,
+            photos: List<PhotoUpload>.of(_photos),
+          );
       if (!mounted) return;
       // Draft already cleared by submitter on text commit. Drop owned files
       // that uploaded successfully; keep failed paths for retry UI.
       final uploaded = outcome.photos
           .where((p) => p.status == PhotoUploadStatus.uploaded)
-          .map((p) => p.path);
+          .map((p) => p.path)
+          .nonNulls;
       await ref.read(reportPhotoFileStoreProvider).deletePaths(uploaded);
       if (!mounted) return;
       // User-global my-issues list should show the new report (amendment 12).
@@ -415,8 +488,9 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
         .read(reportSubmitterProvider)
         .retryPhoto(reportId: outcome.reportId, photo: photo);
     if (!mounted) return;
-    if (photo.status == PhotoUploadStatus.uploaded) {
-      await ref.read(reportPhotoFileStoreProvider).deletePaths([photo.path]);
+    final path = photo.path;
+    if (photo.status == PhotoUploadStatus.uploaded && path != null) {
+      await ref.read(reportPhotoFileStoreProvider).deletePaths([path]);
     }
     if (!mounted) return;
     setState(() {
@@ -448,6 +522,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
       _outcome = null;
       _notice = null;
       _draft = fresh;
+      _photos.clear();
       // Listener copies empty text onto the fresh draft and schedules autosave.
       _text.text = '';
     });
@@ -570,14 +645,14 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                for (final (index, path) in _draft.photoPaths.indexed)
+                for (final (index, photo) in _photos.indexed)
                   PhotoThumbnail(
-                    path: path,
+                    bytes: photo.photo.bytes,
                     index: index + 1,
-                    count: _draft.photoPaths.length,
-                    onDelete: editingLocked ? null : () => _removePhoto(path),
+                    count: _photos.length,
+                    onDelete: editingLocked ? null : () => _removePhoto(photo),
                   ),
-                if (_draft.photoPaths.length < maxReportPhotos)
+                if (_photos.length < maxReportPhotos)
                   ActionChip(
                     avatar: const Icon(Icons.add_a_photo_outlined, size: 20),
                     label: Text(l10n.reportAddPhoto),
@@ -607,7 +682,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
               children: [
                 for (final photo in failedPhotos)
                   PhotoThumbnail(
-                    path: photo.path,
+                    bytes: photo.photo.bytes,
                     index: _outcome!.photos.indexOf(photo) + 1,
                     count: _outcome!.photos.length,
                     onRetry: () => _retryPhoto(photo, l10n),

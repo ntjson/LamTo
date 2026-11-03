@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/features/reports/report_draft.dart';
+import 'package:lamto/features/reports/report_photo.dart';
 import 'package:lamto/features/reports/report_photo_files.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -154,28 +156,46 @@ void main() {
       }
     });
 
-    test('importPickerPath copies under occupancy-owned root', () async {
-      final source = File('${root.path}/picker_source.jpg');
-      await source.writeAsBytes([1, 2, 3, 4]);
+    PickedPhoto jpeg(int marker) => PickedPhoto(
+      Uint8List.fromList([0xff, 0xd8, 0xff, 0xe0, marker]),
+      PhotoFormat.jpeg,
+    );
 
-      final owned = await photos.importPickerPath(
-        occupancyId: 7,
-        sourcePath: source.path,
+    test('saveDraftPhoto writes bytes under the occupancy-owned root', () async {
+      final photo = PickedPhoto(
+        Uint8List.fromList([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7]),
+        PhotoFormat.png,
       );
 
+      final owned = await photos.saveDraftPhoto(occupancyId: 7, photo: photo);
+
       expect(owned, startsWith('${root.path}/7/'));
-      expect(File(owned).existsSync(), isTrue);
-      expect(await File(owned).readAsBytes(), [1, 2, 3, 4]);
-      expect(owned, isNot(source.path));
+      // The extension comes from the detected format, not from a picker name.
+      expect(owned, endsWith('.png'));
+      expect(await File(owned).readAsBytes(), photo.bytes);
+    });
+
+    test('load reads an owned photo back as bytes and its format', () async {
+      final owned = await photos.saveDraftPhoto(
+        occupancyId: 7,
+        photo: jpeg(1),
+      );
+
+      final loaded = await photos.load(owned);
+
+      expect(loaded.bytes, jpeg(1).bytes);
+      expect(loaded.format, PhotoFormat.jpeg);
+    });
+
+    test('tryLoad is null for a missing file or non-image bytes', () async {
+      expect(await photos.tryLoad('${root.path}/gone.jpg'), isNull);
+      final notImage = File('${root.path}/note.jpg')
+        ..writeAsBytesSync([1, 2, 3, 4]);
+      expect(await photos.tryLoad(notImage.path), isNull);
     });
 
     test('deletePaths removes owned files', () async {
-      final source = File('${root.path}/src.png');
-      await source.writeAsBytes([9]);
-      final owned = await photos.importPickerPath(
-        occupancyId: 1,
-        sourcePath: source.path,
-      );
+      final owned = await photos.saveDraftPhoto(occupancyId: 1, photo: jpeg(9));
       expect(File(owned).existsSync(), isTrue);
 
       await photos.deletePaths([owned]);
@@ -183,16 +203,8 @@ void main() {
     });
 
     test('clearOccupancy removes only that occupancy copies', () async {
-      final sourceA = File('${root.path}/a.jpg')..writeAsBytesSync([1]);
-      final sourceB = File('${root.path}/b.jpg')..writeAsBytesSync([2]);
-      final pathA = await photos.importPickerPath(
-        occupancyId: 1,
-        sourcePath: sourceA.path,
-      );
-      final pathB = await photos.importPickerPath(
-        occupancyId: 2,
-        sourcePath: sourceB.path,
-      );
+      final pathA = await photos.saveDraftPhoto(occupancyId: 1, photo: jpeg(1));
+      final pathB = await photos.saveDraftPhoto(occupancyId: 2, photo: jpeg(2));
 
       await photos.clearOccupancy(1);
 
@@ -201,16 +213,8 @@ void main() {
     });
 
     test('clearAll removes every occupancy copy', () async {
-      final sourceA = File('${root.path}/a.jpg')..writeAsBytesSync([1]);
-      final sourceB = File('${root.path}/b.jpg')..writeAsBytesSync([2]);
-      final pathA = await photos.importPickerPath(
-        occupancyId: 1,
-        sourcePath: sourceA.path,
-      );
-      final pathB = await photos.importPickerPath(
-        occupancyId: 2,
-        sourcePath: sourceB.path,
-      );
+      final pathA = await photos.saveDraftPhoto(occupancyId: 1, photo: jpeg(1));
+      final pathB = await photos.saveDraftPhoto(occupancyId: 2, photo: jpeg(2));
 
       await photos.clearAll();
 
@@ -218,18 +222,12 @@ void main() {
       expect(File(pathB).existsSync(), isFalse);
     });
 
-    test('importReplyPickerPath copies under the reply dir, out of reach of '
+    test('saveReplyPhoto writes under the reply dir, out of reach of '
         'clearOccupancy, wiped by clearAll', () async {
-      final source = File('${root.path}/reply_src.jpg')
-        ..writeAsBytesSync([5, 6]);
-
-      final owned = await photos.importReplyPickerPath(
-        reportId: 7,
-        sourcePath: source.path,
-      );
+      final owned = await photos.saveReplyPhoto(reportId: 7, photo: jpeg(5));
 
       expect(owned, startsWith('${root.path}/reply_7/'));
-      expect(await File(owned).readAsBytes(), [5, 6]);
+      expect(await File(owned).readAsBytes(), jpeg(5).bytes);
 
       // Same-numbered occupancy cleanup must not touch reply copies.
       await photos.clearOccupancy(7);

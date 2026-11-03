@@ -1,10 +1,24 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lamto/features/reports/report_draft.dart';
+import 'package:lamto/features/reports/report_photo.dart';
 import 'package:lamto/features/reports/report_submitter.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
 import 'package:lamto_api/lamto_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// A JPEG whose trailing bytes spell [name], so a fake can tell photos apart.
+PhotoUpload _photo(String name) => PhotoUpload(
+  photo: PickedPhoto(
+    Uint8List.fromList([0xff, 0xd8, 0xff, 0xe0, ...name.codeUnits]),
+    PhotoFormat.jpeg,
+  ),
+  path: '/tmp/$name',
+);
+
+String _nameOf(Uint8List bytes) => String.fromCharCodes(bytes.sublist(4));
 
 ReportSummary _summary(int id) => ReportSummary(
   (b) => b
@@ -41,7 +55,7 @@ class _FakeRepo implements ReportsRepository {
   Object? createError;
   Set<String> failPhotoPaths = {};
 
-  /// Paths that throw a non-Dio error (e.g. missing local file).
+  /// Photos that throw a non-Dio error (e.g. missing local file).
   Set<String> throwLocalPaths = {};
 
   @override
@@ -61,20 +75,21 @@ class _FakeRepo implements ReportsRepository {
   @override
   Future<ReportPhoto> uploadPhoto({
     required int reportId,
-    required String path,
-    required String filename,
+    required Uint8List bytes,
+    required PhotoFormat format,
   }) async {
-    if (throwLocalPaths.contains(path)) {
+    final name = _nameOf(bytes);
+    if (throwLocalPaths.contains(name)) {
       throw StateError('missing local file');
     }
-    if (failPhotoPaths.contains(path)) {
+    if (failPhotoPaths.contains(name)) {
       throw _problem(500, 'server_error');
     }
-    uploaded.add(path);
+    uploaded.add(name);
     return ReportPhoto(
       (b) => b
         ..id = uploaded.length
-        ..filename = filename
+        ..filename = name
         ..sha256 = 'aa'
         ..downloadUrl = '/api/v1/documents/tok',
     );
@@ -112,16 +127,20 @@ void main() {
     submitter = ReportSubmitter(repository: repo, draftStore: drafts);
   });
 
-  ReportDraft draftOf({List<String> photos = const []}) => ReportDraft.fresh()
-      .copyWith(text: 'Leak', locationId: 3, photoPaths: photos);
+  ReportDraft draftOf() =>
+      ReportDraft.fresh().copyWith(text: 'Leak', locationId: 3);
 
   test('submit commits text, clears draft, uploads photos in order', () async {
-    final draft = draftOf(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
+    final draft = draftOf();
     await drafts.write(7, draft);
-    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    final outcome = await submitter.submit(
+      draft: draft,
+      occupancyId: 7,
+      photos: [_photo('a'), _photo('b')],
+    );
     expect(outcome.reportId, 42);
     expect(outcome.allPhotosUploaded, isTrue);
-    expect(repo.uploaded, ['/tmp/a.jpg', '/tmp/b.jpg']);
+    expect(repo.uploaded, ['a', 'b']);
     expect(await drafts.read(7), isNull); // text committed -> draft gone
   });
 
@@ -162,10 +181,14 @@ void main() {
   });
 
   test('failed photo never loses the report; retryPhoto recovers it', () async {
-    repo.failPhotoPaths = {'/tmp/b.jpg'};
-    final draft = draftOf(photos: ['/tmp/a.jpg', '/tmp/b.jpg']);
+    repo.failPhotoPaths = {'b'};
+    final draft = draftOf();
     await drafts.write(7, draft);
-    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    final outcome = await submitter.submit(
+      draft: draft,
+      occupancyId: 7,
+      photos: [_photo('a'), _photo('b')],
+    );
     expect(outcome.reportId, 42);
     expect(outcome.allPhotosUploaded, isFalse);
     expect(await drafts.read(7), isNull); // report text is safe regardless
@@ -182,8 +205,12 @@ void main() {
   // attachment id / status). Backend sha256 dedup covers lost-response; client
   // must not double-call when status is already uploaded.
   test('retryPhoto is idempotent when photo already uploaded', () async {
-    final draft = draftOf(photos: ['/tmp/a.jpg']);
-    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    final draft = draftOf();
+    final outcome = await submitter.submit(
+      draft: draft,
+      occupancyId: 7,
+      photos: [_photo('a')],
+    );
     final photo = outcome.photos.single;
     expect(photo.status, PhotoUploadStatus.uploaded);
     final before = repo.uploaded.length;
@@ -194,10 +221,14 @@ void main() {
 
   // Soft-fail non-Dio photo errors so form always reaches committed-result.
   test('non-Dio photo error marks failed and still returns reportId', () async {
-    repo.throwLocalPaths = {'/tmp/a.jpg'};
-    final draft = draftOf(photos: ['/tmp/a.jpg']);
+    repo.throwLocalPaths = {'a'};
+    final draft = draftOf();
     await drafts.write(7, draft);
-    final outcome = await submitter.submit(draft: draft, occupancyId: 7);
+    final outcome = await submitter.submit(
+      draft: draft,
+      occupancyId: 7,
+      photos: [_photo('a')],
+    );
     expect(outcome.reportId, 42);
     expect(outcome.photos.single.status, PhotoUploadStatus.failed);
     expect(await drafts.read(7), isNull);

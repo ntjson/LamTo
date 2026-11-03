@@ -224,6 +224,10 @@ class AppLocalizationsVi extends AppLocalizations {
       'Một số ảnh chưa tải lên được. Nội dung phản ánh đã được lưu — thử lại từng ảnh bên dưới.';
 
   @override
+  String get reportPhotoUnsupported =>
+      'Chỉ gửi được ảnh JPEG hoặc PNG. Ảnh định dạng khác đã không được thêm.';
+
+  @override
   String get reportPhotoRetry => 'Thử lại';
 
   @override
