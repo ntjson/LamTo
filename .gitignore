@@ -34,3 +34,5 @@ assets/
 reference/
 lessons/
 learning-records/
+# Demo reset: archives, web build, collected static files, key fingerprints (ops/demo/)
+.demo/

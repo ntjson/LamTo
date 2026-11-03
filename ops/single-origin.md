@@ -46,7 +46,7 @@ code change: `ALLOWED_HOSTS=localhost,127.0.0.1,<name>.trycloudflare.com`.
 ## Pre-compressed web build
 
 `/app/` serves a `.br` or `.gz` copy sitting next to a file when the client
-accepts it. The demo reset script makes those copies after `flutter build web`.
+accepts it. [`demo/reset.sh`](demo/README.md) makes those copies after `flutter build web`.
 
 ## Timeouts
 
