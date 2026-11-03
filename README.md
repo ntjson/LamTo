@@ -4,7 +4,7 @@
 
 ![Django 5.2](https://img.shields.io/badge/Django-5.2-2f3a8f?style=flat-square)
 ![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-2f3a8f?style=flat-square)
-![Flutter](https://img.shields.io/badge/Flutter-iOS%20%2B%20Android-2f3a8f?style=flat-square)
+![Flutter](https://img.shields.io/badge/Flutter-iOS%20%2B%20Android%20%2B%20Web-2f3a8f?style=flat-square)
 ![Solidity 0.8.27](https://img.shields.io/badge/Solidity-0.8.27-2f3a8f?style=flat-square)
 
 LamTo is a Vietnamese-first accountability layer for apartment maintenance.
@@ -19,23 +19,26 @@ A maintenance complaint and the expense that eventually appears in a building's
 fund are usually disconnected. LamTo creates one traceable chain:
 
 ```text
-report -> human triage decision -> work -> proposal -> settlement -> public ledger
+report -> triage -> proposal -> Proceed decision -> work -> Settlement -> public ledger
 ```
 
 AI may suggest a category, urgency, deadline, or duplicate report, but a named
-manager always makes the recorded decision. Published evidence is never edited
+manager always makes the recorded decision, including the Proceed decision on a
+spending proposal. Published evidence is never edited
 in place; corrections are appended.
 
 ## Hackathon demo
 
-1. A resident reports a problem with a photo and location in the Flutter app.
+1. A resident reports a problem with a photo and location in the Resident app.
 2. LamTo proposes a triage result, and a manager accepts or overrides it in the
-   web workspace.
-3. The manager records the work, quotation, and transfer evidence, then
-   publishes the fund entry.
-4. The resident follows the expense back to the original report and verifies its
+   Management workspace.
+3. The manager publishes a spending proposal with its quotation, then makes the
+   Proceed decision. For a case with a proposal, deciding to proceed is what starts the work.
+4. The manager publishes progress, completes the work, and files the Transfer
+   proof. Filing it settles the proposal and creates the public ledger entry.
+5. The resident follows the expense back to the original report and verifies its
    evidence.
-5. If published data is changed, LamTo reports `MISMATCH`; the anchored hash held
+6. If published data is changed, LamTo reports `MISMATCH`; the anchored hash held
    by independent Besu nodes remains unchanged.
 
 The key principle is **explain before proving**: people see a plain-language
@@ -43,9 +46,10 @@ status first, with hashes and signatures available as technical proof.
 
 ## What we built
 
-- A Flutter resident app for reports, updates, ratings, and the published ledger.
-- A server-rendered Django workspace for triage, cases, proposals, settlements,
-  publication, and verification.
+- A Flutter Resident app, on iOS, Android and the web, for reports, updates,
+  ratings, and the public ledger.
+- A server-rendered Django Management workspace for triage, cases, proposals, Proceed
+  decisions, Settlements, and verification.
 - Human-accountable AI triage with manual fallback.
 - Private, virus-scanned evidence storage with hash-checked downloads.
 - EIP-712 signed evidence anchored to a Solidity `EvidenceRegistry` on a
@@ -54,7 +58,7 @@ status first, with hashes and signatures available as technical proof.
   duplicating records.
 
 ```text
-Flutter app ----> DRF API ----> Django + PostgreSQL
+Resident app ---> DRF API ----> Django + PostgreSQL
                                     |       |
 Management web ---------------------+       +----> MinIO + ClamAV
                                     |
@@ -69,7 +73,7 @@ Management web ---------------------+       +----> MinIO + ClamAV
 
 Prerequisites: Docker, Python 3.12+, and
 [`uv`](https://docs.astral.sh/uv/). Flutter stable is only required for the
-resident app.
+Resident app.
 
 ```bash
 # Infrastructure and Python dependencies
@@ -97,6 +101,15 @@ PILOT_ALLOW_FIXTURES=1 .venv/bin/python manage.py seed_pilot --fixture
 .venv/bin/python manage.py runserver 0.0.0.0:8000
 ```
 
+Start the worker in a second terminal, with the same environment (run the
+`set -a` … `set +a` block above there too). It runs triage, the evidence outbox, and the Integrity
+observations; without it a new report gets no triage suggestion and no
+Integrity observation is recorded.
+
+```bash
+.venv/bin/python manage.py run_worker
+```
+
 Demo management login:
 
 ```text
@@ -104,7 +117,7 @@ pilot-management-1@pilot.lamto.test
 pilot-test-secret
 ```
 
-Run the resident app in another terminal:
+Run the Resident app in another terminal:
 
 ```bash
 cd app
@@ -114,10 +127,17 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 
 Use `127.0.0.1` instead of `10.0.2.2` for an iOS simulator or Linux desktop.
 The resident login is `pilot-resident@pilot.lamto.test` with the same demo
-password. See [`app/README.md`](app/README.md) for other targets.
+password. The Resident app also runs on the web, served under `/app/`; see
+[`app/README.md`](app/README.md) for the web build and the other targets, and
+[`ops/single-origin.md`](ops/single-origin.md) for serving it beside the
+workspace.
 
-Local mode settles evidence as `LOCAL_SIGNED`. For the full on-chain pitch, use
-the [four-laptop Besu demo guide](ops/hackathon-demo-4-laptops.md).
+Local mode settles evidence as `LOCAL_SIGNED`. For the on-chain route, see the
+Besu devnet in [`chain/besu/`](chain/besu/) (`compose.yaml`,
+`generate-network.sh`) and the optional Blockscout chain explorer in
+[`chain/explorer/`](chain/explorer/) (not the Evidence explorer).
+
+To run the self-run demo from this laptop, see [`ops/demo/README.md`](ops/demo/README.md).
 
 ## Tests
 
@@ -134,8 +154,9 @@ POSTGRES_USER=lamto_owner POSTGRES_PASSWORD=lamto-owner \
 | Path | Purpose |
 |---|---|
 | `src/lamto/` | Django domain, API, Management workspace, and workers |
-| `app/` | Flutter resident app |
+| `app/` | Flutter Resident app (iOS, Android, web) |
 | `chain/` | Solidity contract, Foundry tests, and Besu devnet |
+| `ops/` | Pilot runbook, single-origin serving, and the demo scripts |
 | `docs/api/openapi-v1.yaml` | Resident API contract |
 | `tests/` | Cross-cutting and end-to-end tests |
 
