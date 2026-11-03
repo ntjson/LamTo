@@ -80,6 +80,13 @@ PILOT_SAMPLE_LOCATION = ("Tầng 1", "Thang máy A")
 PILOT_EMAIL_DOMAIN = "pilot.lamto.test"
 DEFAULT_AMOUNT_VND = 18_500_000
 DEFAULT_FUND_OPENING_VND = 1_000_000_000
+# Demo building for a visitor's self-run demo: every name is fictional.
+DEMO_BUILDING_NAME = "Chung cư Mẫu LamTo"
+DEMO_LOGIN_PREFIX = "demo"
+DEMO_PASSWORD = "demo-test-secret"
+DEMO_EMAIL_DOMAIN = "demo.lamto.test"
+DEMO_MANAGER_DISPLAY_NAME = "Ban quản lý Mẫu"
+DEMO_RESIDENT_DISPLAY_NAME = "Cư dân Mẫu"
 
 def _temp_storage_settings(location: str) -> dict:
     return {
@@ -206,6 +213,16 @@ def seed_location_tree(building) -> dict[tuple[str, str], BuildingLocation]:
     return leaves
 
 
+def demo_resident_phone(login_prefix: str) -> str:
+    """A synthetic Vietnamese mobile number (090 range), stable for one prefix.
+
+    The seven digits come from a hash of the login prefix, so a second demo
+    building with another prefix gets another number.
+    """
+    digits = int(hashlib.sha256(login_prefix.encode()).hexdigest(), 16) % 10**7
+    return f"090{digits:07d}"
+
+
 def seed_pilot_world(
     *,
     building_name: str = PILOT_BUILDING_NAME,
@@ -214,6 +231,9 @@ def seed_pilot_world(
     create_opening_fund: bool = True,
     create_sample_report: bool = True,
     email_prefix: str | None = None,
+    manager_display_name: str = "Fenikong",
+    resident_display_name: str = "Pilot Resident",
+    resident_phone: str | None = None,
 ) -> PilotSeed:
     """Create the full pilot cast. Idempotent only when used via seed_pilot --fixture."""
 
@@ -233,7 +253,7 @@ def seed_pilot_world(
     manager = get_user_model().objects.create_user(
         email=email("management-1"),
         password=password,
-        display_name="Fenikong",
+        display_name=manager_display_name,
     )
     seed.management_users.append(manager)
     seed.management_memberships.append(
@@ -243,7 +263,8 @@ def seed_pilot_world(
     resident = get_user_model().objects.create_user(
         email=email("resident"),
         password=password,
-        display_name="Pilot Resident",
+        display_name=resident_display_name,
+        phone=resident_phone,
     )
     ResidentOccupancy.objects.create(user=resident, unit=unit, active=True)
     seed.residents.append(resident)
