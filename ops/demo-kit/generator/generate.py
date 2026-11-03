@@ -96,7 +96,7 @@ KIT = Kit(
 )
 
 QUOTATION_FILE = "bao-gia-sua-thang-may-mau.pdf"
-TRANSFER_PROOF_FILE = "chung-tu-chuyen-khoan-mau.pdf"
+TRANSFER_PROOF_FILE = "chung-tu-thanh-toan-mau.pdf"
 NOTICE_FILE = "thong-bao-tam-ngung-thang-may.pdf"
 
 # Fixed so that reruns reproduce the same bytes.
@@ -112,35 +112,31 @@ SAMPLE_RED = (190, 30, 45)
 
 
 def vnd(amount: int) -> str:
-    """560000000 -> '560.000.000 ₫' style, with the Vietnamese thousands dot."""
+    """560000000 -> '560.000.000': the Vietnamese thousands dot, no currency."""
     return f"{amount:,}".replace(",", ".")
 
 
 _DIGITS = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
 
 
-def _three_digits(n: int, full: bool) -> str:
+def _units_after_tens(units: int, tens: int) -> list[str]:
+    """The units word after a tens word: 'lăm' for 5, and 'mốt'/'tư' after twenty."""
+    if units == 5:
+        return ["lăm"]
+    if tens > 1 and units in (1, 4):
+        return ["mốt" if units == 1 else "tư"]
+    return [_DIGITS[units]] if units else []
+
+
+def _three_digits(n: int, say_zero_hundreds: bool) -> str:
     hundreds, rest = divmod(n, 100)
     tens, units = divmod(rest, 10)
     words: list[str] = []
-    if full or hundreds:
+    if say_zero_hundreds or hundreds:
         words += [_DIGITS[hundreds], "trăm"]
-    if tens > 1:
-        words += [_DIGITS[tens], "mươi"]
-        if units == 1:
-            words.append("mốt")
-        elif units == 4:
-            words.append("tư")
-        elif units == 5:
-            words.append("lăm")
-        elif units:
-            words.append(_DIGITS[units])
-    elif tens == 1:
-        words.append("mười")
-        if units == 5:
-            words.append("lăm")
-        elif units:
-            words.append(_DIGITS[units])
+    if tens:
+        words += ["mười"] if tens == 1 else [_DIGITS[tens], "mươi"]
+        words += _units_after_tens(units, tens)
     elif units:
         if words:
             words.append("linh")
@@ -162,7 +158,7 @@ def vnd_in_words(amount: int) -> str:
         group = groups[index]
         if not group:
             continue
-        words.append(_three_digits(group, full=index != len(groups) - 1))
+        words.append(_three_digits(group, say_zero_hundreds=index != len(groups) - 1))
         if scales[index]:
             words.append(scales[index])
     text = " ".join(words) + " đồng"
@@ -193,7 +189,7 @@ def _new_pdf(fmt, title: str):
     return pdf
 
 
-def _watermark(pdf, size: float = 46) -> None:
+def _watermark(pdf, size: float) -> None:
     """A large diagonal sample mark across the page, under the content."""
     x, y = pdf.w / 2, pdf.h / 2
     pdf.set_font("BVP", "B", size)
@@ -314,7 +310,7 @@ def build_quotation(kit: Kit) -> bytes:
 
 
 def build_transfer_proof(kit: Kit) -> bytes:
-    pdf = _new_pdf("A4", f"Chứng từ chuyển khoản {kit.transfer_reference}")
+    pdf = _new_pdf("A4", f"Chứng từ thanh toán {kit.transfer_reference}")
     pdf.add_page()
     _watermark(pdf, 54)
     _sample_banner(pdf)
@@ -331,7 +327,7 @@ def build_transfer_proof(kit: Kit) -> bytes:
     pdf.ln(6)
 
     pdf.set_font("BVP", "B", 18)
-    pdf.cell(0, 9, "CHỨNG TỪ CHUYỂN KHOẢN", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 9, "CHỨNG TỪ THANH TOÁN", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("BVP", "B", 11)
     pdf.set_text_color(*SAMPLE_RED)
     pdf.cell(0, 7, f"BẢN MẪU GIẢ LẬP — {SAMPLE_MARK}", align="C", new_x="LMARGIN", new_y="NEXT")
@@ -423,11 +419,11 @@ def build_notice(kit: Kit) -> bytes:
     return bytes(pdf.output())
 
 
-def build_all(kit: Kit = KIT) -> dict[str, bytes]:
+def build_all() -> dict[str, bytes]:
     return {
-        QUOTATION_FILE: build_quotation(kit),
-        TRANSFER_PROOF_FILE: build_transfer_proof(kit),
-        NOTICE_FILE: build_notice(kit),
+        QUOTATION_FILE: build_quotation(KIT),
+        TRANSFER_PROOF_FILE: build_transfer_proof(KIT),
+        NOTICE_FILE: build_notice(KIT),
     }
 
 

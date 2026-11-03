@@ -1771,7 +1771,7 @@ requires-dist = [
     { name = "drf-spectacular", specifier = ">=0.28,<1" },
     { name = "eth-account", specifier = ">=0.13,<1" },
     { name = "firebase-admin", specifier = ">=6,<8" },
-    { name = "fpdf2", marker = "extra == 'dev'", specifier = ">=2.8,<3" },
+    { name = "fpdf2", marker = "extra == 'dev'", specifier = "==2.9.0" },
     { name = "gunicorn", specifier = ">=23,<24" },
     { name = "insightface", specifier = ">=0.7.3,<0.8" },
     { name = "numpy", specifier = ">=2,<3" },

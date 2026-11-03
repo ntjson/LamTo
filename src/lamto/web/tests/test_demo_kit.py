@@ -26,7 +26,7 @@ from lamto.web.staff_documents import new_event_id
 
 KIT_DIR = settings.BASE_DIR.parent.parent / "ops" / "demo-kit"
 QUOTATION = KIT_DIR / "files" / "bao-gia-sua-thang-may-mau.pdf"
-TRANSFER_PROOF = KIT_DIR / "files" / "chung-tu-chuyen-khoan-mau.pdf"
+TRANSFER_PROOF = KIT_DIR / "files" / "chung-tu-thanh-toan-mau.pdf"
 
 _TEMP = tempfile.mkdtemp(prefix="lamto-demokit-")
 

@@ -72,7 +72,7 @@ def test_rerunning_the_generator_reproduces_the_committed_files(generator, tmp_p
     "name",
     [
         "bao-gia-sua-thang-may-mau.pdf",
-        "chung-tu-chuyen-khoan-mau.pdf",
+        "chung-tu-thanh-toan-mau.pdf",
         "thong-bao-tam-ngung-thang-may.pdf",
     ],
 )
@@ -95,8 +95,8 @@ def test_the_quotation_reads_with_its_vietnamese_diacritics():
 
 @needs_poppler
 def test_the_transfer_proof_pays_the_kit_contractor_from_an_obviously_fake_account():
-    text = _text(FILES / "chung-tu-chuyen-khoan-mau.pdf")
-    assert "CHỨNG TỪ CHUYỂN KHOẢN" in text
+    text = _text(FILES / "chung-tu-thanh-toan-mau.pdf")
+    assert "CHỨNG TỪ THANH TOÁN" in text
     assert "BẢN MẪU GIẢ LẬP" in text
     assert "Công ty TNHH Thang máy Mẫu" in text
     assert "560.000.000 VND" in text
