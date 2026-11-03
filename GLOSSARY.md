@@ -17,8 +17,9 @@ An authenticated browser session through which a Management account uses the Man
 _Avoid_: Admin session
 
 **Resident app**:
-The resident-facing mobile product for iOS and Android.
-_Avoid_: Resident web page, resident portal
+The resident-facing product, on iOS, Android and the web. It is one product
+on every platform; the web is where an iPhone resident gets it.
+_Avoid_: Resident web page, resident web app, resident portal
 
 **Location**:
 A named place inside a building that a report can be filed against, arranged as
@@ -44,6 +45,13 @@ It is also the last moment a spending proposal can be created: starting work
 moves the reports on, and a case whose reports have moved on is no longer a
 candidate for one.
 _Avoid_: Work status, in-progress flag, work state
+
+**Proceed decision**:
+A Management account's choice, made once on a published proposal, to proceed
+with it or to close it as not proceeding. One account makes it alone; there is
+no quorum and no second signature. When a case has a published proposal, a
+decision to proceed is the only way its work starts.
+_Avoid_: Approval, approver, sign-off, phê duyệt
 
 **Maintenance Fund**:
 The single pool of money a building spends from. A building has exactly one,
@@ -103,6 +111,13 @@ Chứng từ chuyển khoản
 **Evidence explorer**:
 The public, unauthenticated page, reached by an opaque token, that shows one
 proposal's anchored chain end to end — its published versions, its Settlement,
-the signed anchor event of each, and the latest independent integrity
-observation. The Resident app opens it in an external browser.
+the signed anchor event of each, and the latest Integrity observation. The
+Resident app opens it in an external browser.
 _Avoid_: Explorer, chain explorer, Blockscout
+
+**Integrity observation**:
+A recorded re-check that a published spend's documents still hash to their
+recorded values and, when anchoring is on, that the chain agrees. It is
+independent only when the chain is consulted; with anchoring off it is LamTo
+checking its own records, and no person is named as its verifier.
+_Avoid_: Independent verification (when anchoring is off), verifier
