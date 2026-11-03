@@ -78,7 +78,6 @@ import 'package:lamto_api/src/model/report_work_update.dart';
 import 'package:lamto_api/src/model/status_enum.dart';
 import 'package:lamto_api/src/model/token_response.dart';
 import 'package:lamto_api/src/model/vehicle_plate.dart';
-import 'package:lamto_api/src/model/verification.dart';
 
 part 'serializers.g.dart';
 
@@ -147,7 +146,6 @@ part 'serializers.g.dart';
   StatusEnum,
   TokenResponse,
   VehiclePlate,
-  Verification,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(

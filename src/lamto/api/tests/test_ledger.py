@@ -3,14 +3,16 @@
 import json
 import secrets
 import tempfile
+from datetime import timedelta
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from knox.models import AuthToken
 
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
-from lamto.finance.models import PublishedLedgerEntry
+from lamto.finance.models import PublishedLedgerEntry, VerificationObservation
 from lamto.finance.proposals import create_standalone_proposal, decide_proposal, publish_proposal_version
 from lamto.finance.settlements import record_settlement
 from lamto.maintenance.cases import complete_proposal_work
@@ -127,6 +129,39 @@ class LedgerApiTests(TestCase):
         assert response.status_code == 200, response.content
         assert response.json()["proceed_decision"] is None
 
+    def detail(self):
+        response = self.client.get(
+            reverse("api:ledger-detail", args=[self.entry.pk]), headers=self._auth()
+        )
+        assert response.status_code == 200, response.content
+        return response.json()
+
+    def observe(self, *, chain_consulted, minutes_ago=0):
+        VerificationObservation.objects.create(
+            published_entry=self.entry,
+            result=VerificationObservation.Result.VERIFIED,
+            chain_consulted=chain_consulted,
+            observed_at=timezone.now() - timedelta(minutes=minutes_ago),
+        )
+
+    def test_detail_integrity_chain_consulted_is_null_before_any_check(self):
+        assert not self.entry.verification_observations.exists()
+        body = self.detail()
+        assert body["integrity_chain_consulted"] is None
+        assert body["integrity_status"] == "UNCHECKED"
+
+    def test_detail_reports_latest_check_did_not_consult_the_chain(self):
+        self.observe(chain_consulted=True, minutes_ago=5)
+        self.observe(chain_consulted=False)
+        body = self.detail()
+        assert body["integrity_chain_consulted"] is False
+        assert body["integrity_status"] == "VERIFIED"
+
+    def test_detail_reports_latest_check_consulted_the_chain(self):
+        self.observe(chain_consulted=False, minutes_ago=5)
+        self.observe(chain_consulted=True)
+        assert self.detail()["integrity_chain_consulted"] is True
+
     def test_detail_returns_payload_and_proof(self):
         response = self.client.get(
             reverse("api:ledger-detail", args=[self.entry.pk]), headers=self._auth()
@@ -136,7 +171,8 @@ class LedgerApiTests(TestCase):
         assert set(body) == {
             "id", "contractor_name", "actual_cost_vnd", "published_at",
             "proposed_amount_vnd", "integrity_status", "what_was_fixed", "why",
-            "explorer_url", "payload", "verification", "proceed_decision", "corrections",
+            "explorer_url", "payload", "integrity_chain_consulted", "proceed_decision",
+            "corrections",
             "documents", "proof",
         }
         assert (
@@ -171,7 +207,6 @@ class LedgerApiTests(TestCase):
             "settlement",
         }
         assert "report_id" in body["payload"]
-        assert body["verification"] is None
         assert body["documents"], "document hashes must be exposed"
         for doc in body["documents"]:
             assert set(doc) == {"kind", "content_type", "filename", "sha256", "download_url"}

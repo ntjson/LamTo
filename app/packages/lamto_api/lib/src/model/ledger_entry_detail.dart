@@ -3,7 +3,6 @@
 //
 
 // ignore_for_file: unused_element
-import 'package:lamto_api/src/model/verification.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:lamto_api/src/model/proceed_decision.dart';
 import 'package:lamto_api/src/model/proof.dart';
@@ -27,7 +26,7 @@ part 'ledger_entry_detail.g.dart';
 /// * [why] - Resident-visible rationale (cause or purpose).
 /// * [explorerUrl] - Absolute public Evidence explorer URL when anchored, null otherwise.
 /// * [payload]
-/// * [verification]
+/// * [integrityChainConsulted] - Whether the latest Integrity observation consulted the chain; false means LamTo checked its own records. Null when the entry hasn't been checked.
 /// * [proceedDecision] - Who decided to proceed with the proposal, and when; null when no one did.
 /// * [corrections]
 /// * [documents]
@@ -67,8 +66,9 @@ abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntry
   @BuiltValueField(wireName: r'payload')
   JsonObject? get payload;
 
-  @BuiltValueField(wireName: r'verification')
-  Verification? get verification;
+  /// Whether the latest Integrity observation consulted the chain; false means LamTo checked its own records. Null when the entry hasn't been checked.
+  @BuiltValueField(wireName: r'integrity_chain_consulted')
+  bool? get integrityChainConsulted;
 
   /// Who decided to proceed with the proposal, and when; null when no one did.
   @BuiltValueField(wireName: r'proceed_decision')
@@ -156,10 +156,10 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
       object.payload,
       specifiedType: const FullType.nullable(JsonObject),
     );
-    yield r'verification';
-    yield object.verification == null ? null : serializers.serialize(
-      object.verification,
-      specifiedType: const FullType.nullable(Verification),
+    yield r'integrity_chain_consulted';
+    yield object.integrityChainConsulted == null ? null : serializers.serialize(
+      object.integrityChainConsulted,
+      specifiedType: const FullType.nullable(bool),
     );
     yield r'proceed_decision';
     yield object.proceedDecision == null ? null : serializers.serialize(
@@ -277,13 +277,13 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
           if (valueDes == null) continue;
           result.payload = valueDes;
           break;
-        case r'verification':
+        case r'integrity_chain_consulted':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(Verification),
-          ) as Verification?;
+            specifiedType: const FullType.nullable(bool),
+          ) as bool?;
           if (valueDes == null) continue;
-          result.verification.replace(valueDes);
+          result.integrityChainConsulted = valueDes;
           break;
         case r'proceed_decision':
           final valueDes = serializers.deserialize(

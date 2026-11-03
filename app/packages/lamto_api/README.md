@@ -171,7 +171,6 @@ Class | Method | HTTP request | Description
  - [StatusEnum](doc/StatusEnum.md)
  - [TokenResponse](doc/TokenResponse.md)
  - [VehiclePlate](doc/VehiclePlate.md)
- - [Verification](doc/Verification.md)
 
 
 ## Documentation For Authorization

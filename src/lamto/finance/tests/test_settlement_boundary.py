@@ -51,6 +51,54 @@ class SettlementBoundaryTests(TestCase):
         self.assertIn(driver.seed.proposal.current_version.outbox_event.event_id, checked)
         self.assertIn(settlement.outbox_event.event_id, checked)
 
+    @override_settings(EVIDENCE_ANCHORING_BACKEND="disabled")
+    def test_integrity_check_with_anchoring_disabled_records_chain_not_consulted(self):
+        driver, _settlement = self.flow()
+        entry = driver.publish_settlement_entry()
+        observation = verify_published_entry(entry.pk)
+        observation.refresh_from_db()
+        self.assertEqual(observation.result, VerificationObservation.Result.VERIFIED)
+        self.assertIs(observation.chain_consulted, False)
+
+    @override_settings(EVIDENCE_ANCHORING_BACKEND="besu")
+    def test_integrity_check_that_reads_the_chain_records_chain_consulted(self):
+        driver, settlement = self.flow()
+        entry = driver.publish_settlement_entry()
+        with patch("lamto.evidence.chain.EvidenceRegistryClient") as client:
+            client.return_value.find.side_effect = lambda event: SimpleNamespace(
+                payload_hash="0x" + event.payload_hash
+            )
+            observation = verify_published_entry(entry.pk)
+        observation.refresh_from_db()
+        self.assertEqual(observation.result, VerificationObservation.Result.VERIFIED)
+        self.assertIs(observation.chain_consulted, True)
+
+    @override_settings(EVIDENCE_ANCHORING_BACKEND="besu")
+    def test_integrity_check_with_chain_unreachable_records_chain_not_consulted(self):
+        driver, _settlement = self.flow()
+        entry = driver.publish_settlement_entry()
+        with patch("lamto.evidence.chain.EvidenceRegistryClient") as client:
+            client.return_value.find.side_effect = Exception("RPC connection failed")
+            observation = verify_published_entry(entry.pk)
+        observation.refresh_from_db()
+        self.assertIs(observation.chain_consulted, False)
+
+    @override_settings(EVIDENCE_ANCHORING_BACKEND="besu")
+    def test_integrity_check_with_chain_answering_only_some_events_records_not_consulted(self):
+        driver, settlement = self.flow()
+        entry = driver.publish_settlement_entry()
+
+        def chain_record(event):
+            if event.pk == settlement.outbox_event_id:
+                raise Exception("RPC connection failed")
+            return SimpleNamespace(payload_hash="0x" + event.payload_hash)
+
+        with patch("lamto.evidence.chain.EvidenceRegistryClient") as client:
+            client.return_value.find.side_effect = chain_record
+            observation = verify_published_entry(entry.pk)
+        observation.refresh_from_db()
+        self.assertIs(observation.chain_consulted, False)
+
     @override_settings(EVIDENCE_ANCHORING_BACKEND="besu")
     def test_integrity_reports_mismatch_in_an_older_proposal_version(self):
         seed = seed_pilot_world(

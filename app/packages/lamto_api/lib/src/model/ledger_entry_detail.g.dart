@@ -28,7 +28,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
   @override
   final JsonObject? payload;
   @override
-  final Verification? verification;
+  final bool? integrityChainConsulted;
   @override
   final ProceedDecision? proceedDecision;
   @override
@@ -53,7 +53,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
       required this.why,
       this.explorerUrl,
       this.payload,
-      this.verification,
+      this.integrityChainConsulted,
       this.proceedDecision,
       required this.corrections,
       required this.documents,
@@ -81,7 +81,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
         why == other.why &&
         explorerUrl == other.explorerUrl &&
         payload == other.payload &&
-        verification == other.verification &&
+        integrityChainConsulted == other.integrityChainConsulted &&
         proceedDecision == other.proceedDecision &&
         corrections == other.corrections &&
         documents == other.documents &&
@@ -101,7 +101,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
     _$hash = $jc(_$hash, why.hashCode);
     _$hash = $jc(_$hash, explorerUrl.hashCode);
     _$hash = $jc(_$hash, payload.hashCode);
-    _$hash = $jc(_$hash, verification.hashCode);
+    _$hash = $jc(_$hash, integrityChainConsulted.hashCode);
     _$hash = $jc(_$hash, proceedDecision.hashCode);
     _$hash = $jc(_$hash, corrections.hashCode);
     _$hash = $jc(_$hash, documents.hashCode);
@@ -123,7 +123,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
           ..add('why', why)
           ..add('explorerUrl', explorerUrl)
           ..add('payload', payload)
-          ..add('verification', verification)
+          ..add('integrityChainConsulted', integrityChainConsulted)
           ..add('proceedDecision', proceedDecision)
           ..add('corrections', corrections)
           ..add('documents', documents)
@@ -180,11 +180,10 @@ class LedgerEntryDetailBuilder
   JsonObject? get payload => _$this._payload;
   set payload(JsonObject? payload) => _$this._payload = payload;
 
-  VerificationBuilder? _verification;
-  VerificationBuilder get verification =>
-      _$this._verification ??= VerificationBuilder();
-  set verification(VerificationBuilder? verification) =>
-      _$this._verification = verification;
+  bool? _integrityChainConsulted;
+  bool? get integrityChainConsulted => _$this._integrityChainConsulted;
+  set integrityChainConsulted(bool? integrityChainConsulted) =>
+      _$this._integrityChainConsulted = integrityChainConsulted;
 
   ProceedDecisionBuilder? _proceedDecision;
   ProceedDecisionBuilder get proceedDecision =>
@@ -225,7 +224,7 @@ class LedgerEntryDetailBuilder
       _why = $v.why;
       _explorerUrl = $v.explorerUrl;
       _payload = $v.payload;
-      _verification = $v.verification?.toBuilder();
+      _integrityChainConsulted = $v.integrityChainConsulted;
       _proceedDecision = $v.proceedDecision?.toBuilder();
       _corrections = $v.corrections.toBuilder();
       _documents = $v.documents.toBuilder();
@@ -270,7 +269,7 @@ class LedgerEntryDetailBuilder
                 why, r'LedgerEntryDetail', 'why'),
             explorerUrl: explorerUrl,
             payload: payload,
-            verification: _verification?.build(),
+            integrityChainConsulted: integrityChainConsulted,
             proceedDecision: _proceedDecision?.build(),
             corrections: corrections.build(),
             documents: documents.build(),
@@ -279,8 +278,6 @@ class LedgerEntryDetailBuilder
     } catch (_) {
       late String _$failedField;
       try {
-        _$failedField = 'verification';
-        _verification?.build();
         _$failedField = 'proceedDecision';
         _proceedDecision?.build();
         _$failedField = 'corrections';

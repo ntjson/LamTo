@@ -60,8 +60,9 @@ void main() {
       // TODO
     });
 
-    // Verification verification
-    test('to test the property `verification`', () async {
+    // Whether the latest Integrity observation consulted the chain; false means LamTo checked its own records. Null when the entry hasn't been checked.
+    // bool integrityChainConsulted
+    test('to test the property `integrityChainConsulted`', () async {
       // TODO
     });
 

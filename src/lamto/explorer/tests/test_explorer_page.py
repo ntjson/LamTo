@@ -328,28 +328,72 @@ class EvidenceExplorerPageTests(TestCase):
         response = self.client.get(self.explorer_url(proposal.public_token))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode("utf-8")
-        self.assertNotIn("Xác thực tính toàn vẹn độc lập", content)
+        self.assertNotIn("evidence-observation-panel", content)
 
-    def test_integrity_observation_rendered_with_verifier_and_timestamp_when_present(self):
+    def observed_proposal(self, *, chain_consulted):
         proposal, proof = self.settled_proposal()
         entry = publish_settlement_entry(proposal.settlement)
-        now = timezone.now()
         VerificationObservation.objects.create(
             published_entry=entry,
             result=VerificationObservation.Result.VERIFIED,
-            details={"verifier": "Đoàn Kiểm Toán Độc Lập ABC"},
             checked_document_hashes=[proof.sha256],
             checked_chain_event_ids=[proposal.current_version.outbox_event.event_id],
-            observed_at=now,
+            chain_consulted=chain_consulted,
+            observed_at=timezone.now(),
         )
+        return proposal
 
+    def integrity_panel(self, proposal):
         response = self.client.get(self.explorer_url(proposal.public_token))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode("utf-8")
-        self.assertIn("Xác thực tính toàn vẹn độc lập", content)
-        self.assertIn("Bản ghi đã xác minh", content)
-        self.assertIn("status-verified", content)
-        self.assertIn("Đoàn Kiểm Toán Độc Lập ABC", content)
+        match = re.search(
+            r'<section class="panel evidence-observation-panel".*?</section>',
+            content,
+            re.S,
+        )
+        self.assertIsNotNone(match, "integrity panel missing")
+        return match.group(0)
+
+    def test_integrity_panel_reads_as_self_check_when_chain_not_consulted(self):
+        proposal = self.observed_proposal(chain_consulted=False)
+
+        panel = self.integrity_panel(proposal)
+
+        self.assertIn("Hệ thống LamTo tự kiểm tra", panel)
+        self.assertIn("Các tài liệu đã công bố", panel)
+        self.assertIn("Bản ghi đã xác minh", panel)
+        self.assertIn("status-verified", panel)
+        self.assertNotIn("độc lập", panel.lower())
+        self.assertNotIn("Người xác minh", panel)
+        self.assertNotIn(self.manager.display_name, panel)
+
+    def test_integrity_panel_reads_as_independent_only_when_chain_consulted(self):
+        proposal = self.observed_proposal(chain_consulted=True)
+
+        panel = self.integrity_panel(proposal)
+
+        self.assertIn("Xác thực tính toàn vẹn độc lập", panel)
+        self.assertIn("blockchain", panel)
+        self.assertNotIn("Hệ thống LamTo tự kiểm tra", panel)
+        self.assertNotIn("Người xác minh", panel)
+        self.assertNotIn(self.manager.display_name, panel)
+
+    def test_integrity_panel_never_names_a_verifier_from_observation_details(self):
+        proposal, proof = self.settled_proposal()
+        entry = publish_settlement_entry(proposal.settlement)
+        VerificationObservation.objects.create(
+            published_entry=entry,
+            result=VerificationObservation.Result.VERIFIED,
+            details={"verifier": "Đoàn Kiểm Toán ABC"},
+            checked_document_hashes=[proof.sha256],
+            observed_at=timezone.now(),
+        )
+
+        panel = self.integrity_panel(proposal)
+
+        self.assertNotIn("Đoàn Kiểm Toán ABC", panel)
+        self.assertIn("Hệ thống LamTo tự kiểm tra", panel)
 
     def test_chain_unreachable_renders_stored_state_with_honest_unavailability_note(self):
         proposal = self.published_proposal()
@@ -449,7 +493,6 @@ class EvidenceExplorerPageTests(TestCase):
         VerificationObservation.objects.create(
             published_entry=entry,
             result=VerificationObservation.Result.VERIFIED,
-            details={"verifier": "Đoàn Kiểm Toán Độc Lập ABC"},
             checked_document_hashes=[proof.sha256],
             checked_chain_event_ids=[proposal.current_version.outbox_event.event_id],
             observed_at=timezone.now(),

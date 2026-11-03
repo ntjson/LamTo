@@ -337,7 +337,6 @@ def ledger_entry_proof(entry):
             if version is not None
             else payload.get("proposed_amount_vnd")
         ),
-        "verification": None,
         "proceed_decision": proceed_decision(entry.proposal),
         "docs": docs,
         "events": events,

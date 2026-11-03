@@ -1112,18 +1112,6 @@ abstract class AppLocalizations {
   /// **'Why'**
   String get ledgerWhy;
 
-  /// No description provided for @ledgerVerifiedBy.
-  ///
-  /// In en, this message translates to:
-  /// **'Payment verified by {name}'**
-  String ledgerVerifiedBy(String name);
-
-  /// No description provided for @ledgerNotVerified.
-  ///
-  /// In en, this message translates to:
-  /// **'Payment not yet verified'**
-  String get ledgerNotVerified;
-
   /// No description provided for @ledgerConclusionVerified.
   ///
   /// In en, this message translates to:
@@ -1135,6 +1123,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The transfer proof and record integrity were independently confirmed.'**
   String get ledgerConclusionVerifiedBody;
+
+  /// No description provided for @ledgerConclusionSelfCheckedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The transfer proof and published documents match the copies LamTo recorded.'**
+  String get ledgerConclusionSelfCheckedBody;
 
   /// No description provided for @ledgerConclusionUnverified.
   ///
@@ -1169,7 +1163,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerChainHint.
   ///
   /// In en, this message translates to:
-  /// **'The expense moves from report to independent verification in the steps below.'**
+  /// **'The expense moves from report to integrity check in the steps below.'**
   String get ledgerChainHint;
 
   /// No description provided for @ledgerChainReports.
@@ -1201,6 +1195,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Independent verification'**
   String get ledgerChainVerification;
+
+  /// No description provided for @ledgerChainVerificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The documents and signed records were checked against the blockchain, outside LamTo.'**
+  String get ledgerChainVerificationBody;
+
+  /// No description provided for @ledgerChainSelfCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'LamTo checking its own records'**
+  String get ledgerChainSelfCheck;
+
+  /// No description provided for @ledgerChainSelfCheckBody.
+  ///
+  /// In en, this message translates to:
+  /// **'LamTo re-checked the published documents. This check did not consult the blockchain.'**
+  String get ledgerChainSelfCheckBody;
+
+  /// No description provided for @ledgerChainIntegrityCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Integrity check'**
+  String get ledgerChainIntegrityCheck;
 
   /// No description provided for @ledgerCorrections.
   ///

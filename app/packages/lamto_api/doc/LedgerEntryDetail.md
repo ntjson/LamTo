@@ -18,7 +18,7 @@ Name | Type | Description | Notes
 **why** | **String** | Resident-visible rationale (cause or purpose). |
 **explorerUrl** | **String** | Absolute public Evidence explorer URL when anchored, null otherwise. |
 **payload** | [**JsonObject**](.md) |  |
-**verification** | [**Verification**](Verification.md) |  |
+**integrityChainConsulted** | **bool** | Whether the latest Integrity observation consulted the chain; false means LamTo checked its own records. Null when the entry hasn't been checked. |
 **proceedDecision** | [**ProceedDecision**](ProceedDecision.md) | Who decided to proceed with the proposal, and when; null when no one did. |
 **corrections** | [**BuiltList&lt;JsonObject&gt;**](JsonObject.md) |  |
 **documents** | [**BuiltList&lt;LedgerDocument&gt;**](LedgerDocument.md) |  |

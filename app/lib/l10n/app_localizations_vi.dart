@@ -552,19 +552,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get ledgerWhy => 'Lý do';
 
   @override
-  String ledgerVerifiedBy(String name) {
-    return 'Thanh toán đã được $name xác nhận';
-  }
-
-  @override
-  String get ledgerNotVerified => 'Thanh toán chưa được xác nhận';
-
-  @override
   String get ledgerConclusionVerified => 'Khoản chi này đã được xác minh';
 
   @override
   String get ledgerConclusionVerifiedBody =>
       'Chứng từ thanh toán và tính toàn vẹn của bản ghi đã được xác nhận độc lập.';
+
+  @override
+  String get ledgerConclusionSelfCheckedBody =>
+      'Chứng từ thanh toán và các tài liệu đã công bố khớp với bản LamTo đã ghi nhận.';
 
   @override
   String get ledgerConclusionUnverified =>
@@ -587,7 +583,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get ledgerChainHint =>
-      'Khoản chi đi từ phản ánh đến xác minh độc lập theo các bước dưới đây.';
+      'Khoản chi đi từ phản ánh đến kiểm tra toàn vẹn theo các bước dưới đây.';
 
   @override
   String get ledgerChainReports => 'Phản ánh và lý do';
@@ -603,6 +599,20 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get ledgerChainVerification => 'Xác minh độc lập';
+
+  @override
+  String get ledgerChainVerificationBody =>
+      'Tài liệu và các bản ghi đã ký được đối chiếu với blockchain, ngoài hệ thống LamTo.';
+
+  @override
+  String get ledgerChainSelfCheck => 'Hệ thống LamTo tự kiểm tra';
+
+  @override
+  String get ledgerChainSelfCheckBody =>
+      'LamTo đã kiểm tra lại các tài liệu đã công bố. Lần kiểm tra này không đối chiếu với blockchain.';
+
+  @override
+  String get ledgerChainIntegrityCheck => 'Kiểm tra toàn vẹn';
 
   @override
   String get ledgerCorrections => 'Điều chỉnh';

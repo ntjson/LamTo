@@ -195,6 +195,15 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
         else:
             result = VerificationObservation.Result.VERIFIED
 
+        # Consulted only when the chain itself answered for every event. A
+        # skipped, LOCAL or unreachable event leaves LamTo checking its own
+        # records, so the observation is never presented as independent.
+        chain_checks = chain_details.get("chain_checks", [])
+        chain_consulted = bool(chain_checks) and all(
+            check.get("result")
+            in (VerificationObservation.Result.VERIFIED, VerificationObservation.Result.MISMATCH)
+            for check in chain_checks
+        )
         details = {
             "documents": doc_details,
             **chain_details,
@@ -205,6 +214,7 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
             result=result,
             checked_document_hashes=checked_hashes,
             checked_chain_event_ids=chain_event_ids,
+            chain_consulted=chain_consulted,
             details=details,
             observed_at=timezone.now(),
         )

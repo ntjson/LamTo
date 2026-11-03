@@ -309,27 +309,19 @@ def explorer_page(request, public_token):
 
     decision = proceed_decision(proposal)
 
-    # 4. Latest independent integrity observation
+    # 4. Latest Integrity observation. It is worded as independent only when
+    # it recorded consulting the chain, and it never names a person.
     integrity_observation = None
     if entry is not None:
-        latest = entry.verification_observations.order_by("-observed_at", "-pk").first()
+        latest = entry.latest_verification_observation
         if latest is not None:
-            verifier = (
-                latest.details.get("verifier")
-                or (
-                    entry.settlement.settled_by.user.display_name
-                    if entry.settlement
-                    else ""
-                )
-                or "Ban quản lý"
-            )
             integrity_observation = {
                 "result": latest.result,
                 "label": INTEGRITY_STATUS_LABELS.get(
                     latest.result, latest.get_result_display()
                 ),
                 "tone": INTEGRITY_STATUS_TONES.get(latest.result, "warning"),
-                "verifier": verifier,
+                "chain_consulted": latest.chain_consulted,
                 "observed_at": latest.observed_at,
             }
 

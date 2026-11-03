@@ -1892,10 +1892,12 @@ components:
           nullable: true
           description: Absolute public Evidence explorer URL when anchored, null otherwise.
         payload: {}
-        verification:
-          allOf:
-          - $ref: '#/components/schemas/Verification'
+        integrity_chain_consulted:
+          type: boolean
           nullable: true
+          description: Whether the latest Integrity observation consulted the chain;
+            false means LamTo checked its own records. Null when the entry hasn't
+            been checked.
         proceed_decision:
           allOf:
           - $ref: '#/components/schemas/ProceedDecision'
@@ -1918,13 +1920,13 @@ components:
       - documents
       - explorer_url
       - id
+      - integrity_chain_consulted
       - integrity_status
       - payload
       - proceed_decision
       - proof
       - proposed_amount_vnd
       - published_at
-      - verification
       - what_was_fixed
       - why
     LedgerEntryList:
@@ -2831,20 +2833,6 @@ components:
       - review_note
       - status
       - submitted_at
-    Verification:
-      type: object
-      properties:
-        decision:
-          type: string
-        verified_by:
-          type: string
-        verified_at:
-          type: string
-          format: date-time
-      required:
-      - decision
-      - verified_at
-      - verified_by
   securitySchemes:
     GateDevice:
       type: apiKey

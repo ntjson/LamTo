@@ -80,7 +80,6 @@ doc/ReportsApi.md
 doc/StatusEnum.md
 doc/TokenResponse.md
 doc/VehiclePlate.md
-doc/Verification.md
 lib/lamto_api.dart
 lib/src/api.dart
 lib/src/api/auth_api.dart
@@ -169,7 +168,6 @@ lib/src/model/report_work_update.dart
 lib/src/model/status_enum.dart
 lib/src/model/token_response.dart
 lib/src/model/vehicle_plate.dart
-lib/src/model/verification.dart
 lib/src/serializers.dart
 pubspec.yaml
 test/auth_api_test.dart
@@ -250,4 +248,3 @@ test/reports_api_test.dart
 test/status_enum_test.dart
 test/token_response_test.dart
 test/vehicle_plate_test.dart
-test/verification_test.dart

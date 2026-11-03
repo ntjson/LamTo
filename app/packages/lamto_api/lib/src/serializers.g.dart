@@ -71,7 +71,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(StatusEnum.serializer)
       ..add(TokenResponse.serializer)
       ..add(VehiclePlate.serializer)
-      ..add(Verification.serializer)
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(BillSummary)]),
           () => ListBuilder<BillSummary>())

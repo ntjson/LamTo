@@ -363,7 +363,7 @@ class LedgerDetailView(APIView):
         if entry is None:
             raise exceptions.NotFound("Published ledger entry not found.")
         detail = ledger_entry_proof(entry)
-        verification = detail["verification"]
+        latest_observation = entry.latest_verification_observation
         data = {
             "id": entry.pk,
             "contractor_name": entry.contractor_name,
@@ -378,14 +378,8 @@ class LedgerDetailView(APIView):
                 request=request,
             ),
             "payload": detail["payload"],
-            "verification": (
-                {
-                    "decision": verification.decision,
-                    "verified_by": verification.membership.user.display_name,
-                    "verified_at": verification.verified_at,
-                }
-                if verification is not None
-                else None
+            "integrity_chain_consulted": (
+                latest_observation.chain_consulted if latest_observation else None
             ),
             "proceed_decision": detail["proceed_decision"],
             "corrections": [],

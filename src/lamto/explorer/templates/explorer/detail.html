@@ -46,18 +46,23 @@
 {% if integrity_observation %}
 <section class="panel evidence-observation-panel" aria-labelledby="observation-heading">
   <h2 id="observation-heading">
-    <span>Xác thực tính toàn vẹn độc lập</span>
+    <span>{% if integrity_observation.chain_consulted %}Xác thực tính toàn vẹn độc lập{% else %}Hệ thống LamTo tự kiểm tra{% endif %}</span>
     <span class="status status-{{ integrity_observation.tone }}">
       <span class="status-icon" aria-hidden="true">●</span> {{ integrity_observation.label }}
     </span>
   </h2>
+  {% if integrity_observation.chain_consulted %}
+  <p class="hint">Tài liệu và các bản ghi đã ký được đối chiếu với blockchain, ngoài hệ thống LamTo.</p>
+  {% else %}
+  <p class="hint">LamTo đã kiểm tra lại các tài liệu đã công bố. Lần kiểm tra này không đối chiếu với blockchain.</p>
+  {% endif %}
   <dl class="detail-list">
     <div>
-      <dt>Người xác minh</dt>
-      <dd>{{ integrity_observation.verifier }}</dd>
+      <dt>Nội dung đã kiểm tra</dt>
+      <dd>{% if integrity_observation.chain_consulted %}Các tài liệu đã công bố và bản ghi trên blockchain{% else %}Các tài liệu đã công bố{% endif %}</dd>
     </div>
     <div>
-      <dt>Thời gian xác minh</dt>
+      <dt>Thời gian kiểm tra</dt>
       <dd>{{ integrity_observation.observed_at|date:"d/m/Y H:i" }}</dd>
     </div>
   </dl>

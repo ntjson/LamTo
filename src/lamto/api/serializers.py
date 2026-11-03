@@ -134,12 +134,6 @@ class LedgerEntryListSerializer(serializers.Serializer):
         return ledger_story_fields(entry)["what_was_fixed"]
 
 
-class VerificationSerializer(serializers.Serializer):
-    decision = serializers.CharField()
-    verified_by = serializers.CharField()
-    verified_at = serializers.DateTimeField()
-
-
 class LedgerDocumentSerializer(serializers.Serializer):
     kind = serializers.CharField()
     content_type = serializers.CharField()
@@ -190,7 +184,14 @@ class LedgerEntryDetailSerializer(serializers.Serializer):
         help_text="Absolute public Evidence explorer URL when anchored, null otherwise.",
     )
     payload = serializers.JSONField()
-    verification = VerificationSerializer(allow_null=True)
+    integrity_chain_consulted = serializers.BooleanField(
+        allow_null=True,
+        help_text=(
+            "Whether the latest Integrity observation consulted the chain; "
+            "false means LamTo checked its own records. Null when the entry "
+            "hasn't been checked."
+        ),
+    )
     proceed_decision = ProceedDecisionSerializer(
         allow_null=True,
         help_text="Who decided to proceed with the proposal, and when; null when no one did.",

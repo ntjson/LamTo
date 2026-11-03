@@ -552,19 +552,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerWhy => 'Why';
 
   @override
-  String ledgerVerifiedBy(String name) {
-    return 'Payment verified by $name';
-  }
-
-  @override
-  String get ledgerNotVerified => 'Payment not yet verified';
-
-  @override
   String get ledgerConclusionVerified => 'This expense has been verified';
 
   @override
   String get ledgerConclusionVerifiedBody =>
       'The transfer proof and record integrity were independently confirmed.';
+
+  @override
+  String get ledgerConclusionSelfCheckedBody =>
+      'The transfer proof and published documents match the copies LamTo recorded.';
 
   @override
   String get ledgerConclusionUnverified => 'This expense is not fully verified';
@@ -586,7 +582,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerChainHint =>
-      'The expense moves from report to independent verification in the steps below.';
+      'The expense moves from report to integrity check in the steps below.';
 
   @override
   String get ledgerChainReports => 'Reports and rationale';
@@ -602,6 +598,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerChainVerification => 'Independent verification';
+
+  @override
+  String get ledgerChainVerificationBody =>
+      'The documents and signed records were checked against the blockchain, outside LamTo.';
+
+  @override
+  String get ledgerChainSelfCheck => 'LamTo checking its own records';
+
+  @override
+  String get ledgerChainSelfCheckBody =>
+      'LamTo re-checked the published documents. This check did not consult the blockchain.';
+
+  @override
+  String get ledgerChainIntegrityCheck => 'Integrity check';
 
   @override
   String get ledgerCorrections => 'Corrections';

@@ -73,12 +73,7 @@ LedgerEntryDetail _detail({String? explorerUrl}) => LedgerEntryDetail(
         ..decidedBy = 'Ông Minh'
         ..decidedAt = DateTime.utc(2026, 7, 8, 12),
     ).toBuilder()
-    ..verification = Verification(
-      (v) => v
-        ..decision = 'VERIFIED'
-        ..verifiedBy = 'Bà Lan'
-        ..verifiedAt = DateTime.utc(2026, 7, 9),
-    ).toBuilder()
+    ..integrityChainConsulted = false
     ..documents = ListBuilder<LedgerDocument>([
       LedgerDocument(
         (d) => d
@@ -182,10 +177,17 @@ class _SubjectRepo extends _FakeRepo {
   );
 }
 
-class _NoVerificationRepo extends _FakeRepo {
+class _ChainConsultedRepo extends _FakeRepo {
+  _ChainConsultedRepo(this.consulted, {this.status = 'VERIFIED'});
+  final bool? consulted;
+  final String status;
+
   @override
-  Future<LedgerEntryDetail> fetchLedgerEntry(int id) async =>
-      _detail().rebuild((b) => b.verification = null);
+  Future<LedgerEntryDetail> fetchLedgerEntry(int id) async => _detail().rebuild(
+    (b) => b
+      ..integrityChainConsulted = consulted
+      ..integrityStatus = status,
+  );
 }
 
 class _NoProceedDecisionRepo extends _FakeRepo {
@@ -422,17 +424,16 @@ void main() {
       expect(find.text('Phê duyệt'), findsNothing);
       expect(find.text('Chứng từ thanh toán'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('Xác minh độc lập'),
+        find.text('Hệ thống LamTo tự kiểm tra'),
         200,
         scrollable: find.byType(Scrollable).last,
       );
-      expect(find.text('Xác minh độc lập'), findsOneWidget);
+      expect(find.text('Hệ thống LamTo tự kiểm tra'), findsOneWidget);
       expect(find.text('Cable secured'), findsOneWidget);
       expect(find.text('Worn cable'), findsOneWidget);
       expect(find.textContaining('900.000 ₫'), findsWidgets);
       expect(find.textContaining('Ông Minh'), findsOneWidget);
       expect(find.textContaining('08/07/2026'), findsOneWidget);
-      expect(find.textContaining('Bà Lan'), findsOneWidget);
 
       await tester.scrollUntilVisible(
         find.text('Chi tiết xác thực'),
@@ -457,16 +458,95 @@ void main() {
     expect(find.text('Chứng từ thanh toán'), findsOneWidget);
   });
 
-  testWidgets('verified integrity does not require verifier attribution', (
-    tester,
-  ) async {
-    final repo = _NoVerificationRepo();
-    await tester.pumpWidget(_host(const LedgerDetailScreen(entryId: 42), repo));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'when the chain was not consulted the verification row is a self-check '
+    'and names no one',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          const LedgerDetailScreen(entryId: 42),
+          _ChainConsultedRepo(false),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Khoản chi này đã được xác minh'), findsOneWidget);
-    expect(find.text('Khoản chi này chưa được xác minh đầy đủ'), findsNothing);
-  });
+      expect(find.text('Khoản chi này đã được xác minh'), findsOneWidget);
+      expect(
+        find.text(
+          'Chứng từ thanh toán và các tài liệu đã công bố khớp với bản '
+          'LamTo đã ghi nhận.',
+        ),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(
+        find.text('Hệ thống LamTo tự kiểm tra'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(
+        find.textContaining('LamTo đã kiểm tra lại các tài liệu đã công bố'),
+        findsOneWidget,
+      );
+      expect(find.text('Xác minh độc lập'), findsNothing);
+      expect(find.textContaining('độc lập'), findsNothing);
+      expect(find.textContaining('xác nhận'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'only a check that consulted the chain is worded as independent',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(const LedgerDetailScreen(entryId: 42), _ChainConsultedRepo(true)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Chứng từ thanh toán và tính toàn vẹn của bản ghi đã được xác nhận '
+          'độc lập.',
+        ),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(
+        find.text('Xác minh độc lập'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.text('Xác minh độc lập'), findsOneWidget);
+      expect(find.text('Hệ thống LamTo tự kiểm tra'), findsNothing);
+      expect(find.textContaining('xác nhận bởi'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'an unchecked entry claims neither a self-check nor independence',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          const LedgerDetailScreen(entryId: 42),
+          _ChainConsultedRepo(null, status: 'UNCHECKED'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Kiểm tra toàn vẹn'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.text('Hệ thống LamTo tự kiểm tra'), findsNothing);
+      expect(
+        find.textContaining('Đã công bố — chưa kiểm tra toàn vẹn'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('LamTo đã kiểm tra lại các tài liệu đã công bố'),
+        findsNothing,
+      );
+      expect(find.textContaining('độc lập'), findsNothing);
+    },
+  );
 
   testWidgets('MISMATCH renders its own red conclusion, not routine pending', (
     tester,
@@ -602,11 +682,11 @@ void main() {
 
       // Step 5 verification badge remains visible
       await tester.scrollUntilVisible(
-        find.text('Xác minh độc lập'),
+        find.text('Hệ thống LamTo tự kiểm tra'),
         200,
         scrollable: find.byType(Scrollable).last,
       );
-      expect(find.text('Xác minh độc lập'), findsOneWidget);
+      expect(find.text('Hệ thống LamTo tự kiểm tra'), findsOneWidget);
       expect(find.textContaining('Đã ký — chưa bật neo'), findsOneWidget);
 
       // Raw-hash ExpansionTile is gone
@@ -651,11 +731,11 @@ void main() {
 
       // Step 5 badge remains visible
       await tester.scrollUntilVisible(
-        find.text('Xác minh độc lập'),
+        find.text('Hệ thống LamTo tự kiểm tra'),
         200,
         scrollable: find.byType(Scrollable).last,
       );
-      expect(find.text('Xác minh độc lập'), findsOneWidget);
+      expect(find.text('Hệ thống LamTo tự kiểm tra'), findsOneWidget);
       expect(find.textContaining('Đã ký — chưa bật neo'), findsOneWidget);
 
       // ExpansionTile is present

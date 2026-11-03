@@ -120,6 +120,9 @@ class VerificationObservation(InsertOnlyModel):
     result = models.CharField(max_length=16, choices=Result.choices)
     checked_document_hashes = models.JSONField(default=list)
     checked_chain_event_ids = models.JSONField(default=list)
+    # Recorded with the observation, never inferred from the current anchoring
+    # setting: the check is independent only when the chain answered it.
+    chain_consulted = models.BooleanField(default=False)
     details = models.JSONField(default=dict)
     observed_at = models.DateTimeField()
 
@@ -144,10 +147,12 @@ class PublishedLedgerEntry(InsertOnlyModel):
         return self.published_at
 
     @property
+    def latest_verification_observation(self):
+        return self.verification_observations.order_by("-observed_at", "-pk").first()
+
+    @property
     def effective_integrity_status(self):
-        latest = (
-            self.verification_observations.order_by("-observed_at", "-pk").first()
-        )
+        latest = self.latest_verification_observation
         if latest is None:
             return "UNCHECKED"
         return latest.result

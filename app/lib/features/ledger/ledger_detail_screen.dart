@@ -26,8 +26,8 @@ String _jsonField(JsonObject? object, String key) =>
     ((object?.value as Map?)?[key] ?? '').toString();
 
 /// Ledger entry detail (spec 6.3(6) / A1): plain language first — what was
-/// fixed, why, amount, who decided to proceed, payment verification — then expandable
-/// proof. Mono identifiers appear ONLY inside the expansion.
+/// fixed, why, amount, who decided to proceed, the integrity check — then
+/// expandable proof. Mono identifiers appear ONLY inside the expansion.
 class LedgerDetailScreen extends ConsumerWidget {
   const LedgerDetailScreen({required this.entryId, super.key});
   final int entryId;
@@ -59,8 +59,11 @@ class LedgerDetailScreen extends ConsumerWidget {
     LedgerEntryDetail entry,
   ) {
     final date = DateFormat('dd/MM/yyyy').format(entry.publishedAt.toLocal());
-    final verification = entry.verification;
     final proceedDecision = entry.proceedDecision;
+    // Whether the latest Integrity observation consulted the chain: only then
+    // is the check independent. False is LamTo checking its own records; null
+    // is no check yet. No person is ever named as the verifier.
+    final chainConsulted = entry.integrityChainConsulted;
     // Wire values (serializers.py effective_integrity_status): VERIFIED,
     // MISMATCH, UNAVAILABLE, UNCHECKED. Tampering (MISMATCH) must not dress
     // as routine pending, so it gets its own red conclusion; the amber branch
@@ -101,11 +104,18 @@ class LedgerDetailScreen extends ConsumerWidget {
         child: null,
       ),
       (
-        title: l10n.ledgerChainVerification,
+        title: switch (chainConsulted) {
+          true => l10n.ledgerChainVerification,
+          false => l10n.ledgerChainSelfCheck,
+          null => l10n.ledgerChainIntegrityCheck,
+        },
         body: [
-          if (verification != null)
-            l10n.ledgerVerifiedBy(verification.verifiedBy),
           integrityStatusLabel(entry.integrityStatus, l10n),
+          ?switch (chainConsulted) {
+            true => l10n.ledgerChainVerificationBody,
+            false => l10n.ledgerChainSelfCheckBody,
+            null => null,
+          },
         ].join('\n'),
         child: Padding(
           padding: const EdgeInsets.only(top: 8),
@@ -161,7 +171,9 @@ class LedgerDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 6),
                         Text(
                           verified
-                              ? l10n.ledgerConclusionVerifiedBody
+                              ? (chainConsulted == true
+                                    ? l10n.ledgerConclusionVerifiedBody
+                                    : l10n.ledgerConclusionSelfCheckedBody)
                               : mismatch
                               ? l10n.ledgerConclusionMismatchBody
                               : l10n.ledgerConclusionUnverifiedBody,
