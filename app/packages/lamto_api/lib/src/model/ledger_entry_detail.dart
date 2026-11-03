@@ -5,6 +5,7 @@
 // ignore_for_file: unused_element
 import 'package:lamto_api/src/model/verification.dart';
 import 'package:built_collection/built_collection.dart';
+import 'package:lamto_api/src/model/proceed_decision.dart';
 import 'package:lamto_api/src/model/proof.dart';
 import 'package:built_value/json_object.dart';
 import 'package:lamto_api/src/model/ledger_document.dart';
@@ -27,7 +28,7 @@ part 'ledger_entry_detail.g.dart';
 /// * [explorerUrl] - Absolute public Evidence explorer URL when anchored, null otherwise.
 /// * [payload]
 /// * [verification]
-/// * [approvers]
+/// * [proceedDecision] - Who decided to proceed with the proposal, and when; null when no one did.
 /// * [corrections]
 /// * [documents]
 /// * [proof]
@@ -69,8 +70,9 @@ abstract class LedgerEntryDetail implements Built<LedgerEntryDetail, LedgerEntry
   @BuiltValueField(wireName: r'verification')
   Verification? get verification;
 
-  @BuiltValueField(wireName: r'approvers')
-  BuiltList<JsonObject?> get approvers;
+  /// Who decided to proceed with the proposal, and when; null when no one did.
+  @BuiltValueField(wireName: r'proceed_decision')
+  ProceedDecision? get proceedDecision;
 
   @BuiltValueField(wireName: r'corrections')
   BuiltList<JsonObject?> get corrections;
@@ -159,10 +161,10 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
       object.verification,
       specifiedType: const FullType.nullable(Verification),
     );
-    yield r'approvers';
-    yield serializers.serialize(
-      object.approvers,
-      specifiedType: const FullType(BuiltList, [FullType.nullable(JsonObject)]),
+    yield r'proceed_decision';
+    yield object.proceedDecision == null ? null : serializers.serialize(
+      object.proceedDecision,
+      specifiedType: const FullType.nullable(ProceedDecision),
     );
     yield r'corrections';
     yield serializers.serialize(
@@ -283,12 +285,13 @@ class _$LedgerEntryDetailSerializer implements PrimitiveSerializer<LedgerEntryDe
           if (valueDes == null) continue;
           result.verification.replace(valueDes);
           break;
-        case r'approvers':
+        case r'proceed_decision':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType.nullable(JsonObject)]),
-          ) as BuiltList<JsonObject?>;
-          result.approvers.replace(valueDes);
+            specifiedType: const FullType.nullable(ProceedDecision),
+          ) as ProceedDecision?;
+          if (valueDes == null) continue;
+          result.proceedDecision.replace(valueDes);
           break;
         case r'corrections':
           final valueDes = serializers.deserialize(

@@ -45,6 +45,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PlateRecognizeRequest.serializer)
       ..add(PlatformEnum.serializer)
       ..add(Problem.serializer)
+      ..add(ProceedDecision.serializer)
       ..add(Proof.serializer)
       ..add(ProofEvent.serializer)
       ..add(Proposal.serializer)
@@ -122,10 +123,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(VehiclePlate)]),
           () => ListBuilder<VehiclePlate>())
-      ..addBuilderFactory(
-          const FullType(
-              BuiltList, const [const FullType.nullable(JsonObject)]),
-          () => ListBuilder<JsonObject?>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType.nullable(JsonObject)]),

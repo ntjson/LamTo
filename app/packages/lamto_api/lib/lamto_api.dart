@@ -63,6 +63,7 @@ export 'package:lamto_api/src/model/plate_create_request.dart';
 export 'package:lamto_api/src/model/plate_recognize_request.dart';
 export 'package:lamto_api/src/model/platform_enum.dart';
 export 'package:lamto_api/src/model/problem.dart';
+export 'package:lamto_api/src/model/proceed_decision.dart';
 export 'package:lamto_api/src/model/proof.dart';
 export 'package:lamto_api/src/model/proof_event.dart';
 export 'package:lamto_api/src/model/proposal.dart';

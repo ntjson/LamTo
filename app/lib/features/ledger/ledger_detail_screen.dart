@@ -26,7 +26,7 @@ String _jsonField(JsonObject? object, String key) =>
     ((object?.value as Map?)?[key] ?? '').toString();
 
 /// Ledger entry detail (spec 6.3(6) / A1): plain language first — what was
-/// fixed, why, amount, who approved, payment verification — then expandable
+/// fixed, why, amount, who decided to proceed, payment verification — then expandable
 /// proof. Mono identifiers appear ONLY inside the expansion.
 class LedgerDetailScreen extends ConsumerWidget {
   const LedgerDetailScreen({required this.entryId, super.key});
@@ -60,6 +60,7 @@ class LedgerDetailScreen extends ConsumerWidget {
   ) {
     final date = DateFormat('dd/MM/yyyy').format(entry.publishedAt.toLocal());
     final verification = entry.verification;
+    final proceedDecision = entry.proceedDecision;
     // Wire values (serializers.py effective_integrity_status): VERIFIED,
     // MISMATCH, UNAVAILABLE, UNCHECKED. Tampering (MISMATCH) must not dress
     // as routine pending, so it gets its own red conclusion; the amber branch
@@ -83,19 +84,14 @@ class LedgerDetailScreen extends ConsumerWidget {
     final chain = [
       (title: l10n.ledgerChainReports, body: entry.why, child: null),
       (title: l10n.ledgerChainWork, body: entry.whatWasFixed, child: null),
-      (
-        title: l10n.ledgerChainApprovals,
-        body: entry.approvers
-            .map(
-              (a) => approverLine(
-                _jsonField(a, 'role'),
-                _jsonField(a, 'name'),
-                l10n,
-              ),
-            )
-            .join('\n'),
-        child: null,
-      ),
+      if (proceedDecision != null)
+        (
+          title: l10n.ledgerChainProceedDecision,
+          body:
+              '${proceedDecision.decidedBy}\n'
+              '${DateFormat('dd/MM/yyyy').format(proceedDecision.decidedAt.toLocal())}',
+          child: null,
+        ),
       (
         title: l10n.ledgerChainPayment,
         body:

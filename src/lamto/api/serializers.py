@@ -165,6 +165,11 @@ class ProofSerializer(serializers.Serializer):
     settlement = serializers.JSONField()
 
 
+class ProceedDecisionSerializer(serializers.Serializer):
+    decided_by = serializers.CharField(help_text="Display name of the decider.")
+    decided_at = serializers.DateTimeField()
+
+
 class LedgerEntryDetailSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     contractor_name = serializers.CharField()
@@ -186,8 +191,11 @@ class LedgerEntryDetailSerializer(serializers.Serializer):
     )
     payload = serializers.JSONField()
     verification = VerificationSerializer(allow_null=True)
-    # Compatibility-only fields retained for the shipped Flutter contract.
-    approvers = serializers.ListField(child=serializers.JSONField())
+    proceed_decision = ProceedDecisionSerializer(
+        allow_null=True,
+        help_text="Who decided to proceed with the proposal, and when; null when no one did.",
+    )
+    # Compatibility-only field retained for the shipped Flutter contract.
     corrections = serializers.ListField(child=serializers.JSONField())
     documents = LedgerDocumentSerializer(many=True)
     proof = ProofSerializer()

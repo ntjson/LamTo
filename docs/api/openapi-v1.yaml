@@ -1896,9 +1896,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/Verification'
           nullable: true
-        approvers:
-          type: array
-          items: {}
+        proceed_decision:
+          allOf:
+          - $ref: '#/components/schemas/ProceedDecision'
+          nullable: true
+          description: Who decided to proceed with the proposal, and when; null when
+            no one did.
         corrections:
           type: array
           items: {}
@@ -1910,7 +1913,6 @@ components:
           $ref: '#/components/schemas/Proof'
       required:
       - actual_cost_vnd
-      - approvers
       - contractor_name
       - corrections
       - documents
@@ -1918,6 +1920,7 @@ components:
       - id
       - integrity_status
       - payload
+      - proceed_decision
       - proof
       - proposed_amount_vnd
       - published_at
@@ -2251,6 +2254,18 @@ components:
       - status
       - title
       - type
+    ProceedDecision:
+      type: object
+      properties:
+        decided_by:
+          type: string
+          description: Display name of the decider.
+        decided_at:
+          type: string
+          format: date-time
+      required:
+      - decided_at
+      - decided_by
     Proof:
       type: object
       properties:

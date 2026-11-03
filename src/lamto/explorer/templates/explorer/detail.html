@@ -28,10 +28,12 @@
       <dt>Công việc thực hiện</dt>
       <dd>{{ what_was_fixed|default:"—" }}</dd>
     </div>
+    {% if proceed_decision %}
     <div>
-      <dt>Người phê duyệt</dt>
-      <dd>{% if approvers %}{{ approvers|join:", " }}{% else %}Ban quản lý{% endif %}</dd>
+      <dt>Người quyết định triển khai</dt>
+      <dd>{{ proceed_decision.decided_by }}{% if proceed_decision.decided_at %} · {{ proceed_decision.decided_at|date:"d/m/Y" }}{% endif %}</dd>
     </div>
+    {% endif %}
     {% if published_at %}
     <div>
       <dt>Ngày công bố sổ quỹ</dt>

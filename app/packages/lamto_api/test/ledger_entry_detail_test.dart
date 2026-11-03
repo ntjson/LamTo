@@ -65,8 +65,9 @@ void main() {
       // TODO
     });
 
-    // BuiltList<JsonObject> approvers
-    test('to test the property `approvers`', () async {
+    // Who decided to proceed with the proposal, and when; null when no one did.
+    // ProceedDecision proceedDecision
+    test('to test the property `proceedDecision`', () async {
       // TODO
     });
 

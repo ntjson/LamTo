@@ -52,6 +52,7 @@ import 'package:lamto_api/src/model/plate_create_request.dart';
 import 'package:lamto_api/src/model/plate_recognize_request.dart';
 import 'package:lamto_api/src/model/platform_enum.dart';
 import 'package:lamto_api/src/model/problem.dart';
+import 'package:lamto_api/src/model/proceed_decision.dart';
 import 'package:lamto_api/src/model/proof.dart';
 import 'package:lamto_api/src/model/proof_event.dart';
 import 'package:lamto_api/src/model/proposal.dart';
@@ -120,6 +121,7 @@ part 'serializers.g.dart';
   PlateRecognizeRequest,
   PlatformEnum,
   Problem,
+  ProceedDecision,
   Proof,
   ProofEvent,
   Proposal,

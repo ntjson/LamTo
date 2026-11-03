@@ -82,6 +82,7 @@ def published_ledger_entry_for_proof(building_id, pk):
             "settlement__transfer__document",
             "settlement__outbox_event",
             "proposal__current_version",
+            "proposal__decided_by__user",
         )
         .first()
     )
@@ -284,6 +285,24 @@ def ledger_story_fields(entry):
     }
 
 
+def proceed_decision(proposal):
+    """Who decided to proceed with ``proposal``, and when; None when nobody did.
+
+    A decision to close the proposal as not proceeding also records a decider,
+    but it is not a Proceed decision, so it is never reported as one.
+    """
+    if (
+        proposal is None
+        or proposal.decided_by_id is None
+        or proposal.status == Proposal.Status.NOT_PROCEEDING
+    ):
+        return None
+    return {
+        "decided_by": proposal.decided_by.user.display_name,
+        "decided_at": proposal.decided_at,
+    }
+
+
 def ledger_entry_proof(entry):
     """Detail assembly for one published entry, shared by the resident web
     template and the API (spec 3.1: one query path, one set of gates).
@@ -319,6 +338,7 @@ def ledger_entry_proof(entry):
             else payload.get("proposed_amount_vnd")
         ),
         "verification": None,
+        "proceed_decision": proceed_decision(entry.proposal),
         "docs": docs,
         "events": events,
         "transaction_ids": [

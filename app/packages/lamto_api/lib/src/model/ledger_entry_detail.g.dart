@@ -30,7 +30,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
   @override
   final Verification? verification;
   @override
-  final BuiltList<JsonObject?> approvers;
+  final ProceedDecision? proceedDecision;
   @override
   final BuiltList<JsonObject?> corrections;
   @override
@@ -54,7 +54,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
       this.explorerUrl,
       this.payload,
       this.verification,
-      required this.approvers,
+      this.proceedDecision,
       required this.corrections,
       required this.documents,
       required this.proof})
@@ -82,7 +82,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
         explorerUrl == other.explorerUrl &&
         payload == other.payload &&
         verification == other.verification &&
-        approvers == other.approvers &&
+        proceedDecision == other.proceedDecision &&
         corrections == other.corrections &&
         documents == other.documents &&
         proof == other.proof;
@@ -102,7 +102,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
     _$hash = $jc(_$hash, explorerUrl.hashCode);
     _$hash = $jc(_$hash, payload.hashCode);
     _$hash = $jc(_$hash, verification.hashCode);
-    _$hash = $jc(_$hash, approvers.hashCode);
+    _$hash = $jc(_$hash, proceedDecision.hashCode);
     _$hash = $jc(_$hash, corrections.hashCode);
     _$hash = $jc(_$hash, documents.hashCode);
     _$hash = $jc(_$hash, proof.hashCode);
@@ -124,7 +124,7 @@ class _$LedgerEntryDetail extends LedgerEntryDetail {
           ..add('explorerUrl', explorerUrl)
           ..add('payload', payload)
           ..add('verification', verification)
-          ..add('approvers', approvers)
+          ..add('proceedDecision', proceedDecision)
           ..add('corrections', corrections)
           ..add('documents', documents)
           ..add('proof', proof))
@@ -186,11 +186,11 @@ class LedgerEntryDetailBuilder
   set verification(VerificationBuilder? verification) =>
       _$this._verification = verification;
 
-  ListBuilder<JsonObject?>? _approvers;
-  ListBuilder<JsonObject?> get approvers =>
-      _$this._approvers ??= ListBuilder<JsonObject?>();
-  set approvers(ListBuilder<JsonObject?>? approvers) =>
-      _$this._approvers = approvers;
+  ProceedDecisionBuilder? _proceedDecision;
+  ProceedDecisionBuilder get proceedDecision =>
+      _$this._proceedDecision ??= ProceedDecisionBuilder();
+  set proceedDecision(ProceedDecisionBuilder? proceedDecision) =>
+      _$this._proceedDecision = proceedDecision;
 
   ListBuilder<JsonObject?>? _corrections;
   ListBuilder<JsonObject?> get corrections =>
@@ -226,7 +226,7 @@ class LedgerEntryDetailBuilder
       _explorerUrl = $v.explorerUrl;
       _payload = $v.payload;
       _verification = $v.verification?.toBuilder();
-      _approvers = $v.approvers.toBuilder();
+      _proceedDecision = $v.proceedDecision?.toBuilder();
       _corrections = $v.corrections.toBuilder();
       _documents = $v.documents.toBuilder();
       _proof = $v.proof.toBuilder();
@@ -271,7 +271,7 @@ class LedgerEntryDetailBuilder
             explorerUrl: explorerUrl,
             payload: payload,
             verification: _verification?.build(),
-            approvers: approvers.build(),
+            proceedDecision: _proceedDecision?.build(),
             corrections: corrections.build(),
             documents: documents.build(),
             proof: proof.build(),
@@ -281,8 +281,8 @@ class LedgerEntryDetailBuilder
       try {
         _$failedField = 'verification';
         _verification?.build();
-        _$failedField = 'approvers';
-        approvers.build();
+        _$failedField = 'proceedDecision';
+        _proceedDecision?.build();
         _$failedField = 'corrections';
         corrections.build();
         _$failedField = 'documents';

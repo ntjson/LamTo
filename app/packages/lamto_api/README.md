@@ -145,6 +145,7 @@ Class | Method | HTTP request | Description
  - [PlateRecognizeRequest](doc/PlateRecognizeRequest.md)
  - [PlatformEnum](doc/PlatformEnum.md)
  - [Problem](doc/Problem.md)
+ - [ProceedDecision](doc/ProceedDecision.md)
  - [Proof](doc/Proof.md)
  - [ProofEvent](doc/ProofEvent.md)
  - [Proposal](doc/Proposal.md)

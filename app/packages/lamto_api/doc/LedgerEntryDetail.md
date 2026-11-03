@@ -19,7 +19,7 @@ Name | Type | Description | Notes
 **explorerUrl** | **String** | Absolute public Evidence explorer URL when anchored, null otherwise. |
 **payload** | [**JsonObject**](.md) |  |
 **verification** | [**Verification**](Verification.md) |  |
-**approvers** | [**BuiltList&lt;JsonObject&gt;**](JsonObject.md) |  |
+**proceedDecision** | [**ProceedDecision**](ProceedDecision.md) | Who decided to proceed with the proposal, and when; null when no one did. |
 **corrections** | [**BuiltList&lt;JsonObject&gt;**](JsonObject.md) |  |
 **documents** | [**BuiltList&lt;LedgerDocument&gt;**](LedgerDocument.md) |  |
 **proof** | [**Proof**](Proof.md) |  |

@@ -20,7 +20,7 @@ from lamto.documents.access import DocumentIntegrityError, read_version_bytes
 from lamto.documents.models import DocumentVersion
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel, evidence_level
 from lamto.finance.models import Proposal, VerificationObservation
-from lamto.finance.selectors import ledger_story_fields
+from lamto.finance.selectors import ledger_story_fields, proceed_decision
 
 logger = logging.getLogger(__name__)
 
@@ -307,9 +307,7 @@ def explorer_page(request, public_token):
         why = cause or category or purpose
         published_at = None
 
-    approvers = []
-    if proposal.decided_by:
-        approvers.append(proposal.decided_by.user.display_name)
+    decision = proceed_decision(proposal)
 
     # 4. Latest independent integrity observation
     integrity_observation = None
@@ -343,7 +341,7 @@ def explorer_page(request, public_token):
         "what_was_fixed": what_was_fixed,
         "why": why,
         "published_at": published_at,
-        "approvers": approvers,
+        "proceed_decision": decision,
         "integrity_observation": integrity_observation,
         "chain_unreachable": chain_unreachable,
     }

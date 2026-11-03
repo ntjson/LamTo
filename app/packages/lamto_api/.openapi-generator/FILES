@@ -51,6 +51,7 @@ doc/PlateCreateRequest.md
 doc/PlateRecognizeRequest.md
 doc/PlatformEnum.md
 doc/Problem.md
+doc/ProceedDecision.md
 doc/Proof.md
 doc/ProofEvent.md
 doc/Proposal.md
@@ -142,6 +143,7 @@ lib/src/model/plate_create_request.dart
 lib/src/model/plate_recognize_request.dart
 lib/src/model/platform_enum.dart
 lib/src/model/problem.dart
+lib/src/model/proceed_decision.dart
 lib/src/model/proof.dart
 lib/src/model/proof_event.dart
 lib/src/model/proposal.dart
@@ -219,6 +221,7 @@ test/plate_create_request_test.dart
 test/plate_recognize_request_test.dart
 test/platform_enum_test.dart
 test/problem_test.dart
+test/proceed_decision_test.dart
 test/proof_event_test.dart
 test/proof_test.dart
 test/proposal_comparison_test.dart

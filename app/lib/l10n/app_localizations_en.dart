@@ -552,29 +552,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerWhy => 'Why';
 
   @override
-  String get ledgerApprovers => 'Approved by';
-
-  @override
-  String ledgerApproverBoard(String name) {
-    return 'Board: $name';
-  }
-
-  @override
-  String ledgerApproverRep(String name) {
-    return 'Resident representative: $name';
-  }
-
-  @override
-  String ledgerApproverEmergency(String name) {
-    return 'Emergency authorization: $name';
-  }
-
-  @override
-  String ledgerApproverGeneric(String name) {
-    return '$name';
-  }
-
-  @override
   String ledgerVerifiedBy(String name) {
     return 'Payment verified by $name';
   }
@@ -618,7 +595,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerChainWork => 'Work completed';
 
   @override
-  String get ledgerChainApprovals => 'Approvals';
+  String get ledgerChainProceedDecision => 'Proceed decision';
 
   @override
   String get ledgerChainPayment => 'Transfer proof';

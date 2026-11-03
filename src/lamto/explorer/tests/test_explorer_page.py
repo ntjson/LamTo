@@ -157,15 +157,38 @@ class EvidenceExplorerPageTests(TestCase):
         self.assertIn("Bảo trì định kỳ hệ thống thang máy", content)
         self.assertIn("Thay thế cáp tải và kiểm định an toàn", content)
 
-    def test_approvers_rendered_when_decided(self):
+    def test_proceed_decider_named_when_proceeding(self):
         proposal = self.published_proposal()
-        decide_proposal(proposal, self.manager, proceed=True, note="Duyệt thực hiện")
+        decide_proposal(proposal, self.manager, proceed=True, note="Triển khai")
         proposal.refresh_from_db()
 
         response = self.client.get(self.explorer_url(proposal.public_token))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode("utf-8")
+        self.assertIn("Người quyết định triển khai", content)
         self.assertIn("Nguyễn Văn Quản Lý", content)
+        self.assertNotIn("phê duyệt", content.lower())
+
+    def test_decider_line_absent_without_proceed_decision(self):
+        proposal = self.published_proposal()
+
+        response = self.client.get(self.explorer_url(proposal.public_token))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertNotIn("Người quyết định triển khai", content)
+        self.assertNotIn("phê duyệt", content.lower())
+        # No fallback naming the management board in the decider's place.
+        self.assertNotIn("<dd>Ban quản lý</dd>", content)
+
+    def test_decider_line_absent_after_decision_not_to_proceed(self):
+        proposal = self.published_proposal()
+        decide_proposal(proposal, self.manager, proceed=False, note="Không làm")
+        proposal.refresh_from_db()
+
+        response = self.client.get(self.explorer_url(proposal.public_token))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertNotIn("Người quyết định triển khai", content)
 
     def test_timeline_lists_multiple_published_versions_in_order(self):
         proposal = self.published_proposal(

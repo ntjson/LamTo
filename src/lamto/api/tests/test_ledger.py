@@ -6,6 +6,7 @@ import tempfile
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.dateparse import parse_datetime
 from knox.models import AuthToken
 
 from lamto.evidence.models import BlockchainOutboxEvent, EvidenceLevel
@@ -104,6 +105,28 @@ class LedgerApiTests(TestCase):
         assert body["code"] == "validation_failed"
         assert "month" in body["errors"]
 
+    def test_detail_proceed_decision_is_null_without_a_decision(self):
+        proposal = self.entry.proposal
+        type(proposal).objects.filter(pk=proposal.pk).update(
+            decided_by=None, decided_at=None
+        )
+        response = self.client.get(
+            reverse("api:ledger-detail", args=[self.entry.pk]), headers=self._auth()
+        )
+        assert response.status_code == 200, response.content
+        assert response.json()["proceed_decision"] is None
+
+    def test_detail_proceed_decision_is_null_after_decision_not_to_proceed(self):
+        proposal = self.entry.proposal
+        type(proposal).objects.filter(pk=proposal.pk).update(
+            status=type(proposal).Status.NOT_PROCEEDING
+        )
+        response = self.client.get(
+            reverse("api:ledger-detail", args=[self.entry.pk]), headers=self._auth()
+        )
+        assert response.status_code == 200, response.content
+        assert response.json()["proceed_decision"] is None
+
     def test_detail_returns_payload_and_proof(self):
         response = self.client.get(
             reverse("api:ledger-detail", args=[self.entry.pk]), headers=self._auth()
@@ -113,14 +136,20 @@ class LedgerApiTests(TestCase):
         assert set(body) == {
             "id", "contractor_name", "actual_cost_vnd", "published_at",
             "proposed_amount_vnd", "integrity_status", "what_was_fixed", "why",
-            "explorer_url", "payload", "verification", "approvers", "corrections",
+            "explorer_url", "payload", "verification", "proceed_decision", "corrections",
             "documents", "proof",
         }
         assert (
             body["explorer_url"]
             == f"http://testserver/e/{self.entry.proposal.public_token}/"
         )
-        assert body["approvers"] == []
+        decision = self.entry.proposal.decided_at
+        assert set(body["proceed_decision"]) == {"decided_by", "decided_at"}
+        assert (
+            body["proceed_decision"]["decided_by"]
+            == self.entry.proposal.decided_by.user.display_name
+        )
+        assert parse_datetime(body["proceed_decision"]["decided_at"]) == decision
         assert body["corrections"] == []
         assert body["id"] == self.entry.pk
         assert body["contractor_name"] == self.entry.contractor_name

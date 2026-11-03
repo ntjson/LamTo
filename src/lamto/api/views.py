@@ -387,7 +387,7 @@ class LedgerDetailView(APIView):
                 if verification is not None
                 else None
             ),
-            "approvers": [],
+            "proceed_decision": detail["proceed_decision"],
             "corrections": [],
             "documents": [
                 {

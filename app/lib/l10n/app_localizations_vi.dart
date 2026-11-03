@@ -552,29 +552,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get ledgerWhy => 'Lý do';
 
   @override
-  String get ledgerApprovers => 'Người phê duyệt';
-
-  @override
-  String ledgerApproverBoard(String name) {
-    return 'Ban quản trị: $name';
-  }
-
-  @override
-  String ledgerApproverRep(String name) {
-    return 'Đại diện cư dân: $name';
-  }
-
-  @override
-  String ledgerApproverEmergency(String name) {
-    return 'Ủy quyền khẩn cấp: $name';
-  }
-
-  @override
-  String ledgerApproverGeneric(String name) {
-    return '$name';
-  }
-
-  @override
   String ledgerVerifiedBy(String name) {
     return 'Thanh toán đã được $name xác nhận';
   }
@@ -619,7 +596,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get ledgerChainWork => 'Công việc đã hoàn thành';
 
   @override
-  String get ledgerChainApprovals => 'Phê duyệt';
+  String get ledgerChainProceedDecision => 'Quyết định triển khai';
 
   @override
   String get ledgerChainPayment => 'Chứng từ thanh toán';

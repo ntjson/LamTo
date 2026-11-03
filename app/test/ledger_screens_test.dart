@@ -68,14 +68,11 @@ LedgerEntryDetail _detail({String? explorerUrl}) => LedgerEntryDetail(
     ..why = 'Worn cable'
     ..explorerUrl = explorerUrl
     ..payload = JsonObject({'proposal_id': 7})
-    ..approvers = ListBuilder<JsonObject?>([
-      JsonObject({'role': 'board', 'name': 'Ông Minh', 'decision': 'APPROVE'}),
-      JsonObject({
-        'role': 'resident_rep',
-        'name': 'Bà Hoa',
-        'decision': 'APPROVE',
-      }),
-    ])
+    ..proceedDecision = ProceedDecision(
+      (d) => d
+        ..decidedBy = 'Ông Minh'
+        ..decidedAt = DateTime.utc(2026, 7, 8, 12),
+    ).toBuilder()
     ..verification = Verification(
       (v) => v
         ..decision = 'VERIFIED'
@@ -189,6 +186,12 @@ class _NoVerificationRepo extends _FakeRepo {
   @override
   Future<LedgerEntryDetail> fetchLedgerEntry(int id) async =>
       _detail().rebuild((b) => b.verification = null);
+}
+
+class _NoProceedDecisionRepo extends _FakeRepo {
+  @override
+  Future<LedgerEntryDetail> fetchLedgerEntry(int id) async =>
+      _detail().rebuild((b) => b.proceedDecision = null);
 }
 
 class _IntegrityRepo extends _FakeRepo {
@@ -415,7 +418,8 @@ void main() {
       expect(find.text('Phản ánh và lý do'), findsOneWidget);
       expect(find.text('ab12cd34'), findsNothing); // hash hidden until expanded
       expect(find.text('Công việc đã hoàn thành'), findsOneWidget);
-      expect(find.text('Phê duyệt'), findsOneWidget);
+      expect(find.text('Quyết định triển khai'), findsOneWidget);
+      expect(find.text('Phê duyệt'), findsNothing);
       expect(find.text('Chứng từ thanh toán'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Xác minh độc lập'),
@@ -427,7 +431,7 @@ void main() {
       expect(find.text('Worn cable'), findsOneWidget);
       expect(find.textContaining('900.000 ₫'), findsWidgets);
       expect(find.textContaining('Ông Minh'), findsOneWidget);
-      expect(find.textContaining('Bà Hoa'), findsOneWidget);
+      expect(find.textContaining('08/07/2026'), findsOneWidget);
       expect(find.textContaining('Bà Lan'), findsOneWidget);
 
       await tester.scrollUntilVisible(
@@ -441,6 +445,17 @@ void main() {
       expect(find.textContaining('0xfeed'), findsOneWidget);
     },
   );
+
+  testWidgets('without a Proceed decision the row is left out', (tester) async {
+    final repo = _NoProceedDecisionRepo();
+    await tester.pumpWidget(_host(const LedgerDetailScreen(entryId: 42), repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quyết định triển khai'), findsNothing);
+    expect(find.textContaining('Ông Minh'), findsNothing);
+    expect(find.text('Phê duyệt'), findsNothing);
+    expect(find.text('Chứng từ thanh toán'), findsOneWidget);
+  });
 
   testWidgets('verified integrity does not require verifier attribution', (
     tester,

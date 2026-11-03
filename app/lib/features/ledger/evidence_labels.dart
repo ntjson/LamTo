@@ -21,15 +21,6 @@ String integrityStatusLabel(String status, AppLocalizations l10n) =>
       _ => l10n.integrityUnchecked,
     };
 
-/// Role-aware approver line for the plain-language story (A1).
-String approverLine(String role, String name, AppLocalizations l10n) =>
-    switch (role) {
-      'board' => l10n.ledgerApproverBoard(name),
-      'resident_rep' => l10n.ledgerApproverRep(name),
-      'emergency' => l10n.ledgerApproverEmergency(name),
-      _ => l10n.ledgerApproverGeneric(name),
-    };
-
 String ledgerDocumentKindLabel(String kind, AppLocalizations l10n) =>
     switch (kind) {
       'PAYMENT_PROOF' => l10n.ledgerChainPayment,

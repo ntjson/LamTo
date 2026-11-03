@@ -1112,36 +1112,6 @@ abstract class AppLocalizations {
   /// **'Why'**
   String get ledgerWhy;
 
-  /// No description provided for @ledgerApprovers.
-  ///
-  /// In en, this message translates to:
-  /// **'Approved by'**
-  String get ledgerApprovers;
-
-  /// No description provided for @ledgerApproverBoard.
-  ///
-  /// In en, this message translates to:
-  /// **'Board: {name}'**
-  String ledgerApproverBoard(String name);
-
-  /// No description provided for @ledgerApproverRep.
-  ///
-  /// In en, this message translates to:
-  /// **'Resident representative: {name}'**
-  String ledgerApproverRep(String name);
-
-  /// No description provided for @ledgerApproverEmergency.
-  ///
-  /// In en, this message translates to:
-  /// **'Emergency authorization: {name}'**
-  String ledgerApproverEmergency(String name);
-
-  /// No description provided for @ledgerApproverGeneric.
-  ///
-  /// In en, this message translates to:
-  /// **'{name}'**
-  String ledgerApproverGeneric(String name);
-
   /// No description provided for @ledgerVerifiedBy.
   ///
   /// In en, this message translates to:
@@ -1214,11 +1184,11 @@ abstract class AppLocalizations {
   /// **'Work completed'**
   String get ledgerChainWork;
 
-  /// No description provided for @ledgerChainApprovals.
+  /// No description provided for @ledgerChainProceedDecision.
   ///
   /// In en, this message translates to:
-  /// **'Approvals'**
-  String get ledgerChainApprovals;
+  /// **'Proceed decision'**
+  String get ledgerChainProceedDecision;
 
   /// No description provided for @ledgerChainPayment.
   ///
