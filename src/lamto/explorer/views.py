@@ -24,6 +24,7 @@ from lamto.evidence.models import (
     evidence_level,
     is_settled,
 )
+from lamto.finance.integrity import check_local_evidence
 from lamto.finance.models import Proposal, VerificationObservation
 from lamto.finance.selectors import ledger_story_fields, proceed_decision
 
@@ -101,6 +102,17 @@ def _read_chain_step(event):
     tx_hash = event.transaction_hash or ""
     tx_url = _chain_explorer_tx_url(tx_hash)
     conf_time = event.chain_block_timestamp or event.confirmed_at
+
+    # The rows this page shows must still hash to the anchored hash, in every
+    # mode: an edit to published data alone leaves the stored hash untouched.
+    if check_local_evidence(event)["result"] != "VERIFIED":
+        return _make_chain_step(
+            level=EvidenceLevel.MISMATCH,
+            payload_hash=event.payload_hash,
+            transaction_hash=tx_hash,
+            transaction_url=tx_url,
+            confirmation_time=conf_time,
+        ), False
 
     # Anchoring disabled or local settlement: pure local truth
     if (

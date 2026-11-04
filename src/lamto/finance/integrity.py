@@ -7,12 +7,26 @@ from django.utils.translation import gettext_lazy as _
 
 from lamto.audit.services import record_audit
 from lamto.documents.access import _read_stored_version
+from lamto.evidence.canonical import payload_hash
 from lamto.evidence.models import BlockchainOutboxEvent, is_settled
 from lamto.finance.models import (
+    ProposalDocument,
+    ProposalVersion,
     PublishedLedgerEntry,
+    Settlement,
     VerificationObservation,
 )
+from lamto.finance.proposals import _submission_snapshot
 from lamto.finance.publication import _collect_document_checks, _load_execution_chain
+from lamto.finance.settlements import build_settlement_evidence_payload
+
+# Anchored fields that describe the maintenance case rather than the spend. The
+# case can be re-triaged after publication and is not published with the spend,
+# so the rebuilt payload keeps the anchored values for these.
+_CASE_PAYLOAD_FIELDS = frozenset(
+    {"case_id", "case_snapshot_hash", "report_id", "report_snapshot_hash",
+     "estimated_amount_vnd", "photo_hash", "photo_hashes"}
+)
 
 
 def _stream_sha256(version):
@@ -20,6 +34,81 @@ def _stream_sha256(version):
     for chunk in _read_stored_version(version):
         digest.update(chunk)
     return digest.hexdigest()
+
+
+def _proposal_version_payload(version, stored):
+    db = version._state.db
+    quotations = [
+        link.document_version
+        for link in ProposalDocument.objects.using(db)
+        .filter(proposal_version=version)
+        .select_related("document_version")
+        .order_by("pk")
+    ]
+    _, rebuilt = _submission_snapshot(
+        version.proposal,
+        version.amount_vnd,
+        version.contractor_name,
+        version.purpose,
+        version.proposed_action,
+        version.expected_schedule,
+        quotations,
+        version.number,
+        expected_start=version.expected_start,
+        expected_end=version.expected_end,
+    )
+    payload = {key: value for key, value in rebuilt.items() if key not in _CASE_PAYLOAD_FIELDS}
+    payload.update(
+        (key, value) for key, value in stored.items() if key in _CASE_PAYLOAD_FIELDS
+    )
+    return payload
+
+
+def published_payload(event):
+    """Rebuild an outbox event's evidence payload from the rows LamTo publishes.
+
+    The explorer and the Resident app show the proposal version and Settlement
+    rows, not the outbox payload, so integrity is checked against what those
+    rows hash to now. Returns None when the event belongs to neither.
+    """
+    stored = event.payload if isinstance(event.payload, dict) else {}
+    try:
+        return _proposal_version_payload(event.proposal_version, stored)
+    except ProposalVersion.DoesNotExist:
+        pass
+    try:
+        return build_settlement_evidence_payload(event.settlement)
+    except Settlement.DoesNotExist:
+        return None
+
+
+def check_local_evidence(event):
+    """Re-hash one outbox event locally; no chain call.
+
+    MISMATCH when the stored payload no longer hashes to the stored hash, or
+    when the published rows no longer hash to it. The stored hash is the one
+    anchored, so either case means the published data differs from the anchor.
+    """
+    stored_hash = event.payload_hash.removeprefix("0x").lower()
+    check = {"event_id": event.event_id, "local_payload_hash": stored_hash}
+    try:
+        check["stored_payload_rehash"] = payload_hash(event.payload)
+    except (TypeError, ValueError) as exc:
+        check["stored_payload_rehash"] = None
+        check["error"] = str(exc)
+    rebuilt = published_payload(event)
+    check["published_rows_rehash"] = payload_hash(rebuilt) if rebuilt is not None else None
+    matches = check["stored_payload_rehash"] == stored_hash and (
+        rebuilt is None or check["published_rows_rehash"] == stored_hash
+    )
+    check["result"] = "VERIFIED" if matches else "MISMATCH"
+    return check
+
+
+def _check_local_records(events):
+    """Return (local_ok, details) for every event's local re-hash."""
+    checks = [check_local_evidence(event) for event in events]
+    return all(check["result"] == "VERIFIED" for check in checks), {"local_checks": checks}
 
 
 def _related_outbox_events(entry):
@@ -177,13 +266,14 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
 
         events = _related_outbox_events(entry)
         chain_event_ids = [event.event_id for event in events]
+        local_ok, local_details = _check_local_records(events)
         chain_ok, chain_unavailable, chain_details = _check_chain_records(events)
 
         if doc_result == VerificationObservation.Result.MISMATCH:
             result = VerificationObservation.Result.MISMATCH
         elif doc_result == VerificationObservation.Result.UNAVAILABLE:
             result = VerificationObservation.Result.UNAVAILABLE
-        elif chain_ok is False:
+        elif not local_ok or chain_ok is False:
             result = VerificationObservation.Result.MISMATCH
         elif chain_unavailable:
             # Documents verified; chain not independently reachable or anchoring
@@ -206,6 +296,7 @@ def verify_published_entry(entry_id, using="default") -> VerificationObservation
         )
         details = {
             "documents": doc_details,
+            **local_details,
             **chain_details,
             "document_result": doc_result,
         }

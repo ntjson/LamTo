@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import storages
+from django.db import connection
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -340,6 +341,37 @@ class EvidenceExplorerPageTests(TestCase):
         # MISMATCH must never dress as verified or pending on mismatched steps
         self.assertNotIn("status-verified", content)
         self.assertNotIn("Đang chờ neo blockchain", content)
+
+    def test_published_amount_edited_alone_renders_mismatch_though_chain_agrees_with_stored_hash(self):
+        proposal = self.published_proposal()
+        version = proposal.current_version
+        with connection.cursor() as cursor:
+            cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+            cursor.execute("ALTER TABLE finance_proposalversion DISABLE TRIGGER USER")
+            cursor.execute(
+                "UPDATE finance_proposalversion SET amount_vnd = 65000000 WHERE id = %s",
+                [version.pk],
+            )
+            cursor.execute("ALTER TABLE finance_proposalversion ENABLE TRIGGER USER")
+
+        def fake_find(ev):
+            return ChainRecord(
+                payload_hash="0x" + ev.payload_hash,
+                previous_hash="0x" + "00" * 32,
+                event_type=int(ev.event_type),
+                signer=ev.signer_address,
+                recorded_at=1770000000,
+            )
+
+        with patch("lamto.evidence.chain.EvidenceRegistryClient") as client_cls:
+            client_cls.return_value.find.side_effect = fake_find
+            response = self.client.get(self.explorer_url(proposal.public_token))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("Phát hiện sai lệch dữ liệu", content)
+        self.assertIn("status-mismatch", content)
+        self.assertNotIn("Đã neo trên blockchain", content)
 
     def test_locally_signed_evidence_renders_with_local_signed_badge_and_info_tone(self):
         proposal = self.published_proposal()
