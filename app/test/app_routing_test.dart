@@ -172,7 +172,8 @@ void main() {
         tester.widget<CupertinoTabBar>(find.byType(CupertinoTabBar)).items,
         hasLength(4),
       );
-      expect(find.byIcon(CupertinoIcons.add), findsOneWidget);
+      // Home draws its own header; Report is its shortcut tile there.
+      expect(find.byIcon(Icons.add_comment_outlined), findsOneWidget);
     } finally {
       debugDefaultTargetPlatformOverride = previous;
     }

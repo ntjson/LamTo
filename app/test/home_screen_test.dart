@@ -421,8 +421,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(FundChart), findsOneWidget);
-    expect(find.byType(LineChart), findsOneWidget);
+    // The trend sits below the ads now, off the first screen.
+    expect(find.byType(FundChart, skipOffstage: false), findsOneWidget);
+    expect(find.byType(LineChart, skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('series loading keeps a named chart placeholder', (tester) async {
@@ -444,8 +445,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(FundChart), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsWidgets);
+    expect(find.byType(FundChart, skipOffstage: false), findsOneWidget);
+    expect(
+      find.byType(CircularProgressIndicator, skipOffstage: false),
+      findsWidgets,
+    );
   });
 
   testWidgets('series failure shows retry but keeps balance', (tester) async {
@@ -469,8 +473,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(formatVnd(1500000)), findsOneWidget);
-    expect(find.byType(ErrorRetry), findsWidgets);
-    expect(find.byType(LineChart), findsNothing);
+    expect(find.byType(ErrorRetry, skipOffstage: false), findsWidgets);
+    expect(find.byType(LineChart, skipOffstage: false), findsNothing);
   });
 
   testWidgets('Android Home chart opens the shell Ledger tab', (tester) async {
@@ -482,6 +486,8 @@ void main() {
         tester.widget<NavigationBar>(find.byType(NavigationBar)).destinations,
         hasLength(4),
       );
+      await tester.ensureVisible(find.byType(FundChart, skipOffstage: false));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(FundChart));
       await tester.pumpAndSettle();
 
@@ -512,6 +518,8 @@ void main() {
 
       await tester.tap(find.text('Trang chính').last);
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byType(FundChart, skipOffstage: false));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(FundChart));
       await tester.pumpAndSettle();
 
@@ -531,6 +539,8 @@ void main() {
           .widget<CupertinoTabScaffold>(find.byType(CupertinoTabScaffold))
           .controller!;
 
+      await tester.ensureVisible(find.byType(FundChart, skipOffstage: false));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(FundChart));
       await tester.pumpAndSettle();
 
@@ -565,7 +575,10 @@ void main() {
     expect(find.text('1.500.000 ₫'), findsOneWidget); // tabular integer VND
     // 30-day stats and 6-month chart each state their window (item G).
     expect(find.textContaining('Thu (30 ngày)'), findsOneWidget);
-    expect(find.text('Số dư quỹ · 6 tháng gần nhất'), findsOneWidget);
+    expect(
+      find.text('Số dư quỹ · 6 tháng gần nhất', skipOffstage: false),
+      findsOneWidget,
+    );
     // Below-the-fold sections still render; search offstage rows too.
     expect(
       find.text('Thang máy kêu', skipOffstage: false),
@@ -657,8 +670,14 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Đang tải phản ánh…'), findsOneWidget);
-    expect(find.text('Đang tải khoản chi…'), findsOneWidget);
+    expect(
+      find.text('Đang tải phản ánh…', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Đang tải khoản chi…', skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('fund period stats stack at large text sizes', (tester) async {

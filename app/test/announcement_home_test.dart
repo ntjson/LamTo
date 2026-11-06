@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lamto/features/bills/bills_repository.dart';
+import 'package:lamto/features/home/ad_carousel.dart';
 import 'package:lamto/features/home/home_screen.dart';
 import 'package:lamto/features/notifications/notifications_screen.dart';
 import 'package:lamto/features/reports/reports_repository.dart';
@@ -135,9 +136,10 @@ void main() {
 
     expect(repo.queries, contains(('building.announcement', true)));
     expect(find.text('Mất nước tầng 8'), findsOneWidget);
+    // Attention comes before the ads: the fund card sits above both.
     expect(
       tester.getTopLeft(find.text('Mất nước tầng 8')).dy,
-      lessThan(tester.getTopLeft(find.text('1.000.000 ₫')).dy),
+      lessThan(tester.getTopLeft(find.byType(AdCarousel)).dy),
     );
 
     await tester.tap(find.text('Mất nước tầng 8'));
@@ -244,7 +246,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Mất nước tầng 8'), findsOneWidget);
+    // At 2x text the header card and shortcuts fill the first screen.
+    final highlight = find.text('Mất nước tầng 8', skipOffstage: false);
+    await tester.ensureVisible(highlight);
+    await tester.pumpAndSettle();
+    expect(highlight, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

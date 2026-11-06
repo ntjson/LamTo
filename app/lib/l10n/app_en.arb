@@ -342,5 +342,14 @@
   "billPaymentVoided": "This bill was voided. No payment was recorded.",
   "billPaymentUnknown": "We could not confirm whether the payment was recorded. Check the bill status before trying again.",
   "billCameraUnavailable": "The camera is unavailable. Allow camera access in device settings, then try again.",
-  "billNone": "No bills."
+  "billNone": "No bills.",
+  "homeAdTag": "Ad",
+  "homeAdSemantics": "Ad from {advertiser}: {title}",
+  "@homeAdSemantics": {
+    "placeholders": {
+      "advertiser": {"type": "String"},
+      "title": {"type": "String"}
+    }
+  },
+  "homeAdsLabel": "Ads"
 }
