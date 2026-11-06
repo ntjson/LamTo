@@ -1,0 +1,12 @@
+# The front door of the unattended trial on a server (ops/trial/compose.yaml).
+#
+# Caddy faces the internet directly and gets its own HTTPS certificate for
+# TRIAL_HOST (for example 203-0-113-7.sslip.io). Routes: routes.caddy.
+
+{
+	admin off
+}
+
+{$TRIAL_HOST} {
+	import /etc/caddy/routes.caddy
+}

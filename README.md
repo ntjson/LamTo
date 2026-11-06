@@ -13,6 +13,17 @@ evidence; and the building publishes an append-only ledger that anyone can
 verify. LamTo complements existing property-management and accounting systems.
 It does not move or hold money.
 
+## Try the demo
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ntjson/LamTo?ref=codespace-demo)
+
+One click starts the whole demo in your own Codespace (a free GitHub account is
+enough). After a few minutes the terminal shows a QR code for the Resident app
+on your phone, the Management workspace address for your laptop, and the
+logins. Every name, number and document in it is synthetic; virus scanning,
+blockchain anchoring, AI and push are off. The steps are in
+[`ops/codespace/README.md`](ops/codespace/README.md).
+
 ## Why it matters
 
 A maintenance complaint and the expense that eventually appears in a building's

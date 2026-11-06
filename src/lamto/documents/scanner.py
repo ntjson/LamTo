@@ -2,6 +2,7 @@ import socket
 import struct
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 # The scan runs inside the upload request, so the server's request timeout has
 # to stay comfortably above this (ops/gunicorn.conf.py).
@@ -13,6 +14,15 @@ class DocumentScanUnavailable(RuntimeError):
 
 
 def scan_with_clamav(file_obj) -> bool:
+    backend = getattr(settings, "DOCUMENT_SCAN_BACKEND", "clamav")
+    if backend == "none":
+        # Scanning is switched off (the unattended trial, ops/trial/): every
+        # upload passes. Type, size and image checks still run around this.
+        return True
+    if backend != "clamav":
+        raise ImproperlyConfigured(
+            f"DOCUMENT_SCAN_BACKEND must be 'clamav' or 'none', got {backend!r}."
+        )
     try:
         file_obj.seek(0)
         with socket.create_connection(

@@ -206,6 +206,9 @@ DOCUMENT_SPOOL_MAX_BYTES = int(os.getenv("DOCUMENT_SPOOL_MAX_BYTES", 1024 * 1024
 DOCUMENT_QUARANTINE_RETENTION_DAYS = int(
     os.getenv("DOCUMENT_QUARANTINE_RETENTION_DAYS", 30)
 )
+# "clamav" scans every upload in its request; "none" lets every upload pass
+# unscanned and is meant only for the synthetic unattended trial (ops/trial/).
+DOCUMENT_SCAN_BACKEND = os.getenv("DOCUMENT_SCAN_BACKEND", "clamav")
 CLAMAV_HOST = os.environ["CLAMAV_HOST"]
 CLAMAV_PORT = os.environ["CLAMAV_PORT"]
 AI_TRIAGE_URL = os.environ["AI_TRIAGE_URL"]

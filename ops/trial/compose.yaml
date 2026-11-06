@@ -1,0 +1,83 @@
+# The unattended trial: everything the demo flow needs, on one server, each
+# service restarting on its own. No ClamAV, no chain, no AI, no push.
+#
+#   cd ~/lamto && docker compose -f ops/trial/compose.yaml up -d --build
+#
+# Settings come from ops/trial/trial.env, written once on the server by
+# ops/trial/deploy.sh. Only Caddy publishes ports (80 and 443).
+
+name: lamto-trial
+
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: ops/trial/Dockerfile
+  image: lamto-trial-app
+  env_file: trial.env
+  restart: unless-stopped
+  init: true
+  depends_on:
+    db: { condition: service_healthy }
+    minio-init: { condition: service_completed_successfully }
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: lamto
+      POSTGRES_USER: lamto_bootstrap
+      POSTGRES_PASSWORD: lamto-bootstrap
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lamto_bootstrap -d lamto"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../postgres-init.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro
+
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: lamto-local
+      MINIO_ROOT_PASSWORD: lamto-local-secret
+    restart: unless-stopped
+    volumes: [minio-data:/data]
+
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+    depends_on: [minio]
+    entrypoint: >-
+      /bin/sh -c "until mc alias set local http://minio:9000 lamto-local lamto-local-secret; do sleep 1; done;
+      mc mb --ignore-existing local/lamto-documents;
+      mc version enable local/lamto-documents"
+
+  app:
+    <<: *app
+    command: ["web"]
+    volumes: [static:/srv/static]
+
+  worker:
+    <<: *app
+    command: ["worker"]
+
+  caddy:
+    image: caddy:2
+    env_file: trial.env
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./routes.caddy:/etc/caddy/routes.caddy:ro
+      - ./site:/srv/site:ro
+      - static:/srv/static:ro
+      - caddy-data:/data
+
+volumes:
+  postgres-data:
+  minio-data:
+  static:
+  caddy-data:

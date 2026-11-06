@@ -1,0 +1,53 @@
+# The demo's routes, shared by the Oracle server (ops/trial/Caddyfile) and the
+# Codespaces demo (ops/codespace/Caddyfile). Same layout as ops/Caddyfile.
+#
+# TRIAL_HOST is the public hostname. Django is always handed that host and an
+# https scheme, whatever proxy sits in front (Codespaces' port forwarding may
+# rewrite Host), so ALLOWED_HOSTS and the CSRF origin check line up.
+
+encode zstd gzip
+
+redir /app /app/ 308
+redir /demo-kit /demo-kit/ 308
+
+# Nothing in the demo uses Django's admin; keep it off the internet.
+handle /admin* {
+	respond 404
+}
+
+handle_path /app/* {
+	root * /srv/site/app
+	header Cache-Control "no-cache"
+	@wasm path *.wasm
+	header @wasm Content-Type application/wasm
+	try_files {path} /index.html
+	file_server {
+		precompressed br gzip
+	}
+}
+
+handle_path /static/* {
+	root * /srv/static/files
+	header Cache-Control "no-cache"
+	file_server
+}
+
+handle_path /demo-kit/* {
+	root * /srv/site/demo-kit
+	header Cache-Control "no-cache"
+	file_server
+}
+
+handle {
+	reverse_proxy app:8000 {
+		header_up Host {$TRIAL_HOST}
+		header_up X-Forwarded-Proto https
+		# Django reads the first X-Forwarded-For entry; replace whatever the
+		# client sent with the peer Caddy saw.
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+log {
+	output stdout
+}
