@@ -3,15 +3,13 @@
   // the Management workspace and the demo kit at a public address.
   // Scripts: ops/codespace/. No ClamAV, no chain, no AI, no push.
   "name": "LamTo demo",
-  "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
-  },
+  // GitHub's default Codespaces image: Docker, gh and python3 are already in
+  // it, and it is cached on Codespaces hosts, so nothing is installed here.
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
   "hostRequirements": { "cpus": 2, "memory": "8gb" },
-  "forwardPorts": [8080],
+  "forwardPorts": [80],
   "portsAttributes": {
-    "8080": { "label": "LamTo demo", "onAutoForward": "silent" }
+    "80": { "label": "LamTo demo", "onAutoForward": "silent" }
   },
   "postCreateCommand": "bash ops/codespace/prepare.sh",
   "postStartCommand": "bash ops/codespace/start.sh",

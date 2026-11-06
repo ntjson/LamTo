@@ -1,14 +1,11 @@
 # The Codespaces demo: the trial stack (ops/trial/compose.yaml) with Caddy on
-# plain HTTP port 8080, which GitHub forwards as https://<codespace>-8080.app.github.dev.
+# plain HTTP port 80, which GitHub forwards as https://<codespace>-80.app.github.dev.
 #
 #   docker compose -f ops/trial/compose.yaml -f ops/codespace/compose.yaml up -d
+#
+# Only the Caddyfile mount changes; compose merges volumes by their target.
 
 services:
   caddy:
-    ports: !override ["8080:8080"]
-    volumes: !override
+    volumes:
       - ../codespace/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./routes.caddy:/etc/caddy/routes.caddy:ro
-      - ./site:/srv/site:ro
-      - static:/srv/static:ro
-      - caddy-data:/data

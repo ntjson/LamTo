@@ -1,6 +1,6 @@
 # The front door of the Codespaces demo (ops/codespace/compose.yaml).
 #
-# GitHub's port forwarding ends TLS and forwards plain HTTP to port 8080, so
+# GitHub's port forwarding ends TLS and forwards plain HTTP to port 80, so
 # Caddy asks for no certificate. Routes: ops/trial/routes.caddy.
 
 {
@@ -8,6 +8,6 @@
 	auto_https off
 }
 
-http://:8080 {
+http://:80 {
 	import /etc/caddy/routes.caddy
 }

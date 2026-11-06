@@ -10,16 +10,16 @@ source "$(dirname "$0")/common.sh"
 
 echo "Starting the LamTo demo. The first start takes a few minutes..."
 for _ in $(seq 1 180); do
-  curl -fsS -o /dev/null http://localhost:8080/api/v1/registration/options && break
+  curl -fsS -o /dev/null http://localhost:80/api/v1/registration/options && break
   sleep 3
 done
-if ! curl -fsS -o /dev/null http://localhost:8080/api/v1/registration/options; then
+if ! curl -fsS -o /dev/null http://localhost:80/api/v1/registration/options; then
   echo "The demo did not come up. Logs: docker compose -f ops/trial/compose.yaml logs app" >&2
   exit 1
 fi
 
-if ! gh codespace ports visibility 8080:public -c "${CODESPACE_NAME}" >/dev/null 2>&1; then
-  PORT_NOTE="Open the PORTS tab, right-click port 8080, choose Port Visibility > Public."
+if ! gh codespace ports visibility 80:public -c "${CODESPACE_NAME:-}" >/dev/null 2>&1; then
+  PORT_NOTE="Open the PORTS tab, right-click port 80, choose Port Visibility > Public."
 fi
 
 BASE="https://${PUBLIC_HOST}"
