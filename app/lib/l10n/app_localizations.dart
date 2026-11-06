@@ -1987,6 +1987,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No bills.'**
   String get billNone;
+
+  /// No description provided for @homeAdTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad'**
+  String get homeAdTag;
+
+  /// No description provided for @homeAdSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad from {advertiser}: {title}'**
+  String homeAdSemantics(String advertiser, String title);
+
+  /// No description provided for @homeAdsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ads'**
+  String get homeAdsLabel;
 }
 
 class _AppLocalizationsDelegate

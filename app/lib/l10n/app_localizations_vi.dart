@@ -1033,4 +1033,15 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get billNone => 'Chưa có hóa đơn.';
+
+  @override
+  String get homeAdTag => 'Quảng cáo';
+
+  @override
+  String homeAdSemantics(String advertiser, String title) {
+    return 'Quảng cáo của $advertiser: $title';
+  }
+
+  @override
+  String get homeAdsLabel => 'Quảng cáo';
 }

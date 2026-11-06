@@ -21,6 +21,12 @@ The resident-facing product, on iOS, Android and the web. It is one product
 on every platform; the web is where an iPhone resident gets it.
 _Avoid_: Resident web page, resident web app, resident portal
 
+**Home ad**:
+A third-party vendor's slide in the carousel on the Resident app's Home,
+always marked as an ad. LamTo records no money for it, so it never touches the
+Maintenance Fund, and nothing about who sees or taps it is collected.
+_Avoid_: Banner, promo, announcement (a building's own notice)
+
 **Location**:
 A named place inside a building that a report can be filed against, arranged as
 a two-level tree — an area and the places within it. Names are unique only among

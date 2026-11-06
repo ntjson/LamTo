@@ -1033,4 +1033,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get billNone => 'No bills.';
+
+  @override
+  String get homeAdTag => 'Ad';
+
+  @override
+  String homeAdSemantics(String advertiser, String title) {
+    return 'Ad from $advertiser: $title';
+  }
+
+  @override
+  String get homeAdsLabel => 'Ads';
 }
